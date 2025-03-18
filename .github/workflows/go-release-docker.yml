@@ -1,0 +1,146 @@
+name: go-release-docker
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: false
+          prerelease: false
+
+  build-push-docker:
+    runs-on: ubuntu-latest
+    needs: create-release
+    outputs:
+      NAME: ${{ env.NAME }}
+      IMAGE_TAG: ${{ env.IMAGE_TAG }}
+      TAG_VERSION: ${{ env.TAG_VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Environment Variables
+        run: |
+          echo "NAME=$(basename ${GITHUB_REPOSITORY})" >> ${GITHUB_ENV}
+          echo "IMAGE_TAG=$(basename ${GITHUB_REF})" >> ${GITHUB_ENV}
+          echo "TAG_VERSION=$(git describe --tags --abbrev=0)" >> ${GITHUB_ENV}
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> ${GITHUB_ENV}
+          echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
+
+      - name: Append 'latest' tag if on main branch
+        if: github.ref == 'refs/heads/main' || env.IMAGE_TAG == env.TAG_VERSION
+        run: echo "IMAGE_TAG=${{ env.IMAGE_TAG }},latest" >> ${GITHUB_ENV}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Check Go Version
+        run: go version  # 验证版本
+
+      - name: Go Build Prepare
+        run: go install github.com/mitchellh/gox@latest
+
+      - name: Go Build Multi-platform
+        run: make gox-all
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_file
+          path: ./build/
+
+      - name: Upload Config Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: config
+          path: ./config
+
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+
+      - name: Docker Build & Publish to GitHub Container Registry
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          dockerfile: Dockerfile
+          name: ${{ github.actor }}/${{ env.NAME }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          registry: ghcr.io
+          snapshot: false
+          tags: "${{ env.IMAGE_TAG }}"
+          buildargs: |
+            VERSION=${{ env.IMAGE_TAG }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
+      - name: Docker Build & Publish to DockerHub
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          dockerfile: Dockerfile
+          name: ${{ github.actor }}/${{ env.NAME }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          snapshot: false
+          tags: "${{ env.IMAGE_TAG }}"
+          buildargs: |
+            VERSION=${{ env.IMAGE_TAG }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
+  push-release:
+    needs: [create-release, build-push-docker]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jobs:
+          - { goos: darwin, goarch: amd64, cc: "" }
+          - { goos: darwin, goarch: arm64, cc: "" }
+          - { goos: linux, goarch: amd64, cc: "" }
+          - { goos: linux, goarch: arm64, cc: "" }
+          - { goos: windows, goarch: amd64, cc: "", ext: ".exe" }
+    steps:
+      - name: Set NAME env
+        run: echo "NAME=${{ needs.build-push-docker.outputs.NAME }}-${{ needs.build-push-docker.outputs.TAG_VERSION }}" >> ${GITHUB_ENV}
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build_file
+          path: ./build/
+
+      - name: Download Config Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: config
+          path: ./config
+
+      - name: Create GZip Archive
+        run: |
+          tar -czvf ./build/${{ env.NAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz ./config  -C ./build/${{ matrix.jobs.goos }}_${{ matrix.jobs.goarch }}/ .
+
+      - name: Upload GZip to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./build/${{ env.NAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
+          asset_name: ${{ env.NAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
+          asset_content_type: application/gzip

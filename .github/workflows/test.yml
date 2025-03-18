@@ -1,0 +1,37 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  workflow_dispatch:
+
+env:
+  PLUGIN_NAME: obsidian-better-sync-service
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ${{ github.ref }}
+        draft: false
+        prerelease: false
+    - name: echo create_release
+      run: echo ${{ steps.create_release.outputs.upload_url }}
+    - name: Set Time
+      run: echo "TIME=`echo $(TZ='Asia/Shanghai' date +'%FT%T%z')`" >> $GITHUB_ENV
+    - name: Get Tag Version
+      run: echo "TAG_VERSION=`echo $(git describe --tags --abbrev=0)`" >> $GITHUB_ENV
+    - name: Get Tag Version
+      run: echo "LDFLAGS=-ldflags \"-X global.GitTag=${{ env.TAG_VERSION }} -X global.BuildTime=${{ env.TIME }}\"" >> $GITHUB_ENV
+

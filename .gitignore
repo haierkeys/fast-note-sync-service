@@ -1,0 +1,82 @@
+# -- Composer -----------------------------------------
+/composer.phar
+/composer.lock
+
+# -- Editores -----------------------------------------
+# vim
+.*.sw[a-z]
+*.un~
+Session.vim
+.netrwhist
+
+# vscode
+/.vscode
+.vscode
+
+# eclipse
+*.pydevproject
+.project
+.metadata
+tmp/**
+tmp/**/*
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+.externalToolBuilders/
+*.launch
+.buildpath
+
+# phpstorm
+.idea
+
+# textmate
+*.tmproj
+*.tmproject
+tmtags
+
+# sublimetext
+/*.sublime-project
+*.sublime-workspace
+
+# netbeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+
+# -- Sistemas Operativos ------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+!.gitignore
+!.htaccess
+!.env
+*~
+
+# Mac OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# -- Project -----------------------------------------
+/build
+/storage/logs
+/storage/uploads
+/storage/
+/config/config-dev.yaml
