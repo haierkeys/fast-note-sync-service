@@ -13,9 +13,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type LogType string
+
 const (
-	PingInterval = 25
-	PingWait     = 50
+	WebSocketServerPingInterval         = 25
+	WebSocketServerPingWait             = 50
+	LogInfo                     LogType = "info"
+	LogError                    LogType = "error"
+	LogWarn                     LogType = "warn"
 )
 
 type WebSocketMessage struct {
@@ -28,6 +33,7 @@ type WebSocketMessage struct {
 type WebsocketClient struct {
 	conn *gws.Conn
 	done chan struct{}
+	user any
 }
 
 type WebsocketServerConfig struct {
@@ -44,13 +50,26 @@ type WebsocketServer struct {
 	config   *WebsocketServerConfig
 }
 
+func log(t LogType, msg string, fields ...zap.Field) {
+
+	if t == "error" {
+		global.Logger.Error(msg, fields...)
+	} else if t == "warn" {
+		global.Logger.Warn(msg, fields...)
+	} else if t == "info" {
+		if global.Config.Server.RunMode == "debug" {
+			global.Logger.Info(msg, fields...)
+		}
+	}
+}
+
 func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
 	if c.PingInterval == 0 {
-		c.PingInterval = PingInterval
+		c.PingInterval = WebSocketServerPingInterval
 	}
 
 	if c.PingWait == 0 {
-		c.PingWait = PingWait
+		c.PingWait = WebSocketServerPingWait
 	}
 
 	return &WebsocketServer{
@@ -71,10 +90,10 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		w.Upgrade()
 		socket, err := w.up.Upgrade(c.Writer, c.Request)
 		if err != nil {
-			global.Logger.Error("WebsocketServer Start err", zap.Error(err))
+			log(LogError, "WebsocketServer Start err", zap.Error(err))
 			return
 		}
-		global.Logger.Info("WebsocketServer Start", zap.String("type", "ReadLoop"))
+		log(LogInfo, "WebsocketServer Start", zap.String("type", "ReadLoop"))
 		go socket.ReadLoop()
 	}
 }
@@ -101,7 +120,7 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 }
 
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
-	global.Logger.Info("WebsocketServer OnOpen", zap.String("msg", "user join"))
+	log(LogInfo, "WebsocketServer OnOpen", zap.String("msg", "user join"))
 	client := &WebsocketClient{conn: conn, done: make(chan struct{})}
 	w.AddClient(client)
 	go client.PingLoop(w.config.PingInterval)
@@ -110,7 +129,7 @@ func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
-	global.Logger.Info("WebsocketServer OnClose", zap.String("msg", "user leave"))
+	log(LogInfo, "WebsocketServer OnClose", zap.String("msg", "user leave"))
 	c := w.GetClient(conn)
 	c.done <- struct{}{}
 	w.RemoveClient(conn)
@@ -123,7 +142,7 @@ func (w *WebsocketServer) OnPing(socket *gws.Conn, payload []byte) {
 
 func (w *WebsocketServer) OnPong(socket *gws.Conn, payload []byte) {
 	_ = socket.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
-	global.Logger.Info("WebsocketServer PingLoop", zap.String("msg", "from user pong"))
+	log(LogInfo, "WebsocketServer PingLoop", zap.String("msg", "from user pong"))
 
 }
 
@@ -140,18 +159,18 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	var msg WebSocketMessage
 	err := json.Unmarshal(message.Data.Bytes(), &msg)
 	if err != nil {
-		global.Logger.Error("WebsocketServer OnMessage", zap.String("type", "Failed to unmarshal message"))
+		log(LogError, "WebsocketServer OnMessage", zap.String("type", "Failed to unmarshal message"))
 		return
 	}
 
 	// 执行操作
 	handler, exists := w.handlers[msg.Type]
 	if exists {
-		global.Logger.Info("WebsocketServer OnMessage", zap.String("type", msg.Type))
+		log(LogInfo, "WebsocketServer OnMessage", zap.String("type", msg.Type))
 		c := w.GetClient(conn)
 		handler(c, &msg)
 	} else {
-		global.Logger.Error("WebsocketServer OnMessage", zap.String("msg", "Unknown message type"))
+		log(LogError, "WebsocketServer OnMessage", zap.String("msg", "Unknown message type"))
 	}
 }
 
@@ -162,14 +181,14 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 	for {
 		select {
 		case <-c.done:
-			global.Logger.Info("WebsocketServer PingLoop", zap.String("msg", "to close"))
+			log(LogInfo, "WebsocketServer PingLoop", zap.String("msg", "to close"))
 			return
 		case <-ticker.C:
 			if err := c.conn.WritePing(nil); err != nil {
-				global.Logger.Error("WebsocketServer PingLoop err ", zap.Error(err))
+				log(LogError, "WebsocketServer PingLoop err ", zap.Error(err))
 				return
 			}
-			global.Logger.Info("WebsocketServer PingLoop", zap.String("msg", "to user ping"))
+			log(LogInfo, "WebsocketServer PingLoop", zap.String("msg", "to user ping"))
 		}
 	}
 }
