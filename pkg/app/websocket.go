@@ -16,24 +16,36 @@ import (
 type LogType string
 
 const (
-	WebSocketServerPingInterval         = 25
+	WebSocketServerPingInterval         = 2
 	WebSocketServerPingWait             = 50
 	LogInfo                     LogType = "info"
 	LogError                    LogType = "error"
 	LogWarn                     LogType = "warn"
 )
 
+func log(t LogType, msg string, fields ...zap.Field) {
+
+	if t == "error" {
+		global.Logger.Error(msg, fields...)
+	} else if t == "warn" {
+		global.Logger.Warn(msg, fields...)
+	} else if t == "info" {
+		if global.Config.Server.RunMode == "debug" {
+			global.Logger.Info(msg, fields...)
+		}
+	}
+}
+
 type WebSocketMessage struct {
-	Type     string `json:"type"`     // 操作类型，例如 "upload", "update", "delete"
-	Filename string `json:"filename"` // 文件名
-	Data     []byte `json:"data"`     // 文件数据（仅在上传和更新时使用）
+	Type string `json:"type"` // 操作类型，例如 "upload", "update", "delete"
+	Data []byte `json:"data"` // 文件数据（仅在上传和更新时使用）
 }
 
 // WebsocketClient 结构体来存储每个 WebSocket 连接及其相关状态
 type WebsocketClient struct {
 	conn *gws.Conn
 	done chan struct{}
-	user any
+	user *UserEntity
 }
 
 type WebsocketServerConfig struct {
@@ -50,19 +62,6 @@ type WebsocketServer struct {
 	config   *WebsocketServerConfig
 }
 
-func log(t LogType, msg string, fields ...zap.Field) {
-
-	if t == "error" {
-		global.Logger.Error(msg, fields...)
-	} else if t == "warn" {
-		global.Logger.Warn(msg, fields...)
-	} else if t == "info" {
-		if global.Config.Server.RunMode == "debug" {
-			global.Logger.Info(msg, fields...)
-		}
-	}
-}
-
 func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
 	if c.PingInterval == 0 {
 		c.PingInterval = WebSocketServerPingInterval
@@ -72,11 +71,15 @@ func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
 		c.PingWait = WebSocketServerPingWait
 	}
 
-	return &WebsocketServer{
+	wss := WebsocketServer{
 		handlers: make(map[string]func(*WebsocketClient, *WebSocketMessage)),
 		clients:  make(map[*gws.Conn]*WebsocketClient),
 		config:   &c,
 	}
+
+	wss.Use("Authorization", wss.Authorization)
+
+	return &wss
 }
 
 func (w *WebsocketServer) Upgrade() {
@@ -113,6 +116,20 @@ func (w *WebsocketServer) AddClient(c *WebsocketClient) {
 	w.clients[c.conn] = c
 }
 
+func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
+
+	if user, err := ParseToken(string(msg.Data)); err != nil {
+		c.ToResponse(code.ErrorInvalidUserAuthToken)
+		c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+	} else {
+		log(LogInfo, "WebsocketServer Authorization", zap.String("msg", "user Authorization success"))
+		go c.PingLoop(w.config.PingInterval)
+		c.user = user
+		c.ToResponse(code.Success)
+	}
+
+}
+
 func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -120,10 +137,9 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 }
 
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
-	log(LogInfo, "WebsocketServer OnOpen", zap.String("msg", "user join"))
+	log(LogInfo, "WebsocketServer OnOpen", zap.String("msg", "client connect"))
 	client := &WebsocketClient{conn: conn, done: make(chan struct{})}
 	w.AddClient(client)
-	go client.PingLoop(w.config.PingInterval)
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
@@ -157,8 +173,15 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 
 	var msg WebSocketMessage
-	err := json.Unmarshal(message.Data.Bytes(), &msg)
-	if err != nil {
+	messageStr := message.Data.String()
+	// 使用 strings.Index 找到分隔符的位置
+	index := strings.Index(messageStr, "|")
+
+	if index != -1 {
+		msg.Type = messageStr[:index]           // 提取分隔符之前的部分
+		msg.Data = []byte(messageStr[index+1:]) // 提取分隔符之后的部分
+
+	} else {
 		log(LogError, "WebsocketServer OnMessage", zap.String("type", "Failed to unmarshal message"))
 		return
 	}

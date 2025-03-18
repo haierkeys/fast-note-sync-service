@@ -72,7 +72,8 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 				c.ToResponse(code.Success)
 			})
 			wss.Use("upload", websocket_router.HandleUpload)
-			userApiR.Use(middleware.UserAuthToken()).GET("/sync", wss.Run())
+			userApiR.GET("/sync", wss.Run())
+			//userApiR.Use(middleware.UserAuthToken()).GET("/sync", wss.Run())
 		}
 	}
 	r.Use(middleware.Cors())
