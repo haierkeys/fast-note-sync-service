@@ -13,7 +13,6 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/routers/websocket_router"
 
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/limiter"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +30,19 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 )
 
 func NewRouter(frontendFiles embed.FS) *gin.Engine {
+
+	var wss = app.NewWebsocketServer(app.WebsocketServerConfig{
+		GWSOption: gws.ServerOption{
+			CheckUtf8Enabled:  true,
+			ParallelEnabled:   true,                                 // 开启并行消息处理
+			Recovery:          gws.Recovery,                         // 开启异常恢复
+			PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // 开启压缩
+			// ReadMaxPayloadSize:    1024 * 1024 * 16,                     // 设置最大读取缓冲区大小
+			// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
+		},
+	})
+
+	wss.Use("FileCreate", websocket_router.FileCreate)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
@@ -57,23 +69,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 		userApiR := api.Group("/user")
 		{
-			var wss = app.NewWebsocketServer(app.WebsocketServerConfig{
-				GWSOption: gws.ServerOption{
-					CheckUtf8Enabled:  true,
-					ParallelEnabled:   true,                                 // 开启并行消息处理
-					Recovery:          gws.Recovery,                         // 开启异常恢复
-					PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // 开启压缩
-					// ReadMaxPayloadSize:    1024 * 1024 * 16,                     // 设置最大读取缓冲区大小
-					// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
-				},
-			})
-
-			wss.Use("ping", func(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-				c.ToResponse(code.Success)
-			})
-			wss.Use("upload", websocket_router.HandleUpload)
 			userApiR.GET("/sync", wss.Run())
-			//userApiR.Use(middleware.UserAuthToken()).GET("/sync", wss.Run())
 		}
 	}
 	r.Use(middleware.Cors())

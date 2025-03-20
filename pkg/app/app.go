@@ -112,7 +112,7 @@ func (r *Response) ToResponse(code *code.Code) {
 	r.Ctx.Set("status_code", code.StatusCode())
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
-		r.SendResponse(code.StatusCode(), ResDetailsResult{
+		r.SendResultResponse(code.StatusCode(), ResDetailsResult{
 			Code:    code.Code(),
 			Status:  code.Status(),
 			Msg:     code.Lang.GetMessage(),
@@ -120,7 +120,7 @@ func (r *Response) ToResponse(code *code.Code) {
 			Details: details,
 		})
 	} else {
-		r.SendResponse(code.StatusCode(), ResResult{
+		r.SendResultResponse(code.StatusCode(), ResResult{
 			Code:   code.Code(),
 			Status: code.Status(),
 			Msg:    code.Lang.GetMessage(),
@@ -133,7 +133,7 @@ func (r *Response) ToResponseList(code *code.Code, list interface{}, totalRows i
 
 	r.Ctx.Set("status_code", code.StatusCode())
 
-	r.SendResponse(code.StatusCode(), ResListResult{
+	r.SendResultResponse(code.StatusCode(), ResListResult{
 		Code:   code.Code(),
 		Status: code.Status(),
 		Msg:    code.Lang.GetMessage(),
@@ -148,6 +148,6 @@ func (r *Response) ToResponseList(code *code.Code, list interface{}, totalRows i
 	})
 }
 
-func (r *Response) SendResponse(statusCode int, content interface{}) {
+func (r *Response) SendResultResponse(statusCode int, content interface{}) {
 	r.Ctx.JSON(statusCode, content)
 }

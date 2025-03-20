@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 
@@ -18,6 +19,8 @@ func Lang() gin.HandlerFunc {
 		} else if s = c.GetHeader("lang"); len(s) != 0 {
 			lang = s
 		}
+
+		dump.P(lang)
 
 		trans, found := global.Ut.GetTranslator(lang)
 
