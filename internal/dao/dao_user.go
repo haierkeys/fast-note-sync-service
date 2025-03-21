@@ -24,7 +24,7 @@ type User struct {
 // GetUserByUID 根据用户ID获取用户信息
 func (d *Dao) GetUserByUID(uid int64) (*User, error) {
 	// 使用 user_repo 构建查询，查找 UID 等于给定 uid 的用户，并且未被删除
-	m, err := user_repo.NewQueryBuilder().
+	m, err := user_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
 		First()
@@ -39,7 +39,7 @@ func (d *Dao) GetUserByUID(uid int64) (*User, error) {
 // GetUserByEmail 根据电子邮件获取用户信息
 func (d *Dao) GetUserByEmail(email string) (*User, error) {
 
-	m, err := user_repo.NewQueryBuilder().
+	m, err := user_repo.NewQueryBuilder(d.Db).
 		WhereEmail(model.Eq, email).
 		WhereIsDeleted(model.Eq, 0).
 		First()
@@ -54,7 +54,7 @@ func (d *Dao) GetUserByEmail(email string) (*User, error) {
 
 func (d *Dao) GetUserByUsername(username string) (*User, error) {
 
-	m, err := user_repo.NewQueryBuilder().
+	m, err := user_repo.NewQueryBuilder(d.Db).
 		WhereUsername(model.Eq, username).
 		WhereIsDeleted(model.Eq, 0).
 		First()
@@ -72,7 +72,7 @@ func (d *Dao) CreateMember(dao *User) (int64, error) { // 修改参数类型为 
 
 	m := convert.StructAssign(dao, &user_repo.User{}).(*user_repo.User)
 
-	id, err := m.Create()
+	id, err := m.Create(d.Db)
 
 	if err != nil {
 		return 0, err
@@ -83,9 +83,9 @@ func (d *Dao) CreateMember(dao *User) (int64, error) { // 修改参数类型为 
 // CreateUser 创建用户
 func (d *Dao) CreateUser(dao *User) (int64, error) { // 修改函数名为 CreateUser
 
-	m := convert.StructAssign(dao, &user_repo.User{}).(*user_repo.User)
+	m := convert.StructAssign(dao, user_repo.NewModel()).(*user_repo.User)
 
-	id, err := m.Create()
+	id, err := m.Create(d.Db)
 
 	if err != nil {
 		return 0, err

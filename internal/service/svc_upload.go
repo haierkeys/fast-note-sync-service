@@ -9,20 +9,19 @@ import (
 	"io"
 	"mime/multipart"
 
-	"github.com/disintegration/imaging"
-	"github.com/gen2brain/avif"
-	"golang.org/x/image/bmp"
-	"golang.org/x/image/tiff"
-	"gorm.io/gorm"
-
 	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/storage"
 
+	"github.com/disintegration/imaging"
+	"github.com/gen2brain/avif"
 	"github.com/pkg/errors"
+	"golang.org/x/image/bmp"
+	"golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
+	"gorm.io/gorm"
 )
 
 type FileInfo struct {

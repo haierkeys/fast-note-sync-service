@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

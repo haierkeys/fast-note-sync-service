@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/goutil/dump"
 )
 
 func Lang() gin.HandlerFunc {

@@ -7,40 +7,39 @@ package cloud_config_repo
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
-
-var once sync.Once
-
-func Connection() *gorm.DB {
-	dbDriver := global.DBEngine
-	dbDriver.Config.NamingStrategy = schema.NamingStrategy{
-		TablePrefix:   "pre_", // 表名前缀
-		SingularTable: true,   // 使用单数表名
-	}
-	// 自动创建
-	if global.Config.Database.AutoMigrate {
-		once.Do(func() {
-			dbDriver.AutoMigrate(CloudConfig{})
-		})
-	}
-	return dbDriver
-}
 
 func NewModel() *CloudConfig {
 	return new(CloudConfig)
 }
 
+func (m *CloudConfig) Create(db *gorm.DB) (id int64, err error) {
+	m.CreatedAt = timex.Now()
+
+	if err = db.Model(m).Create(m).Error; err != nil {
+		return 0, errors.Wrap(err, "create err")
+	}
+	return m.Id, nil
+}
+
+func (m *CloudConfig) Save(db *gorm.DB) (err error) {
+	m.UpdatedAt = timex.Now()
+
+	if err = db.Model(m).Save(m).Error; err != nil {
+		return errors.Wrap(err, "update err")
+	}
+	return nil
+}
+
 type cloudConfigRepoQueryBuilder struct {
+	db    *gorm.DB
 	order []string
 	where []struct {
 		prefix string
@@ -54,12 +53,14 @@ type cloudConfigRepoQueryBuilder struct {
 	offset int
 }
 
-func NewQueryBuilder() *cloudConfigRepoQueryBuilder {
-	return new(cloudConfigRepoQueryBuilder)
+func NewQueryBuilder(db *gorm.DB) *cloudConfigRepoQueryBuilder {
+	return &cloudConfigRepoQueryBuilder{
+		db: db,
+	}
 }
 
 func (qb *cloudConfigRepoQueryBuilder) buildQuery() *gorm.DB {
-	ret := Connection()
+	ret := qb.db
 	for _, where := range qb.where {
 		ret = ret.Where(where.prefix, where.value)
 	}
@@ -73,28 +74,9 @@ func (qb *cloudConfigRepoQueryBuilder) buildQuery() *gorm.DB {
 	return ret
 }
 
-func (t *CloudConfig) Create() (id int64, err error) {
-	t.CreatedAt = timex.Now()
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Create(t).Error; err != nil {
-		return 0, errors.Wrap(err, "create err")
-	}
-	return t.Id, nil
-}
-
-func (t *CloudConfig) Save() (err error) {
-	t.UpdatedAt = timex.Now()
-
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Save(t).Error; err != nil {
-		return errors.Wrap(err, "update err")
-	}
-	return nil
-}
-
 func (qb *cloudConfigRepoQueryBuilder) Updates(m map[string]interface{}) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&CloudConfig{})
 
 	for _, where := range qb.where {
@@ -110,7 +92,7 @@ func (qb *cloudConfigRepoQueryBuilder) Updates(m map[string]interface{}) (err er
 // 自减
 func (qb *cloudConfigRepoQueryBuilder) Increment(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&CloudConfig{})
 
 	for _, where := range qb.where {
@@ -126,7 +108,7 @@ func (qb *cloudConfigRepoQueryBuilder) Increment(column string, value int64) (er
 // 自增
 func (qb *cloudConfigRepoQueryBuilder) Decrement(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&CloudConfig{})
 
 	for _, where := range qb.where {
@@ -141,7 +123,7 @@ func (qb *cloudConfigRepoQueryBuilder) Decrement(column string, value int64) (er
 
 func (qb *cloudConfigRepoQueryBuilder) Delete() (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	for _, where := range qb.where {
 		dbDriver = dbDriver.Where(where.prefix, where.value)
 	}

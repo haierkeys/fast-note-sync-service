@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/obsidian-better-sync-service/global"
+	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 	"github.com/lxzan/gws"
 	"go.uber.org/zap"
 )

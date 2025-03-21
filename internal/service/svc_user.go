@@ -9,6 +9,7 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/util"
+
 	"gorm.io/gorm"
 )
 

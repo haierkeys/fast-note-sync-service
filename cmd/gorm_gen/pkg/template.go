@@ -20,41 +20,43 @@ var outputTemplate = parseTemplateOrPanic(`
 package {{.PkgName}}
 
 import (
-    "fmt"
-	"sync"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/pkg/errors"
-    "gorm.io/gorm"
-    "gorm.io/gorm/schema"
+	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
+	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 
-    "github.com/haierkeys/obsidian-better-sync-service/global"
-    "github.com/haierkeys/obsidian-better-sync-service/internal/model"
-    "github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"github.com/pkg/errors"
+	"gorm.io/gorm"
+
 )
-
-var once sync.Once
-
-func Connection() *gorm.DB {
-	dbDriver := global.DBEngine
-	dbDriver.Config.NamingStrategy = schema.NamingStrategy{
-		TablePrefix:   "{{.Prefix}}",   // 表名前缀
-		SingularTable: true, // 使用单数表名
-	}
-	// 自动创建
-	if global.Config.Database.AutoMigrate {
-		once.Do(func() {
-			dbDriver.AutoMigrate({{.StructName}}{})
-		})
-	}
-	return dbDriver
-}
 
 func NewModel() *{{.StructName}} {
 	return new({{.StructName}})
 }
 
+func (m *{{.StructName}}) Create(db *gorm.DB) (id int64, err error) {
+	m.CreatedAt = timex.Now()
+
+	if err = db.Model(m).Create(m).Error; err != nil {
+		return 0, errors.Wrap(err, "create err")
+	}
+	return m.{{.PrimaryIdName}}, nil
+}
+
+func (m *{{.StructName}}) Save(db *gorm.DB) (err error) {
+	m.UpdatedAt = timex.Now()
+
+	if err = db.Model(m).Save(m).Error; err != nil {
+		return errors.Wrap(err, "update err")
+	}
+	return nil
+}
+
+
+
 type {{.QueryBuilderName}} struct {
+	db    *gorm.DB
 	order []string
 	where []struct {
 		prefix string
@@ -68,14 +70,16 @@ type {{.QueryBuilderName}} struct {
 	offset int
 }
 
-func NewQueryBuilder() *{{.QueryBuilderName}} {
-	return new({{.QueryBuilderName}})
+func NewQueryBuilder(db *gorm.DB) *{{.QueryBuilderName}} {
+	return &{{.QueryBuilderName}}{
+		db: db,
+	}
 }
 
 
 
 func (qb *{{.QueryBuilderName}}) buildQuery() *gorm.DB {
-	ret := Connection()
+	ret := qb.db
 	for _, where := range qb.where {
 		ret = ret.Where(where.prefix, where.value)
 	}
@@ -89,30 +93,9 @@ func (qb *{{.QueryBuilderName}}) buildQuery() *gorm.DB {
 	return ret
 }
 
-
-func (t *{{.StructName}}) Create() (id int64, err error) {
-	t.CreatedAt = timex.Now()
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Create(t).Error; err != nil {
-		return 0, errors.Wrap(err, "create err")
-	}
-	return t.{{.PrimaryIdName}}, nil
-}
-
-func (t *{{.StructName}}) Save() (err error) {
-	t.UpdatedAt = timex.Now()
-
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Save(t).Error; err != nil {
-		return errors.Wrap(err, "update err")
-	}
-	return nil
-}
-
-
 func (qb *{{.QueryBuilderName}}) Updates( m map[string]interface{}) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&{{.StructName}}{})
 
 	for _, where := range qb.where {
@@ -129,7 +112,7 @@ func (qb *{{.QueryBuilderName}}) Updates( m map[string]interface{}) (err error) 
 //自减
 func (qb *{{.QueryBuilderName}}) Increment(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&{{.StructName}}{})
 
 	for _, where := range qb.where {
@@ -145,7 +128,7 @@ func (qb *{{.QueryBuilderName}}) Increment(column string, value int64) (err erro
 //自增
 func (qb *{{.QueryBuilderName}}) Decrement(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&{{.StructName}}{})
 
 	for _, where := range qb.where {
@@ -160,7 +143,7 @@ func (qb *{{.QueryBuilderName}}) Decrement(column string, value int64) (err erro
 
 func (qb *{{.QueryBuilderName}}) Delete() (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	for _, where := range qb.where {
 		dbDriver = dbDriver.Where(where.prefix, where.value)
 	}

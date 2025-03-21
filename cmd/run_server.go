@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
+	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/routers"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/logger"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/safe_close"
@@ -194,7 +194,7 @@ func initValidator() error {
 
 func initDatabase() error {
 	var err error
-	global.DBEngine, err = model.NewDBEngine(global.Config.Database)
+	global.DBEngine, err = dao.NewDBEngine(global.Config.Database)
 	if err != nil {
 		return err
 	}

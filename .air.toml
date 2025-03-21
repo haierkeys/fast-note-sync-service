@@ -1,52 +1,89 @@
+# [Air](https://github.com/air-verse/air) 的 TOML 格式配置文件
+
+# 工作目录
+# 可以是 . 或绝对路径，请注意后续的目录必须位于根目录下。
+
 root = "."
 testdata_dir = "testdata"
 tmp_dir = "build"
 
 [build]
-  args_bin = []
-  bin = "./build/api run"
-  cmd = "go build -o ./build/api ./main.go"
-  delay = 1000
-  exclude_dir = ["storage"]
-  exclude_file = []
-  exclude_regex = ["_test.go"]
-  exclude_unchanged = false
-  follow_symlink = false
-  full_bin = ""
-  include_dir = []
-  include_ext = ["go", "tpl", "tmpl", "html"]
-  include_file = []
-  kill_delay = "0s"
-  log = "build-errors.log"
-  poll = true
-  poll_interval = 0
-  post_cmd = []
-  pre_cmd = []
-  rerun = false
-  rerun_delay = 500
-  send_interrupt = false
-  stop_on_error = false
+# 每次构建前要运行的命令数组
+pre_cmd = []
+# 纯 shell 命令，你也可以使用 `make`。
+cmd = "go build -o ./build/api ./main.go"
+# go build -o ./build/api ./main.go
+# 每次按下 ^C 后要运行的命令数组
+post_cmd = []
 
-[color]
-  app = ""
-  build = "yellow"
-  main = "magenta"
-  runner = "green"
-  watcher = "cyan"
+# 由 `cmd` 生成的可执行文件。
+bin = "./build/api"
+# 自定义可执行文件，可在运行应用程序时设置环境变量。
+full_bin = ""
+# 运行二进制文件（bin/full_bin）时添加其他参数。会运行 './tmp/main hello world'。
+args_bin = ["run"]
+# 监控这些文件扩展名。
+include_ext = ["go", "tpl", "tmpl", "html"]
+# 忽略这些文件扩展名或目录。
+exclude_dir = ["assets", "tmp","storage", "vendor"]
+# 如果指定了，则监控这些目录。
+include_dir = []
+# 监控这些文件。
+include_file = []
+# 忽略这些文件。
+exclude_file = []
+# 忽略特定的正则表达式匹配的文件。
+exclude_regex = ["_test\\.go"]
+# 忽略未更改的文件。
+exclude_unchanged = true
+# 跟随符号链接的目录
+follow_symlink = true
+# 此日志文件位于你的 tmp_dir 中。
+log = "air.log"
+# 使用轮询而不是 fsnotify 来检测文件更改。
+poll = true
+# 轮询间隔（默认最低间隔为 500ms）。
+poll_interval = 500 # 毫秒
+# 如果更改过于频繁，不一定需要每次都触发构建。
+delay = 1000 # 毫秒
+# 当构建出错时停止运行旧的二进制文件。
+stop_on_error = true
+# 发送终止信号前发送中断信号（Windows 不支持此功能）
+send_interrupt = false
+# 发送中断信号后的延迟
+kill_delay = 500 # 纳秒
+# 重新运行二进制文件与否
+rerun = false
+# 每次执行后的延迟
+rerun_delay = 500
 
 [log]
-  main_only = false
-  silent = false
-  time = false
+# 显示日志时间
+time = false
+# 仅显示主日志（静音监视器、构建器、运行程序日志）
+main_only = false
+# 使所有由 air 生成的日志静音
+silent = false
+
+[color]
+# 自定义每个部分的颜色。如果找不到对应颜色，则使用原始应用日志。
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
 
 [misc]
-  clean_on_exit = false
-
-[proxy]
-  app_port = 0
-  enabled = false
-  proxy_port = 0
+# 退出时删除 tmp 目录
+clean_on_exit = false
 
 [screen]
-  clear_on_rebuild = false
-  keep_scroll = true
+# 重建时清除屏幕
+clear_on_rebuild = true
+# 保持滚动
+keep_scroll = true
+
+[proxy]
+# 启用浏览器上的实时重载。
+enabled = false
+proxy_port = 8090
+app_port = 8080

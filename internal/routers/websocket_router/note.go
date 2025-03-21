@@ -5,6 +5,7 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/service"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+
 	"go.uber.org/zap"
 )
 

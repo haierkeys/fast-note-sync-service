@@ -6,10 +6,10 @@ package service
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              Credentials  string  表单字段，凭证，必填
 * @Param              Password     string  表单字段，密码，必填
-*/
+ */
 type FileCreateRequestParams struct {
-   Credentials string `form:"credentials" binding:"required"`
-   Password    string `form:"password" binding:"required"`
+	Credentials string `form:"credentials" binding:"required"`
+	Password    string `form:"password" binding:"required"`
 }
 
 /**
@@ -18,10 +18,10 @@ type FileCreateRequestParams struct {
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              Credentials  string  表单字段，凭证，必填
 * @Param              Password     string  表单字段，密码，必填
-*/
+ */
 type FileModifyRequestParams struct {
-   Credentials string `form:"credentials" binding:"required"`
-   Password    string `form:"password" binding:"required"`
+	Credentials string `form:"credentials" binding:"required"`
+	Password    string `form:"password" binding:"required"`
 }
 
 /**
@@ -30,10 +30,10 @@ type FileModifyRequestParams struct {
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              Credentials  string  表单字段，凭证，必填
 * @Param              Password     string  表单字段，密码，必填
-*/
+ */
 type ContentModifyRequestParams struct {
-   Credentials string `form:"credentials" binding:"required"`
-   Password    string `form:"password" binding:"required"`
+	Credentials string `form:"credentials" binding:"required"`
+	Password    string `form:"password" binding:"required"`
 }
 
 /**
@@ -42,10 +42,10 @@ type ContentModifyRequestParams struct {
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              Credentials  string  表单字段，凭证，必填
 * @Param              Password     string  表单字段，密码，必填
-*/
+ */
 type FileDeleteRequestParams struct {
-   Credentials string `form:"credentials" binding:"required"`
-   Password    string `form:"password" binding:"required"`
+	Credentials string `form:"credentials" binding:"required"`
+	Password    string `form:"password" binding:"required"`
 }
 
 /**
@@ -55,9 +55,9 @@ type FileDeleteRequestParams struct {
 * @Param              params  *FileCreateRequestParams  文件创建请求参数
 * @Return             int64  文件ID
 * @Return             error  错误信息
-*/
+ */
 func (svc *Service) FileCreate(params *FileCreateRequestParams) (int64, error) {
-   return 0, nil
+	return 0, nil
 }
 
 /**
@@ -67,9 +67,9 @@ func (svc *Service) FileCreate(params *FileCreateRequestParams) (int64, error) {
 * @Param              params  *FileModifyRequestParams  文件修改请求参数
 * @Return             int64  文件ID
 * @Return             error  错误信息
-*/
+ */
 func (svc *Service) FileModify(params *FileModifyRequestParams) (int64, error) {
-   return 0, nil
+	return 0, nil
 }
 
 /**
@@ -79,9 +79,9 @@ func (svc *Service) FileModify(params *FileModifyRequestParams) (int64, error) {
 * @Param              params  *ContentModifyRequestParams  文件内容修改请求参数
 * @Return             int64  文件ID
 * @Return             error  错误信息
-*/
+ */
 func (svc *Service) ContentModify(params *ContentModifyRequestParams) (int64, error) {
-   return 0, nil
+	return 0, nil
 }
 
 /**
@@ -91,8 +91,7 @@ func (svc *Service) ContentModify(params *ContentModifyRequestParams) (int64, er
 * @Param              params  *FileDeleteRequestParams  文件删除请求参数
 * @Return             int64  文件ID
 * @Return             error  错误信息
-*/
+ */
 func (svc *Service) FileDelete(params *FileDeleteRequestParams) (int64, error) {
-   return 0, nil
+	return 0, nil
 }
- 

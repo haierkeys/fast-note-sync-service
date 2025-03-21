@@ -11,12 +11,10 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/middleware"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/routers/api_router"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/routers/websocket_router"
-
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/limiter"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/lxzan/gws"
 )
 

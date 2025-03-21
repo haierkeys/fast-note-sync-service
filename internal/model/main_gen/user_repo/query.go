@@ -7,40 +7,39 @@ package user_repo
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
-
-var once sync.Once
-
-func Connection() *gorm.DB {
-	dbDriver := global.DBEngine
-	dbDriver.Config.NamingStrategy = schema.NamingStrategy{
-		TablePrefix:   "pre_", // 表名前缀
-		SingularTable: true,   // 使用单数表名
-	}
-	// 自动创建
-	if global.Config.Database.AutoMigrate {
-		once.Do(func() {
-			dbDriver.AutoMigrate(User{})
-		})
-	}
-	return dbDriver
-}
 
 func NewModel() *User {
 	return new(User)
 }
 
+func (m *User) Create(db *gorm.DB) (id int64, err error) {
+	m.CreatedAt = timex.Now()
+
+	if err = db.Model(m).Create(m).Error; err != nil {
+		return 0, errors.Wrap(err, "create err")
+	}
+	return m.Uid, nil
+}
+
+func (m *User) Save(db *gorm.DB) (err error) {
+	m.UpdatedAt = timex.Now()
+
+	if err = db.Model(m).Save(m).Error; err != nil {
+		return errors.Wrap(err, "update err")
+	}
+	return nil
+}
+
 type userRepoQueryBuilder struct {
+	db    *gorm.DB
 	order []string
 	where []struct {
 		prefix string
@@ -54,12 +53,14 @@ type userRepoQueryBuilder struct {
 	offset int
 }
 
-func NewQueryBuilder() *userRepoQueryBuilder {
-	return new(userRepoQueryBuilder)
+func NewQueryBuilder(db *gorm.DB) *userRepoQueryBuilder {
+	return &userRepoQueryBuilder{
+		db: db,
+	}
 }
 
 func (qb *userRepoQueryBuilder) buildQuery() *gorm.DB {
-	ret := Connection()
+	ret := qb.db
 	for _, where := range qb.where {
 		ret = ret.Where(where.prefix, where.value)
 	}
@@ -73,28 +74,9 @@ func (qb *userRepoQueryBuilder) buildQuery() *gorm.DB {
 	return ret
 }
 
-func (t *User) Create() (id int64, err error) {
-	t.CreatedAt = timex.Now()
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Create(t).Error; err != nil {
-		return 0, errors.Wrap(err, "create err")
-	}
-	return t.Uid, nil
-}
-
-func (t *User) Save() (err error) {
-	t.UpdatedAt = timex.Now()
-
-	dbDriver := Connection()
-	if err = dbDriver.Model(t).Save(t).Error; err != nil {
-		return errors.Wrap(err, "update err")
-	}
-	return nil
-}
-
 func (qb *userRepoQueryBuilder) Updates(m map[string]interface{}) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&User{})
 
 	for _, where := range qb.where {
@@ -110,7 +92,7 @@ func (qb *userRepoQueryBuilder) Updates(m map[string]interface{}) (err error) {
 // 自减
 func (qb *userRepoQueryBuilder) Increment(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&User{})
 
 	for _, where := range qb.where {
@@ -126,7 +108,7 @@ func (qb *userRepoQueryBuilder) Increment(column string, value int64) (err error
 // 自增
 func (qb *userRepoQueryBuilder) Decrement(column string, value int64) (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	dbDriver = dbDriver.Model(&User{})
 
 	for _, where := range qb.where {
@@ -141,7 +123,7 @@ func (qb *userRepoQueryBuilder) Decrement(column string, value int64) (err error
 
 func (qb *userRepoQueryBuilder) Delete() (err error) {
 
-	dbDriver := Connection()
+	dbDriver := qb.db
 	for _, where := range qb.where {
 		dbDriver = dbDriver.Where(where.prefix, where.value)
 	}

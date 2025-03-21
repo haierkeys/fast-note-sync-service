@@ -48,7 +48,7 @@ func (d *Dao) Create(params *CloudConfigSet, uid int64) (int64, error) {
 	convert.StructAssign(params, m)
 	m.Uid = uid
 
-	id, err := m.Create()
+	id, err := m.Create(d.Db)
 	if err != nil {
 		return 0, err
 	}
@@ -58,7 +58,7 @@ func (d *Dao) Create(params *CloudConfigSet, uid int64) (int64, error) {
 // 更新云存储配置
 func (d *Dao) Update(params *CloudConfigSet, id int64, uid int64) error {
 
-	m, err := cloud_config_repo.NewQueryBuilder().
+	m, err := cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
 		WhereId(model.Eq, id).
 		WhereIsDeleted(model.Eq, 0).
@@ -69,7 +69,7 @@ func (d *Dao) Update(params *CloudConfigSet, id int64, uid int64) error {
 	convert.StructAssign(params, m)
 	m.Uid = uid
 	m.Id = id
-	err = m.Save()
+	err = m.Save(d.Db)
 
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (d *Dao) Update(params *CloudConfigSet, id int64, uid int64) error {
 
 // 启用云存储配置
 func (d *Dao) Enable(id int64, uid int64) error {
-	return cloud_config_repo.NewQueryBuilder().
+	return cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereId(model.Eq, id).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
@@ -91,7 +91,7 @@ func (d *Dao) Enable(id int64, uid int64) error {
 
 // 批量关闭云存储配置
 func (d *Dao) DisableBatch(id int64, uid int64) error {
-	return cloud_config_repo.NewQueryBuilder().
+	return cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereId(model.Neq, id).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
@@ -102,7 +102,7 @@ func (d *Dao) DisableBatch(id int64, uid int64) error {
 }
 
 func (d *Dao) CountListByUid(uid int64) (int64, error) {
-	return cloud_config_repo.NewQueryBuilder().
+	return cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
 		Count()
@@ -111,7 +111,7 @@ func (d *Dao) CountListByUid(uid int64) (int64, error) {
 // 获取用户的云存储配置列表
 func (d *Dao) GetListByUid(page int, pageSize int, uid int64) ([]*CloudConfig, error) {
 
-	modelList, err := cloud_config_repo.NewQueryBuilder().
+	modelList, err := cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
 		OrderByCreatedAt(false).
@@ -133,7 +133,7 @@ func (d *Dao) GetListByUid(page int, pageSize int, uid int64) ([]*CloudConfig, e
 // 根据ID获取配置
 func (d *Dao) GetEnableByUId(uid int64) (*CloudConfig, error) {
 
-	m, err := cloud_config_repo.NewQueryBuilder().
+	m, err := cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
 		WhereIsEnabled(model.Eq, 1).
 		WhereIsDeleted(model.Eq, 0).
@@ -147,7 +147,7 @@ func (d *Dao) GetEnableByUId(uid int64) (*CloudConfig, error) {
 // 根据ID获取配置
 func (d *Dao) GetById(id int64, uid int64) (*CloudConfig, error) {
 
-	m, err := cloud_config_repo.NewQueryBuilder().
+	m, err := cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereId(model.Eq, id).
 		WhereUid(model.Eq, uid).
 		WhereIsDeleted(model.Eq, 0).
@@ -160,7 +160,7 @@ func (d *Dao) GetById(id int64, uid int64) (*CloudConfig, error) {
 
 // 删除配置
 func (d *Dao) Delete(id int64, uid int64) error {
-	return cloud_config_repo.NewQueryBuilder().
+	return cloud_config_repo.NewQueryBuilder(d.Db).
 		WhereId(model.Eq, id).
 		WhereUid(model.Eq, uid).
 		Updates(map[string]interface{}{

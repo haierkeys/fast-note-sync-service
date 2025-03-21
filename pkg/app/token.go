@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/haierkeys/obsidian-better-sync-service/global"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/haierkeys/obsidian-better-sync-service/global"
 )
 
 // UserEntity represents the user data stored in the JWT.
