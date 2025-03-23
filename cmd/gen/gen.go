@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gookit/goutil/dump"
+
 	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
 	"gorm.io/driver/mysql"
@@ -79,26 +81,39 @@ func useDia(dsn string, dbType string) gorm.Dialector {
 	}
 	return nil
 }
+func appendToFile(filename, content string) error {
+	// 打开文件，使用 os.O_APPEND 和 os.O_CREATE 标志来确保文件存在并且内容追加到文件末尾
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	// 将内容写入文件
+	_, err = file.WriteString(content)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func main() {
 
-	if step == 0 {
-		// 指定生成代码的具体相对目录(相对当前文件)，默认为：./query
-		// 默认生成需要使用WithContext之后才可以查询的代码，但可以通过设置gen.WithoutContext禁用该模式
-		g := gen.NewGenerator(gen.Config{
-			// 默认会在 OutPath 目录生成CRUD代码，并且同目录下生成 model 包
-			// 所以OutPath最终package不能设置为model，在有数据库表同步的情况下会产生冲突
-			// 若一定要使用可以通过ModelPkgPath单独指定model package的名称
-			OutPath: "./internal/query",
-			/* ModelPkgPath: "dal/model"*/
+	g := gen.NewGenerator(gen.Config{
+		// 默认会在 OutPath 目录生成CRUD代码，并且同目录下生成 model 包
+		// 所以OutPath最终package不能设置为model，在有数据库表同步的情况下会产生冲突
+		// 若一定要使用可以通过ModelPkgPath单独指定model package的名称
+		OutPath: "./internal/query",
+		/* ModelPkgPath: "dal/model"*/
 
-			// gen.WithoutContext：禁用WithContext模式
-			// gen.WithDefaultQuery：生成一个全局Query对象Q
-			// gen.WithQueryInterface：生成Query接口
-			Mode:         gen.WithQueryInterface,
-			WithUnitTest: true,
-			//FieldWithTypeTag: true,
-		})
+		// gen.WithoutContext：禁用WithContext模式
+		// gen.WithDefaultQuery：生成一个全局Query对象Q
+		// gen.WithQueryInterface：生成Query接口
+		Mode:         gen.WithQueryInterface,
+		WithUnitTest: false,
+		//FieldWithTypeTag: true,
+	})
+
+	if step == 0 {
 
 		db := Db(dbDsn, dbType)
 		g.UseDB(db)
@@ -166,10 +181,35 @@ func main() {
 		g.Execute()
 	} else if step == 1 {
 
+		dump.P(g)
 		Use2()
 
 	}
 
+}
+func getTypeNameWithoutPackageName(v interface{}) string {
+	// 获取类型的反射信息
+	t := reflect.TypeOf(v)
+	// 获取完整的类型名称（包括包名）
+	fullTypeName := t.String()
+	// 如果类型是包内类型，直接返回名称
+	if fullTypeName == t.Name() {
+		return fullTypeName
+	}
+	// 找到最后一个点的位置，点之前是包名，点之后是类型名称
+	lastDotIndex := -1
+	for i := len(fullTypeName) - 1; i >= 0; i-- {
+		if fullTypeName[i] == '.' {
+			lastDotIndex = i
+			break
+		}
+	}
+	// 提取不带包名的类型名称
+	if lastDotIndex != -1 {
+		return fullTypeName[lastDotIndex+1:]
+	}
+	// 如果没有找到点，返回完整的类型名称
+	return fullTypeName
 }
 
 func Use2() {
@@ -179,17 +219,28 @@ func Use2() {
 	//type1 := qType.Field(1)
 
 	// 确保 v 是一个结构体
+	genType := "package query\r\n"
 	if v.Kind() == reflect.Struct {
 		// 获取反射类型对象
 		t := v.Type()
 		// 遍历结构体中的所有字段
 		for i := 0; i < v.NumField(); i++ {
+			if t.Field(i).Name == "db" {
+				continue
+			}
+			dump.P(t.Field(i).Type.String())
 			// 获取字段类型
 			fieldType := t.Field(i).Type
 			// 获取字段名称
 			fieldName := t.Field(i).Name
-			fmt.Printf("Field Name: %s, Field Type: %s\n", fieldName, fieldType)
+
+			dump.P(getTypeNameWithoutPackageName(fieldName))
+
+			genType += fmt.Sprintf("type %s = %s\r\n", fieldName, fieldType)
 		}
+
+		dump.P(genType,)
+
 	} else {
 		fmt.Println("Provided value is not a struct")
 	}

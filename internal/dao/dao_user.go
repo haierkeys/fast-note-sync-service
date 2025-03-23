@@ -3,7 +3,6 @@ package dao
 import (
 	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/model/main_gen/user_repo"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
