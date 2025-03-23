@@ -50,7 +50,7 @@ func newCloudConfig(db *gorm.DB, opts ...gen.DOOption) cloudConfig {
 }
 
 type cloudConfig struct {
-	cloudConfigDo cloudConfigDo
+	cloudConfigDo
 
 	ALL             field.Asterisk
 	ID              field.Int64
@@ -106,16 +106,6 @@ func (c *cloudConfig) updateTableName(table string) *cloudConfig {
 
 	return c
 }
-
-func (c *cloudConfig) WithContext(ctx context.Context) ICloudConfigDo {
-	return c.cloudConfigDo.WithContext(ctx)
-}
-
-func (c cloudConfig) TableName() string { return c.cloudConfigDo.TableName() }
-
-func (c cloudConfig) Alias() string { return c.cloudConfigDo.Alias() }
-
-func (c cloudConfig) Columns(cols ...field.Expr) gen.Columns { return c.cloudConfigDo.Columns(cols...) }
 
 func (c *cloudConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := c.fieldMap[fieldName]

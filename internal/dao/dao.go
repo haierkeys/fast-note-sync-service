@@ -1,11 +1,14 @@
 package dao
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/haierkeys/obsidian-better-sync-service/global"
+	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
 
 	"github.com/glebarez/sqlite"
@@ -19,6 +22,49 @@ import (
 type Dao struct {
 	Db    *gorm.DB
 	KeyDb map[string]*gorm.DB
+	ctx   context.Context
+	Q     *query.Query
+
+	User query.P_User
+}
+
+func (d *Dao) Use(key ...string) *query.Query {
+	if len(key) > 0 {
+		d.Q = query.Use(d.KeyDb[key[0]])
+	} else {
+		d.Q = query.Use(d.Db)
+	}
+	return d.Q
+}
+
+func (d *Dao) Use2(modelName string) query.IUserDo {
+	Q := d.Use()
+	qValue := reflect.ValueOf(Q)
+	modelValue := qValue.FieldByName(modelName)
+	if !modelValue.IsValid() {
+		fmt.Errorf("model %s not found in query.Q", modelName)
+		return nil
+	}
+	// 找到 WithContext 方法
+	method := modelValue.MethodByName("WithContext")
+	if !method.IsValid() {
+		fmt.Errorf("model %s does not have a WithContext method", modelName)
+		return nil
+	}
+	// 调用 WithContext 方法
+	results := method.Call([]reflect.Value{reflect.ValueOf(d.ctx)})
+	if len(results) == 0 {
+		fmt.Errorf("WithContext call returned no results for model %s", modelName)
+		return nil
+	}
+	// 类型断言将结果转换为 query.IUserDo
+	userDo, ok := results[0].Interface().(query.IUserDo)
+	if !ok {
+		fmt.Errorf("result cannot be converted to query.IUserDo")
+		return nil
+	}
+	return userDo
+
 }
 
 func (d *Dao) DB() *gorm.DB {
@@ -39,7 +85,13 @@ func (d *Dao) UseKey(key string) *gorm.DB {
 }
 
 func New(db *gorm.DB) *Dao {
-	return &Dao{Db: db}
+
+	dao := &Dao{Db: db}
+	dao.User = query.Use(dao.Db).User
+	x, _ := u.WithContext(d.ctx).Where(u.UID.Eq(10)).First()
+
+	query.SetDefault(db)
+	return &Dao{Db: db, Q: query.Q}
 }
 
 // switchDB 重新初始化 GORM 连接以切换数据库

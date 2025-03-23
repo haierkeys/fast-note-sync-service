@@ -1,8 +1,10 @@
 package dao
 
 import (
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model/main_gen/user_repo"
+	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 )
@@ -23,6 +25,13 @@ type User struct {
 
 // GetUserByUID 根据用户ID获取用户信息
 func (d *Dao) GetUserByUID(uid int64) (*User, error) {
+	u := query.Use(d.Db).User
+	x, _ := d.Use2("User").Where(d.User.UID.Eq(10)).First()
+
+	//x, _ := u.WithContext(d.ctx).Where(u.UID.Eq(10)).First()
+
+	dump.P(x)
+
 	// 使用 user_repo 构建查询，查找 UID 等于给定 uid 的用户，并且未被删除
 	m, err := user_repo.NewQueryBuilder(d.Db).
 		WhereUid(model.Eq, uid).
