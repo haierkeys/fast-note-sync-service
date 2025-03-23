@@ -26,9 +26,9 @@ type User struct {
 // GetUserByUID 根据用户ID获取用户信息
 func (d *Dao) GetUserByUID(uid int64) (*User, error) {
 	u := query.Use(d.Db).User
-	x, _ := d.Use2("User").Where(d.User.UID.Eq(10)).First()
+	//x, _ := d.Use2("User").Where(d.User.UID.Eq(10)).First()
 
-	//x, _ := u.WithContext(d.ctx).Where(u.UID.Eq(10)).First()
+	x, _ := u.WithContext(d.ctx).Where(u.UID.Eq(10)).First()
 
 	dump.P(x)
 

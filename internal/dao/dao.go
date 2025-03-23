@@ -25,7 +25,7 @@ type Dao struct {
 	ctx   context.Context
 	Q     *query.Query
 
-	User query.P_User
+	User query.Query
 }
 
 func (d *Dao) Use(key ...string) *query.Query {

@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
+	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
@@ -93,7 +95,7 @@ func main() {
 			// gen.WithoutContext：禁用WithContext模式
 			// gen.WithDefaultQuery：生成一个全局Query对象Q
 			// gen.WithQueryInterface：生成Query接口
-			Mode:         gen.WithDefaultQuery | gen.WithQueryInterface | gen.WithoutContext | gen.WithDefaultQuery,
+			Mode:         gen.WithQueryInterface,
 			WithUnitTest: true,
 			//FieldWithTypeTag: true,
 		})
@@ -162,7 +164,76 @@ func main() {
 			g.ApplyBasic(g.GenerateModel(table, opts...))
 		}
 		g.Execute()
+	} else if step == 1 {
+
+		Use2()
+
 	}
+
+}
+
+func Use2() {
+
+	v := reflect.ValueOf(query.Query{})
+
+	//type1 := qType.Field(1)
+
+	// 确保 v 是一个结构体
+	if v.Kind() == reflect.Struct {
+		// 获取反射类型对象
+		t := v.Type()
+		// 遍历结构体中的所有字段
+		for i := 0; i < v.NumField(); i++ {
+			// 获取字段类型
+			fieldType := t.Field(i).Type
+			// 获取字段名称
+			fieldName := t.Field(i).Name
+			fmt.Printf("Field Name: %s, Field Type: %s\n", fieldName, fieldType)
+		}
+	} else {
+		fmt.Println("Provided value is not a struct")
+	}
+
+	//qValue := reflect.ValueOf(query.Query{})
+	//qType := qValue.Type()
+
+	//dump.P(qValue)
+
+	// qType := qValue.Type()
+	// // 遍历 Query 的所有字段
+	// for i := 0; i < qValue.NumField(); i++ {
+	// 	field := qType.Field(i)
+	// 	// 检查字段名是否与给定模型名匹配
+	// 	if field.Name == modelName {
+	// 		// 返回对应结构体的指针
+	// 		return qValue.Field(i).Addr().Interface(), nil
+	// 	}
+	// }
+
+	// modelValue := qValue.FieldByName(modelName)
+	// if !modelValue.IsValid() {
+	// 	fmt.Errorf("model %s not found in query.Q", modelName)
+	// 	return nil
+	// }
+	// // 找到 WithContext 方法
+	// method := modelValue.MethodByName("WithContext")
+	// if !method.IsValid() {
+	// 	fmt.Errorf("model %s does not have a WithContext method", modelName)
+	// 	return nil
+	// }
+	// // 调用 WithContext 方法
+	// results := method.Call([]reflect.Value{reflect.ValueOf(d.ctx)})
+	// if len(results) == 0 {
+	// 	fmt.Errorf("WithContext call returned no results for model %s", modelName)
+	// 	return nil
+	// }
+	// // 类型断言将结果转换为 query.IUserDo
+	// userDo, ok := results[0].Interface().(query.IUserDo)
+	// if !ok {
+	// 	fmt.Errorf("result cannot be converted to query.IUserDo")
+	// 	return nil
+	// }
+	// return userDo
 
 }
 
