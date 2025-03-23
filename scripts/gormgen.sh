@@ -16,6 +16,8 @@ printf "\nRegenerating file\n\nstart build markdown and model file"
 #go run -v ./cmd/db_gen/main.go -type mysql -dsn "root:root@tcp(192.168.138.190:3306)/main?charset=utf8mb4&parseTime=true&loc=Local" -name main -table pre -prefix pre_ -savedir test
 
 
+go run -v ./cmd/gen/gen.go -type sqlite -dsn storage/database/db.db
+
 #  scripts/gormgen.sh sqlite storage/database/db.db  main  pre_  pre_  test
 
 time go run -v ./cmd/db_gen/main.go  -type "$1" -dsn "$2" -name $3 -table "$4" -prefix "$5" -savedir "$6"
