@@ -17,26 +17,26 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:          db,
-		CloudConfig: newCloudConfig(db, opts...),
-		User:        newUser(db, opts...),
+		db:   db,
+		Note: newNote(db, opts...),
+		User: newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	CloudConfig cloudConfig
-	User        user
+	Note note
+	User user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		CloudConfig: q.CloudConfig.clone(db),
-		User:        q.User.clone(db),
+		db:   db,
+		Note: q.Note.clone(db),
+		User: q.User.clone(db),
 	}
 }
 
@@ -50,21 +50,21 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		CloudConfig: q.CloudConfig.replaceDB(db),
-		User:        q.User.replaceDB(db),
+		db:   db,
+		Note: q.Note.replaceDB(db),
+		User: q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	CloudConfig ICloudConfigDo
-	User        IUserDo
+	Note INoteDo
+	User IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		CloudConfig: q.CloudConfig.WithContext(ctx),
-		User:        q.User.WithContext(ctx),
+		Note: q.Note.WithContext(ctx),
+		User: q.User.WithContext(ctx),
 	}
 }
 

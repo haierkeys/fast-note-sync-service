@@ -15,9 +15,9 @@ type User struct {
 	Token     string     `gorm:"column:token" json:"token" type:"token" form:"token"`
 	Avatar    string     `gorm:"column:avatar" json:"avatar" type:"avatar" form:"avatar"`
 	IsDeleted int64      `gorm:"column:is_deleted" json:"isDeleted" type:"isDeleted" form:"isDeleted"`
-	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" type:"updatedAt" form:"updatedAt"`
-	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoUpdateTime:false" json:"createdAt" type:"createdAt" form:"createdAt"`
-	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;default:NULL;autoUpdateTime:false" json:"deletedAt" type:"deletedAt" form:"deletedAt"`
+	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;autoUpdateTime:false" json:"updatedAt" type:"updatedAt" form:"updatedAt"`
+	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;autoUpdateTime:false" json:"createdAt" type:"createdAt" form:"createdAt"`
+	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;autoUpdateTime:false" json:"deletedAt" type:"deletedAt" form:"deletedAt"`
 }
 
 // GetUserByUID 根据用户ID获取用户信息

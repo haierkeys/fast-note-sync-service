@@ -17,11 +17,11 @@ cmd = "go build -o ./build/api ./main.go"
 post_cmd = []
 
 # 由 `cmd` 生成的可执行文件。
-bin = "./build/api"
+bin = "./build/api run"
 # 自定义可执行文件，可在运行应用程序时设置环境变量。
 full_bin = ""
 # 运行二进制文件（bin/full_bin）时添加其他参数。会运行 './tmp/main hello world'。
-args_bin = ["run"]
+args_bin = []
 # 监控这些文件扩展名。
 include_ext = ["go", "tpl", "tmpl", "html"]
 # 忽略这些文件扩展名或目录。
@@ -37,7 +37,7 @@ exclude_regex = ["_test\\.go"]
 # 忽略未更改的文件。
 exclude_unchanged = true
 # 跟随符号链接的目录
-follow_symlink = true
+follow_symlink = false
 # 此日志文件位于你的 tmp_dir 中。
 log = "air.log"
 # 使用轮询而不是 fsnotify 来检测文件更改。

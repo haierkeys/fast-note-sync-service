@@ -104,9 +104,9 @@ func main() {
 		// gen.WithoutContext：禁用WithContext模式
 		// gen.WithDefaultQuery：生成一个全局Query对象Q
 		// gen.WithQueryInterface：生成Query接口
-		Mode:         gen.WithQueryInterface,
-		WithUnitTest: false,
-		//FieldWithTypeTag: true,
+		Mode:             gen.WithQueryInterface,
+		WithUnitTest:     false,
+		FieldWithTypeTag: false,
 	})
 
 	if step == 0 {
@@ -171,6 +171,7 @@ func main() {
 			if strings.HasPrefix(table, "sqlite_") {
 				continue
 			}
+
 			g.ApplyBasic(g.GenerateModel(table, opts...))
 		}
 		g.Execute()
