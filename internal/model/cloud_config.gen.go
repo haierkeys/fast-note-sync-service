@@ -10,22 +10,22 @@ const TableNameCloudConfig = "cloud_config"
 
 // CloudConfig mapped from table <cloud_config>
 type CloudConfig struct {
-	ID              int64      `gorm:"column:id;primaryKey" json:"id" type:"id" form:"id"`
-	UID             int64      `gorm:"column:uid" json:"uid" type:"uid" form:"uid"`
-	Type            string     `gorm:"column:type" json:"type" type:"type" form:"type"`
-	Endpoint        string     `gorm:"column:endpoint" json:"endpoint" type:"endpoint" form:"endpoint"`
-	Region          string     `gorm:"column:region" json:"region" type:"region" form:"region"`
-	AccountID       string     `gorm:"column:account_id" json:"accountId" type:"accountId" form:"accountId"`
-	BucketName      string     `gorm:"column:bucket_name" json:"bucketName" type:"bucketName" form:"bucketName"`
-	AccessKeyID     string     `gorm:"column:access_key_id" json:"accessKeyId" type:"accessKeyId" form:"accessKeyId"`
-	AccessKeySecret string     `gorm:"column:access_key_secret" json:"accessKeySecret" type:"accessKeySecret" form:"accessKeySecret"`
-	CustomPath      string     `gorm:"column:custom_path" json:"customPath" type:"customPath" form:"customPath"`
-	AccessURLPrefix string     `gorm:"column:access_url_prefix" json:"accessUrlPrefix" type:"accessUrlPrefix" form:"accessUrlPrefix"`
-	IsEnabled       int64      `gorm:"column:is_enabled;default:1" json:"isEnabled" type:"isEnabled" form:"isEnabled"`
-	IsDeleted       int64      `gorm:"column:is_deleted" json:"isDeleted" type:"isDeleted" form:"isDeleted"`
-	UpdatedAt       timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" type:"updatedAt" form:"updatedAt"`
-	CreatedAt       timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoUpdateTime:false" json:"createdAt" type:"createdAt" form:"createdAt"`
-	DeletedAt       timex.Time `gorm:"column:deleted_at;type:datetime;default:NULL;autoUpdateTime:false" json:"deletedAt" type:"deletedAt" form:"deletedAt"`
+	ID              int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
+	UID             int64      `gorm:"column:uid" json:"uid" form:"uid"`
+	Type            string     `gorm:"column:type" json:"type" form:"type"`
+	Endpoint        string     `gorm:"column:endpoint" json:"endpoint" form:"endpoint"`
+	Region          string     `gorm:"column:region" json:"region" form:"region"`
+	AccountID       string     `gorm:"column:account_id" json:"accountId" form:"accountId"`
+	BucketName      string     `gorm:"column:bucket_name" json:"bucketName" form:"bucketName"`
+	AccessKeyID     string     `gorm:"column:access_key_id" json:"accessKeyId" form:"accessKeyId"`
+	AccessKeySecret string     `gorm:"column:access_key_secret" json:"accessKeySecret" form:"accessKeySecret"`
+	CustomPath      string     `gorm:"column:custom_path" json:"customPath" form:"customPath"`
+	AccessURLPrefix string     `gorm:"column:access_url_prefix" json:"accessUrlPrefix" form:"accessUrlPrefix"`
+	IsEnabled       int64      `gorm:"column:is_enabled;default:1" json:"isEnabled" form:"isEnabled"`
+	IsDeleted       int64      `gorm:"column:is_deleted" json:"isDeleted" form:"isDeleted"`
+	UpdatedAt       timex.Time `gorm:"column:updated_at;type:datetime;autoUpdateTime" json:"updatedAt" form:"updatedAt"`
+	CreatedAt       timex.Time `gorm:"column:created_at;type:datetime;autoCreateTime" json:"createdAt" form:"createdAt"`
+	DeletedAt       timex.Time `gorm:"column:deleted_at;type:datetime;default:NULL" json:"deletedAt" form:"deletedAt"`
 }
 
 // TableName CloudConfig's table name

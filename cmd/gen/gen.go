@@ -6,12 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 
-	"github.com/gookit/goutil/dump"
-
-	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
@@ -141,20 +137,19 @@ func main() {
 			gen.FieldType("updated_at", "timex.Time"),
 			gen.FieldType("deleted_at", "timex.Time"),
 			gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
+				tag.Set("autoCreateTime", "")
 				tag.Set("type", "datetime")
-				tag.Set("autoUpdateTime", "false")
-				tag.Set("default", "NULL")
+
 				return tag
 			}),
 			gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
+				tag.Set("autoUpdateTime", "")
 				tag.Set("type", "datetime")
-				tag.Set("autoUpdateTime", "false")
-				tag.Set("default", "NULL")
+
 				return tag
 			}),
 			gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
 				tag.Set("type", "datetime")
-				tag.Set("autoUpdateTime", "false")
 				tag.Set("default", "NULL")
 				return tag
 			}),
@@ -165,9 +160,6 @@ func main() {
 			gen.FieldNewTagWithNS("form", func(columnName string) string {
 				return SQLColumnToHumpStyle(columnName)
 			}),
-			gen.FieldNewTagWithNS("type", func(columnName string) string {
-				return SQLColumnToHumpStyle(columnName)
-			}),
 		}
 
 		tableList, _ := db.Migrator().GetTables()
@@ -176,144 +168,31 @@ func main() {
 			if table == "sqlite_sequence" {
 				continue
 			}
+			if strings.HasPrefix(table, "sqlite_") {
+				continue
+			}
 			g.ApplyBasic(g.GenerateModel(table, opts...))
 		}
 		g.Execute()
+
 	} else if step == 1 {
 
-		dump.P(g)
-		Use2()
+		// v := reflect.ValueOf(query.Query{})
+
+		// genType := "package query\n\n"
+		// if v.Kind() == reflect.Struct {
+		// 	t := v.Type()
+		// 	for i := 0; i < v.NumField(); i++ {
+		// 		field := t.Field(i)
+		// 		if field.Name == "db" {
+		// 			continue
+		// 		}
+		// 		genType += fmt.Sprintf("type %s = %s\n", field.Name, field.Type.Name())
+		// 	}
+
+		// 	_ = os.WriteFile(g.OutPath+"/gen_type.go", []byte(genType), os.ModePerm)
+		// }
 
 	}
 
 }
-func getTypeNameWithoutPackageName(v interface{}) string {
-	// 获取类型的反射信息
-	t := reflect.TypeOf(v)
-	// 获取完整的类型名称（包括包名）
-	fullTypeName := t.String()
-	// 如果类型是包内类型，直接返回名称
-	if fullTypeName == t.Name() {
-		return fullTypeName
-	}
-	// 找到最后一个点的位置，点之前是包名，点之后是类型名称
-	lastDotIndex := -1
-	for i := len(fullTypeName) - 1; i >= 0; i-- {
-		if fullTypeName[i] == '.' {
-			lastDotIndex = i
-			break
-		}
-	}
-	// 提取不带包名的类型名称
-	if lastDotIndex != -1 {
-		return fullTypeName[lastDotIndex+1:]
-	}
-	// 如果没有找到点，返回完整的类型名称
-	return fullTypeName
-}
-
-func Use2() {
-
-	v := reflect.ValueOf(query.Query{})
-
-	//type1 := qType.Field(1)
-
-	// 确保 v 是一个结构体
-	genType := "package query\r\n"
-	if v.Kind() == reflect.Struct {
-		// 获取反射类型对象
-		t := v.Type()
-		// 遍历结构体中的所有字段
-		for i := 0; i < v.NumField(); i++ {
-			if t.Field(i).Name == "db" {
-				continue
-			}
-			dump.P(t.Field(i).Type.String())
-			// 获取字段类型
-			fieldType := t.Field(i).Type
-			// 获取字段名称
-			fieldName := t.Field(i).Name
-
-			dump.P(getTypeNameWithoutPackageName(fieldName))
-
-			genType += fmt.Sprintf("type %s = %s\r\n", fieldName, fieldType)
-		}
-
-		dump.P(genType,)
-
-	} else {
-		fmt.Println("Provided value is not a struct")
-	}
-
-	//qValue := reflect.ValueOf(query.Query{})
-	//qType := qValue.Type()
-
-	//dump.P(qValue)
-
-	// qType := qValue.Type()
-	// // 遍历 Query 的所有字段
-	// for i := 0; i < qValue.NumField(); i++ {
-	// 	field := qType.Field(i)
-	// 	// 检查字段名是否与给定模型名匹配
-	// 	if field.Name == modelName {
-	// 		// 返回对应结构体的指针
-	// 		return qValue.Field(i).Addr().Interface(), nil
-	// 	}
-	// }
-
-	// modelValue := qValue.FieldByName(modelName)
-	// if !modelValue.IsValid() {
-	// 	fmt.Errorf("model %s not found in query.Q", modelName)
-	// 	return nil
-	// }
-	// // 找到 WithContext 方法
-	// method := modelValue.MethodByName("WithContext")
-	// if !method.IsValid() {
-	// 	fmt.Errorf("model %s does not have a WithContext method", modelName)
-	// 	return nil
-	// }
-	// // 调用 WithContext 方法
-	// results := method.Call([]reflect.Value{reflect.ValueOf(d.ctx)})
-	// if len(results) == 0 {
-	// 	fmt.Errorf("WithContext call returned no results for model %s", modelName)
-	// 	return nil
-	// }
-	// // 类型断言将结果转换为 query.IUserDo
-	// userDo, ok := results[0].Interface().(query.IUserDo)
-	// if !ok {
-	// 	fmt.Errorf("result cannot be converted to query.IUserDo")
-	// 	return nil
-	// }
-	// return userDo
-
-}
-
-// func Use(modelName string) query.IUserDo {
-// 	Q := query.Use()
-// 	qValue := reflect.ValueOf(Q)
-// 	modelValue := qValue.FieldByName(modelName)
-// 	if !modelValue.IsValid() {
-// 		fmt.Errorf("model %s not found in query.Q", modelName)
-// 		return nil
-// 	}
-// 	// 找到 WithContext 方法
-// 	method := modelValue.MethodByName("WithContext")
-// 	if !method.IsValid() {
-// 		fmt.Errorf("model %s does not have a WithContext method", modelName)
-// 		return nil
-// 	}
-// 	// 调用 WithContext 方法
-// 	results := method.Call([]reflect.Value{reflect.ValueOf(d.ctx)})
-// 	if len(results) == 0 {
-// 		fmt.Errorf("WithContext call returned no results for model %s", modelName)
-// 		return nil
-// 	}
-// 	// 类型断言将结果转换为 query.IUserDo
-// 	userDo, ok := results[0].Interface().(query.IUserDo)
-// 	if !ok {
-// 		fmt.Errorf("result cannot be converted to query.IUserDo")
-// 		return nil
-// 	}
-// 	return userDo
-
-// }

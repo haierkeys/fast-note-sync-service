@@ -5,7 +5,6 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/goutil/dump"
 )
 
 func Lang() gin.HandlerFunc {
@@ -19,8 +18,6 @@ func Lang() gin.HandlerFunc {
 		} else if s = c.GetHeader("lang"); len(s) != 0 {
 			lang = s
 		}
-
-		dump.P(lang)
 
 		trans, found := global.Ut.GetTranslator(lang)
 

@@ -97,4 +97,3 @@ func (q *QueryTx) SavePoint(name string) error {
 func (q *QueryTx) RollbackTo(name string) error {
 	return q.db.RollbackTo(name).Error
 }
-

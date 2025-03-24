@@ -138,7 +138,7 @@ gox-all:
 old-gen:
 	scripts/gormgen.sh sqlite storage/database/db.db  main  pre_  pre_  main_gen
 gen:
-	go run -v ./cmd/gen/gen.go -type sqlite -dsn storage/database/db.db
+	go run -v ./cmd/gen/gen.go -type sqlite -dsn storage/database/db.db  -step 0
 
 define dockerImageClean
 	@echo "docker Image Clean"

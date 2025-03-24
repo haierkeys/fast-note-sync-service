@@ -14,13 +14,13 @@ import (
 )
 
 type User struct {
-	Uid       int64      `gorm:"column:uid;AUTO_INCREMENT" json:"uid" form:"uid"`
-	Username  string     `gorm:"column:username;default:''" json:"username" form:"username"`            //
-	Avatar    string     `gorm:"column:avatar;default:''" json:"avatar" form:"avatar"`                  //
-	Email     string     `gorm:"column:email;default:''" json:"email" form:"email"`                     //
-	Token     string     `gorm:"column:token;default:''" json:"token" form:"token"`                     //
-	UpdatedAt timex.Time `gorm:"column:updated_at;time;default:NULL" json:"updatedAt" form:"updatedAt"` //
-	CreatedAt timex.Time `gorm:"column:created_at;time;default:NULL" json:"createdAt" form:"createdAt"` //
+	UID       int64      `gorm:"column:uid;primaryKey" json:"uid" type:"uid" form:"uid"`
+	Email     string     `gorm:"column:email" json:"email" type:"email" form:"email"`
+	Username  string     `gorm:"column:username" json:"username" type:"username" form:"username"`
+	Token     string     `gorm:"column:token" json:"token" type:"token" form:"token"`
+	Avatar    string     `gorm:"column:avatar" json:"avatar" type:"avatar" form:"avatar"`
+	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" type:"updatedAt" form:"updatedAt"`
+	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoUpdateTime:false" json:"createdAt" type:"createdAt" form:"createdAt"`
 }
 
 type UserCreateRequest struct {
@@ -46,12 +46,12 @@ func (svc *Service) UserRegisterSendEmail(param *UserCreateRequest) (int64, erro
 		// 其他字段可以根据需要设置，例如头像等
 	}
 
-	id, err := svc.dao.CreateUser(user)
+	user, err := svc.dao.CreateUser(user)
 	if err != nil {
 		return 0, err
 	}
 
-	return id, nil
+	return user.UID, nil
 }
 
 // UserRegister 用户注册
@@ -88,21 +88,22 @@ func (svc *Service) UserRegister(param *UserCreateRequest) (*User, error) {
 		return nil, code.ErrorPasswordNotValid
 	}
 
-	user := &dao.User{
+	user, err := svc.dao.CreateUser(&dao.User{
 		Username: param.Username,
 		Email:    param.Email,
 		Password: password,
 		// 其他字段可以根据需要设置，例如头像等
-	}
-
-	id, err := svc.dao.CreateUser(user)
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	expiry := 30 * 24 * 60 * 60
 	ip := svc.ctx.ClientIP()
-	userAuthToken, err := app.GenerateToken(id, "", ip, int64(expiry))
+	userAuthToken, err := app.GenerateToken(user.UID, "", ip, int64(expiry))
+	if err != nil {
+		return nil, err
+	}
 	user.Token = userAuthToken
 
 	return convert.StructAssign(user, &User{}).(*User), nil
@@ -132,7 +133,10 @@ func (svc *Service) UserLogin(param *UserLoginRequest) (*User, error) {
 
 	expiry := 30 * 24 * 60 * 60
 	ip := svc.ctx.ClientIP()
-	userAuthToken, err := app.GenerateToken(user.Uid, user.Username, ip, int64(expiry))
+	userAuthToken, err := app.GenerateToken(user.UID, user.Username, ip, int64(expiry))
+	if err != nil {
+		return nil, err
+	}
 	user.Token = userAuthToken
 
 	return convert.StructAssign(user, &User{}).(*User), nil
