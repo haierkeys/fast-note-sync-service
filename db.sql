@@ -40,7 +40,8 @@ CREATE TABLE "note" (
     "updated_at" datetime DEFAULT NULL,
     "deleted_at" datetime DEFAULT NULL
 );
-CREATE INDEX "updated_at" ON "note" ("vault", "updated_at" DESC);
+CREATE INDEX "idx_vault_updated_at" ON "note" ("vault", "updated_at" DESC);
+CREATE INDEX "idx_vault_path_hash" ON "note" ("vault", "path_hash" DESC);
 
 -- 笔记库索引
 

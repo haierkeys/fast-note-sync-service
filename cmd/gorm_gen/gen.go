@@ -90,9 +90,10 @@ func main() {
 		// gen.WithoutContext：禁用WithContext模式
 		// gen.WithDefaultQuery：生成一个全局Query对象Q
 		// gen.WithQueryInterface：生成Query接口
-		Mode:             gen.WithQueryInterface,
-		WithUnitTest:     false,
-		FieldWithTypeTag: false,
+		Mode:              gen.WithQueryInterface,
+		WithUnitTest:      false,
+		FieldWithTypeTag:  false,
+		FieldWithIndexTag: true,
 	})
 
 	db := Db(dbDsn, dbType)
