@@ -26,16 +26,19 @@ type Dao struct {
 }
 
 func New(db *gorm.DB, ctx context.Context) *Dao {
-
-	return &Dao{Db: db, ctx: ctx}
+	return &Dao{Db: db, ctx: ctx, KeyDb: make(map[string]*gorm.DB)}
 }
 
-func (d *Dao) Use(key ...string) *query.Query {
+func (d *Dao) Use(f func(*gorm.DB), key ...string) *query.Query {
+
+	var db *gorm.DB
 	if len(key) > 0 {
-		return query.Use(d.UseDb(key...))
+		db = d.UseDb(key...)
 	} else {
-		return query.Use(d.Db)
+		db = d.Db
 	}
+	f(db)
+	return query.Use(db)
 }
 
 func (d *Dao) UseDb(k ...string) *gorm.DB {
@@ -93,6 +96,43 @@ func NewDBEngine(c global.Database) (*gorm.DB, error) {
 		db.Config.Logger = logger.Default.LogMode(logger.Info)
 	} else {
 		db.Config.Logger = logger.Default.LogMode(logger.Silent)
+	}
+
+	// 获取通用数据库对象 sql.DB ，然后使用其提供的功能
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	// SetMaxIdleConns 用于设置连接池中空闲连接的最大数量。
+	sqlDB.SetMaxIdleConns(c.MaxIdleConns)
+
+	// SetMaxOpenConns 设置打开数据库连接的最大数量。
+	sqlDB.SetMaxOpenConns(c.MaxOpenConns)
+
+	// SetConnMaxLifetime 设置了连接可复用的最大时间。
+	sqlDB.SetConnMaxLifetime(time.Minute * 10)
+
+	_ = db.Use(&gormTracing.OpentracingPlugin{})
+
+	return db, nil
+
+}
+
+func NewDBEngineTest(c global.Database) (*gorm.DB, error) {
+
+	var db *gorm.DB
+	var err error
+
+	db, err = gorm.Open(useDia(c), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   c.TablePrefix, // 表名前缀，`User` 的表名应该是 `t_users`
+			SingularTable: true,          // 使用单数表名，启用该选项，此时，`User` 的表名应该是 `t_user`
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// 获取通用数据库对象 sql.DB ，然后使用其提供的功能

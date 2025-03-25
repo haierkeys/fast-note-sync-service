@@ -12,7 +12,7 @@ import (
 
 // UserEntity represents the user data stored in the JWT.
 type UserEntity struct {
-	Uid      int64  `json:"uid"`
+	UID      int64  `json:"uid"`
 	Nickname string `json:"nickname"`
 	IP       string `json:"ip"`
 	jwt.RegisteredClaims
@@ -50,7 +50,7 @@ func GenerateToken(uid int64, nickname string, ip string, expiry int64) (string,
 	// Create the Claims
 	expirationTime := time.Now().Add(time.Duration(expiry) * time.Second).Unix()
 	claims := &UserEntity{
-		Uid:      uid,
+		UID:      uid,
 		Nickname: nickname,
 		IP:       ip,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -75,11 +75,11 @@ func GenerateToken(uid int64, nickname string, ip string, expiry int64) (string,
 }
 
 // GetUid extracts the user ID from the request context.
-func GetUid(ctx *gin.Context) (out int64) {
+func GetUID(ctx *gin.Context) (out int64) {
 	user, exist := ctx.Get("user_token")
 	if exist {
 		if userEntity, ok := user.(*UserEntity); ok {
-			out = userEntity.Uid
+			out = userEntity.UID
 		}
 	}
 	return

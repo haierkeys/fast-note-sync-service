@@ -1,6 +1,9 @@
 package service
 
-import "github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+import (
+	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
+	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+)
 
 type Note struct {
 	ID        int64      `json:"id" form:"id"`               // 主键ID
@@ -22,11 +25,10 @@ type Note struct {
 * @Param              Password     string  表单字段，密码，必填
  */
 type FileCreateRequestParams struct {
-	Vault    string `json:"vault" form:"vault"`
-	Path     string `json:"path" form:"path"`
-	PathHash string `json:"pathHash" form:"pathHash"`
-	Content  string `json:"content" form:"content"`
-	Size     int64  `json:"size" form:"size"`
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+	Content  string `json:"content" form:"content" binding:"required"`
 }
 
 /**
@@ -37,11 +39,10 @@ type FileCreateRequestParams struct {
 * @Param              Password     string  表单字段，密码，必填
  */
 type FileModifyRequestParams struct {
-	Vault    string `json:"vault" form:"vault"`
-	Path     string `json:"path" form:"path"`
-	PathHash string `json:"pathHash" form:"pathHash"`
-	Content  string `json:"content" form:"content"`
-	Size     int64  `json:"size" form:"size"`
+	Vault    string `json:"vault" form:"vault"  binding:"required"`
+	Path     string `json:"path" form:"path"  binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"  binding:"required"`
+	Content  string `json:"content" form:"content"  binding:"required"`
 }
 
 /**
@@ -52,8 +53,10 @@ type FileModifyRequestParams struct {
 * @Param              Password     string  表单字段，密码，必填
  */
 type ContentModifyRequestParams struct {
-	Credentials string `form:"credentials" binding:"required"`
-	Password    string `form:"password" binding:"required"`
+	Vault    string `json:"vault" form:"vault"  binding:"required"`
+	Path     string `json:"path" form:"path"  binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"  binding:"required"`
+	Content  string `json:"content" form:"content"  binding:"required"`
 }
 
 /**
@@ -64,10 +67,9 @@ type ContentModifyRequestParams struct {
 * @Param              Password     string  表单字段，密码，必填
  */
 type FileDeleteRequestParams struct {
-	Vault    string `json:"vault" form:"vault"`
-	Path     string `json:"path" form:"path"`
-	PathHash string `json:"pathHash" form:"pathHash"`
-	Size     int64  `json:"size" form:"size"`
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
 }
 
 /**
@@ -78,8 +80,20 @@ type FileDeleteRequestParams struct {
 * @Return             int64  文件ID
 * @Return             error  错误信息
  */
-func (svc *Service) FileCreate(params *FileCreateRequestParams) (int64, error) {
-	return 0, nil
+func (svc *Service) FileCreate(uid int64, params *FileCreateRequestParams) (int64, error) {
+	note := &dao.NoteSet{
+		Vault:    params.Vault,
+		Action:   "create",
+		Path:     params.Path,
+		PathHash: params.PathHash,
+		Content:  params.Content,
+		Size:     int64(len(params.Content)),
+	}
+	user, err := svc.dao.NoteCreate(note, uid)
+	if err != nil {
+		return 0, err
+	}
+	return user.ID, nil
 }
 
 /**
@@ -87,11 +101,25 @@ func (svc *Service) FileCreate(params *FileCreateRequestParams) (int64, error) {
 * @Description        修改文件
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              params  *FileModifyRequestParams  文件修改请求参数
-* @Return             int64  文件ID
 * @Return             error  错误信息
  */
-func (svc *Service) FileModify(params *FileModifyRequestParams) (int64, error) {
-	return 0, nil
+func (svc *Service) FileModify(uid int64, params *FileModifyRequestParams) error {
+	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
+	if err != nil {
+		return err
+	}
+	note := &dao.NoteSet{
+		Vault:    node.Vault,
+		Action:   "modify",
+		Path:     node.Path,
+		PathHash: node.PathHash,
+		Size:     int64(len(params.Content)),
+	}
+	err = svc.dao.NoteUpdate(note, node.ID, uid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -99,11 +127,25 @@ func (svc *Service) FileModify(params *FileModifyRequestParams) (int64, error) {
 * @Description        修改文件内容
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              params  *ContentModifyRequestParams  文件内容修改请求参数
-* @Return             int64  文件ID
 * @Return             error  错误信息
  */
-func (svc *Service) ContentModify(params *ContentModifyRequestParams) (int64, error) {
-	return 0, nil
+func (svc *Service) ContentModify(uid int64, params *ContentModifyRequestParams) error {
+	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
+	if err != nil {
+		return err
+	}
+	note := &dao.NoteSet{
+		Vault:    node.Vault,
+		Action:   "modify",
+		Path:     node.Path,
+		PathHash: node.PathHash,
+		Size:     int64(len(params.Content)),
+	}
+	err = svc.dao.NoteUpdate(note, node.ID, uid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -111,9 +153,24 @@ func (svc *Service) ContentModify(params *ContentModifyRequestParams) (int64, er
 * @Description        删除文件
 * @Create             HaierKeys 2025-03-01 17:30
 * @Param              params  *FileDeleteRequestParams  文件删除请求参数
-* @Return             int64  文件ID
 * @Return             error  错误信息
  */
-func (svc *Service) FileDelete(params *FileDeleteRequestParams) (int64, error) {
-	return 0, nil
+func (svc *Service) FileDelete(uid int64, params *FileDeleteRequestParams) error {
+	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
+	if err != nil {
+		return err
+	}
+	note := &dao.NoteSet{
+		Vault:    node.Vault,
+		Action:   "delete",
+		Path:     node.Path,
+		PathHash: node.PathHash,
+		Content:  "",
+		Size:     0,
+	}
+	err = svc.dao.NoteUpdate(note, node.ID, uid)
+	if err != nil {
+		return err
+	}
+	return nil
 }

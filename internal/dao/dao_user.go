@@ -2,8 +2,10 @@ package dao
 
 import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
+	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -20,9 +22,17 @@ type User struct {
 	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;autoUpdateTime:false" json:"deletedAt" type:"deletedAt" form:"deletedAt"`
 }
 
+func (d *Dao) user() *query.Query {
+	return d.Use(
+		func(g *gorm.DB) {
+			model.AutoMigrate(g, "User")
+		},
+	)
+}
+
 // GetUserByUID 根据用户ID获取用户信息
 func (d *Dao) GetUserByUID(uid int64) (*User, error) {
-	u := d.Use().User
+	u := d.user().User
 	m, err := u.WithContext(d.ctx).Where(u.UID.Eq(uid), u.IsDeleted.Eq(0)).First()
 	// 如果发生错误，返回 nil 和错误
 	if err != nil {
@@ -34,7 +44,7 @@ func (d *Dao) GetUserByUID(uid int64) (*User, error) {
 
 // GetUserByEmail 根据电子邮件获取用户信息
 func (d *Dao) GetUserByEmail(email string) (*User, error) {
-	u := d.Use().User
+	u := d.user().User
 	m, err := u.WithContext(d.ctx).Where(u.Email.Eq(email), u.IsDeleted.Eq(0)).First()
 	if err != nil {
 		return nil, err
@@ -45,7 +55,7 @@ func (d *Dao) GetUserByEmail(email string) (*User, error) {
 // GetUserByUsername 根据用户名获取用户信息
 
 func (d *Dao) GetUserByUsername(username string) (*User, error) {
-	u := d.Use().User
+	u := d.user().User
 	m, err := u.WithContext(d.ctx).Where(u.Username.Eq(username), u.IsDeleted.Eq(0)).First()
 	if err != nil {
 		return nil, err
@@ -56,7 +66,7 @@ func (d *Dao) GetUserByUsername(username string) (*User, error) {
 // CreateUser 创建用户
 func (d *Dao) CreateUser(dao *User) (*User, error) { // 修改函数名为 CreateUser
 	m := convert.StructAssign(dao, &model.User{}).(*model.User)
-	u := d.Use().User
+	u := d.user().User
 	err := u.WithContext(d.ctx).Create(m)
 	if err != nil {
 		return nil, err

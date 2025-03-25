@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/haierkeys/obsidian-better-sync-service/cmd/db_gen/db_driver"
+	"github.com/haierkeys/obsidian-better-sync-service/cmd/old_gen/db_gen/db_driver"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 )
 

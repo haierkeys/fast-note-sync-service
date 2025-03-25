@@ -28,7 +28,7 @@ func FileCreate(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx)
-	svcData, err := svc.FileCreate(params)
+	svcData, err := svc.FileCreate(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorUserLoginFailed.WithDetails(err.Error()))
@@ -56,13 +56,13 @@ func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx)
-	svcData, err := svc.FileModify(params)
+	err := svc.FileModify(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorUserLoginFailed.WithDetails(err.Error()))
 		return
 	}
-	c.ToResponse(code.Success.WithData(svcData))
+	c.ToResponse(code.Success)
 }
 
 /**
@@ -84,13 +84,13 @@ func ContentModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx)
-	svcData, err := svc.ContentModify(params)
+	err := svc.ContentModify(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorUserLoginFailed.WithDetails(err.Error()))
 		return
 	}
-	c.ToResponse(code.Success.WithData(svcData))
+	c.ToResponse(code.Success)
 }
 
 /**
@@ -112,11 +112,11 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx)
-	svcData, err := svc.FileDelete(params)
+	err := svc.FileDelete(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorUserLoginFailed.WithDetails(err.Error()))
 		return
 	}
-	c.ToResponse(code.Success.WithData(svcData))
+	c.ToResponse(code.Success)
 }

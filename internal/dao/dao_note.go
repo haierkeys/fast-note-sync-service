@@ -7,6 +7,7 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"gorm.io/gorm"
 )
 
 type Note struct {
@@ -22,7 +23,6 @@ type Note struct {
 	UpdatedAt timex.Time // 更新时间，自动填充更新时间
 	DeletedAt timex.Time // 删除时间，默认为NULL
 }
-
 type NoteSet struct {
 	Vault    string // 保险库名称或标识
 	Action   string // 操作类型
@@ -33,11 +33,35 @@ type NoteSet struct {
 }
 
 func (d *Dao) note(uid int64) *query.Query {
-	return d.Use(strconv.Itoa(int(uid)))
+	return d.Use(
+		func(g *gorm.DB) {
+			model.AutoMigrate(g, "Note")
+		}, strconv.Itoa(int(uid)),
+	)
+}
+
+// NoteGetByPathHash 根据路径哈希获取笔记
+func (d *Dao) NoteGetByPathHash(hash string, vault string, uid int64) (*Note, error) {
+	u := d.note(uid).Note
+	m, err := u.WithContext(d.ctx).Where(u.Vault.Eq(vault), u.PathHash.Eq(hash), u.IsDeleted.Eq(0)).First()
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Note{}).(*Note), nil
+}
+
+// NoteGetByPathHash 根据路径哈希获取笔记
+func (d *Dao) NoteGetByPath(path string, vault string, uid int64) (*Note, error) {
+	u := d.note(uid).Note
+	m, err := u.WithContext(d.ctx).Where(u.Vault.Eq(vault), u.Path.Eq(path), u.IsDeleted.Eq(0)).First()
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Note{}).(*Note), nil
 }
 
 // 创建笔记
-func (d *Dao) Create(params *NoteSet, uid int64) (*Note, error) {
+func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 	u := d.note(uid).Note
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
 	err := u.WithContext(d.ctx).Create(m)
@@ -48,19 +72,16 @@ func (d *Dao) Create(params *NoteSet, uid int64) (*Note, error) {
 }
 
 // 更新云存储配置
-func (d *Dao) Update(params *NoteSet, id int64, uid int64) error {
-
+func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) error {
 	u := d.note(uid).Note
-
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
 	m.ID = id
-	err := u.WithContext(d.ctx).Where(u.ID.Eq(id), u.IsDeleted.Eq(0)).Save(m)
-
+	err := u.WithContext(d.ctx).Where(u.Vault.Eq(params.Vault), u.ID.Eq(id), u.IsDeleted.Eq(0)).Save(m)
 	return err
 }
 
 // 删除笔记
-func (d *Dao) Delete(id int64, uid int64) error {
+func (d *Dao) NoteDelete(id int64, uid int64) error {
 	u := d.note(uid).Note
 	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id), u.IsDeleted.Eq(0)).UpdateSimple(u.IsDeleted.Value(1))
 	// 如果发生错误，返回 nil 和错误

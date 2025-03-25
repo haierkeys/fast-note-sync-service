@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // fieldConfig

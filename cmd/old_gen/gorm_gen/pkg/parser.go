@@ -8,7 +8,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // The Parser is used to parse a directory and expose information about the structs defined in the files of this directory.

@@ -56,7 +56,7 @@ type WebsocketClient struct {
 	conn        *gws.Conn
 	done        chan struct{}
 	Ctx         *gin.Context
-	user        *UserEntity
+	User        *UserEntity
 	userClients *ConnStorage
 }
 
@@ -111,7 +111,7 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 				log(LogError, "WebsocketServer Client Ping err ", zap.Error(err))
 				return
 			}
-			log(LogInfo, "WebsocketServer Client Ping", zap.String("uid", c.user.ID))
+			log(LogInfo, "WebsocketServer Client Ping", zap.String("uid", c.User.ID))
 		}
 	}
 }
@@ -247,13 +247,13 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
 	} else {
 		log(LogInfo, "WebsocketServer Authorization", zap.String("uid", user.ID))
-		c.user = user
+		c.User = user
 		w.AddUserClient(c)
 
 		userClients := w.userClients[user.ID]
 		c.userClients = &userClients
 		c.ToResponse(code.Success)
-		log(LogInfo, "WebsocketServer User enters", zap.String("uid", c.user.ID))
+		log(LogInfo, "WebsocketServer User enters", zap.String("uid", c.User.ID))
 		go c.PingLoop(w.config.PingInterval)
 	}
 }
@@ -279,16 +279,16 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 func (w *WebsocketServer) AddUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.userClients[c.user.ID] == nil {
-		w.userClients[c.user.ID] = make(ConnStorage)
+	if w.userClients[c.User.ID] == nil {
+		w.userClients[c.User.ID] = make(ConnStorage)
 	}
-	w.userClients[c.user.ID][c.conn] = c
+	w.userClients[c.User.ID][c.conn] = c
 }
 
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	delete(w.userClients[c.user.IP], c.conn)
+	delete(w.userClients[c.User.IP], c.conn)
 	log(LogInfo, "WebsocketServer Client Remove", zap.Int("userCount", len(w.clients)))
 }
 
@@ -304,9 +304,9 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	w.RemoveClient(conn)
 	// dump.P(c)
-	if c.user != nil {
+	if c.User != nil {
 		c.done <- struct{}{}
-		log(LogInfo, "WebsocketServer User Leave", zap.String("uid", c.user.ID))
+		log(LogInfo, "WebsocketServer User Leave", zap.String("uid", c.User.ID))
 		w.RemoveUserClient(c)
 	}
 
@@ -344,7 +344,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		msg.Type = messageStr[:index]           // 提取分隔符之前的部分
 		msg.Data = []byte(messageStr[index+1:]) // 提取分隔符之后的部分
 	} else {
-		log(LogError, "WebsocketServer OnMessage", zap.String("type", "Illegal message type"), zap.String("uid", c.user.ID))
+		log(LogError, "WebsocketServer OnMessage", zap.String("type", "Illegal message type"), zap.String("uid", c.User.ID))
 		return
 	}
 
@@ -354,8 +354,8 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 
 	// 验证用户是否登录
-	if c.user == nil {
-		fmt.Println(msg.Type, c.user)
+	if c.User == nil {
+		fmt.Println(msg.Type, c.User)
 		c.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
