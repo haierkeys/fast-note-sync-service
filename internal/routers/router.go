@@ -64,6 +64,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 		api.POST("/user/register", api_router.NewUser().Register)
 		api.POST("/user/login", api_router.NewUser().Login)
+		api.Use(middleware.UserAuthToken()).POST("/change_password", api_router.NewUser().UserChangePassword)
 
 		userApiR := api.Group("/user")
 		{

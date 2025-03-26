@@ -68,3 +68,28 @@ func (h *User) Login(c *gin.Context) {
 
 	response.ToResponse(code.Success.WithData(svcData))
 }
+
+func (h *User) UserChangePassword(c *gin.Context) {
+	params := &service.UserChangePasswordRequest{}
+	response := app.NewResponse(c)
+	valid, errs := app.BindAndValid(c, params)
+	if !valid {
+		global.Logger.Error("apiRouter.UserChangePassword.UserChangePassword.BindAndValid errs: %v", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+	uid := app.GetUID(c)
+	if uid == 0 {
+		global.Logger.Error("apiRouter.UserChangePassword.UserChangePassword err uid=0")
+		response.ToResponse(code.ErrorNotUserAuthToken)
+		return
+	}
+	svc := service.New(c)
+	err := svc.UserChangePassword(uid, params)
+	if err != nil {
+		global.Logger.Error("apiRouter.UserChangePassword.UserChangePassword svc UserChangePassword err: %v", zap.Error(err))
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+	response.ToResponse(code.SuccessPasswordUpdate)
+}

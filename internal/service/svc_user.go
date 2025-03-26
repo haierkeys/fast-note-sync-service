@@ -39,6 +39,12 @@ type UserRegisterSendEmail struct {
 	Email string `json:"email" form:"email" binding:"required,email"`
 }
 
+type UserChangePasswordRequest struct {
+	OldPassword     string `json:"oldPassword" form:"oldPassword" binding:"required"`
+	Password        string `json:"password" form:"password" binding:"required"`
+	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required"`
+}
+
 func (svc *Service) UserRegisterSendEmail(param *UserCreateRequest) (int64, error) {
 
 	user := &dao.User{
@@ -140,4 +146,33 @@ func (svc *Service) UserLogin(param *UserLoginRequest) (*User, error) {
 	user.Token = userAuthToken
 
 	return convert.StructAssign(user, &User{}).(*User), nil
+}
+
+// UserChangePassword 修改密码
+func (svc *Service) UserChangePassword(uid int64, params *UserChangePasswordRequest) error {
+
+	if params.Password != params.ConfirmPassword {
+		return code.ErrorUserPasswordNotMatch
+	}
+
+	user, err := svc.dao.GetUserByUID(uid)
+
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return code.ErrorDBQuery
+	}
+
+	if user == nil {
+		return code.ErrorUserNotFound
+	}
+
+	if !util.CheckPasswordHash(user.Password, params.OldPassword) {
+		return code.ErrorUserOldPasswordFailed
+	}
+
+	password, err := util.GeneratePasswordHash(params.Password)
+	if err != nil {
+		return code.ErrorPasswordNotValid
+	}
+
+	return svc.dao.UserUpdatePassword(password, uid)
 }

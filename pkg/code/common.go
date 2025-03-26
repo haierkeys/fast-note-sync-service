@@ -1,11 +1,12 @@
 package code
 
 var (
-	Failed        = NewError(0, lang{zh: "失败", en: "Failed"})
-	Success       = NewSuss(1, lang{zh: "成功", en: "Success"})
-	SuccessCreate = NewSuss(2, lang{zh: "创建成功", en: "Create Success"})
-	SuccessUpdate = NewSuss(3, lang{zh: "更新成功", en: "Update Success"})
-	SuccessDelete = NewSuss(4, lang{zh: "删除成功", en: "Delete Success"})
+	Failed                = NewError(0, lang{zh: "失败", en: "Failed"})
+	Success               = NewSuss(1, lang{zh: "成功", en: "Success"})
+	SuccessCreate         = NewSuss(2, lang{zh: "创建成功", en: "Create Success"})
+	SuccessUpdate         = NewSuss(3, lang{zh: "更新成功", en: "Update Success"})
+	SuccessDelete         = NewSuss(4, lang{zh: "删除成功", en: "Delete Success"})
+	SuccessPasswordUpdate = NewSuss(5, lang{zh: "密码修改成功", en: "Password Update Success"})
 
 	ErrorServerInternal                     = NewError(incr(500), lang{zh: "服务器内部错误", en: "Server Internal Error"})
 	ErrorNotFoundAPI                        = NewError(incr(400), lang{zh: "找不到API", en: "Not Found API"})
@@ -17,6 +18,7 @@ var (
 	ErrorInvalidToken                       = NewError(incr(400), lang{zh: "您的访问缺少用户令牌", en: "Your access is missing a user token"})
 	ErrorTokenExpired                       = NewError(incr(400), lang{zh: "用户令牌已过期", en: "User token has expired"})
 	ErrorUserRegister                       = NewError(incr(400), lang{zh: "用户注册失败", en: "User registration failed"})
+	ErrorUserOldPasswordFailed              = NewError(incr(400), lang{zh: "当前密码验证错误", en: "Current password verification error"})
 	ErrorPasswordNotValid                   = NewError(incr(400), lang{zh: "密码不符合规则", en: "Password does not meet the rules"})
 	ErrorUserLoginPasswordFailed            = NewError(incr(400), lang{zh: "密码错误", en: "Password error"})
 	ErrorMultiUserPublicAPIClosed           = NewError(incr(400), lang{zh: "多用户开放接口已经关闭,请联系管理员配置 config.user.is-user-enable 选项", en: "Multi-user open interface has been closed, please contact the administrator to configure the config.user.is-user-enable option"})

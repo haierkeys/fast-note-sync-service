@@ -73,3 +73,16 @@ func (d *Dao) CreateUser(dao *User) (*User, error) { // 修改函数名为 Creat
 	}
 	return convert.StructAssign(m, &User{}).(*User), nil
 }
+
+// UpdateUser 更新用户密码
+func (d *Dao) UserUpdatePassword(password string, uid int64) error {
+	u := d.user().User
+
+	_, err := u.WithContext(d.ctx).Where(
+		u.UID.Eq(uid),
+	).UpdateSimple(
+		u.Password.Value(password),
+		u.UpdatedAt.Value(timex.Now()),
+	)
+	return err
+}
