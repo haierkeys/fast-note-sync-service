@@ -27,6 +27,7 @@ CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
 动作 create modify delete
 */
 DROP TABLE IF EXISTS "note";
+
 CREATE TABLE "note" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault" text DEFAULT '',
@@ -40,8 +41,26 @@ CREATE TABLE "note" (
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
+
 CREATE INDEX "idx_vault_updated_at" ON "note" ("vault", "updated_at" DESC);
+
 CREATE INDEX "idx_vault_path_hash" ON "note" ("vault", "path_hash" DESC);
+
+
+DROP TABLE IF EXISTS "vault";
+
+CREATE TABLE "vault" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "vault" text DEFAULT '',
+    "action" text DEFAULT '',
+    "note_count" integer NOT NULL DEFAULT 0,
+    "size" integer NOT NULL DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_vault" ON "vault" ("vault" DESC);
+
 
 -- 笔记库索引
 

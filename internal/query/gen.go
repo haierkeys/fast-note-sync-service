@@ -17,26 +17,29 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:   db,
-		Note: newNote(db, opts...),
-		User: newUser(db, opts...),
+		db:    db,
+		Note:  newNote(db, opts...),
+		User:  newUser(db, opts...),
+		Vault: newVault(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Note note
-	User user
+	Note  note
+	User  user
+	Vault vault
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:   db,
-		Note: q.Note.clone(db),
-		User: q.User.clone(db),
+		db:    db,
+		Note:  q.Note.clone(db),
+		User:  q.User.clone(db),
+		Vault: q.Vault.clone(db),
 	}
 }
 
@@ -50,21 +53,24 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:   db,
-		Note: q.Note.replaceDB(db),
-		User: q.User.replaceDB(db),
+		db:    db,
+		Note:  q.Note.replaceDB(db),
+		User:  q.User.replaceDB(db),
+		Vault: q.Vault.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Note INoteDo
-	User IUserDo
+	Note  INoteDo
+	User  IUserDo
+	Vault IVaultDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Note: q.Note.WithContext(ctx),
-		User: q.User.WithContext(ctx),
+		Note:  q.Note.WithContext(ctx),
+		User:  q.User.WithContext(ctx),
+		Vault: q.Vault.WithContext(ctx),
 	}
 }
 

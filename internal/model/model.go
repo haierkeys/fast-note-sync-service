@@ -21,5 +21,10 @@ func AutoMigrate(db *gorm.DB, key string) {
 		once.Do(func() {
 			db.AutoMigrate(User{})
 		})
+
+	case "Vault":
+		once.Do(func() {
+			db.AutoMigrate(Vault{})
+		})
 	}
 }
