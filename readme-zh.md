@@ -6,23 +6,16 @@
     <img src="https://img.shields.io/github/license/haierkeys/obsidian-better-sync-service" alt="license">
 </p>
 
-该项目为 [Custom Image Auto Uploader](https://github.com/haierkeys/obsidian-custom-image-auto-uploader) Obsidian 插件提供图片上传、存储与云同步服务。
+[BetterSync For Obsidian](https://github.com/haierkeys/obsidian-better-sync) 服务端,基于 Golang + Websocket 构建的高性能笔记实时同步服务
+
 
 ## 功能清单
 
-- [x] 支持图片上传
-- [x] 支持令牌授权，提升 API 安全性
-- [x] 支持图片 HTTP 访问（基础功能，建议使用 Nginx 替代）
-- [x] 存储支持：
-  - [x] 同时保存至本地或云存储，方便后续迁移
-  - [x] 本地存储支持（为 NAS 准备，功能已测试）
-  - [x] 支持阿里云 OSS 云存储（功能已实现，尚未测试）
-  - [x] 支持 Cloudflare R2 云存储（功能已实现，已测试）
-  - [x] 支持 Amazon S3（功能已实现，已测试）
-  - [x] 增加 MinIO 存储支持（v1.5+）
-  - [ ] 支持 Google ECS（待开发）
-- [x] 提供 Docker 安装支持，便于在家庭 NAS 或远程服务器上使用
-- [x] 提供公共服务 API && Web界面，方便提供公共服务 <a href="#userapi">用户公共接口 & Web 界面</a>
+- [x] 多端笔记实时同步
+- [ ] 笔记云存储同步
+- [x] Web页面管理
+- [x] 目前仅支持 Sqlite 存储
+
 
 ## 更新日志
 
@@ -34,15 +27,14 @@
 
 [<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
 
-## 快速开始
-### 安装
+## 私有部署
 
 - 目录设置
 
   ```bash
   # 创建项目所需的目录
-  mkdir -p /data/image-api
-  cd /data/image-api
+  mkdir -p /data/better-sync
+  cd /data/better-sync
 
   mkdir -p ./config && mkdir -p ./storage/logs && mkdir -p ./storage/uploads
   ```
@@ -61,7 +53,7 @@
   从 [Releases](https://github.com/haierkeys/obsidian-better-sync-service/releases) 下载最新版本，解压后执行：
 
   ```bash
-  ./image-api run -c config/config.yaml
+  ./better-sync-service run -c config/config.yaml
   ```
 
 
@@ -74,10 +66,10 @@
   docker pull haierkeys/obsidian-better-sync-service:latest
 
   # 创建并启动容器
-  docker run -tid --name image-api \
+  docker run -tid --name better-sync-service \
           -p 9000:9000 -p 9001:9001 \
-          -v /data/image-api/storage/:/api/storage/ \
-          -v /data/image-api/config/:/api/config/ \
+          -v /data/better-sync/storage/:/better-sync/storage/ \
+          -v /data/better-sync/config/:/better-sync/config/ \
           haierkeys/obsidian-better-sync-service:latest
   ```
 
@@ -88,25 +80,16 @@
   ```yaml
   # docker-compose.yaml
   services:
-    image-api:
+    better-sync:
       image: haierkeys/obsidian-better-sync-service:latest  # 你的应用镜像
-      container_name: image-api
+      container_name: better-sync
       ports:
         - "9000:9000"  # 映射端口 9000
         - "9001:9001"  # 映射端口 9001
       volumes:
-        - /data/image-api/storage/:/api/storage/  # 映射存储目录
-        - /data/image-api/config/:/api/config/    # 映射配置目录
+        - /data/better-sync/storage/:/better-sync/storage/  # 映射存储目录
+        - /data/better-sync/config/:/better-sync/config/    # 映射配置目录
 
-    watchtower:
-      image: containrrr/watchtower
-      container_name: watchtower
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock  # 允许 Watchtower 访问 Docker Daemon
-      environment:
-        - WATCHTOWER_SCHEDULE=0 0,30 * * * *  # 每半小时检查更新
-        - WATCHTOWER_CLEANUP=true            # 删除旧镜像，节省空间
-      restart: unless-stopped
   ```
 
   执行 **docker compose**
@@ -123,53 +106,15 @@
   docker compose down
   ```
 
-
-
 ### 使用
 
-- **使用单服务网关**
+访问 `WebGUI` 地址 `http://{IP:PORT}`
 
-	支持 `本地存储`, `OSS` , `Cloudflare R2` , `Amazon S3` , `MinIO`
+点击在 复制 API 配置 获取配置信息, 到 `BetterSync For Obsidian` 插件中粘贴即可
 
-	需要修改 [config.yaml](config/config.yaml#http-port)
-
-	修改`http-port` 和 `auth-token` 两个选项
-
-	启动网关程序
-
-	API 网关地址为 `http://{IP:PORT}/api/upload`
-
-	API 访问令牌为  `auth-token` 内容
+首次访问需要进行用户注册,如需关闭注册, 请修改 `user.register-is-enable` 为 `false`
 
 
-- **使用 多用户 开放网关**
-
-	支持  `本地存储`, `OSS` , `Cloudflare R2` , `Amazon S3` , `MinIO`  ( v2.3+ )
-
-	需要在 [config.yaml](config/config.yaml#user) 中修改
-
-	`http-port` 和 `database`
-
-	同时修改 `user.is-enable` 和 `user.register-is-enable` 为 `true`
-
-	启动网关程序
-
-	访问 `WebGUI` 地址 `http://{IP:PORT}` 进行用户注册配置
-
-	![Image](https://github.com/user-attachments/assets/39c798de-b243-42c1-a75a-cd179913fc49)
-
-	API 网关地址为 `http://{IP:PORT}/api/user/upload`
-
-	点击在 `WebGUI` 复制 API 配置 获取配置信息
-
-
-
-- **存储类型说明**
-
-
-  | 存储类型       | 说明 |
-  |----------------|-----------|
-  | 服务器本地存储   | 默认的保存路径为: `/data/storage/uploads` 关联配置项`config.local-fs.save-path` 为 `storage/uploads`,  <br />如果使用网关图片资源访问服务, 需要 `config.local-fs.httpfs-is-enable` 设置为 `true` <br /> 对应的 `访问地址前缀` 为 `http://{IP:PORT}`, 使用单服务网关设置 `config.app.upload-url-pre` <br />推荐使用 Nginx 来实现资源访问 |
 
 
 
@@ -184,4 +129,4 @@
 
 ## 其他资源
 
-- [Obsidian Auto Image Remote Uploader](https://github.com/haierkeys/obsidian-auto-image-remote-uploader)
+- [Better Sync For Obsidian](https://github.com/haierkeys/obsidian-better-sync)

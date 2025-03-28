@@ -15,8 +15,8 @@ projectRootDir	=	$(shell pwd)
 ReleaseTagPre = release-v
 DevelopTagPre = develop-v
 
-P_NAME = api
-P_BIN = image-api
+P_NAME = better-sync
+P_BIN = better-sync-service
 
 
 platform = $(shell uname -m)

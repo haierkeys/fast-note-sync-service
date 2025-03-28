@@ -34,9 +34,8 @@ func log(t LogType, msg string, fields ...zap.Field) {
 	} else if t == "warn" {
 		global.Logger.Warn(msg, fields...)
 	} else if t == "info" {
-		if global.Config.Server.RunMode == "debug" {
-			global.Logger.Info(msg, fields...)
-		}
+		global.Logger.Info(msg, fields...)
+
 	}
 }
 
@@ -57,7 +56,7 @@ type WebsocketClient struct {
 	done        chan struct{}
 	Ctx         *gin.Context
 	User        *UserEntity
-	userClients *ConnStorage
+	UserClients *ConnStorage
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
@@ -111,16 +110,21 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 				log(LogError, "WebsocketServer Client Ping err ", zap.Error(err))
 				return
 			}
-			log(LogInfo, "WebsocketServer Client Ping", zap.String("uid", c.User.ID))
+			//log(LogInfo, "WebsocketServer Client Ping", zap.String("uid", c.User.ID))
 		}
 	}
 }
 
 // ToResponse 将结果转换为 JSON 格式并发送给客户端
-func (c *WebsocketClient) ToResponse(code *code.Code) {
+func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
+
+	var actionType string
+	if len(action) > 0 {
+		actionType = action[0]
+	}
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
-		c.send(ResDetailsResult{
+		c.send(actionType, ResDetailsResult{
 			Code:    code.Code(),
 			Status:  code.Status(),
 			Msg:     code.Lang.GetMessage(),
@@ -128,38 +132,51 @@ func (c *WebsocketClient) ToResponse(code *code.Code) {
 			Details: details,
 		}, false, false)
 	} else {
-		c.send(ResResult{
+		c.send(actionType, ResResult{
 			Code:   code.Code(),
 			Status: code.Status(),
 			Msg:    code.Lang.GetMessage(),
 			Data:   code.Data(),
 		}, false, false)
 	}
+	code.Reset()
 }
 
-func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...bool) {
+// BroadcastResponse 将结果转换为 JSON 格式并广播给所有客户端
+// 第二个options参数为是否排除自己 第三个options参数为动作类型
+func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
+
+	var actionType string
+	if len(options) > 1 {
+		actionType = options[1].(string)
+	}
 
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
-		c.send(ResDetailsResult{
+		c.send(actionType, ResDetailsResult{
 			Code:    code.Code(),
 			Status:  code.Status(),
 			Msg:     code.Lang.GetMessage(),
 			Data:    code.Data(),
 			Details: details,
-		}, true, options[0])
+		}, true, options[0].(bool))
 	} else {
-		c.send(ResResult{
+		c.send(actionType, ResResult{
 			Code:   code.Code(),
 			Status: code.Status(),
 			Msg:    code.Lang.GetMessage(),
 			Data:   code.Data(),
-		}, true, options[0])
+		}, true, options[0].(bool))
 	}
+
+	code.Reset()
 }
 
-func (c *WebsocketClient) send(content any, isBroadcast bool, isExcludeSelf bool) {
+func (c *WebsocketClient) send(actionType string, content any, isBroadcast bool, isExcludeSelf bool) {
 	responseBytes, _ := json.Marshal(content)
+	if actionType != "" {
+		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
+	}
 	if isBroadcast {
 		c.broadcast(responseBytes, isExcludeSelf)
 	} else {
@@ -175,7 +192,7 @@ func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
 	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
 	defer b.Close()
 
-	for _, uc := range *c.userClients {
+	for _, uc := range *c.UserClients {
 		if uc.conn == nil {
 			continue
 		}
@@ -251,7 +268,8 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		w.AddUserClient(c)
 
 		userClients := w.userClients[user.ID]
-		c.userClients = &userClients
+
+		c.UserClients = &userClients
 		c.ToResponse(code.Success)
 		log(LogInfo, "WebsocketServer User enters", zap.String("uid", c.User.ID))
 		go c.PingLoop(w.config.PingInterval)
@@ -288,7 +306,7 @@ func (w *WebsocketServer) AddUserClient(c *WebsocketClient) {
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	delete(w.userClients[c.User.IP], c.conn)
+	delete(w.userClients[c.User.ID], c.conn)
 	log(LogInfo, "WebsocketServer Client Remove", zap.Int("userCount", len(w.clients)))
 }
 
@@ -303,7 +321,7 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 	c := w.GetClient(conn)
 
 	w.RemoveClient(conn)
-	// dump.P(c)
+
 	if c.User != nil {
 		c.done <- struct{}{}
 		log(LogInfo, "WebsocketServer User Leave", zap.String("uid", c.User.ID))

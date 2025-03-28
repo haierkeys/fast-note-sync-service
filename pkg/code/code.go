@@ -61,6 +61,13 @@ func NewSuss(code int, l lang) *Code {
 	return &Code{code: code, status: true, Lang: l}
 }
 
+func (e *Code) Reset() *Code {
+	e.data = nil
+	e.haveDetails = false
+	e.details = []string{}
+	return e
+}
+
 func (e *Code) Error() string {
 	return e.Msg()
 }
@@ -101,9 +108,9 @@ func (e *Code) WithData(data interface{}) *Code {
 func (e *Code) WithDetails(details ...string) *Code {
 	e.haveDetails = true
 	e.details = []string{}
-	for _, d := range details {
-		e.details = append(e.details, d)
-	}
+
+	e.details = append(e.details, details...)
+
 	return e
 }
 

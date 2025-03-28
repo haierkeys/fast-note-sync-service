@@ -121,19 +121,25 @@ func main() {
 		gen.FieldType("created_at", "timex.Time"),
 		gen.FieldType("updated_at", "timex.Time"),
 		gen.FieldType("deleted_at", "timex.Time"),
+		gen.FieldType("mtime", "timex.Time"),
 		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
-			tag.Set("autoCreateTime", "")
+			tag.Set("autoCreateTime", "false")
 			tag.Set("type", "datetime")
-
+			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
-			tag.Set("autoUpdateTime", "")
+			tag.Set("autoUpdateTime", "false")
 			tag.Set("type", "datetime")
-
+			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
+			tag.Set("type", "datetime")
+			tag.Set("default", "NULL")
+			return tag
+		}),
+		gen.FieldGORMTag("mtime", func(tag field.GormTag) field.GormTag {
 			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag

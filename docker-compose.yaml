@@ -1,13 +1,13 @@
 services:
-  image-api:
+  better-sync-service:
     image: haierkeys/obsidian-better-sync-service:latest
-    container_name: image-api
+    container_name: better-sync-service
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - /data/image-api/storage/:/api/storage/
-      - /data/image-api/config/:/api/config/
+      - /data/better-sync-service/storage/:/api/storage/
+      - /data/better-sync-service/config/:/api/config/
     labels:
       - "com.centurylinklabs.watchtower.enable=true"  # 添加标签，标记为需要更新
 

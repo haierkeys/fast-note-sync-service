@@ -58,19 +58,3 @@ database:
   table-prefix: pre_
   auto-migrate: true
 
-
-# 服务器本地存储配置
-# server local storage configuration
-local-fs:
-  # 是否在 单服务网关 内启用服务器本地存储
-  # Whether Server Local Storage is enabled in the single-service gateway
-  is-enable: false
-  # 是否在 多用户开放网关 内启用用户文件存储
-  # Whether Server Local Storage is enabled in the multi-user open gateway
-  is-user-enable: true
-  # 是否启用内置的 HTTP 文件访问服务
-  # Whether the built-in HTTP file access service is enabled
-  httpfs-is-enable: true
-  # 上传文件保存路径
-  # Path to save uploaded files
-  save-path: storage/vault

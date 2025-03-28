@@ -40,7 +40,12 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		},
 	})
 
-	wss.Use("FileCreate", websocket_router.FileCreate)
+	wss.Use("FileModify", websocket_router.FileModify)
+	wss.Use("FileModifyOverride", websocket_router.FileModifyOverride)
+
+	wss.Use("FileDelete", websocket_router.FileDelete)
+	//wss.Use("ContentModify", websocket_router.ContentModify)
+	wss.Use("SyncFiles", websocket_router.SyncFiles)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
@@ -64,12 +69,10 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 		api.POST("/user/register", api_router.NewUser().Register)
 		api.POST("/user/login", api_router.NewUser().Login)
-		api.Use(middleware.UserAuthToken()).POST("/change_password", api_router.NewUser().UserChangePassword)
+		api.GET("/user/sync", wss.Run())
 
-		userApiR := api.Group("/user")
-		{
-			userApiR.GET("/sync", wss.Run())
-		}
+		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
+
 	}
 	r.Use(middleware.Cors())
 	r.NoRoute(middleware.NoFound())

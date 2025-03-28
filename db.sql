@@ -34,11 +34,11 @@ CREATE TABLE "note" (
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',
+    "content_hash" text DEFAULT '',
     "size" integer NOT NULL DEFAULT 0,
-    "is_deleted" integer NOT NULL DEFAULT 0,
+    "mtime" datetime DEFAULT NULL,
     "created_at" datetime DEFAULT NULL,
-    "updated_at" datetime DEFAULT NULL,
-    "deleted_at" datetime DEFAULT NULL
+    "updated_at" datetime DEFAULT NULL
 );
 CREATE INDEX "idx_vault_updated_at" ON "note" ("vault", "updated_at" DESC);
 CREATE INDEX "idx_vault_path_hash" ON "note" ("vault", "path_hash" DESC);

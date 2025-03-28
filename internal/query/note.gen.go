@@ -33,11 +33,11 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.Path = field.NewString(tableName, "path")
 	_note.PathHash = field.NewString(tableName, "path_hash")
 	_note.Content = field.NewString(tableName, "content")
+	_note.ContentHash = field.NewString(tableName, "content_hash")
 	_note.Size = field.NewInt64(tableName, "size")
-	_note.IsDeleted = field.NewInt64(tableName, "is_deleted")
+	_note.Mtime = field.NewField(tableName, "mtime")
 	_note.CreatedAt = field.NewField(tableName, "created_at")
 	_note.UpdatedAt = field.NewField(tableName, "updated_at")
-	_note.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_note.fillFieldMap()
 
@@ -47,18 +47,18 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 type note struct {
 	noteDo noteDo
 
-	ALL       field.Asterisk
-	ID        field.Int64
-	Vault     field.String
-	Action    field.String
-	Path      field.String
-	PathHash  field.String
-	Content   field.String
-	Size      field.Int64
-	IsDeleted field.Int64
-	CreatedAt field.Field
-	UpdatedAt field.Field
-	DeletedAt field.Field
+	ALL         field.Asterisk
+	ID          field.Int64
+	Vault       field.String
+	Action      field.String
+	Path        field.String
+	PathHash    field.String
+	Content     field.String
+	ContentHash field.String
+	Size        field.Int64
+	Mtime       field.Field
+	CreatedAt   field.Field
+	UpdatedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -81,11 +81,11 @@ func (n *note) updateTableName(table string) *note {
 	n.Path = field.NewString(table, "path")
 	n.PathHash = field.NewString(table, "path_hash")
 	n.Content = field.NewString(table, "content")
+	n.ContentHash = field.NewString(table, "content_hash")
 	n.Size = field.NewInt64(table, "size")
-	n.IsDeleted = field.NewInt64(table, "is_deleted")
+	n.Mtime = field.NewField(table, "mtime")
 	n.CreatedAt = field.NewField(table, "created_at")
 	n.UpdatedAt = field.NewField(table, "updated_at")
-	n.DeletedAt = field.NewField(table, "deleted_at")
 
 	n.fillFieldMap()
 
@@ -117,11 +117,11 @@ func (n *note) fillFieldMap() {
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["path_hash"] = n.PathHash
 	n.fieldMap["content"] = n.Content
+	n.fieldMap["content_hash"] = n.ContentHash
 	n.fieldMap["size"] = n.Size
-	n.fieldMap["is_deleted"] = n.IsDeleted
+	n.fieldMap["mtime"] = n.Mtime
 	n.fieldMap["created_at"] = n.CreatedAt
 	n.fieldMap["updated_at"] = n.UpdatedAt
-	n.fieldMap["deleted_at"] = n.DeletedAt
 }
 
 func (n note) clone(db *gorm.DB) note {

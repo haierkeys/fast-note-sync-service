@@ -9,15 +9,15 @@ tmp_dir = "build"
 
 [build]
 # 每次构建前要运行的命令数组
-#pre_cmd = ["go mod  tidy","go get -u"]
+pre_cmd = ["go mod  tidy","go get -u"]
 # 纯 shell 命令，你也可以使用 `make`。
-cmd = "go build -o ./build/api ./main.go"
+cmd = "go build -o ./build/api.exe ./main.go"
 # go build -o ./build/api ./main.go
 # 每次按下 ^C 后要运行的命令数组
 post_cmd = []
 
 # 由 `cmd` 生成的可执行文件。
-bin = "./build/api run"
+bin = "./build/api.exe run"
 # 自定义可执行文件，可在运行应用程序时设置环境变量。
 full_bin = ""
 # 运行二进制文件（bin/full_bin）时添加其他参数。会运行 './tmp/main hello world'。
@@ -45,7 +45,7 @@ poll = true
 # 轮询间隔（默认最低间隔为 500ms）。
 poll_interval = 1000 # 毫秒
 # 如果更改过于频繁，不一定需要每次都触发构建。
-delay = 1000 # 毫秒
+delay = 2000 # 毫秒
 # 当构建出错时停止运行旧的二进制文件。
 stop_on_error = true
 # 发送终止信号前发送中断信号（Windows 不支持此功能）
