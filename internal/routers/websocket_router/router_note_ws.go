@@ -18,7 +18,7 @@ import (
  * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
  * @Return             无
  */
-func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+func FileModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileModifyOrCreateRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -35,7 +35,11 @@ func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.ToResponse(code.ErrorFileModifyFailed.WithDetails(err.Error()))
 		return
 	}
-	c.ToResponse(code.Success)
+	if note == nil {
+		c.ToResponse(code.SuccessNoUpdate.Reset())
+	} else {
+		c.ToResponse(code.Success)
+	}
 
 	if len(*c.UserClients) > 1 && note != nil {
 		c.BroadcastResponse(code.Success.Reset().WithData(note), true, "SyncFileModify")

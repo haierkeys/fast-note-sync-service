@@ -40,7 +40,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		},
 	})
 
-	wss.Use("FileModify", websocket_router.FileModify)
+	wss.Use("FileModify", websocket_router.FileModifyByMtime)
 	wss.Use("FileModifyOverride", websocket_router.FileModifyOverride)
 
 	wss.Use("FileDelete", websocket_router.FileDelete)

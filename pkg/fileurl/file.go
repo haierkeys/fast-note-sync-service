@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gookit/goutil/dump"
 )
 
 type FileType int
@@ -118,17 +117,6 @@ func CreatePath(dst string, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ModifyPathFileName(dst string, Handler func(name string)) error {
-	dir := filepath.Dir(dst)
-
-	dump.P(dir)
-
-	// if err != nil {
-	// 	return err
-	// }
 	return nil
 }
 

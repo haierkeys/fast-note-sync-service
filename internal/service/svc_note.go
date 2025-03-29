@@ -52,7 +52,7 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequ
 	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
 	if node != nil {
 
-		if mtimeCheck && node.Mtime.After(params.Mtime) {
+		if mtimeCheck && (node.Mtime.After(params.Mtime) || node.Mtime.Equal(params.Mtime)) && node.ContentHash == params.ContentHash {
 			return nil, nil
 		}
 
@@ -61,7 +61,7 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequ
 		} else {
 			noteSet.Action = "modify"
 		}
-		
+
 		nodeDao, err := svc.dao.NoteUpdate(noteSet, node.ID, uid)
 		if err != nil {
 			return nil, err

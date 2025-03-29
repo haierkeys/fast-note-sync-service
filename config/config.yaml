@@ -54,7 +54,7 @@ security:
 # Database configuration
 database:
   type: sqlite
-  path: storage/database/db.db
+  path: storage/database/db.sqlite3
   table-prefix: pre_
   auto-migrate: true
 

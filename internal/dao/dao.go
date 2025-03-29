@@ -53,14 +53,14 @@ func (d *Dao) UseDb(k ...string) *gorm.DB {
 	if c.Type == "mysql" {
 		c.Name = c.Name + "_" + key
 	} else if c.Type == "sqlite" {
-		c.Path = c.Path + "_" + key
+		ext := filepath.Ext(c.Path)
+		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
 	}
 
-	db := d.Db.Session(&gorm.Session{})
+	dbNew, _ := NewDBEngine(c)
 
-	db.Dialector = d.switchDB(global.Config.Database, key)
-	d.KeyDb[key] = db
-	return db
+	d.KeyDb[key] = dbNew
+	return dbNew
 
 }
 

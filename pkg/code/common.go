@@ -2,11 +2,12 @@ package code
 
 var (
 	Failed                = NewError(0, lang{zh: "失败", en: "Failed"})
-	Success               = NewSuss(1, lang{zh: "成功", en: "Success"})
-	SuccessCreate         = NewSuss(2, lang{zh: "创建成功", en: "Create Success"})
-	SuccessUpdate         = NewSuss(3, lang{zh: "更新成功", en: "Update Success"})
-	SuccessDelete         = NewSuss(4, lang{zh: "删除成功", en: "Delete Success"})
-	SuccessPasswordUpdate = NewSuss(5, lang{zh: "密码修改成功", en: "Password Update Success"})
+	Success               = NewSuss(incr(1), lang{zh: "成功", en: "Success"})
+	SuccessCreate         = NewSuss(incr(1), lang{zh: "创建成功", en: "Create Success"})
+	SuccessUpdate         = NewSuss(incr(1), lang{zh: "更新成功", en: "Update Success"})
+	SuccessDelete         = NewSuss(incr(1), lang{zh: "删除成功", en: "Delete Success"})
+	SuccessPasswordUpdate = NewSuss(incr(1), lang{zh: "密码修改成功", en: "Password Update Success"})
+	SuccessNoUpdate       = NewSuss(incr(1), lang{zh: "无更新", en: "No Update"})
 
 	ErrorServerInternal                     = NewError(incr(500), lang{zh: "服务器内部错误", en: "Server Internal Error"})
 	ErrorNotFoundAPI                        = NewError(incr(400), lang{zh: "找不到API", en: "Not Found API"})
