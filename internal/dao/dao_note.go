@@ -37,10 +37,11 @@ type NoteSet struct {
 }
 
 func (d *Dao) note(uid int64) *query.Query {
+	key := "note_" + strconv.FormatInt(uid, 10)
 	return d.Use(
 		func(g *gorm.DB) {
 			model.AutoMigrate(g, "Note")
-		}, strconv.Itoa(int(uid)),
+		}, key,
 	)
 }
 
@@ -121,7 +122,7 @@ func (d *Dao) NoteListByUpdatedAt(t timex.Time, vault string, uid int64) ([]*Not
 	mList, err := u.WithContext(d.ctx).Where(
 		u.Vault.Eq(vault),
 		u.UpdatedAt.Gt(t),
-	).Order(u.UpdatedAt).
+	).Order(u.UpdatedAt.Desc()).
 		Find()
 
 	if err != nil {
