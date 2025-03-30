@@ -136,9 +136,9 @@ gox-linux:
 gox-all:
 	$(CGO) gox ${LDFLAGS} -osarch="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64" -output="$(buildDir)/{{.OS}}_{{.Arch}}/${P_BIN}"
 old-gen:
-	scripts/gormgen.sh sqlite storage/database/db.db  main  pre_  pre_  main_gen
+	scripts/gormgen.sh sqlite storage/database/db.sqlite3  main  pre_  pre_  main_gen
 gen:
-	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db.db
+	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db.sqlite3
 	go run -v ./cmd/model_gen/gen.go
 
 define dockerImageClean

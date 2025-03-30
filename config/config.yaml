@@ -26,17 +26,22 @@ app:
   # 应用操作的默认超时时间（秒）
   # Default timeout for application operations (seconds)
   default-context-timeout: 60
-
   # 临时文件存储路径
   # Temporary file storage path
   temp-path: storage/temp
-  # 上传文件保存的日期路径设置 默认不设置 为 200601/02 格式 https://github.com/haierkeys/obsidian-better-sync-service/wiki/%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6%E4%BF%9D%E5%AD%98%E7%9A%84%E6%97%A5%E6%9C%9F%E8%B7%AF%E5%BE%84%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E
-  # Date path settings for uploaded files (default: not set, format: 200601/02) https://github.com/haierkeys/obsidian-better-sync-service/wiki/Date-Path-Format-for-Stored-Uploaded-Files
+
+user:
+  # 是否开启注册功能
+  # Whether to enable registration
+  register-is-enable: true
+  # 是否返回成功消息
+  # Whether to return success messages
+  is-return-sussess: false
 
 log:
   # 日志级别
   # Log level
-  level: Debug
+  level: debug
   # 日志文件路径
   # Log file path
   file: storage/logs/log.log
@@ -55,6 +60,6 @@ security:
 database:
   type: sqlite
   path: storage/database/db.sqlite3
-  table-prefix: pre_
+  table-prefix:
   auto-migrate: true
 

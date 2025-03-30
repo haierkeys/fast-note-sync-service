@@ -69,6 +69,26 @@ func Now() Time {
 	return Time(time.Now())
 }
 
+// Unix 时间戳（秒）
+func (t Time) Unix() int64 {
+	return time.Now().Unix()
+}
+
+// UnixMilli 时间戳（毫秒）
+func (t Time) UnixMilli() int64 {
+	return time.Now().UnixMilli()
+}
+
+// UnixMicro 时间戳（微秒）
+func (t Time) UnixMicro() int64 {
+	return time.Now().UnixMicro()
+}
+
+// UnixNano 时间戳（纳秒）
+func (t Time) UnixNano() int64 {
+	return time.Now().UnixNano()
+}
+
 // After reports whether the time instant t is after u.
 func (t Time) After(u Time) bool {
 	ts := time.Time(t)

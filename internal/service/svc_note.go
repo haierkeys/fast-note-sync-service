@@ -14,30 +14,31 @@ type Note struct {
 	PathHash    string     `json:"pathHash" form:"pathHash"`       // 路径哈希值
 	Content     string     `json:"content" form:"content"`         // 内容详情
 	ContentHash string     `json:"contentHash" form:"contentHash"` // 内容哈希
-	Mtime       timex.Time `json:"mtime" form:"mtime"`             // 修改时间
-	Size        int64      `json:"size" form:"size"`               // 内容大小，不能为空
+	Ctime       int64      `json:"ctime" form:"ctime"`             // 创建时间戳
+	Mtime       int64      `json:"mtime" form:"mtime"`             // 修改时间戳
 	CreatedAt   timex.Time `json:"createdAt" form:"createdAt"`     // 创建时间，自动填充当前时间
 	UpdatedAt   timex.Time `json:"updatedAt" form:"updatedAt"`     // 更新时间，自动填充当前时间
 }
 
-type FileModifyOrCreateRequestParams struct {
-	Vault       string     `json:"vault" form:"vault"  binding:"required"`
-	Path        string     `json:"path" form:"path"  binding:"required"`
-	PathHash    string     `json:"pathHash" form:"pathHash"  binding:"required"`
-	Content     string     `json:"content" form:"content"  binding:""`         // 内容详情
-	ContentHash string     `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
-	Mtime       timex.Time `json:"mtime" form:"mtime" binding:"required"`
+type NoteModifyOrCreateRequestParams struct {
+	Vault       string `json:"vault" form:"vault"  binding:"required"`
+	Path        string `json:"path" form:"path"  binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"`
+	Content     string `json:"content" form:"content"  binding:""`         // 内容详情
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
+	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`     // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`     // 修改时间戳
 }
 
 /**
-* FileModify
+* NoteModify
 * @Description        修改文件
 * @Create             HaierKeys 2025-03-01 17:30
-* @Param              params  *FileModifyRequestParams  文件修改请求参数
+* @Param              params  *NoteModifyRequestParams  文件修改请求参数
 * @Return             error  错误信息
  */
 
-func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequestParams, mtimeCheck bool) (*Note, error) {
+func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequestParams, mtimeCheck bool) (*Note, error) {
 
 	noteSet := &dao.NoteSet{
 		Vault:       params.Vault,
@@ -47,15 +48,20 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequ
 		ContentHash: params.ContentHash,
 		Size:        int64(len(params.Content)),
 		Mtime:       params.Mtime,
+		Ctime:       params.Ctime,
 	}
 
 	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
 	if node != nil {
-
-		if mtimeCheck && (node.Mtime.After(params.Mtime) || node.Mtime.Equal(params.Mtime)) && node.ContentHash == params.ContentHash {
+		// 检查内容是否一致
+		if mtimeCheck && node.Mtime == params.Mtime && node.ContentHash == params.ContentHash {
 			return nil, nil
 		}
-
+		// 检查内容是否一致 但是修改时间不同 则只更新修改时间
+		if mtimeCheck && node.Mtime < params.Mtime && node.ContentHash == params.ContentHash {
+			err := svc.dao.NoteUpdateMtime(params.Mtime, node.ID, uid)
+			return nil, err
+		}
 		if node.Action == "delete" {
 			noteSet.Action = "create"
 		} else {
@@ -82,12 +88,13 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequ
 }
 
 type ContentModifyRequestParams struct {
-	Vault       string     `json:"vault" form:"vault"  binding:"required"`
-	Path        string     `json:"path" form:"path"  binding:"required"`
-	PathHash    string     `json:"pathHash" form:"pathHash"  binding:"required"`
-	Content     string     `json:"content" form:"content"  binding:"required"`
-	ContentHash string     `json:"contentHash" form:"contentHash"  binding:"required"` // 内容哈希
-	Mtime       timex.Time `json:"mtime" form:"mtime" binding:"required"`
+	Vault       string `json:"vault" form:"vault"  binding:"required"`
+	Path        string `json:"path" form:"path"  binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"`
+	Content     string `json:"content" form:"content"  binding:"required"`
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:"required"` // 内容哈希
+	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`             // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`             // 修改时间戳
 }
 
 /**
@@ -111,6 +118,7 @@ func (svc *Service) ContentModify(uid int64, params *ContentModifyRequestParams)
 		ContentHash: params.ContentHash,
 		Size:        int64(len(params.Content)),
 		Mtime:       params.Mtime,
+		Ctime:       params.Ctime,
 	}
 	_, err = svc.dao.NoteUpdate(note, node.ID, uid)
 	if err != nil {
@@ -119,14 +127,14 @@ func (svc *Service) ContentModify(uid int64, params *ContentModifyRequestParams)
 	return nil
 }
 
-type FileDeleteRequestParams struct {
+type NoteDeleteRequestParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
 	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
 }
 
-// FileDelete 删除笔记
-func (svc *Service) FileDelete(uid int64, params *FileDeleteRequestParams) (*Note, error) {
+// NoteDelete 删除笔记
+func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
 	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
 	if err != nil {
 		return nil, err
@@ -149,19 +157,19 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteRequestParams) (*Not
 	return rNote, nil
 }
 
-type SyncFilesRequestParams struct {
-	Vault        string     `json:"vault" form:"vault"  binding:"required"`
-	LastUpdateAt timex.Time `json:"lastUpdateAt" form:"lastUpdateAt"`
+type NoteSyncRequestParams struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	LastTime int64  `json:"lastTime" form:"lastTime"`
 }
 
-type SyncFilesEndMessage struct {
-	Vault        string     `json:"vault" form:"vault"`
-	LastUpdateAt timex.Time `json:"lastUpdateAt" form:"lastUpdateAt"`
+type NoteSyncEndMessage struct {
+	Vault    string `json:"vault" form:"vault"`
+	LastTime int64  `json:"lastTime" form:"lastTime"`
 }
 
 // ModifyFiles 获取修改的文件列表
-func (svc *Service) SyncFiles(uid int64, params *SyncFilesRequestParams) ([]*dao.Note, error) {
-	nodes, err := svc.dao.NoteListByUpdatedAt(params.LastUpdateAt, params.Vault, uid)
+func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*dao.Note, error) {
+	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, params.Vault, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +177,12 @@ func (svc *Service) SyncFiles(uid int64, params *SyncFilesRequestParams) ([]*dao
 }
 
 type ModifyMtimeFilesRequestParams struct {
-	Vault string     `json:"vault" form:"vault"  binding:"required"`
-	Mtime timex.Time `json:"mtime" form:"mtime"`
+	Vault string `json:"vault" form:"vault"  binding:"required"`
+	Mtime int64  `json:"mtime" form:"mtime"`
 }
 
 // ModifyFiles 获取修改的文件列表
-func (svc *Service) ModifyMtimeFiles(uid int64, params *ModifyMtimeFilesRequestParams) ([]*dao.Note, error) {
+func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestParams) ([]*dao.Note, error) {
 	nodes, err := svc.dao.NoteListByMtime(params.Mtime, params.Vault, uid)
 	if err != nil {
 		return nil, err

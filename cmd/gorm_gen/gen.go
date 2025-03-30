@@ -121,7 +121,7 @@ func main() {
 		gen.FieldType("created_at", "timex.Time"),
 		gen.FieldType("updated_at", "timex.Time"),
 		gen.FieldType("deleted_at", "timex.Time"),
-		gen.FieldType("mtime", "timex.Time"),
+		//gen.FieldType("mtime", "timex.Time"),
 		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("autoCreateTime", "false")
 			tag.Set("type", "datetime")
@@ -136,12 +136,12 @@ func main() {
 		}),
 		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("type", "datetime")
-			tag.Set("default", "NULL")
+			tag.Set("default", "0")
 			return tag
 		}),
 		gen.FieldGORMTag("mtime", func(tag field.GormTag) field.GormTag {
-			tag.Set("type", "datetime")
-			tag.Set("default", "NULL")
+			//tag.Set("type", "datetime")
+			tag.Set("default", "0")
 			return tag
 		}),
 		gen.FieldJSONTagWithNS(func(columnName string) string {
@@ -162,7 +162,6 @@ func main() {
 		if strings.HasPrefix(table, "sqlite_") {
 			continue
 		}
-
 		g.ApplyBasic(g.GenerateModel(table, opts...))
 	}
 	g.Execute()

@@ -132,12 +132,14 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 			Details: details,
 		}, false, false)
 	} else {
-		c.send(actionType, ResResult{
-			Code:   code.Code(),
-			Status: code.Status(),
-			Msg:    code.Lang.GetMessage(),
-			Data:   code.Data(),
-		}, false, false)
+		if global.Config.User.IsReturnSussess || code.HaveData() {
+			c.send(actionType, ResResult{
+				Code:   code.Code(),
+				Status: code.Status(),
+				Msg:    code.Lang.GetMessage(),
+				Data:   code.Data(),
+			}, false, false)
+		}
 	}
 	code.Reset()
 }
@@ -259,11 +261,11 @@ func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *Web
 
 func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
 	if user, err := ParseToken(string(msg.Data)); err != nil {
-		log(LogError, "WebsocketServer Authorization", zap.Error(err))
+		log(LogError, "WebsocketServer Authorization FAILD", zap.Error(err))
 		c.ToResponse(code.ErrorInvalidUserAuthToken)
 		c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
 	} else {
-		log(LogInfo, "WebsocketServer Authorization", zap.String("uid", user.ID))
+		log(LogInfo, "WebsocketServer Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname))
 		c.User = user
 		w.AddUserClient(c)
 
@@ -271,7 +273,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		c.UserClients = &userClients
 		c.ToResponse(code.Success)
-		log(LogInfo, "WebsocketServer User enters", zap.String("uid", c.User.ID))
+		log(LogInfo, "WebsocketServer User Enters", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(userClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}
 }
@@ -311,13 +313,12 @@ func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 }
 
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
-	log(LogInfo, "WebsocketServer Client Connect")
-	log(LogInfo, "WebsocketServer Client Online", zap.Int("Count", len(w.clients)))
+	log(LogInfo, "WebsocketServer Client Connect", zap.Int("Count", len(w.clients)))
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
-	log(LogInfo, "WebsocketServer Client OnClose")
+
 	c := w.GetClient(conn)
 
 	w.RemoveClient(conn)
@@ -328,7 +329,7 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		w.RemoveUserClient(c)
 	}
 
-	log(LogInfo, "WebsocketServer Client Online", zap.Int("Count", len(w.clients)))
+	log(LogInfo, "WebsocketServer Client Leave", zap.Int("Count", len(w.clients)))
 
 }
 

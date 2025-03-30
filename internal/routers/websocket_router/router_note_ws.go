@@ -11,28 +11,28 @@ import (
 )
 
 /**
- * FileModify
+ * NoteModify
  * @Description        处理文件修改的WebSocket消息
  * @Create             HaierKeys 2025-03-01 17:30
  * @Param              c  *app.WebsocketClient  WebSocket客户端连接
  * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
  * @Return             无
  */
-func FileModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileModifyOrCreateRequestParams{}
+func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteModifyOrCreateRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.FileModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx)
-	note, err := svc.FileModifyOrCreate(c.User.UID, params, true)
+	note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
 	if note == nil {
@@ -42,142 +42,113 @@ func FileModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	if len(*c.UserClients) > 1 && note != nil {
-		c.BroadcastResponse(code.Success.Reset().WithData(note), true, "SyncFileModify")
+		c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
 	}
 }
 
 /**
- * FileModifyOverride
+ * NoteModifyOverride
  * @Description        处理文件修改的WebSocket消息
  * @Create             HaierKeys 2025-03-01 17:30
  * @Param              c  *app.WebsocketClient  WebSocket客户端连接
  * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
  * @Return             无
  */
-func FileModifyOverride(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileModifyOrCreateRequestParams{}
+func NoteModifyOverride(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteModifyOrCreateRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.FileModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx)
-	note, err := svc.FileModifyOrCreate(c.User.UID, params, false)
+	note, err := svc.NoteModifyOrCreate(c.User.UID, params, false)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
 	c.ToResponse(code.Success)
 
 	if len(*c.UserClients) > 1 && note != nil {
-		c.BroadcastResponse(code.Success.WithData(note), true, "SyncFileModify")
+		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncModify")
 	}
 }
 
 /**
- * FileDelete
+ * NoteDelete
  * @Description        处理文件删除的WebSocket消息
  * @Create             HaierKeys 2025-03-01 17:30
  * @Param              c  *app.WebsocketClient  WebSocket客户端连接
  * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
  * @Return             无
  */
-func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileDeleteRequestParams{}
+func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteDeleteRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.FileDelete.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.note.NoteDelete.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx)
-	note, err := svc.FileDelete(c.User.UID, params)
+	note, err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileDeleteFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 		return
 	}
 
 	c.ToResponse(code.Success)
 	if len(*c.UserClients) > 0 {
-		c.BroadcastResponse(code.Success.WithData(note), true, "SyncFileDelete")
+		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
 	}
 }
 
-func SyncFiles(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.SyncFilesRequestParams{}
+func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteSyncRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.FileModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx)
-	list, err := svc.SyncFiles(c.User.UID, params)
+	list, err := svc.NoteListByLastTime(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
 
-	var lastUpdateTime timex.Time
+	var lastTime int64
 
 	for _, note := range list {
-		if note.UpdatedAt.After(lastUpdateTime) {
-			lastUpdateTime = note.UpdatedAt
+		if note.UpdatedTimestamp >= lastTime {
+			lastTime = note.UpdatedTimestamp
 		}
 		if note.Action == "delete" {
-			c.ToResponse(code.Success.WithData(note), "SyncFileDelete")
+			c.ToResponse(code.Success.WithData(note), "NoteSyncDelete")
 		} else {
-
-			c.ToResponse(code.Success.WithData(note), "SyncFileModify")
+			c.ToResponse(code.Success.WithData(note), "NoteSyncModify")
 		}
 	}
 	if list == nil {
-		lastUpdateTime = timex.Now()
+		lastTime = timex.Now().UnixMilli()
 	}
 
-	message := &service.SyncFilesEndMessage{
-		Vault:        params.Vault,
-		LastUpdateAt: lastUpdateTime,
+	message := &service.NoteSyncEndMessage{
+		Vault:    params.Vault,
+		LastTime: lastTime,
 	}
 
-	c.ToResponse(code.Success.WithData(message), "SyncFilesEnd")
+	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
 
-}
-
-/**
- * ContentModify
- * @Description        处理文件内容修改的WebSocket消息
- * @Create             HaierKeys 2025-03-01 17:30
- * @Param              c  *app.WebsocketClient  WebSocket客户端连接
- * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
- * @Return             无
- */
-func ContentModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.ContentModifyRequestParams{}
-
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("api_router.note.ContentModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	svc := service.New(c.Ctx)
-	err := svc.ContentModify(c.User.UID, params)
-
-	if err != nil {
-		c.ToResponse(code.ErrorFileContentModifyFailed.WithDetails(err.Error()))
-		return
-	}
-	c.ToResponse(code.Success)
 }

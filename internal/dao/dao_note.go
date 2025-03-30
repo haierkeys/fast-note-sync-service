@@ -12,28 +12,32 @@ import (
 )
 
 type Note struct {
-	ID          int64      `json:"id" form:"id"`                   // ID
-	Vault       string     `json:"vault" form:"vault"`             // 保险库
-	Action      string     `json:"action" form:"action"`           // 操作
-	Path        string     `json:"path" form:"path"`               // 路径
-	PathHash    string     `json:"pathHash" form:"pathHash"`       // 路径哈希
-	Content     string     `json:"content" form:"content"`         // 内容
-	ContentHash string     `json:"contentHash" form:"contentHash"` // 内容哈希
-	Size        int64      `json:"size" form:"size"`               // 大小
-	Mtime       timex.Time `json:"mtime" form:"mtime"`             // 修改时间
-	CreatedAt   timex.Time `json:"createdAt" form:"createdAt"`     // 创建时间
-	UpdatedAt   timex.Time `json:"updatedAt" form:"updatedAt"`     // 更新时间
+	ID               int64      `json:"id" form:"id"`                             // ID
+	Vault            string     `json:"vault" form:"vault"`                       // 保险库
+	Action           string     `json:"action" form:"action"`                     // 操作
+	Path             string     `json:"path" form:"path"`                         // 路径
+	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希
+	Content          string     `json:"content" form:"content"`                   // 内容
+	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希
+	Size             int64      `json:"size" form:"size"`                         // 大小
+	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	CreatedAt        timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间
+	UpdatedAt        timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间
+
 }
 
 type NoteSet struct {
-	Vault       string     // 保险库名称或标识
-	Action      string     // 操作类型
-	Path        string     // 文件路径
-	PathHash    string     // 文件路径的哈希值
-	Content     string     // 文件内容
-	ContentHash string     // 内容哈希
-	Mtime       timex.Time // Mtime 是修改时间
-	Size        int64      // 文件大小，不能为空
+	Vault       string `json:"vault" form:"vault"`             // 保险库
+	Action      string `json:"action" form:"action"`           // 操作
+	Path        string `json:"path" form:"path"`               // 路径
+	PathHash    string `json:"pathHash" form:"pathHash"`       // 路径哈希
+	Content     string `json:"content" form:"content"`         // 内容
+	ContentHash string `json:"contentHash" form:"contentHash"` // 内容哈希
+	Size        int64  `json:"size" form:"size"`               // 大小
+	Ctime       int64  `json:"ctime" form:"ctime"`             // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
 func (d *Dao) note(uid int64) *query.Query {
@@ -69,6 +73,8 @@ func (d *Dao) NoteGetByPath(path string, vault string, uid int64) (*Note, error)
 func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 	u := d.note(uid).Note
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
+
+	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.CreatedAt = timex.Now()
 	m.UpdatedAt = timex.Now()
 	err := u.WithContext(d.ctx).Create(m)
@@ -82,6 +88,7 @@ func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 	u := d.note(uid).Note
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
+	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.UpdatedAt = timex.Now()
 	m.ID = id
 	err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).Save(m)
@@ -90,6 +97,14 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 		return nil, err
 	}
 	return convert.StructAssign(m, &Note{}).(*Note), nil
+}
+
+func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
+	u := d.note(uid).Note
+
+	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).UpdateSimple(u.Mtime.Value(mtime))
+
+	return err
 }
 
 // NoteList 获取笔记列表
@@ -115,14 +130,14 @@ func (d *Dao) NoteList(vault string, page int, pageSize int, uid int64) ([]*Note
 	return list, nil
 }
 
-func (d *Dao) NoteListByUpdatedAt(t timex.Time, vault string, uid int64) ([]*Note, error) {
+func (d *Dao) NoteListByUpdatedTimestamp(t int64, vault string, uid int64) ([]*Note, error) {
 
 	u := d.note(uid).Note
 
 	mList, err := u.WithContext(d.ctx).Where(
 		u.Vault.Eq(vault),
-		u.UpdatedAt.Gt(t),
-	).Order(u.UpdatedAt.Desc()).
+		u.UpdatedTimestamp.Gt(t),
+	).Order(u.UpdatedTimestamp.Desc()).
 		Find()
 
 	if err != nil {
@@ -136,14 +151,14 @@ func (d *Dao) NoteListByUpdatedAt(t timex.Time, vault string, uid int64) ([]*Not
 	return list, nil
 }
 
-func (d *Dao) NoteListByMtime(mt timex.Time, vault string, uid int64) ([]*Note, error) {
+func (d *Dao) NoteListByMtime(mt int64, vault string, uid int64) ([]*Note, error) {
 
 	u := d.note(uid).Note
 
 	mList, err := u.WithContext(d.ctx).Where(
 		u.Vault.Eq(vault),
-		u.Mtime.Gte(mt),
-	).Order(u.CreatedAt).
+		u.Mtime.Gt(mt),
+	).Order(u.UpdatedTimestamp.Desc()).
 		Find()
 
 	if err != nil {

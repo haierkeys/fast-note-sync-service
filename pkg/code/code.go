@@ -16,6 +16,8 @@ type Code struct {
 	msg string
 	// 数据
 	data interface{}
+	// 是否含有Data
+	haveData bool
 	// 错误详细信息
 	details []string
 	// 是否含有详情
@@ -64,6 +66,7 @@ func NewSuss(code int, l lang) *Code {
 func (e *Code) Reset() *Code {
 	e.data = nil
 	e.haveDetails = false
+	e.haveData = false
 	e.details = []string{}
 	return e
 }
@@ -100,7 +103,12 @@ func (e *Code) HaveDetails() bool {
 	return e.haveDetails
 }
 
+func (e *Code) HaveData() bool {
+	return e.haveData
+}
+
 func (e *Code) WithData(data interface{}) *Code {
+	e.haveData = true
 	e.data = data
 	return e
 }

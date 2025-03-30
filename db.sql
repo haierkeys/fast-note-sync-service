@@ -37,13 +37,15 @@ CREATE TABLE "note" (
     "content" text DEFAULT '',
     "content_hash" text DEFAULT '',
     "size" integer NOT NULL DEFAULT 0,
-    "mtime" datetime DEFAULT NULL,
+    "ctime" integer NOT NULL DEFAULT 0,
+    "mtime" integer NOT NULL DEFAULT 0,
+    "updated_timestamp" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
 
 CREATE INDEX "idx_vault_updated_at" ON "note" ("vault", "updated_at" DESC);
-
+CREATE INDEX "idx_vault_updated_timestamp" ON "note" ("vault", "updated_timestamp" DESC);
 CREATE INDEX "idx_vault_path_hash" ON "note" ("vault", "path_hash" DESC);
 
 

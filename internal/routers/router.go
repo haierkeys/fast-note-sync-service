@@ -39,13 +39,11 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 			// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
 		},
 	})
-
-	wss.Use("FileModify", websocket_router.FileModifyByMtime)
-	wss.Use("FileModifyOverride", websocket_router.FileModifyOverride)
-
-	wss.Use("FileDelete", websocket_router.FileDelete)
-	//wss.Use("ContentModify", websocket_router.ContentModify)
-	wss.Use("SyncFiles", websocket_router.SyncFiles)
+	
+	wss.Use("NoteModify", websocket_router.NoteModifyByMtime)
+	wss.Use("NoteModifyOverride", websocket_router.NoteModifyOverride)
+	wss.Use("NoteDelete", websocket_router.NoteDelete)
+	wss.Use("NoteSync", websocket_router.NoteSync)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")

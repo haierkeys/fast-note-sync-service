@@ -20,6 +20,7 @@ type config struct {
 	Log      LogConfig       `yaml:"log"`
 	Database Database        `yaml:"database"`
 	App      app             `yaml:"app"`
+	User     user            `yaml:"user"`
 	Security security        `yaml:"security"`
 	LocalFS  local_fs.Config `yaml:"local-fs"`
 }
@@ -89,6 +90,8 @@ type user struct {
 	IsEnabled bool `yaml:"is-enable"`
 	// 注册是否启用
 	RegisterIsEnable bool `yaml:"register-is-enable"`
+	//是否返回成功信息
+	IsReturnSussess bool `yaml:"is-return-sussess"`
 }
 
 type app struct {
