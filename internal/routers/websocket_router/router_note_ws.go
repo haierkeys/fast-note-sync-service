@@ -38,7 +38,7 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if note == nil {
 		c.ToResponse(code.SuccessNoUpdate.Reset())
 	} else {
-		c.ToResponse(code.Success)
+		c.ToResponse(code.Success.Reset())
 	}
 
 	if len(*c.UserClients) > 1 && note != nil {

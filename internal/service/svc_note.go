@@ -9,7 +9,6 @@ import (
 type Note struct {
 	ID          int64      `json:"id" form:"id"`                   // 主键ID
 	Vault       string     `json:"vault" form:"vault"`             // 保险库名称或标识
-	Action      string     `json:"action" form:"action"`           // 操作类型
 	Path        string     `json:"path" form:"path"`               // 路径信息
 	PathHash    string     `json:"pathHash" form:"pathHash"`       // 路径哈希值
 	Content     string     `json:"content" form:"content"`         // 内容详情
@@ -53,14 +52,19 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 
 	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
 	if node != nil {
-		// 检查内容是否一致
+		// 检查内容是否一致1
 		if mtimeCheck && node.Mtime == params.Mtime && node.ContentHash == params.ContentHash {
 			return nil, nil
 		}
 		// 检查内容是否一致 但是修改时间不同 则只更新修改时间
 		if mtimeCheck && node.Mtime < params.Mtime && node.ContentHash == params.ContentHash {
 			err := svc.dao.NoteUpdateMtime(params.Mtime, node.ID, uid)
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+			node.Mtime = params.Mtime
+			rNote := convert.StructAssign(node, &Note{}).(*Note)
+			return rNote, nil
 		}
 		if node.Action == "delete" {
 			noteSet.Action = "create"
