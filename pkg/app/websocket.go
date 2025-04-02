@@ -362,6 +362,8 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	// 使用 strings.Index 找到分隔符的位置
 	index := strings.Index(messageStr, "|")
 
+	//log(LogInfo, "WebsocketServer OnMessage", zap.String("data", messageStr))
+
 	var msg WebSocketMessage
 	if index != -1 {
 		msg.Type = messageStr[:index]           // 提取分隔符之前的部分
@@ -386,11 +388,10 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	// 执行操作
 	handler, exists := w.handlers[msg.Type]
 	if exists {
-		log(LogInfo, "WebsocketServer OnMessage", zap.String("type", msg.Type))
+		log(LogInfo, "WebsocketServer OnMessage", zap.String("Type", msg.Type))
 		c := w.GetClient(conn)
 		handler(c, &msg)
 	} else {
-		fmt.Println(msg.Type, string(msg.Data))
 		log(LogError, "WebsocketServer OnMessage", zap.String("msg", "Unknown message type"))
 	}
 }

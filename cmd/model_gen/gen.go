@@ -29,21 +29,17 @@ func main() {
 package model
 
 import (
-	"sync"
-
 	"gorm.io/gorm"
 )
 
-var once sync.Once
+
 
 func AutoMigrate(db *gorm.DB, key string) {
 	switch key {
 `
 	goContentFunc := `
 	case "{NAME}":
-		once.Do(func() {
-			db.AutoMigrate({NAME}{})
-		})
+		db.AutoMigrate({NAME}{})
 `
 
 	if v.Kind() == reflect.Struct {
