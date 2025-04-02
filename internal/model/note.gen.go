@@ -11,18 +11,18 @@ const TableNameNote = "note"
 // Note mapped from table <note>
 type Note struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	Vault            string     `gorm:"column:vault;index:idx_vault_path_hash,priority:1;index:idx_vault_updated_timestamp,priority:1;index:idx_vault_updated_at,priority:1" json:"vault" form:"vault"`
+	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_path_hash,priority:1" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action" json:"action" form:"action"`
 	Path             string     `gorm:"column:path" json:"path" form:"path"`
-	PathHash         string     `gorm:"column:path_hash;index:idx_vault_path_hash,priority:2" json:"pathHash" form:"pathHash"`
+	PathHash         string     `gorm:"column:path_hash;index:idx_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
 	Content          string     `gorm:"column:content" json:"content" form:"content"`
 	ContentHash      string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`
 	Size             int64      `gorm:"column:size;not null" json:"size" form:"size"`
 	Ctime            int64      `gorm:"column:ctime;not null" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_vault_updated_timestamp,priority:2" json:"updatedTimestamp" form:"updatedTimestamp"`
+	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_vault_id_updated_timestamp,priority:2" json:"updatedTimestamp" form:"updatedTimestamp"`
 	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_vault_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName Note's table name

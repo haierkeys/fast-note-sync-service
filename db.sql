@@ -30,7 +30,7 @@ DROP TABLE IF EXISTS "note";
 
 CREATE TABLE "note" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
-    "vault" text DEFAULT '',
+    "vault_id" integer NOT NULL DEFAULT 0,
     "action" text DEFAULT '',
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
@@ -44,25 +44,22 @@ CREATE TABLE "note" (
     "updated_at" datetime DEFAULT NULL
 );
 
-CREATE INDEX "idx_vault_updated_at" ON "note" ("vault", "updated_at" DESC);
-CREATE INDEX "idx_vault_updated_timestamp" ON "note" ("vault", "updated_timestamp" DESC);
-CREATE INDEX "idx_vault_path_hash" ON "note" ("vault", "path_hash" DESC);
-
+CREATE INDEX "idx_vault_id_path_hash" ON "note" ("vault_id", "path_hash" DESC);
+CREATE INDEX "idx_vault_id_updated_at" ON "note" ("vault_id", "updated_at" DESC);
+CREATE INDEX "idx_vault_id_updated_timestamp" ON "note" ("vault_id", "updated_timestamp" DESC);
 
 DROP TABLE IF EXISTS "vault";
 
 CREATE TABLE "vault" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault" text DEFAULT '',
-    "action" text DEFAULT '',
     "note_count" integer NOT NULL DEFAULT 0,
     "size" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
 
-CREATE INDEX "idx_vault" ON "vault" ("vault" DESC);
-
+CREATE INDEX "idx_vault_uid" ON "vault" ("vault" ASC);
 
 -- 笔记库索引
 

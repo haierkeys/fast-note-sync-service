@@ -34,12 +34,12 @@ import (
 
 
 
-func AutoMigrate(db *gorm.DB, key string) {
+func AutoMigrate(db *gorm.DB, key string) error {
 	switch key {
 `
 	goContentFunc := `
 	case "{NAME}":
-		db.AutoMigrate({NAME}{})
+		return db.AutoMigrate({NAME}{})
 `
 
 	if v.Kind() == reflect.Struct {
@@ -52,7 +52,7 @@ func AutoMigrate(db *gorm.DB, key string) {
 			goContent += strings.ReplaceAll(goContentFunc, "{NAME}", field.Name)
 			//goContentHeader += fmt.Sprintf("type %s = %s\n", field.Name, field.Type.Name())
 		}
-		goContent += "\t}\n}"
+		goContent += "\t}\n\treturn nil\n}"
 
 		_ = os.WriteFile(g.OutPath[0:len(g.OutPath)-6]+"/model/model.go", []byte(goContent), os.ModePerm)
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/haierkeys/obsidian-better-sync-service/global"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
@@ -57,6 +58,7 @@ type WebsocketClient struct {
 	Ctx         *gin.Context
 	User        *UserEntity
 	UserClients *ConnStorage
+	SF          *singleflight.Group // 用于处理并发请求的缓存
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
@@ -251,7 +253,7 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 			log(LogError, "WebsocketServer Start err", zap.Error(err))
 			return
 		}
-		client := &WebsocketClient{conn: socket, done: make(chan struct{}), Ctx: c}
+		client := &WebsocketClient{conn: socket, done: make(chan struct{}), Ctx: c, SF: new(singleflight.Group)}
 		w.AddClient(client)
 		log(LogInfo, "WebsocketServer Start", zap.String("type", "ReadLoop"))
 		go socket.ReadLoop()

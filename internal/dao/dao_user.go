@@ -86,3 +86,4 @@ func (d *Dao) UserUpdatePassword(password string, uid int64) error {
 	)
 	return err
 }
+

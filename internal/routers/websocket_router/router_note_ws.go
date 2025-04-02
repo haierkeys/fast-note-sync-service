@@ -28,7 +28,7 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx)
+	svc := service.New(c.Ctx).WithSF(c.SF)
 	note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 
 	if err != nil {
@@ -64,7 +64,7 @@ func NoteModifyOverride(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx)
+	svc := service.New(c.Ctx).WithSF(c.SF)
 	note, err := svc.NoteModifyOrCreate(c.User.UID, params, false)
 
 	if err != nil {
@@ -96,7 +96,8 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx)
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
 	note, err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
@@ -120,7 +121,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx)
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
 	list, err := svc.NoteListByLastTime(c.User.UID, params)
 
 	if err != nil {

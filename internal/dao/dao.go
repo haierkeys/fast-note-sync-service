@@ -30,15 +30,19 @@ func New(db *gorm.DB, ctx context.Context) *Dao {
 }
 
 func (d *Dao) Use(f func(*gorm.DB), key ...string) *query.Query {
+	db := d.UseKey(key...)
+	f(db)
+	return query.Use(db)
+}
 
+func (d *Dao) UseKey(key ...string) *gorm.DB {
 	var db *gorm.DB
 	if len(key) > 0 {
 		db = d.UseDb(key...)
 	} else {
 		db = d.Db
 	}
-	f(db)
-	return query.Use(db)
+	return db
 }
 
 func (d *Dao) UseDb(k ...string) *gorm.DB {

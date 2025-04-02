@@ -7,16 +7,17 @@ import (
 
 
 
-func AutoMigrate(db *gorm.DB, key string) {
+func AutoMigrate(db *gorm.DB, key string) error {
 	switch key {
 
 	case "Note":
-		db.AutoMigrate(Note{})
+		return db.AutoMigrate(Note{})
 
 	case "User":
-		db.AutoMigrate(User{})
+		return db.AutoMigrate(User{})
 
 	case "Vault":
-		db.AutoMigrate(Vault{})
+		return db.AutoMigrate(Vault{})
 	}
+	return nil
 }

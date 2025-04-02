@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
@@ -39,8 +41,18 @@ type NoteModifyOrCreateRequestParams struct {
 
 func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequestParams, mtimeCheck bool) (*Note, error) {
 
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+
 	noteSet := &dao.NoteSet{
-		Vault:       params.Vault,
+		VaultID:     vaultID,
 		Path:        params.Path,
 		PathHash:    params.PathHash,
 		Content:     params.Content,
@@ -50,7 +62,11 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		Ctime:       params.Ctime,
 	}
 
-	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if node != nil {
 		// 检查内容是否一致1
 		if mtimeCheck && node.Mtime == params.Mtime && node.ContentHash == params.ContentHash {
@@ -76,6 +92,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		if err != nil {
 			return nil, err
 		}
+		svc.NoteCountSizeSum(vaultID, uid)
 		rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
 		return rNote, nil
 	} else {
@@ -85,6 +102,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		if err != nil {
 			return nil, err
 		}
+		svc.NoteCountSizeSum(vaultID, uid)
 		rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
 		return rNote, nil
 	}
@@ -101,36 +119,6 @@ type ContentModifyRequestParams struct {
 	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`             // 修改时间戳
 }
 
-/**
-* ContentModify
-* @Description        修改文件内容
-* @Create             HaierKeys 2025-03-01 17:30
-* @Param              params  *ContentModifyRequestParams  文件内容修改请求参数
-* @Return             error  错误信息
- */
-func (svc *Service) ContentModify(uid int64, params *ContentModifyRequestParams) error {
-	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
-	if err != nil {
-		return err
-	}
-	note := &dao.NoteSet{
-		Vault:       node.Vault,
-		Action:      "modify",
-		Path:        node.Path,
-		PathHash:    node.PathHash,
-		Content:     params.Content,
-		ContentHash: params.ContentHash,
-		Size:        int64(len(params.Content)),
-		Mtime:       params.Mtime,
-		Ctime:       params.Ctime,
-	}
-	_, err = svc.dao.NoteUpdate(note, node.ID, uid)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type NoteDeleteRequestParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -139,12 +127,26 @@ type NoteDeleteRequestParams struct {
 
 // NoteDelete 删除笔记
 func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
-	node, err := svc.dao.NoteGetByPathHash(params.PathHash, params.Vault, uid)
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	node, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
 	note := &dao.NoteSet{
-		Vault:       node.Vault,
+		VaultID:     vaultID,
 		Action:      "delete",
 		Path:        node.Path,
 		PathHash:    node.PathHash,
@@ -156,6 +158,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 	if err != nil {
 		return nil, err
 	}
+	svc.NoteCountSizeSum(vaultID, uid)
 	rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
 
 	return rNote, nil
@@ -173,7 +176,21 @@ type NoteSyncEndMessage struct {
 
 // ModifyFiles 获取修改的文件列表
 func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*dao.Note, error) {
-	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, params.Vault, uid)
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -187,9 +204,31 @@ type ModifyMtimeFilesRequestParams struct {
 
 // ModifyFiles 获取修改的文件列表
 func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestParams) ([]*dao.Note, error) {
-	nodes, err := svc.dao.NoteListByMtime(params.Mtime, params.Vault, uid)
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	nodes, err := svc.dao.NoteListByMtime(params.Mtime, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
 	return nodes, nil
+}
+
+func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
+	result, err := svc.dao.NoteCountSizeSum(vaultID, uid)
+	if err != nil {
+		return err
+	}
+	return svc.dao.VaultUpdateNoteCountSize(result.Size, result.Count, vaultID, uid)
 }

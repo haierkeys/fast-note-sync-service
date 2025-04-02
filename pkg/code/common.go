@@ -31,6 +31,7 @@ var (
 	ErrorUserUsernameNotValid               = NewError(incr(400), lang{zh: "用户名不符合规则,用户名长度为3-15位,只能包含字母、数字或下划线", en: "The username does not meet the rules, the username length is 3-15 digits, and can only contain letters, numbers or underscores"})
 	ErrorUserPasswordNotMatch               = NewError(incr(400), lang{zh: "两次输入的密码不一致", en: "The two passwords entered are inconsistent"})
 	ErrorDBQuery                            = NewError(incr(400), lang{zh: "数据库查询失败", en: "Database query failed"})
+	ErrorVaultNotFound                      = NewError(incr(400), lang{zh: "笔记仓库不存在", en: "Note Vault does not exist"})
 	ErrorUploadFileFailed                   = NewError(incr(400), lang{zh: "上传文件失败", en: "Upload file failed"})
 	ErrorInvalidCloudStorageType            = NewError(incr(400), lang{zh: "云存储类型无效", en: "Invalid cloud storage type"})
 	ErrorInvalidStorageType                 = NewError(incr(400), lang{zh: "存储类型无效", en: "Invalid storage type"})

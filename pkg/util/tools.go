@@ -1,9 +1,11 @@
 package util
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +17,14 @@ import (
 const (
 	firstIndex = 0
 )
+
+func GetGoroutineID() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	var goroutineID int
+	fmt.Sscanf(string(buf[:n]), "goroutine %d ", &goroutineID)
+	return goroutineID
+}
 
 func GetIndexSlice(target int, slice []int) (index int) {
 	position := -1

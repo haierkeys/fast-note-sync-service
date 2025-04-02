@@ -176,3 +176,10 @@ func (svc *Service) UserChangePassword(uid int64, params *UserChangePasswordRequ
 
 	return svc.dao.UserUpdatePassword(password, uid)
 }
+
+// UserInfo 用户信息
+func (svc *Service) UserInfo(uid int64) (*User, error) {
+
+	user, err := svc.dao.GetUserByUID(uid)
+	return convert.StructAssign(user, &User{}).(*User), err
+}

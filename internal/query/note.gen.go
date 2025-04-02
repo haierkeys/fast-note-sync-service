@@ -28,7 +28,7 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	tableName := _note.noteDo.TableName()
 	_note.ALL = field.NewAsterisk(tableName)
 	_note.ID = field.NewInt64(tableName, "id")
-	_note.Vault = field.NewString(tableName, "vault")
+	_note.VaultID = field.NewInt64(tableName, "vault_id")
 	_note.Action = field.NewString(tableName, "action")
 	_note.Path = field.NewString(tableName, "path")
 	_note.PathHash = field.NewString(tableName, "path_hash")
@@ -51,7 +51,7 @@ type note struct {
 
 	ALL              field.Asterisk
 	ID               field.Int64
-	Vault            field.String
+	VaultID          field.Int64
 	Action           field.String
 	Path             field.String
 	PathHash         field.String
@@ -80,7 +80,7 @@ func (n note) As(alias string) *note {
 func (n *note) updateTableName(table string) *note {
 	n.ALL = field.NewAsterisk(table)
 	n.ID = field.NewInt64(table, "id")
-	n.Vault = field.NewString(table, "vault")
+	n.VaultID = field.NewInt64(table, "vault_id")
 	n.Action = field.NewString(table, "action")
 	n.Path = field.NewString(table, "path")
 	n.PathHash = field.NewString(table, "path_hash")
@@ -118,7 +118,7 @@ func (n *note) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 func (n *note) fillFieldMap() {
 	n.fieldMap = make(map[string]field.Expr, 13)
 	n.fieldMap["id"] = n.ID
-	n.fieldMap["vault"] = n.Vault
+	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["action"] = n.Action
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["path_hash"] = n.PathHash

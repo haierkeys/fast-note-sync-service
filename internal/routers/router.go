@@ -35,6 +35,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 			ParallelEnabled:   true,                                 // 开启并行消息处理
 			Recovery:          gws.Recovery,                         // 开启异常恢复
 			PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // 开启压缩
+			ParallelGolimit:   8,
 			// ReadMaxPayloadSize:    1024 * 1024 * 16,                     // 设置最大读取缓冲区大小
 			// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
 		},
@@ -71,6 +72,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.GET("/user/sync", wss.Run())
 
 		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
+		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)
 
 	}
 	r.Use(middleware.Cors())
