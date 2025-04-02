@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthToken() gin.HandlerFunc {
+func SimpleAuthToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		if global.Config.Security.AuthToken == "" {

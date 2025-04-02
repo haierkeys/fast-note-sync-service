@@ -50,13 +50,9 @@ log:
   production: true
 
 security:
-  # auth-token
-  # 单服务网关 Token 加密混淆 Key
-  # Single-service gateway Token encryption and obfuscation key
-  auth-token: 6666
-  # 多用户开放网关 Token 加密混淆 Key
-  # Multi-user open gateway Token encryption and obfuscation key
-  auth-token-key: Better-Sync-Auth-Token
+  # 用于加密认证数据的密钥
+  # Key for encrypting authentication data
+  encryption_key: X-Auth-Token-API
 
 # database
 # 数据库配置

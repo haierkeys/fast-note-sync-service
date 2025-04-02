@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/haierkeys/obsidian-better-sync-service/global"
+	"github.com/haierkeys/obsidian-better-sync-service/pkg/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -31,7 +32,7 @@ func ParseToken(tokenString string) (*UserEntity, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(global.Config.Security.AuthTokenKey), nil
+		return []byte(global.Config.Security.AuthTokenKey + "_" + util.GetMachineID()), nil
 	})
 
 	if err != nil {
@@ -66,7 +67,7 @@ func GenerateToken(uid int64, nickname string, ip string, expiry int64) (string,
 	// Declare the token with the algorithm used for signing, and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Create the JWT string
-	tokenString, err := token.SignedString([]byte(global.Config.Security.AuthTokenKey))
+	tokenString, err := token.SignedString([]byte(global.Config.Security.AuthTokenKey + "_" + util.GetMachineID()))
 	if err != nil {
 		return "", err
 	}
