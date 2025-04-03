@@ -73,7 +73,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
 		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)
-
+		api.Use(middleware.UserAuthToken()).GET("/vault", api_router.NewVault().List)
+		api.Use(middleware.UserAuthToken()).POST("/vault", api_router.NewVault().CreateOrUpdate)
+		api.Use(middleware.UserAuthToken()).DELETE("/vault", api_router.NewVault().Delete)
 	}
 	r.Use(middleware.Cors())
 	r.NoRoute(middleware.NoFound())

@@ -32,6 +32,7 @@ var (
 	ErrorUserPasswordNotMatch               = NewError(incr(400), lang{zh: "两次输入的密码不一致", en: "The two passwords entered are inconsistent"})
 	ErrorDBQuery                            = NewError(incr(400), lang{zh: "数据库查询失败", en: "Database query failed"})
 	ErrorVaultNotFound                      = NewError(incr(400), lang{zh: "笔记仓库不存在", en: "Note Vault does not exist"})
+	ErrorVaultExist                         = NewError(incr(400), lang{zh: "笔记仓库已经存在", en: "Note Vault already exists"})
 	ErrorUploadFileFailed                   = NewError(incr(400), lang{zh: "上传文件失败", en: "Upload file failed"})
 	ErrorInvalidCloudStorageType            = NewError(incr(400), lang{zh: "云存储类型无效", en: "Invalid cloud storage type"})
 	ErrorInvalidStorageType                 = NewError(incr(400), lang{zh: "存储类型无效", en: "Invalid storage type"})

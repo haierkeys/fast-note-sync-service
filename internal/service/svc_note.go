@@ -9,16 +9,17 @@ import (
 )
 
 type Note struct {
-	ID          int64      `json:"id" form:"id"`                   // 主键ID
-	Vault       string     `json:"vault" form:"vault"`             // 保险库名称或标识
-	Path        string     `json:"path" form:"path"`               // 路径信息
-	PathHash    string     `json:"pathHash" form:"pathHash"`       // 路径哈希值
-	Content     string     `json:"content" form:"content"`         // 内容详情
-	ContentHash string     `json:"contentHash" form:"contentHash"` // 内容哈希
-	Ctime       int64      `json:"ctime" form:"ctime"`             // 创建时间戳
-	Mtime       int64      `json:"mtime" form:"mtime"`             // 修改时间戳
-	CreatedAt   timex.Time `json:"createdAt" form:"createdAt"`     // 创建时间，自动填充当前时间
-	UpdatedAt   timex.Time `json:"updatedAt" form:"updatedAt"`     // 更新时间，自动填充当前时间
+	ID               int64      `json:"id" form:"id"`                             // 主键ID
+	Action           string     `json:"action" form:"action"`                     // 操作
+	Path             string     `json:"path" form:"path"`                         // 路径信息
+	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值
+	Content          string     `json:"content" form:"content"`                   // 内容详情
+	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希
+	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	CreatedAt        timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间，自动填充当前时间
+	UpdatedAt        timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间，自动填充当前时间
 }
 
 type NoteModifyOrCreateRequestParams struct {
@@ -175,7 +176,7 @@ type NoteSyncEndMessage struct {
 }
 
 // ModifyFiles 获取修改的文件列表
-func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*dao.Note, error) {
+func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
@@ -191,10 +192,16 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 	})
 
 	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
+
+	var results []*Note
+	for _, node := range nodes {
+		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	return nodes, nil
+	return results, nil
 }
 
 type ModifyMtimeFilesRequestParams struct {
@@ -203,7 +210,7 @@ type ModifyMtimeFilesRequestParams struct {
 }
 
 // ModifyFiles 获取修改的文件列表
-func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestParams) ([]*dao.Note, error) {
+func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestParams) ([]*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
@@ -222,7 +229,13 @@ func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestPa
 	if err != nil {
 		return nil, err
 	}
-	return nodes, nil
+
+	var results []*Note
+	for _, node := range nodes {
+		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
+	}
+
+	return results, nil
 }
 
 func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {

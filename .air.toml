@@ -47,7 +47,7 @@ poll_interval = 1000 # 毫秒
 # 如果更改过于频繁，不一定需要每次都触发构建。
 delay = 1000 # 毫秒
 # 当构建出错时停止运行旧的二进制文件。
-stop_on_error = false
+stop_on_error = true
 # 发送终止信号前发送中断信号（Windows 不支持此功能）
 send_interrupt = false
 # 发送中断信号后的延迟

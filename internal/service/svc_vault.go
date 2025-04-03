@@ -13,7 +13,6 @@ import (
 type Vault struct {
 	ID        int64      `json:"id"`        // ID 字段
 	Vault     string     `json:"vault"`     // 保险库字段
-	UID       int64      `json:"uid"`       // 用户ID字段
 	NoteCount int64      `json:"noteCount"` // 笔记数量字段
 	Size      int64      `json:"size"`      // 大小字段
 	UpdatedAt timex.Time `json:"updatedAt"` // 更新时间字段
@@ -31,7 +30,14 @@ type VaultGetRequest struct {
 
 // VaultCreate 创建保险库
 func (svc *Service) VaultCreate(param *VaultPostRequest, uid int64) (*Vault, error) {
-	vault, err := svc.dao.VaultCreate(&dao.VaultSet{
+
+	vault, err := svc.dao.VaultGetByName(param.Vault, uid)
+
+	if vault != nil {
+		return nil, code.ErrorVaultExist
+	}
+
+	vault, err = svc.dao.VaultCreate(&dao.VaultSet{
 		Vault: param.Vault,
 	}, uid)
 	if err != nil {
