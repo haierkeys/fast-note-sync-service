@@ -20,8 +20,9 @@ var StorageTypeMap = map[Type]bool{
 var CloudStorageTypeMap = map[Type]bool{}
 
 type Storager interface {
-	SendFile(pathKey string, file io.Reader, cType string) (string, error)
-	SendContent(pathKey string, content []byte) (string, error)
+	PutFile(pathKey string, file io.Reader, cType string) (string, error)
+	PutContent(pathKey string, content []byte) (string, error)
+	DeleteFile(pathKey string) error
 }
 
 var Instance map[Type]Storager

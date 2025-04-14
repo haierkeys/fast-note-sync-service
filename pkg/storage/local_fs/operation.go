@@ -30,8 +30,8 @@ func (p *LocalFS) getSavePath() string {
 	return fileurl.PathSuffixCheckAdd(p.Config.SavePath, "/")
 }
 
-// SendFile  上传文件
-func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string) (string, error) {
+// PutFile  上传文件
+func (p *LocalFS) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {
 			return "", err
@@ -60,7 +60,7 @@ func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string) (string
 	}
 }
 
-func (p *LocalFS) SendContent(fileKey string, content []byte) (string, error) {
+func (p *LocalFS) PutContent(fileKey string, content []byte) (string, error) {
 
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {
@@ -83,3 +83,5 @@ func (p *LocalFS) SendContent(fileKey string, content []byte) (string, error) {
 		return dstFileKey, nil
 	}
 }
+
+

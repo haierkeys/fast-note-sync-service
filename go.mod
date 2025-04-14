@@ -3,6 +3,12 @@ module github.com/haierkeys/obsidian-better-sync-service
 go 1.24.1
 
 require (
+	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/aws/aws-sdk-go-v2 v1.36.3
+	github.com/aws/aws-sdk-go-v2/config v1.29.14
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.72
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.2
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/glebarez/sqlite v1.11.0
@@ -20,11 +26,13 @@ require (
 	github.com/prometheus/client_golang v1.21.1
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/cobra v1.9.1
+	github.com/studio-b12/gowebdav v0.10.0
 	github.com/swaggo/swag v1.16.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/w3liu/go-common v0.0.0-20210108072342-826b2f3582be
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.36.0
+	golang.org/x/sync v0.12.0
 	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.31.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
@@ -39,6 +47,20 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19 // indirect
+	github.com/aws/smithy-go v1.22.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
@@ -87,8 +109,8 @@ require (
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gorm.io/datatypes v1.2.5 // indirect
