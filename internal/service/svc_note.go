@@ -22,6 +22,68 @@ type Note struct {
 	UpdatedAt        timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间，自动填充当前时间
 }
 
+type NoteUpdateCheckRequestParams struct {
+	Vault       string `json:"vault" form:"vault"  binding:"required"`
+	Path        string `json:"path" form:"path"  binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"`
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
+	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`     // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`     // 修改时间戳
+}
+
+/**
+* NoteUpdateCheck
+* @Description        修改文件
+* @Create             HaierKeys 2025-03-01 17:30
+* @Param              params  *NoteModifyRequestParams  文件修改请求参数
+* @Return             error  错误信息
+@Return             error  错误信息
+@Return             error  错误信息
+*/
+
+/*
+* NoteUpdateCheck 检查文件是否需要更新
+* @Return             bool  是否需要更新
+* @Return             bool  是否需要客户端修改更新修改时间
+* @Return             error  错误信息
+ */
+func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestParams) (bool, bool, *Note, error) {
+
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return false, false, nil, err
+	}
+	vaultID = vID.(int64)
+
+	// 检查数据表是否存在
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	if node != nil {
+		nodeSvc := convert.StructAssign(node, &Note{}).(*Note)
+		// 检查内容是否一致1
+		if node.ContentHash == params.ContentHash {
+			// 修改时间是否
+			if params.Mtime > node.Mtime {
+				return true, false, nodeSvc, nil
+			} else if params.Mtime < node.Mtime {
+				return false, true, nodeSvc, nil
+			} else {
+				return false, false, nodeSvc, nil
+			}
+		}
+		return true, false, nodeSvc, nil
+	} else {
+		return true, false, nil, nil
+	}
+}
+
 type NoteModifyOrCreateRequestParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`
 	Path        string `json:"path" form:"path"  binding:"required"`

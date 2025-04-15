@@ -47,6 +47,45 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 }
 
 /**
+ * NoteModify
+ * @Description        处理文件修改的WebSocket消息
+ * @Create             HaierKeys 2025-03-01 17:30
+ * @Param              c  *app.WebsocketClient  WebSocket客户端连接
+ * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
+ * @Return             无
+ */
+func NoteUpdateCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteUpdateCheckRequestParams{}
+
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+	isNeedUpdate, isNeedSyncMtime, node, err := svc.NoteUpdateCheck(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		return
+	}
+	// 通知客户端传输笔记内容
+	//todo
+	if isNeedUpdate {
+		c.ToResponse(code.Success.WithData(node), "NoteNeedSync")
+		return
+	}
+	// 强制客户端更新mtime 不传输笔记内容
+	if isNeedSyncMtime {
+		c.ToResponse(code.Success.WithData(node), "NoteOverrideLocalMtime")
+		return
+	}
+	c.ToResponse(code.SuccessNoUpdate.Reset())
+}
+
+/**
  * NoteModifyOverride
  * @Description        处理文件修改的WebSocket消息
  * @Create             HaierKeys 2025-03-01 17:30
