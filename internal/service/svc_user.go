@@ -181,5 +181,13 @@ func (svc *Service) UserChangePassword(uid int64, params *UserChangePasswordRequ
 func (svc *Service) UserInfo(uid int64) (*User, error) {
 
 	user, err := svc.dao.GetUserByUID(uid)
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, code.ErrorDBQuery
+		}
+	}
 	return convert.StructAssign(user, &User{}).(*User), err
 }
