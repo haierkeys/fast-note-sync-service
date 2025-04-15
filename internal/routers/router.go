@@ -46,6 +46,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("NoteModifyOverride", websocket_router.NoteModifyOverride)
 	wss.Use("NoteDelete", websocket_router.NoteDelete)
 	wss.Use("NoteSync", websocket_router.NoteSync)
+	wss.UserDataSelectUse(websocket_router.UserInfo)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")

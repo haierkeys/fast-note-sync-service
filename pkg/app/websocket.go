@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -214,13 +215,15 @@ func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
 // ------------------------------------> WebsocketServer
 
 type ConnStorage = map[*gws.Conn]*WebsocketClient
+
 type WebsocketServer struct {
-	handlers    map[string]func(*WebsocketClient, *WebSocketMessage)
-	clients     ConnStorage
-	userClients map[string]ConnStorage
-	mu          sync.Mutex
-	up          *gws.Upgrader
-	config      *WebsocketServerConfig
+	handlers        map[string]func(*WebsocketClient, *WebSocketMessage)
+	userDataHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	clients         ConnStorage
+	userClients     map[string]ConnStorage
+	mu              sync.Mutex
+	up              *gws.Upgrader
+	config          *WebsocketServerConfig
 }
 
 func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
@@ -264,13 +267,40 @@ func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *Web
 	w.handlers[action] = handler
 }
 
+func (w *WebsocketServer) UserDataSelectUse(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
+	w.userDataHandler = handler
+}
+
 func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
+
 	if user, err := ParseToken(string(msg.Data)); err != nil {
 		log(LogError, "WebsocketServer Authorization FAILD", zap.Error(err))
 		c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
 		time.Sleep(5 * time.Second)
 		c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
 	} else {
+
+		uid, err := strconv.ParseInt(user.ID, 10, 64)
+		if err != nil {
+			log(LogError, "WebsocketServer Authorization FAILD", zap.Error(err))
+			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			time.Sleep(5 * time.Second)
+			c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+			return
+		}
+
+		// 用户有效性强制验证
+		userSelect, err := w.userDataHandler(c, uid)
+		if userSelect == nil || err != nil {
+			log(LogError, "WebsocketServer Authorization FAILD USER Not Exist", zap.Error(err))
+			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			time.Sleep(5 * time.Second)
+			c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+			return
+		}
+
+		user.Nickname = userSelect.Nickname
+
 		log(LogInfo, "WebsocketServer Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname))
 		c.User = user
 		w.AddUserClient(c)

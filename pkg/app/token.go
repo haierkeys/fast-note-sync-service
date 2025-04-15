@@ -12,6 +12,13 @@ import (
 )
 
 // UserEntity represents the user data stored in the JWT.
+
+type UserSelectEntity struct {
+	UID      int64  `json:"uid"`
+	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
 type UserEntity struct {
 	UID      int64  `json:"uid"`
 	Nickname string `json:"nickname"`

@@ -5,6 +5,7 @@ import (
 	"github.com/haierkeys/obsidian-better-sync-service/internal/service"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
 	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
 
 	"go.uber.org/zap"
@@ -191,5 +192,20 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
+
+}
+
+// 用户ws 服务器用户有效性验证
+func UserInfo(c *app.WebsocketClient, uid int64) (*app.UserSelectEntity, error) {
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+	user, err := svc.UserInfo(uid)
+
+	var userEntity *app.UserSelectEntity
+	if user != nil {
+		userEntity = convert.StructAssign(user, &app.UserSelectEntity{}).(*app.UserSelectEntity)
+	}
+
+	return userEntity, err
 
 }

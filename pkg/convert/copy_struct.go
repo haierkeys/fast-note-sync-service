@@ -12,6 +12,7 @@ import (
 // dst 目标结构体，src 源结构体
 // 它会把src与dst的相同字段名的值，复制到dst中
 func StructAssign(src any, dst any) any {
+
 	bVal := reflect.ValueOf(dst).Elem() // 获取reflect.Type类型
 	vVal := reflect.ValueOf(src).Elem() // 获取reflect.Type类型
 	vTypeOfT := vVal.Type()
@@ -22,6 +23,7 @@ func StructAssign(src any, dst any) any {
 			bVal.FieldByName(name).Set(reflect.ValueOf(vVal.Field(i).Interface()))
 		}
 	}
+
 	return dst
 }
 
