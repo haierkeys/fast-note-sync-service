@@ -276,16 +276,16 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 	if user, err := ParseToken(string(msg.Data)); err != nil {
 		log(LogError, "WebsocketServer Authorization FAILD", zap.Error(err))
 		c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
-		time.Sleep(5 * time.Second)
-		c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+		time.Sleep(2 * time.Second)
+		c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 	} else {
 
 		uid, err := strconv.ParseInt(user.ID, 10, 64)
 		if err != nil {
 			log(LogError, "WebsocketServer Authorization FAILD", zap.Error(err))
 			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
-			time.Sleep(5 * time.Second)
-			c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+			time.Sleep(2 * time.Second)
+			c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 			return
 		}
 
@@ -294,8 +294,8 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		if userSelect == nil || err != nil {
 			log(LogError, "WebsocketServer Authorization FAILD USER Not Exist", zap.Error(err))
 			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
-			time.Sleep(5 * time.Second)
-			c.conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+			time.Sleep(2 * time.Second)
+			c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 			return
 		}
 
@@ -384,7 +384,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 	if message.Data.String() == "close" {
-		conn.WriteMessage(gws.OpcodeCloseConnection, nil)
+		conn.WriteClose(1000, []byte("ClientClose"))
 		return
 	}
 
