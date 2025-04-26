@@ -1,5 +1,5 @@
 [中文文档](readme-zh.md) / [English Document](README.md)
-# Obsidian Better Sync Service
+# Better Sync Service
 
 <p align="center">
     <img src="https://img.shields.io/github/release/haierkeys/obsidian-better-sync-service" alt="version">
@@ -26,7 +26,7 @@
 ## BUGLIST (已知问题)
 
 - webgui 除了登录/注册/复制配置之外的 界面无实际功能或点击异常
-- 部分用户连接ws后, 认证成功,但是不显示nickname 
+- 部分用户连接ws后, 认证成功,但是不显示nickname
 
 ## 更新日志
 

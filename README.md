@@ -1,5 +1,5 @@
 [中文文档](readme-zh.md) / [English Document](README.md)
-# Obsidian Better Sync Service
+# Better Sync Service
 
 <p align="center">
     <img src="https://img.shields.io/github/release/haierkeys/obsidian-better-sync-service" alt="version">
