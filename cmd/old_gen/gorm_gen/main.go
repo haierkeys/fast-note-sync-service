@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/haierkeys/obsidian-better-sync-service/cmd/old_gen/gorm_gen/pkg"
+	"github.com/haierkeys/fast-note-sync-service/cmd/old_gen/gorm_gen/pkg"
 )
 
 var (

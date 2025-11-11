@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/util"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

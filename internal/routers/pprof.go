@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/middleware"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/routers/api_router"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

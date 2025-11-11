@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 
 	"github.com/glebarez/sqlite"
 	"github.com/haierkeys/gormTracing"

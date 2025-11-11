@@ -1,12 +1,12 @@
 [中文文档](readme-zh.md) / [English Document](README.md)
-# Better Sync Service
+# Fast Note Sync Service
 
 <p align="center">
-    <img src="https://img.shields.io/github/release/haierkeys/obsidian-better-sync-service" alt="version">
-    <img src="https://img.shields.io/github/license/haierkeys/obsidian-better-sync-service" alt="license">
+    <img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service" alt="version">
+    <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
 </p>
 
-[BetterSync For Obsidian](https://github.com/haierkeys/obsidian-better-sync) 服务端,基于 Golang + Websocket 构建的高性能笔记实时同步服务
+[Fast Note Sync Service for Obsidian](https://github.com/haierkeys/fast-note-sync-service) 服务端,基于 Golang + Websocket 构建的高性能笔记实时同步服务
 
 
 ## 功能清单
@@ -30,7 +30,7 @@
 
 ## 更新日志
 
-查看完整的更新内容，请访问 [Changelog](https://github.com/haierkeys/obsidian-better-sync-service/releases)。
+查看完整的更新内容，请访问 [Changelog](https://github.com/haierkeys/fast-note-sync-service/releases)。
 
 ## 价格
 
@@ -44,8 +44,8 @@
 
   ```bash
   # 创建项目所需的目录
-  mkdir -p /data/better-sync
-  cd /data/better-sync
+  mkdir -p /data/fast-note-sync
+  cd /data/fast-note-sync
 
   mkdir -p ./config && mkdir -p ./storage/logs && mkdir -p ./storage/uploads
   ```
@@ -56,15 +56,15 @@
 
   ```bash
   # 从开源库下载默认配置文件到配置目录
-  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/obsidian-better-sync-service/main/config/config.yaml
+  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/main/config/config.yaml
   ```
 
 - 二进制安装
 
-  从 [Releases](https://github.com/haierkeys/obsidian-better-sync-service/releases) 下载最新版本，解压后执行：
+  从 [Releases](https://github.com/haierkeys/fast-note-sync-service/releases) 下载最新版本，解压后执行：
 
   ```bash
-  ./better-sync-service run -c config/config.yaml
+  ./fast-note-sync-service run -c config/config.yaml
   ```
 
 
@@ -74,14 +74,14 @@
 
   ```bash
   # 拉取最新的容器镜像
-  docker pull haierkeys/obsidian-better-sync-service:latest
+  docker pull haierkeys/fast-note-sync-service:latest
 
   # 创建并启动容器
-  docker run -tid --name better-sync-service \
+  docker run -tid --name fast-note-sync-service \
           -p 9000:9000 -p 9001:9001 \
-          -v /data/better-sync/storage/:/better-sync/storage/ \
-          -v /data/better-sync/config/:/better-sync/config/ \
-          haierkeys/obsidian-better-sync-service:latest
+          -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
+          -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
+          haierkeys/fast-note-sync-service:latest
   ```
 
   Docker Compose
@@ -91,15 +91,15 @@
   ```yaml
   # docker-compose.yaml
   services:
-    better-sync:
-      image: haierkeys/obsidian-better-sync-service:latest  # 你的应用镜像
-      container_name: better-sync
+    fast-note-sync:
+      image: haierkeys/fast-note-sync-service:latest  # 你的应用镜像
+      container_name: fast-note-sync
       ports:
         - "9000:9000"  # 映射端口 9000
         - "9001:9001"  # 映射端口 9001
       volumes:
-        - /data/better-sync/storage/:/better-sync/storage/  # 映射存储目录
-        - /data/better-sync/config/:/better-sync/config/    # 映射配置目录
+        - /data/fast-note-sync/storage/:/fast-note-sync/storage/  # 映射存储目录
+        - /data/fast-note-sync/config/:/fast-note-sync/config/    # 映射配置目录
 
   ```
 
@@ -121,7 +121,7 @@
 
 访问 `WebGUI` 地址 `http://{IP:PORT}`
 
-点击在 复制 API 配置 获取配置信息, 到 `BetterSync For Obsidian` 插件中粘贴即可
+点击在 复制 API 配置 获取配置信息, 到 `Fast Note Sync For Obsidian` 插件中粘贴即可
 
 首次访问需要进行用户注册,如需关闭注册, 请修改 `user.register-is-enable` 为 `false`
 
@@ -140,4 +140,4 @@
 
 ## 其他资源
 
-- [Better Sync For Obsidian](https://github.com/haierkeys/obsidian-better-sync)
+- [Fast Note Sync For Obsidian](https://github.com/haierkeys/obsidian-fast-note-sync)

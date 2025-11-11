@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
 	"github.com/gin-gonic/gin"
 )

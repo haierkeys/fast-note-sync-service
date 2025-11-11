@@ -4,7 +4,7 @@
 
 package model
 
-import "github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 const TableNameUser = "user"
 

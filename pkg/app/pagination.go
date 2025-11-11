@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 
 	"github.com/gin-gonic/gin"
 )

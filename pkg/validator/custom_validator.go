@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"

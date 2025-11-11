@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
 
 type Note struct {

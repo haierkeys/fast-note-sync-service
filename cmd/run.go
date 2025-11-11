@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 
 	"github.com/radovskyb/watcher"
 	"github.com/spf13/cobra"

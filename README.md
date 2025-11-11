@@ -1,12 +1,12 @@
 [中文文档](readme-zh.md) / [English Document](README.md)
-# Better Sync Service
+# Fast Note Sync Service
 
 <p align="center">
-    <img src="https://img.shields.io/github/release/haierkeys/obsidian-better-sync-service" alt="version">
-    <img src="https://img.shields.io/github/license/haierkeys/obsidian-better-sync-service" alt="license">
+    <img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service" alt="version">
+    <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
 </p>
 
-[BetterSync For Obsidian](https://github.com/haierkeys/obsidian-better-sync) server, a high-performance note real-time synchronization service built on Golang + Websocket.
+[Fast Note Sync Service for Obsidian](https://github.com/haierkeys/fast-note-sync-service) server, a high-performance note real-time synchronization service built on Golang + Websocket.
 
 
 ## Feature List
@@ -19,7 +19,7 @@
 
 ## Changelog
 
-For a complete list of updates, please visit [Changelog](https://github.com/haierkeys/obsidian-better-sync-service/releases).
+For a complete list of updates, please visit [Changelog](https://github.com/haierkeys/fast-note-sync-service/releases).
 
 ## Pricing
 
@@ -33,8 +33,8 @@ This software is open-source and free. If you wish to express your gratitude or 
 
   ```bash
   # Create the directories required for the project
-  mkdir -p /data/better-sync
-  cd /data/better-sync
+  mkdir -p /data/fast-note-sync
+  cd /data/fast-note-sync
 
   mkdir -p ./config && mkdir -p ./storage/logs && mkdir -p ./storage/uploads
   ```
@@ -45,15 +45,15 @@ This software is open-source and free. If you wish to express your gratitude or 
 
   ```bash
   # Download the default configuration file from the open-source repository to the configuration directory
-  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/obsidian-better-sync-service/main/config/config.yaml
+  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/main/config/config.yaml
   ```
 
 - Binary Installation
 
-  Download the latest version from [Releases](https://github.com/haierkeys/obsidian-better-sync-service/releases), extract it, and execute:
+  Download the latest version from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), extract it, and execute:
 
   ```bash
-  ./better-sync-service run -c config/config.yaml
+  ./fast-note-sync-service run -c config/config.yaml
   ```
 
 
@@ -63,14 +63,14 @@ This software is open-source and free. If you wish to express your gratitude or 
 
   ```bash
   # Pull the latest container image
-  docker pull haierkeys/obsidian-better-sync-service:latest
+  docker pull haierkeys/fast-note-sync-service:latest
 
   # Create and start the container
-  docker run -tid --name better-sync-service \
+  docker run -tid --name fast-note-sync-service \
           -p 9000:9000 -p 9001:9001 \
-          -v /data/better-sync/storage/:/better-sync/storage/ \
-          -v /data/better-sync/config/:/better-sync/config/ \
-          haierkeys/obsidian-better-sync-service:latest
+          -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
+          -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
+          haierkeys/fast-note-sync-service:latest
   ```
 
   Docker Compose
@@ -80,15 +80,15 @@ This software is open-source and free. If you wish to express your gratitude or 
   ```yaml
   # docker-compose.yaml
   services:
-    better-sync:
-      image: haierkeys/obsidian-better-sync-service:latest  # Your application image
-      container_name: better-sync
+    fast-note-sync:
+      image: haierkeys/fast-note-sync-service:latest  # Your application image
+      container_name: fast-note-sync
       ports:
         - "9000:9000"  # Map port 9000
         - "9001:9001"  # Map port 9001
       volumes:
-        - /data/better-sync/storage/:/better-sync/storage/  # Map storage directory
-        - /data/better-sync/config/:/better-sync/config/    # Map configuration directory
+        - /data/fast-note-sync/storage/:/fast-note-sync/storage/  # Map storage directory
+        - /data/fast-note-sync/config/:/fast-note-sync/config/    # Map configuration directory
 
   ```
 
@@ -110,7 +110,7 @@ This software is open-source and free. If you wish to express your gratitude or 
 
 Access the `WebGUI` address `http://{IP:PORT}`
 
-Click to copy API configuration to get the configuration information, then paste it into the `BetterSync For Obsidian` plugin.
+Click to copy API configuration to get the configuration information, then paste it into the `Fast Note Sync For Obsidian` plugin.
 
 The first visit requires user registration. To disable registration, please change `user.register-is-enable` to `false`.
 
@@ -126,4 +126,4 @@ For more configuration details, please refer to:
 
 ## Other Resources
 
-- [Better Sync For Obsidian](https://github.com/haierkeys/obsidian-better-sync)
+- [Fast Note Sync For Obsidian](https://github.com/haierkeys/obsidian-fast-note-sync)

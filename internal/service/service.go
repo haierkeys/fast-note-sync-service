@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"

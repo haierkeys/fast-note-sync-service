@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/internal/model"
 )
 
 func newVault(db *gorm.DB, opts ...gen.DOOption) vault {

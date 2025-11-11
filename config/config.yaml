@@ -56,7 +56,7 @@ security:
   auth-token: 6666
   # 多用户开放网关 Token 加密混淆 Key
   # Multi-user open gateway Token encryption and obfuscation key
-  auth-token-key: Better-Sync-Auth-Token
+  auth-token-key: fast-note-sync-Auth-Token
 
 # database
 # 数据库配置

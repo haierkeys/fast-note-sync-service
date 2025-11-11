@@ -3,11 +3,11 @@ package dao
 import (
 	"strconv"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"gorm.io/gorm"
 )
 

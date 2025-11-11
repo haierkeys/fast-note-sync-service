@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/model"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"

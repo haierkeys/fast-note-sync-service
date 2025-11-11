@@ -1,7 +1,7 @@
 package global
 
 import (
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/validator"
+	"github.com/haierkeys/fast-note-sync-service/pkg/validator"
 
 	ut "github.com/go-playground/universal-translator"
 )

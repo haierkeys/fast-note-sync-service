@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
-	"github.com/haierkeys/obsidian-better-sync-service/internal/routers"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/logger"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/safe_close"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/validator"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/internal/routers"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safe_close"
+	"github.com/haierkeys/fast-note-sync-service/pkg/validator"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"

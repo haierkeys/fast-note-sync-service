@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gen"

@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/errors"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/errors"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
 // PutFile 将本地文件上传到 WebDAV 服务器。

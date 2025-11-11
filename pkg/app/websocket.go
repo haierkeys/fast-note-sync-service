@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"

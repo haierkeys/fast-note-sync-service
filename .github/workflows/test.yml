@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  PLUGIN_NAME: obsidian-better-sync-service
+  PLUGIN_NAME: fast-note-sync-service
 jobs:
   build:
     runs-on: ubuntu-latest

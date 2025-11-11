@@ -11,8 +11,8 @@ import (
 var frontendFiles embed.FS
 var configDefault string
 var rootCmd = &cobra.Command{
-	Use:   "better-sync-service",
-	Short: "Obsidian Better Sync Service",
+	Use:   "fast-note-sync-service",
+	Short: "Fast Note Sync Service",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.HelpTemplate()
 		cmd.Help()

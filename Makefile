@@ -5,7 +5,7 @@ include .env
 REPO = $(eval REPO := $$(shell go list -f '{{.ImportPath}}' .))$(value REPO)
 
 DockerHubUser = haierkeys
-DockerHubName = obsidian-better-sync-service
+DockerHubName = fast-note-sync-service
 
 
 # DockerHubName		=	$(shell basename "$(PWD)")
@@ -15,8 +15,8 @@ projectRootDir	=	$(shell pwd)
 ReleaseTagPre = release-v
 DevelopTagPre = develop-v
 
-P_NAME = better-sync
-P_BIN = better-sync-service
+P_NAME = fast-note-sync
+P_BIN = fast-note-sync-service
 
 
 platform = $(shell uname -m)

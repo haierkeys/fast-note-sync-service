@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/haierkeys/obsidian-better-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/global"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

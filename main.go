@@ -3,7 +3,7 @@ package main
 import (
 	"embed"
 
-	"github.com/haierkeys/obsidian-better-sync-service/cmd"
+	"github.com/haierkeys/fast-note-sync-service/cmd"
 )
 
 //go:embed frontend

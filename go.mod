@@ -1,4 +1,4 @@
-module github.com/haierkeys/obsidian-better-sync-service
+module github.com/haierkeys/fast-note-sync-service
 
 go 1.24.1
 

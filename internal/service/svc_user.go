@@ -3,12 +3,12 @@ package service
 import (
 	"errors"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/dao"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/convert"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/timex"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/util"
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"gorm.io/gorm"
 )

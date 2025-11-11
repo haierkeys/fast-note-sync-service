@@ -7,9 +7,9 @@
 package middleware
 
 import (
-	"github.com/haierkeys/obsidian-better-sync-service/global"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/app"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,13 +1,13 @@
 package global
 
 import (
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
 var (
 	// 程序执行目录
 	ROOT string
-	Name string = "Obsidian Better Sync Service"
+	Name string = "Fast Note Sync Service"
 )
 
 func init() {

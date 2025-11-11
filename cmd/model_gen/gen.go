@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/haierkeys/obsidian-better-sync-service/internal/query"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"gorm.io/gen"
 )
 

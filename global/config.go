@@ -3,8 +3,8 @@ package global
 import (
 	"os"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/storage/local_fs"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/storage/local_fs"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"

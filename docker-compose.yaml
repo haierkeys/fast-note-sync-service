@@ -1,13 +1,13 @@
 services:
-  better-sync-service:
-    image: haierkeys/obsidian-better-sync-service:latest
-    container_name: better-sync-service
+  fast-note-sync-service:
+    image: haierkeys/fast-note-sync-service:latest
+    container_name: fast-note-sync-service
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - /data/better-sync-service/storage/:/api/storage/
-      - /data/better-sync-service/config/:/api/config/
+      - /data/fast-note-sync-service/storage/:/api/storage/
+      - /data/fast-note-sync-service/config/:/api/config/
     labels:
       - "com.centurylinklabs.watchtower.enable=true"  # 添加标签，标记为需要更新
 

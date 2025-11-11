@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/haierkeys/obsidian-better-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
 func (p *OSS) GetBucket(bucketName string) error {
