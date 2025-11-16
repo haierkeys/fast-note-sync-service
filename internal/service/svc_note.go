@@ -256,8 +256,13 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
 
 	var results []*Note
+	var cacheList map[string]bool = make(map[string]bool)
 	for _, node := range nodes {
+		if cacheList[node.PathHash] {
+			continue
+		}
 		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
+		cacheList[node.PathHash] = true
 	}
 
 	if err != nil {
@@ -293,8 +298,13 @@ func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestPa
 	}
 
 	var results []*Note
+	var cacheList map[string]bool = make(map[string]bool)
 	for _, node := range nodes {
+		if cacheList[node.PathHash] {
+			continue
+		}
 		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
+		cacheList[node.PathHash] = true
 	}
 
 	return results, nil

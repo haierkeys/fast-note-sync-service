@@ -13,6 +13,22 @@ func GetIndexSlice(arr []string, val string) int {
 	return -1
 }
 
+// InSlice 判断元素是否在切片中（泛型版本）
+// 参数:
+//
+//	slice - 切片
+//	item - 要查找的元素
+//
+// 返回值: bool - 存在返回true，否则返回false
+func InSlice[T comparable](slice []T, item T) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
 // Inarray 判断元素是否在切片中
 // arr: 待查找的切片
 // val: 要查找的值
