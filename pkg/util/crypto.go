@@ -2,12 +2,11 @@ package util
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -183,4 +182,49 @@ func AuthDzCodeEncrypt(str, operation, key string, expiry int64) (string, error)
 
 		return result, nil
 	}
+}
+
+// base64Encode 对字符串进行Base64编码
+// s: 待编码的字符串
+// 返回值: Base64编码后的字符串
+func base64Encode(s string) string {
+	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
+// base64Decode 对Base64编码的字符串进行解码
+// s: 待解码的Base64字符串
+// 返回值: 解码后的原始字符串，如果解码失败则返回空字符串
+func base64Decode(s string) string {
+	sByte, err := base64.StdEncoding.DecodeString(s)
+	if err == nil {
+		return string(sByte)
+	} else {
+		return ""
+	}
+}
+
+// XorEncodeStr 使用异或操作对字节切片进行加密
+// msg: 要加密的字节切片
+// key: 加密密钥的字节切片
+// 返回值: 加密后的字节切片
+func XorEncodeStr(msg []byte, key []byte) (out []byte) {
+	ml := len(msg)
+	kl := len(key)
+	for i := 0; i < ml; i++ {
+		out = append(out, (msg[i])^(key[i%kl]))
+	}
+	return out
+}
+
+// XorEncodeStrRune 使用异或操作对rune切片进行加密
+// msg: 要加密的rune切片
+// key: 加密密钥的rune切片
+// 返回值: 加密后的rune切片
+func XorEncodeStrRune(msg []rune, key []rune) (out []rune) {
+	ml := len(msg)
+	kl := len(key)
+	for i := 0; i < ml; i++ {
+		out = append(out, (msg[i])^(key[i%kl]))
+	}
+	return out
 }

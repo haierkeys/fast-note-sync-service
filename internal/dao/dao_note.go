@@ -159,8 +159,13 @@ func (d *Dao) NoteListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int
 	}
 
 	var list []*Note
+	var cacheList map[string]bool = make(map[string]bool)
 	for _, m := range mList {
+		if cacheList[m.PathHash] {
+			continue
+		}
 		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
+		cacheList[m.PathHash] = true
 	}
 	return list, nil
 }
@@ -181,8 +186,13 @@ func (d *Dao) NoteListByMtime(timestamp int64, vaultID int64, uid int64) ([]*Not
 	}
 
 	var list []*Note
+	var cacheList map[string]bool = make(map[string]bool)
 	for _, m := range mList {
+		if cacheList[m.PathHash] {
+			continue
+		}
 		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
+		cacheList[m.PathHash] = true
 	}
 	return list, nil
 }

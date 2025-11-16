@@ -80,16 +80,17 @@ This software is open-source and free. If you wish to express your gratitude or 
   ```yaml
   # docker-compose.yaml
   services:
-    fast-note-sync:
-      image: haierkeys/fast-note-sync-service:latest  # Your application image
-      container_name: fast-note-sync
+    fast-note-sync-service:
+      image: haierkeys/fast-note-sync-service:latest
+      container_name: fast-note-sync-service
       ports:
-        - "9000:9000"  # Map port 9000
-        - "9001:9001"  # Map port 9001
+        - "9000:9000"
+        - "9001:9001"
       volumes:
         - /data/fast-note-sync/storage/:/fast-note-sync/storage/  # Map storage directory
         - /data/fast-note-sync/config/:/fast-note-sync/config/    # Map configuration directory
-
+      networks:
+        - app-network
   ```
 
   Execute **docker compose**

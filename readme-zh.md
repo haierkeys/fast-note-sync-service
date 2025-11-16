@@ -91,15 +91,17 @@
   ```yaml
   # docker-compose.yaml
   services:
-    fast-note-sync:
-      image: haierkeys/fast-note-sync-service:latest  # 你的应用镜像
-      container_name: fast-note-sync
+    fast-note-sync-service:
+      image: haierkeys/fast-note-sync-service:latest
+      container_name: fast-note-sync-service
       ports:
-        - "9000:9000"  # 映射端口 9000
-        - "9001:9001"  # 映射端口 9001
+        - "9000:9000"
+        - "9001:9001"
       volumes:
         - /data/fast-note-sync/storage/:/fast-note-sync/storage/  # 映射存储目录
         - /data/fast-note-sync/config/:/fast-note-sync/config/    # 映射配置目录
+      networks:
+        - app-network  # 与 image-api 在同一网络1
 
   ```
 
