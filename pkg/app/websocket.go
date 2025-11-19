@@ -138,7 +138,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 			Details: details,
 		}, false, false)
 	} else {
-		if global.Config.User.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() {
+		if global.Config.App.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() {
 			c.send(actionType, ResResult{
 				Code:   code.Code(),
 				Status: code.Status(),

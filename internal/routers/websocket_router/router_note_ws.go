@@ -30,12 +30,24 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
-	note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
+
+	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
+	isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
+
+	var note *service.Note
+	if isNeedUpdate || isNeedSyncMtime {
+		note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+		if err != nil {
+			c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+			return
+		}
+	}
+
 	if note == nil {
 		c.ToResponse(code.SuccessNoUpdate.Reset())
 	} else {
@@ -55,7 +67,7 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
  * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
  * @Return             无
  */
-func NoteUpdateCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteUpdateCheckRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -66,56 +78,26 @@ func NoteUpdateCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
-	isNeedUpdate, isNeedSyncMtime, node, err := svc.NoteUpdateCheck(c.User.UID, params)
+	isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
-	// 通知客户端传输笔记内容
-	//todo
+
+	// 通知客户端上传笔记
 	if isNeedUpdate {
-		c.ToResponse(code.Success.WithData(node), "NoteNeedSync")
+		NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
+		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
 		return
 	}
 	// 强制客户端更新mtime 不传输笔记内容
 	if isNeedSyncMtime {
-		c.ToResponse(code.Success.WithData(node), "NoteOverrideLocalMtime")
+		NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
+		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
 		return
 	}
 	c.ToResponse(code.SuccessNoUpdate.Reset())
-}
-
-/**
- * NoteModifyOverride
- * @Description        处理文件修改的WebSocket消息
- * @Create             HaierKeys 2025-03-01 17:30
- * @Param              c  *app.WebsocketClient  WebSocket客户端连接
- * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
- * @Return             无
- */
-func NoteModifyOverride(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.NoteModifyOrCreateRequestParams{}
-
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	svc := service.New(c.Ctx).WithSF(c.SF)
-	note, err := svc.NoteModifyOrCreate(c.User.UID, params, false)
-
-	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
-		return
-	}
-	c.ToResponse(code.Success)
-
-	if len(*c.UserClients) > 1 && note != nil {
-		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncModify")
-	}
 }
 
 /**
@@ -170,29 +152,61 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
+	var cNotes map[string]service.NoteSyncCheckRequestParams = make(map[string]service.NoteSyncCheckRequestParams, 0)
+	var cNotesKeys map[string]struct{} = make(map[string]struct{}, 0)
+
+	if len(params.Notes) > 0 {
+		for _, note := range params.Notes {
+			cNotes[note.PathHash] = note
+			cNotesKeys[note.PathHash] = struct{}{}
+		}
+	}
+
 	var lastTime int64
 
 	for _, note := range list {
 		if note.UpdatedTimestamp >= lastTime {
 			lastTime = note.UpdatedTimestamp
 		}
+
 		if note.Action == "delete" {
 			c.ToResponse(code.Success.WithData(note), "NoteSyncDelete")
 		} else {
-			c.ToResponse(code.Success.WithData(note), "NoteSyncModify")
+			if cNote, ok := cNotes[note.PathHash]; ok {
+
+				delete(cNotesKeys, note.PathHash)
+
+				if note.ContentHash == cNote.ContentHash && note.Mtime == cNote.Mtime {
+					continue
+				} else if note.ContentHash != cNote.ContentHash {
+					NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
+					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+				} else {
+					NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
+					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
+				}
+			} else {
+				c.ToResponse(code.Success.WithData(note), "NoteSyncModify")
+			}
 		}
 	}
+
 	if list == nil {
 		lastTime = timex.Now().UnixMilli()
+	}
+	if len(cNotesKeys) > 0 {
+		for pathHash := range cNotesKeys {
+			note := cNotes[pathHash]
+			NoteCheck := convert.StructAssign(&note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
+			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+		}
 	}
 
 	message := &service.NoteSyncEndMessage{
 		Vault:    params.Vault,
 		LastTime: lastTime,
 	}
-
 	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
-
 }
 
 // 用户ws 服务器用户有效性验证

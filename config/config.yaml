@@ -29,14 +29,15 @@ app:
   # 临时文件存储路径
   # Temporary file storage path
   temp-path: storage/temp
+  # 是否返回成功消息
+  # Whether to return success messages
+  is-return-sussess: false
 
 user:
   # 是否开启注册功能
   # Whether to enable registration
   register-is-enable: true
-  # 是否返回成功消息
-  # Whether to return success messages
-  is-return-sussess: false
+
 
 log:
   # 日志级别

@@ -86,12 +86,8 @@ type Database struct {
 }
 
 type user struct {
-	// 是否启用
-	IsEnabled bool `yaml:"is-enable"`
 	// 注册是否启用
 	RegisterIsEnable bool `yaml:"register-is-enable"`
-	//是否返回成功信息
-	IsReturnSussess bool `yaml:"is-return-sussess"`
 }
 
 type app struct {
@@ -120,6 +116,8 @@ type app struct {
 	ImageMaxSizeWidth  int `yaml:"image-max-size-width"`
 	ImageMaxSizeHeight int `yaml:"image-max-size-height"`
 	ImageQuality       int `yaml:"image-quality"`
+	//是否返回成功信息
+	IsReturnSussess bool `yaml:"is-return-sussess"`
 }
 
 type email struct {

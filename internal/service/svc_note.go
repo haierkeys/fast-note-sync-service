@@ -5,21 +5,19 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
-	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
 
 type Note struct {
-	ID               int64      `json:"id" form:"id"`                             // 主键ID
-	Action           string     `json:"action" form:"action"`                     // 操作
-	Path             string     `json:"path" form:"path"`                         // 路径信息
-	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值
-	Content          string     `json:"content" form:"content"`                   // 内容详情
-	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希
-	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
-	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
-	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
-	CreatedAt        timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间，自动填充当前时间
-	UpdatedAt        timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间，自动填充当前时间
+	ID               int64  `json:"id" form:"id"`                             // 主键ID
+	Action           string `json:"action" form:"action"`                     // 操作
+	Path             string `json:"path" form:"path"`                         // 路径信息
+	PathHash         string `json:"pathHash" form:"pathHash"`                 // 路径哈希值
+	Content          string `json:"content" form:"content"`                   // 内容详情
+	ContentHash      string `json:"contentHash" form:"contentHash"`           // 内容哈希
+	Ctime            int64  `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64  `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+
 }
 
 type NoteUpdateCheckRequestParams struct {
@@ -30,16 +28,6 @@ type NoteUpdateCheckRequestParams struct {
 	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`     // 创建时间戳
 	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`     // 修改时间戳
 }
-
-/**
-* NoteUpdateCheck
-* @Description        修改文件
-* @Create             HaierKeys 2025-03-01 17:30
-* @Param              params  *NoteModifyRequestParams  文件修改请求参数
-* @Return             error  错误信息
-@Return             error  错误信息
-@Return             error  错误信息
-*/
 
 /*
 * NoteUpdateCheck 检查文件是否需要更新
@@ -64,21 +52,21 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 		return nil, svc.dao.Note(uid)
 	})
 
-	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
-	if node != nil {
-		nodeSvc := convert.StructAssign(node, &Note{}).(*Note)
+	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	if note != nil {
+		noteSvc := convert.StructAssign(note, &Note{}).(*Note)
 		// 检查内容是否一致1
-		if node.ContentHash == params.ContentHash {
+		if note.ContentHash == params.ContentHash {
 			// 修改时间是否
-			if params.Mtime > node.Mtime {
-				return true, false, nodeSvc, nil
-			} else if params.Mtime < node.Mtime {
-				return false, true, nodeSvc, nil
+			if params.Mtime > note.Mtime {
+				return true, false, noteSvc, nil
+			} else if params.Mtime < note.Mtime {
+				return false, true, noteSvc, nil
 			} else {
-				return false, false, nodeSvc, nil
+				return false, false, noteSvc, nil
 			}
 		}
-		return true, false, nodeSvc, nil
+		return true, false, noteSvc, nil
 	} else {
 		return true, false, nil, nil
 	}
@@ -129,44 +117,44 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		return nil, svc.dao.Note(uid)
 	})
 
-	node, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
-	if node != nil {
+	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	if note != nil {
 		// 检查内容是否一致1
-		if mtimeCheck && node.Mtime == params.Mtime && node.ContentHash == params.ContentHash {
+		if mtimeCheck && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
 			return nil, nil
 		}
 		// 检查内容是否一致 但是修改时间不同 则只更新修改时间
-		if mtimeCheck && node.Mtime < params.Mtime && node.ContentHash == params.ContentHash {
-			err := svc.dao.NoteUpdateMtime(params.Mtime, node.ID, uid)
+		if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
+			err := svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
 			if err != nil {
 				return nil, err
 			}
-			node.Mtime = params.Mtime
-			rNote := convert.StructAssign(node, &Note{}).(*Note)
+			note.Mtime = params.Mtime
+			rNote := convert.StructAssign(note, &Note{}).(*Note)
 			return rNote, nil
 		}
-		if node.Action == "delete" {
+		if note.Action == "delete" {
 			noteSet.Action = "create"
 		} else {
 			noteSet.Action = "modify"
 		}
 
-		nodeDao, err := svc.dao.NoteUpdate(noteSet, node.ID, uid)
+		noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
 		if err != nil {
 			return nil, err
 		}
 		svc.NoteCountSizeSum(vaultID, uid)
-		rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
+		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return rNote, nil
 	} else {
 
 		noteSet.Action = "create"
-		nodeDao, err := svc.dao.NoteCreate(noteSet, uid)
+		noteDao, err := svc.dao.NoteCreate(noteSet, uid)
 		if err != nil {
 			return nil, err
 		}
 		svc.NoteCountSizeSum(vaultID, uid)
-		rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
+		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return rNote, nil
 	}
 
@@ -204,37 +192,55 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		return nil, svc.dao.Note(uid)
 	})
 
-	node, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
-	note := &dao.NoteSet{
+	noteSet := &dao.NoteSet{
 		VaultID:     vaultID,
 		Action:      "delete",
-		Path:        node.Path,
-		PathHash:    node.PathHash,
+		Path:        note.Path,
+		PathHash:    note.PathHash,
 		Content:     "",
 		ContentHash: "",
 		Size:        0,
 	}
-	nodeDao, err := svc.dao.NoteUpdate(note, node.ID, uid)
+	noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
 	if err != nil {
 		return nil, err
 	}
 	svc.NoteCountSizeSum(vaultID, uid)
-	rNote := convert.StructAssign(nodeDao, &Note{}).(*Note)
+	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
 	return rNote, nil
 }
 
+type NoteSyncCheckRequestParams struct {
+	Path        string `json:"path" form:"path"` // 路径信息
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"`
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`     // 修改时间戳
+}
 type NoteSyncRequestParams struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"`
-	LastTime int64  `json:"lastTime" form:"lastTime"`
+	Vault    string                       `json:"vault" form:"vault" binding:"required"`
+	LastTime int64                        `json:"lastTime" form:"lastTime"`
+	Notes    []NoteSyncCheckRequestParams `json:"notes" form:"notes"`
 }
 
 type NoteSyncEndMessage struct {
 	Vault    string `json:"vault" form:"vault"`
 	LastTime int64  `json:"lastTime" form:"lastTime"`
+}
+
+type NoteSyncNeedPushMessage struct {
+	Path  string `json:"path" form:"path"`   // 路径信息
+	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳	UpdatedTimestamp int64  `json:"updatedTimestamp"
+}
+
+type NoteSyncMtimeMessage struct {
+	Path  string `json:"path" form:"path"`   // 路径信息
+	Ctime int64  `json:"ctime" form:"ctime"` // 创建时间戳
+	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳	UpdatedTimestamp int64  `json:"updatedTimestamp"
 }
 
 // ModifyFiles 获取修改的文件列表
@@ -253,16 +259,16 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 		return nil, svc.dao.Note(uid)
 	})
 
-	nodes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
+	notes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
 
 	var results []*Note
 	var cacheList map[string]bool = make(map[string]bool)
-	for _, node := range nodes {
-		if cacheList[node.PathHash] {
+	for _, note := range notes {
+		if cacheList[note.PathHash] {
 			continue
 		}
-		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
-		cacheList[node.PathHash] = true
+		results = append(results, convert.StructAssign(note, &Note{}).(*Note))
+		cacheList[note.PathHash] = true
 	}
 
 	if err != nil {
@@ -292,19 +298,19 @@ func (svc *Service) NoteListByMtime(uid int64, params *ModifyMtimeFilesRequestPa
 		return nil, svc.dao.Note(uid)
 	})
 
-	nodes, err := svc.dao.NoteListByMtime(params.Mtime, vaultID, uid)
+	notes, err := svc.dao.NoteListByMtime(params.Mtime, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []*Note
 	var cacheList map[string]bool = make(map[string]bool)
-	for _, node := range nodes {
-		if cacheList[node.PathHash] {
+	for _, note := range notes {
+		if cacheList[note.PathHash] {
 			continue
 		}
-		results = append(results, convert.StructAssign(node, &Note{}).(*Note))
-		cacheList[node.PathHash] = true
+		results = append(results, convert.StructAssign(note, &Note{}).(*Note))
+		cacheList[note.PathHash] = true
 	}
 
 	return results, nil

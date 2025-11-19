@@ -40,11 +40,13 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 			// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
 		},
 	})
-
+	// 修改 创建
 	wss.Use("NoteModify", websocket_router.NoteModifyByMtime)
-	wss.Use("NoteContentModify", websocket_router.NoteModifyByMtime)
-	wss.Use("NoteModifyOverride", websocket_router.NoteModifyOverride)
+	//删除
 	wss.Use("NoteDelete", websocket_router.NoteDelete)
+	// 笔记检查
+	wss.Use("NoteCheck", websocket_router.NoteModifyCheck)
+	// 基于mtime的更新通知
 	wss.Use("NoteSync", websocket_router.NoteSync)
 	wss.UserDataSelectUse(websocket_router.UserInfo)
 

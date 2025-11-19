@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -62,6 +63,10 @@ func (svc *Service) UserRegisterSendEmail(param *UserCreateRequest) (int64, erro
 
 // UserRegister 用户注册
 func (svc *Service) UserRegister(param *UserCreateRequest) (*User, error) {
+
+	if !global.Config.User.RegisterIsEnable {
+		return nil, code.ErrorUserRegisterIsDisable
+	}
 
 	if !util.IsValidUsername(param.Username) {
 		return nil, code.ErrorUserUsernameNotValid
