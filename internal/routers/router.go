@@ -74,6 +74,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.POST("/user/login", api_router.NewUser().Login)
 		api.GET("/user/sync", wss.Run())
 
+		// 添加服务端版本号接口（无需认证）
+		api.GET("/version", api_router.NewVersion().ServerVersion)
+
 		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
 		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)
 		api.Use(middleware.UserAuthToken()).GET("/vault", api_router.NewVault().List)
