@@ -6,7 +6,8 @@
     <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
 </p>
 
-[Fast Note Sync Service for Obsidian](https://github.com/haierkeys/fast-note-sync-service) 服务端,基于 Golang + Websocket 构建的高性能笔记实时同步服务
+基于 Golang + Websocket + Sqlite + React 构建的高性能 低延迟 笔记同步服务 , 需要和 [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) 配合使用
+
 
 
 ## 功能清单
@@ -142,4 +143,4 @@
 
 ## 其他资源
 
-- [Fast Note Sync For Obsidian](https://github.com/haierkeys/obsidian-fast-note-sync)
+- [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync)

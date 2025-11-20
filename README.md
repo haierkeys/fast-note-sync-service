@@ -6,8 +6,8 @@
     <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
 </p>
 
-[Fast Note Sync Service for Obsidian](https://github.com/haierkeys/fast-note-sync-service) server, a high-performance note real-time synchronization service built on Golang + Websocket.
 
+ A high-performance, low-latency note synchronization service built with Golang + Websocket + Sqlite + React, requiring [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) for use.
 
 ## Feature List
 
@@ -127,4 +127,4 @@ For more configuration details, please refer to:
 
 ## Other Resources
 
-- [Fast Note Sync For Obsidian](https://github.com/haierkeys/obsidian-fast-note-sync)
+- [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync)
