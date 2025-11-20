@@ -45,7 +45,7 @@ CGO=CGO_ENABLED=0
 
 # Setup the -ldflags option for go build here, interpolate the variable values
 # -linkmode "external" -extldflags "-static"
-LDFLAGS=-ldflags '-X ${REPO}/global.Version=$(GitTag) -X "${REPO}/global.GitTag=$(GitVersion) / $(GitVersionDesc)" -X ${REPO}/global.BuildTime=$(BuildTime)'
+LDFLAGS=-ldflags '-X ${REPO}/global.Version=$(GitTag) -X "${REPO}/global.GitTag=$(GitVersion)" -X ${REPO}/global.BuildTime=$(BuildTime)'
 #LDFLAGS=-tags "sqlite_omit_load_extension" -ldflags '-extldflags "-static -fpic" -X ${REPO}/global.Version=$(GitTag) -X "${REPO}/global.GitTag=$(GitVersion) / $(GitVersionDesc)" -X ${REPO}/global.BuildTime=$(BuildTime)'
 #LDFLAGS =-tags musl  -ldflags '-linkmode "external" -extldflags "-static"'
 
