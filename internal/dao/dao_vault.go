@@ -118,6 +118,6 @@ func (d *Dao) VaultUpdateNoteCountSize(size int64, count int64, id int64, uid in
 
 	_, err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
-	).UpdateSimple(u.Size.Value(size), u.NoteCount.Value(count))
+	).UpdateSimple(u.Size.Value(size), u.NoteCount.Value(count), u.UpdatedAt.Value(timex.Now()))
 	return err
 }

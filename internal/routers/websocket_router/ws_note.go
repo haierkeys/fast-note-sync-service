@@ -28,6 +28,14 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
+	if params.Mtime == 0 {
+		c.ToResponse(code.ErrorInvalidParams.WithDetails("mtime is required"))
+		return
+	}
+	if params.Ctime == 0 {
+		c.ToResponse(code.ErrorInvalidParams.WithDetails("ctime is required"))
+		return
+	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
@@ -120,7 +128,7 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	note, err := svc.NoteDelete(c.User.UID, params)
+	err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
@@ -128,8 +136,9 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success)
+
 	if len(*c.UserClients) > 0 {
-		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
+		c.BroadcastResponse(code.Success, true, "NoteSyncDelete")
 	}
 }
 

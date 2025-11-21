@@ -16,12 +16,13 @@ func EncodeMD5(str string) string {
 }
 
 func EncodeHash32(content string) string {
-	// 使用简单的哈希函数生成哈希值
 	var hash int32 = 0
-	for i := 0; i < len(content); i++ {
-		char := int32(content[i])
+	// 将 string 转为 UTF-16 rune 数组以匹配 JS 的处理方式
+	runes := []rune(content)
+	for i := 0; i < len(runes); i++ {
+		char := int32(runes[i])
 		hash = (hash << 5) - hash + char
-		hash &= hash
+		// Go 的 int32 会自动溢出处理，无需额外操作
 	}
 	return strconv.Itoa(int(hash))
 }

@@ -5,19 +5,33 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
 
 type Note struct {
-	ID               int64  `json:"id" form:"id"`                             // 主键ID
-	Action           string `json:"action" form:"action"`                     // 操作
-	Path             string `json:"path" form:"path"`                         // 路径信息
-	PathHash         string `json:"pathHash" form:"pathHash"`                 // 路径哈希值
-	Content          string `json:"content" form:"content"`                   // 内容详情
-	ContentHash      string `json:"contentHash" form:"contentHash"`           // 内容哈希
-	Ctime            int64  `json:"ctime" form:"ctime"`                       // 创建时间戳
-	Mtime            int64  `json:"mtime" form:"mtime"`                       // 修改时间戳
-	UpdatedTimestamp int64  `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	ID               int64      `json:"id" form:"id"`                             // 主键ID
+	Action           string     `json:"action" form:"action"`                     // 操作
+	Path             string     `json:"path" form:"path"`                         // 路径信息
+	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值
+	Content          string     `json:"content" form:"content"`                   // 内容详情
+	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希
+	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	UpdatedAt        timex.Time `json:"updatedAt"`                                // 更新时间字段
+	CreatedAt        timex.Time `json:"createdAt"`                                // 创建时间字段
+}
 
+type NoteNoContent struct {
+	ID               int64      `json:"id" form:"id"`                             // 主键ID
+	Action           string     `json:"action" form:"action"`                     // 操作
+	Path             string     `json:"path" form:"path"`                         // 路径信息
+	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值
+	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	UpdatedAt        timex.Time `json:"updatedAt"`                                // 更新时间字段
+	CreatedAt        timex.Time `json:"createdAt"`                                // 创建时间字段
 }
 
 type NoteUpdateCheckRequestParams struct {
@@ -78,8 +92,8 @@ type NoteModifyOrCreateRequestParams struct {
 	PathHash    string `json:"pathHash" form:"pathHash"`
 	Content     string `json:"content" form:"content"  binding:""`         // 内容详情
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
-	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`     // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`     // 修改时间戳
+	Ctime       int64  `json:"ctime" form:"ctime" `                        // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime" `                        // 修改时间戳
 }
 
 /**
@@ -173,18 +187,18 @@ type ContentModifyRequestParams struct {
 type NoteDeleteRequestParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash" `
 }
 
 // NoteDelete 删除笔记
-func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
+func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) error {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
 		return svc.VaultGetOrCreate(params.Vault, uid)
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	vaultID = vID.(int64)
 
@@ -194,7 +208,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	noteSet := &dao.NoteSet{
 		VaultID:     vaultID,
@@ -205,14 +219,13 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		ContentHash: "",
 		Size:        0,
 	}
-	noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
+	_, err = svc.dao.NoteUpdate(noteSet, note.ID, uid)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	svc.NoteCountSizeSum(vaultID, uid)
-	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
-	return rNote, nil
+	return nil
 }
 
 type NoteSyncCheckRequestParams struct {
@@ -326,7 +339,7 @@ func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
 
 type NoteGetRequestParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
-	Path     string `json:"path" form:"path"`
+	Path     string `json:"path" form:"path" binding:"required"`
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
@@ -358,7 +371,7 @@ type NoteListRequestParams struct {
 }
 
 // NoteList 获取笔记列表
-func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*Note, error) {
+func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*NoteNoContent, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
@@ -385,9 +398,9 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*Note,
 		return nil, err
 	}
 
-	var result []*Note
+	var result []*NoteNoContent
 	for _, n := range notes {
-		result = append(result, convert.StructAssign(n, &Note{}).(*Note))
+		result = append(result, convert.StructAssign(n, &NoteNoContent{}).(*NoteNoContent))
 	}
 
 	return result, nil

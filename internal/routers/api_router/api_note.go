@@ -34,7 +34,7 @@ func (n *Note) Get(c *gin.Context) {
 	}
 
 	if params.PathHash == "" {
-		params.PathHash = util.EncodeMD5(params.Path)
+		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
 	svc := service.New(c)
@@ -64,10 +64,10 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	}
 
 	if params.PathHash == "" {
-		params.PathHash = util.EncodeMD5(params.Path)
+		params.PathHash = util.EncodeHash32(params.Path)
 	}
 	if params.ContentHash == "" {
-		params.ContentHash = util.EncodeMD5(params.Content)
+		params.ContentHash = util.EncodeHash32(params.Content)
 	}
 
 	svc := service.New(c)
@@ -101,13 +101,14 @@ func (n *Note) Delete(c *gin.Context) {
 	}
 
 	svc := service.New(c)
-	note, err := svc.NoteDelete(uid, params)
+	err := svc.NoteDelete(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Delete svc NoteDelete err: %v", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
-	response.ToResponse(code.Success.WithData(note))
+	response.ToResponse(code.Success)
+
 }
 
 func (n *Note) List(c *gin.Context) {
