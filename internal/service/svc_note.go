@@ -75,7 +75,7 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 type NoteModifyOrCreateRequestParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`
 	Path        string `json:"path" form:"path"  binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"`
 	Content     string `json:"content" form:"content"  binding:""`         // 内容详情
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希
 	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`     // 创建时间戳
@@ -322,4 +322,73 @@ func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
 		return err
 	}
 	return svc.dao.VaultUpdateNoteCountSize(result.Size, result.Count, vaultID, uid)
+}
+
+type NoteGetRequestParams struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
+// NoteGet 获取笔记
+func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, error) {
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(note, &Note{}).(*Note), nil
+}
+
+type NoteListRequestParams struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Page     int    `json:"page" form:"page"`
+	PageSize int    `json:"pageSize" form:"pageSize"`
+}
+
+// NoteList 获取笔记列表
+func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*Note, error) {
+	var vaultID int64
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+		return svc.VaultGetOrCreate(params.Vault, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID = vID.(int64)
+
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	if params.Page <= 0 {
+		params.Page = 1
+	}
+	if params.PageSize <= 0 {
+		params.PageSize = 10
+	}
+
+	notes, err := svc.dao.NoteList(vaultID, params.Page, params.PageSize, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*Note
+	for _, n := range notes {
+		result = append(result, convert.StructAssign(n, &Note{}).(*Note))
+	}
+
+	return result, nil
 }

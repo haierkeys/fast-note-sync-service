@@ -18,6 +18,7 @@ func New(ctx *gin.Context) *Service {
 
 	svc := Service{ctx: ctx}
 	svc.dao = dao.New(global.DBEngine, ctx)
+	svc.SF = &singleflight.Group{}
 
 	// svc.dao = dao.New(otgorm.WithContext(svc.ctx, global.DBEngine))
 

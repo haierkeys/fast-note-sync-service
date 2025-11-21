@@ -82,6 +82,10 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.UserAuthToken()).GET("/vault", api_router.NewVault().List)
 		api.Use(middleware.UserAuthToken()).POST("/vault", api_router.NewVault().CreateOrUpdate)
 		api.Use(middleware.UserAuthToken()).DELETE("/vault", api_router.NewVault().Delete)
+		api.Use(middleware.UserAuthToken()).GET("/note", api_router.NewNote().Get)
+		api.Use(middleware.UserAuthToken()).POST("/note", api_router.NewNote().CreateOrUpdate)
+		api.Use(middleware.UserAuthToken()).DELETE("/note", api_router.NewNote().Delete)
+		api.Use(middleware.UserAuthToken()).GET("/notes", api_router.NewNote().List)
 	}
 	r.Use(middleware.Cors())
 	r.NoRoute(middleware.NoFound())
