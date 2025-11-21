@@ -427,3 +427,50 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		log(LogError, "WebsocketServer OnMessage", zap.String("msg", "Unknown message type"))
 	}
 }
+
+func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action string) {
+	uidStr := strconv.FormatInt(uid, 10)
+	w.mu.Lock()
+	userClients, ok := w.userClients[uidStr]
+	w.mu.Unlock()
+
+	if !ok || len(userClients) == 0 {
+		return
+	}
+
+	var responseBytes []byte
+	if code.HaveDetails() {
+		details := strings.Join(code.Details(), ",")
+		content := ResDetailsResult{
+			Code:    code.Code(),
+			Status:  code.Status(),
+			Msg:     code.Lang.GetMessage(),
+			Data:    code.Data(),
+			Details: details,
+		}
+		responseBytes, _ = json.Marshal(content)
+	} else {
+		content := ResResult{
+			Code:   code.Code(),
+			Status: code.Status(),
+			Msg:    code.Lang.GetMessage(),
+			Data:   code.Data(),
+		}
+		responseBytes, _ = json.Marshal(content)
+	}
+
+	if action != "" {
+		responseBytes = []byte(fmt.Sprintf(`%s|%s`, action, string(responseBytes)))
+	}
+
+	var b = gws.NewBroadcaster(gws.OpcodeText, responseBytes)
+	defer b.Close()
+
+	for _, uc := range userClients {
+		if uc.conn == nil {
+			continue
+		}
+		_ = b.Broadcast(uc.conn)
+	}
+	code.Reset()
+}

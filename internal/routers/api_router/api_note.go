@@ -11,10 +11,11 @@ import (
 )
 
 type Note struct {
+	wss *app.WebsocketServer
 }
 
-func NewNote() *Note {
-	return &Note{}
+func NewNote(wss *app.WebsocketServer) *Note {
+	return &Note{wss: wss}
 }
 
 func (n *Note) Get(c *gin.Context) {
@@ -77,7 +78,9 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
+
 	response.ToResponse(code.Success.WithData(note))
+	n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncModify")
 }
 
 func (n *Note) Delete(c *gin.Context) {
@@ -101,13 +104,15 @@ func (n *Note) Delete(c *gin.Context) {
 	}
 
 	svc := service.New(c)
-	err := svc.NoteDelete(uid, params)
+	note, err := svc.NoteDelete(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Delete svc NoteDelete err: %v", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
-	response.ToResponse(code.Success)
+	response.ToResponse(code.Success.WithData(note))
+
+	n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncDelete")
 
 }
 

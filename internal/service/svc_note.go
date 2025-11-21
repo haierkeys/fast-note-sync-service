@@ -191,14 +191,14 @@ type NoteDeleteRequestParams struct {
 }
 
 // NoteDelete 删除笔记
-func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) error {
+func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
 		return svc.VaultGetOrCreate(params.Vault, uid)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	vaultID = vID.(int64)
 
@@ -208,7 +208,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) error
 
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	noteSet := &dao.NoteSet{
 		VaultID:     vaultID,
@@ -219,13 +219,14 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) error
 		ContentHash: "",
 		Size:        0,
 	}
-	_, err = svc.dao.NoteUpdate(noteSet, note.ID, uid)
+	noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	svc.NoteCountSizeSum(vaultID, uid)
+	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
-	return nil
+	return rNote, nil
 }
 
 type NoteSyncCheckRequestParams struct {

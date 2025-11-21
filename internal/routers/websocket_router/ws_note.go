@@ -128,7 +128,7 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	err := svc.NoteDelete(c.User.UID, params)
+	note, err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
@@ -136,9 +136,8 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success)
-
 	if len(*c.UserClients) > 0 {
-		c.BroadcastResponse(code.Success, true, "NoteSyncDelete")
+		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
 	}
 }
 
