@@ -1,11 +1,14 @@
 package api_router
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
@@ -64,15 +67,32 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
-	if params.PathHash == "" {
-		params.PathHash = util.EncodeHash32(params.Path)
-	}
-	if params.ContentHash == "" {
-		params.ContentHash = util.EncodeHash32(params.Content)
-	}
+	params.PathHash = util.EncodeHash32(params.Path)
+	params.ContentHash = util.EncodeHash32(params.Content)
 
 	svc := service.New(c)
-	note, err := svc.NoteModifyOrCreate(uid, params, false)
+
+	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
+	isNew, _, _, noteSelect, err := svc.NoteUpdateCheck(uid, checkParams)
+
+	if err != nil {
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+	if noteSelect.Content != params.Content {
+		params.Mtime = time.Now().UnixMilli()
+	}
+
+	if isNew {
+		if params.Mtime == 0 {
+			params.Mtime = time.Now().UnixMilli()
+		}
+		if params.Ctime == 0 {
+			params.Ctime = params.Mtime
+		}
+	}
+
+	_, note, err := svc.NoteModifyOrCreate(uid, params, false)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteModifyOrCreate err: %v", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails(err.Error()))

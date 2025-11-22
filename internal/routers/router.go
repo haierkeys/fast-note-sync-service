@@ -41,7 +41,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		},
 	})
 	// 修改 创建
-	wss.Use("NoteModify", websocket_router.NoteModifyByMtime)
+	wss.Use("NoteModify", websocket_router.NoteModify)
 	//删除
 	wss.Use("NoteDelete", websocket_router.NoteDelete)
 	// 笔记检查

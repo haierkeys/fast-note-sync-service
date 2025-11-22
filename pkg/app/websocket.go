@@ -159,6 +159,10 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		actionType = options[1].(string)
 	}
 
+	if len(*c.UserClients) > 0 {
+		return
+	}
+
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
 		c.send(actionType, ResDetailsResult{

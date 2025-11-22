@@ -119,7 +119,11 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 
 	_, err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
-	).UpdateSimple(u.Mtime.Value(mtime))
+	).UpdateSimple(
+		u.Mtime.Value(mtime),
+		u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+		u.UpdatedAt.Value(timex.Now()),
+	)
 
 	return err
 }

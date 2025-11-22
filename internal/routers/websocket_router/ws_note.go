@@ -11,21 +11,29 @@ import (
 	"go.uber.org/zap"
 )
 
-/**
- * NoteModify
- * @Description        处理文件修改的WebSocket消息
- * @Create             HaierKeys 2025-03-01 17:30
- * @Param              c  *app.WebsocketClient  WebSocket客户端连接
- * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
- * @Return             无
- */
-func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+// NoteModify
+// NoteModify 处理文件修改的 WebSocket 消息。
+// 使用说明：处理客户端发送的笔记修改或创建消息，进行参数校验、更新检查并在需要时写回数据库或通知其他客户端。
+// 参数：
+//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文、用户信息、发送响应等能力。
+//   - msg: *app.WebSocketMessage, 接收到的 WebSocket 消息，包含消息数据和类型。
+//
+// 返回：无
+func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteModifyOrCreateRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+	if params.PathHash == "" {
+		c.ToResponse(code.ErrorInvalidParams.WithDetails("pathHash is required"))
+		return
+	}
+	if params.ContentHash == "" {
+		c.ToResponse(code.ErrorInvalidParams.WithDetails("contentHash is required"))
 		return
 	}
 	if params.Mtime == 0 {
@@ -40,7 +48,7 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
-	isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
+	_, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
@@ -48,33 +56,38 @@ func NoteModifyByMtime(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	var note *service.Note
-	if isNeedUpdate || isNeedSyncMtime {
-		note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+	if isNeedSyncMtime || isNeedUpdate {
+		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
 			c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 			return
 		}
-	}
+		// 通知所有客户端更新mtime
+		if isNeedSyncMtime {
+			c.ToResponse(code.Success.Reset())
+			c.BroadcastResponse(code.Success.WithData(note), false, "NoteSyncModify")
+			return
+		} else if isNeedUpdate {
 
-	if note == nil {
-		c.ToResponse(code.SuccessNoUpdate.Reset())
+			c.ToResponse(code.Success.Reset())
+			c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
+			return
+		}
 	} else {
-		c.ToResponse(code.Success.Reset())
+		c.ToResponse(code.SuccessNoUpdate.Reset())
+		return
 	}
 
-	if len(*c.UserClients) > 1 && note != nil {
-		c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
-	}
 }
 
-/**
- * NoteModify
- * @Description        处理文件修改的WebSocket消息
- * @Create             HaierKeys 2025-03-01 17:30
- * @Param              c  *app.WebsocketClient  WebSocket客户端连接
- * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
- * @Return             无
- */
+// NoteModifyCheck
+// NoteModifyCheck 检查文件修改的必要性并返回同步指令。
+// 使用说明：仅用于检查客户端提供的笔记状态与服务器状态的差异，决定客户端是否需要上传笔记或只需同步 mtime。
+// 参数：
+//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文和用户信息。
+//   - msg: *app.WebSocketMessage, 接收到的消息，包含需要检查的笔记信息。
+//
+// 返回：无
 func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteUpdateCheckRequestParams{}
 
@@ -86,7 +99,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
-	isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
+	_, isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
@@ -108,14 +121,14 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
-/**
- * NoteDelete
- * @Description        处理文件删除的WebSocket消息
- * @Create             HaierKeys 2025-03-01 17:30
- * @Param              c  *app.WebsocketClient  WebSocket客户端连接
- * @Param              msg  *app.WebSocketMessage  接收到的WebSocket消息
- * @Return             无
- */
+// NoteDelete
+// NoteDelete 处理文件删除的 WebSocket 消息。
+// 使用说明：接收客户端的笔记删除请求，执行删除操作并通知其他客户端同步删除事件。
+// 参数：
+//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含发送响应与广播能力。
+//   - msg: *app.WebSocketMessage, 接收到的删除请求消息，包含要删除的笔记标识等参数。
+//
+// 返回：无
 func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteDeleteRequestParams{}
 
@@ -136,11 +149,17 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success)
-	if len(*c.UserClients) > 0 {
-		c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
-	}
+	c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
 }
 
+// NoteSync
+// NoteSync 处理客户端的全量或增量笔记同步请求。
+// 使用说明：根据客户端提供的本地笔记列表与服务器端最近更新列表比较，决定返回哪些笔记需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
+// 参数：
+//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文与响应发送能力。
+//   - msg: *app.WebSocketMessage, 接收到的同步请求，包含客户端的笔记摘要和同步起始时间等信息。
+//
+// 返回：无
 func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteSyncRequestParams{}
 
@@ -217,7 +236,16 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
 }
 
-// 用户ws 服务器用户有效性验证
+// UserInfo
+// UserInfo 验证并获取用户信息实体（用于 WebSocket 用户验证）。
+// 使用说明：从 service 层获取用户信息并转换成 WebSocket 需要的 UserSelectEntity 结构体。
+// 参数：
+//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文与服务工厂（SF）。
+//   - uid: int64, 要查询的用户 ID。
+//
+// 返回：
+//   - *app.UserSelectEntity: 如果查询到用户则返回转换后的用户实体，否则返回 nil。
+//   - error: 查询过程中的错误（若有）。
 func UserInfo(c *app.WebsocketClient, uid int64) (*app.UserSelectEntity, error) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
