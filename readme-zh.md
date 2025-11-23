@@ -10,9 +10,9 @@
 
 基于 Golang + Websocket + Sqlite + React 构建的高性能 低延迟 笔记同步服务 , 需要和 [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) 配合使用
 
-===
+----
 
-##### WebGui展示
+##### WebGui:
 
 笔记仓库：
 <img src="https://image.diybeta.com/blog/fast-note-sync-service-1.png" alt="fast-note-sync-service-2" width="700" />
