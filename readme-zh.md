@@ -14,10 +14,12 @@
 
 ##### WebGui:
 
-笔记仓库：
+笔记仓库：<br />
+
 <img src="https://image.diybeta.com/blog/fast-note-sync-service-1.png" alt="fast-note-sync-service-2" width="800" />
 
-笔记管理：
+笔记管理：<br />
+
 <img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="800" />
 
 
