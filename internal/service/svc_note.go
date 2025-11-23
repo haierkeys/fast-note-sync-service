@@ -51,6 +51,8 @@ type NoteModifyOrCreateRequestParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`     // 仓库标识
 	Path        string `json:"path" form:"path"  binding:"required"`       // 路径
 	PathHash    string `json:"pathHash" form:"pathHash"`                   // 路径哈希
+	SrcPath     string `json:"srcPath" form:"srcPath" `                    // 源路径用于删除笔记
+	SrcPathHash string `json:"srcPathHash" form:"srcPathHash"`             // 源路径哈希用于删除笔记
 	Content     string `json:"content" form:"content"  binding:""`         // 内容详情（可选）
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希（可选）
 	Ctime       int64  `json:"ctime" form:"ctime" `                        // 创建时间戳
