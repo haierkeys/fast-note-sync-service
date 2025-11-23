@@ -21,7 +21,7 @@ Vault Management：<br />
 
 note Management：<br />
 
-<img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="700" />
+<img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="800" />
 
 
 ## Feature List
