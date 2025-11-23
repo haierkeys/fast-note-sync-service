@@ -11,14 +11,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// NoteModify
-// NoteModify 处理文件修改的 WebSocket 消息。
-// 使用说明：处理客户端发送的笔记修改或创建消息，进行参数校验、更新检查并在需要时写回数据库或通知其他客户端。
-// 参数：
-//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文、用户信息、发送响应等能力。
-//   - msg: *app.WebSocketMessage, 接收到的 WebSocket 消息，包含消息数据和类型。
+// NoteModify 处理文件修改的 WebSocket 消息
+// 函数名: NoteModify
+// 函数使用说明: 处理客户端发送的笔记修改或创建消息，进行参数校验、更新检查并在需要时写回数据库或通知其他客户端。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文、用户信息、发送响应等能力。
+//   - msg *app.WebSocketMessage: 接收到的 WebSocket 消息，包含消息数据和类型。
 //
-// 返回：无
+// 返回值说明:
+//   - 无
 func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteModifyOrCreateRequestParams{}
 
@@ -80,14 +81,15 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 }
 
-// NoteModifyCheck
-// NoteModifyCheck 检查文件修改的必要性并返回同步指令。
-// 使用说明：仅用于检查客户端提供的笔记状态与服务器状态的差异，决定客户端是否需要上传笔记或只需同步 mtime。
-// 参数：
-//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文和用户信息。
-//   - msg: *app.WebSocketMessage, 接收到的消息，包含需要检查的笔记信息。
+// NoteModifyCheck 检查文件修改必要性
+// 函数名: NoteModifyCheck
+// 函数使用说明: 仅用于检查客户端提供的笔记状态与服务器状态的差异，决定客户端是否需要上传笔记或只需同步 mtime。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文和用户信息。
+//   - msg *app.WebSocketMessage: 接收到的消息，包含需要检查的笔记信息。
 //
-// 返回：无
+// 返回值说明:
+//   - 无
 func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteUpdateCheckRequestParams{}
 
@@ -121,14 +123,15 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
-// NoteDelete
-// NoteDelete 处理文件删除的 WebSocket 消息。
-// 使用说明：接收客户端的笔记删除请求，执行删除操作并通知其他客户端同步删除事件。
-// 参数：
-//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含发送响应与广播能力。
-//   - msg: *app.WebSocketMessage, 接收到的删除请求消息，包含要删除的笔记标识等参数。
+// NoteDelete 处理文件删除的 WebSocket 消息
+// 函数名: NoteDelete
+// 函数使用说明: 接收客户端的笔记删除请求，执行删除操作并通知其他客户端同步删除事件。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含发送响应与广播能力。
+//   - msg *app.WebSocketMessage: 接收到的删除请求消息，包含要删除的笔记标识等参数。
 //
-// 返回：无
+// 返回值说明:
+//   - 无
 func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteDeleteRequestParams{}
 
@@ -152,14 +155,15 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
 }
 
-// NoteSync
-// NoteSync 处理客户端的全量或增量笔记同步请求。
-// 使用说明：根据客户端提供的本地笔记列表与服务器端最近更新列表比较，决定返回哪些笔记需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
-// 参数：
-//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文与响应发送能力。
-//   - msg: *app.WebSocketMessage, 接收到的同步请求，包含客户端的笔记摘要和同步起始时间等信息。
+// NoteSync 处理全量或增量笔记同步
+// 函数名: NoteSync
+// 函数使用说明: 根据客户端提供的本地笔记列表与服务器端最近更新列表比较，决定返回哪些笔记需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文与响应发送能力。
+//   - msg *app.WebSocketMessage: 接收到的同步请求，包含客户端的笔记摘要和同步起始时间等信息。
 //
-// 返回：无
+// 返回值说明:
+//   - 无
 func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.NoteSyncRequestParams{}
 
@@ -236,14 +240,14 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
 }
 
-// UserInfo
-// UserInfo 验证并获取用户信息实体（用于 WebSocket 用户验证）。
-// 使用说明：从 service 层获取用户信息并转换成 WebSocket 需要的 UserSelectEntity 结构体。
-// 参数：
-//   - c: *app.WebsocketClient, 当前 WebSocket 客户端连接，包含上下文与服务工厂（SF）。
-//   - uid: int64, 要查询的用户 ID。
+// UserInfo 验证并获取用户信息
+// 函数名: UserInfo
+// 函数使用说明: 从 service 层获取用户信息并转换成 WebSocket 需要的 UserSelectEntity 结构体（用于 WebSocket 用户验证）。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文与服务工厂（SF）。
+//   - uid int64: 要查询的用户 ID。
 //
-// 返回：
+// 返回值说明:
 //   - *app.UserSelectEntity: 如果查询到用户则返回转换后的用户实体，否则返回 nil。
 //   - error: 查询过程中的错误（若有）。
 func UserInfo(c *app.WebsocketClient, uid int64) (*app.UserSelectEntity, error) {

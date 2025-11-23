@@ -7,21 +7,28 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
+// Version 版本信息 API 路由处理器
+// 结构体名: Version
+// 说明: 处理获取系统版本信息的 HTTP 请求。
 type Version struct{}
 
-// NewVersion 创建版本控制器实例
+// NewVersion 创建 Version 路由处理器实例
+// 函数名: NewVersion
+// 函数使用说明: 初始化并返回一个新的 Version 结构体实例。
+// 返回值说明:
+//   - *Version: 初始化后的 Version 实例
 func NewVersion() *Version {
 	return &Version{}
 }
 
-// ServerVersion 返回服务端版本信息
-// @Summary 获取服务端版本信息
-// @Description 返回服务端的版本号、Git标签和构建时间
-// @Tags 系统信息
-// @Accept json
-// @Produce json
-// @Success 200 {object} app.Response
-// @Router /api/version [get]
+// ServerVersion 获取服务端版本信息
+// 函数名: ServerVersion
+// 函数使用说明: 处理获取服务端版本信息的 HTTP 请求。返回当前服务的版本号、Git 标签和构建时间。
+// 参数说明:
+//   - c *gin.Context: Gin 上下文
+//
+// 返回值说明:
+//   - JSON: 包含版本信息的响应数据
 func (v *Version) ServerVersion(c *gin.Context) {
 	response := app.NewResponse(c)
 	versionInfo := map[string]string{

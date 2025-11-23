@@ -13,19 +13,33 @@ import (
 	"go.uber.org/zap"
 )
 
-// Note 表示笔记相关的 API 路由处理器，包含 WebSocket 服务用于实时同步。
+// Note 笔记 API 路由处理器
+// 结构体名: Note
+// 说明: 处理笔记相关的 HTTP 请求，并持有 WebSocket 服务引用以进行实时广播。
 type Note struct {
 	wss *app.WebsocketServer
 }
 
-// NewNote 创建一个新的 Note 实例。
+// NewNote 创建 Note 路由处理器实例
+// 函数名: NewNote
+// 函数使用说明: 初始化并返回一个新的 Note 结构体实例。
+// 参数说明:
+//   - wss *app.WebsocketServer: WebSocket 服务实例，用于消息广播
+//
+// 返回值说明:
+//   - *Note: 初始化后的 Note 实例
 func NewNote(wss *app.WebsocketServer) *Note {
 	return &Note{wss: wss}
 }
 
-// Get 获取指定路径的笔记内容。
-// 接收路径或路径哈希作为参数，若未提供路径哈希则自动计算。
-// 验证用户身份后调用服务层获取笔记数据，并返回结果。
+// Get 获取单条笔记详情
+// 函数名: Get
+// 函数使用说明: 处理获取单条笔记的 HTTP 请求。验证参数和用户身份，调用 Service 层获取笔记内容。
+// 参数说明:
+//   - c *gin.Context: Gin 上下文，包含请求参数 (vault, path, pathHash 等)
+//
+// 返回值说明:
+//   - JSON: 包含笔记详情的响应数据
 func (n *Note) Get(c *gin.Context) {
 	params := &service.NoteGetRequestParams{}
 	response := app.NewResponse(c)
@@ -56,8 +70,14 @@ func (n *Note) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(note))
 }
 
-// List 列出当前用户符合条件的笔记列表。
-// 支持分页、过滤等参数，调用服务层获取笔记列表并返回。
+// List 获取笔记列表
+// 函数名: List
+// 函数使用说明: 处理获取笔记列表的 HTTP 请求。支持分页查询，返回不包含内容的笔记摘要列表。
+// 参数说明:
+//   - c *gin.Context: Gin 上下文，包含分页参数 (page, pageSize, vault)
+//
+// 返回值说明:
+//   - JSON: 包含笔记列表的响应数据
 func (n *Note) List(c *gin.Context) {
 	params := &service.NoteListRequestParams{}
 	response := app.NewResponse(c)
@@ -78,9 +98,19 @@ func (n *Note) List(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(notes))
 }
 
-// CreateOrUpdate 创建新笔记或更新已有笔记。
-// 若提供了 SrcPath 且与 Path 不同，则先检查源笔记是否存在且未被删除，然后执行重命名（删除旧路径笔记 + 创建新路径笔记）。
-// 自动填充缺失的时间戳和哈希值，冲突检测后广播同步事件。
+// CreateOrUpdate 创建或更新笔记
+// 函数名: CreateOrUpdate
+// 函数使用说明: 处理创建或更新笔记的 HTTP 请求。
+//   - 自动计算路径和内容哈希
+//   - 处理文件重命名（SrcPath != Path）
+//   - 检查冲突并更新数据库
+//   - 通过 WebSocket 广播变更通知
+//
+// 参数说明:
+//   - c *gin.Context: Gin 上下文，包含笔记数据 (vault, path, content, etc.)
+//
+// 返回值说明:
+//   - JSON: 操作结果和更新后的笔记数据
 func (n *Note) CreateOrUpdate(c *gin.Context) {
 	params := &service.NoteModifyOrCreateRequestParams{}
 	response := app.NewResponse(c)
@@ -174,8 +204,14 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncModify")
 }
 
-// Delete 删除指定路径的笔记。
-// 验证用户身份后调用服务层执行删除操作，并通过 WebSocket 广播删除事件。
+// Delete 删除笔记
+// 函数名: Delete
+// 函数使用说明: 处理删除笔记的 HTTP 请求。标记笔记为删除状态，并通过 WebSocket 广播删除通知。
+// 参数说明:
+//   - c *gin.Context: Gin 上下文，包含待删除笔记的标识 (vault, path)
+//
+// 返回值说明:
+//   - JSON: 操作结果
 func (n *Note) Delete(c *gin.Context) {
 	params := &service.NoteDeleteRequestParams{}
 	response := app.NewResponse(c)
