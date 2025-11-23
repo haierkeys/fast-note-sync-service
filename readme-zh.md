@@ -6,8 +6,19 @@
     <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
 </p>
 
+
+
 基于 Golang + Websocket + Sqlite + React 构建的高性能 低延迟 笔记同步服务 , 需要和 [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) 配合使用
 
+===
+
+##### WebGui展示
+
+笔记仓库：
+<img src="https://image.diybeta.com/blog/fast-note-sync-service-1.png" alt="fast-note-sync-service-2" width="700" />
+
+笔记管理：
+<img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="700" />
 
 
 ## 功能清单
@@ -21,13 +32,11 @@
 - [ ] 笔记云存储同步备份 - 增加备份策略
 - [x] Web页面管理
 - [x] 目前仅支持 Sqlite 存储
+- [x] 增加仓库管理
+- [x] 增加笔记管理 （ 支持 新建/删除/重命名/查看/编辑 笔记 ，所有更改会实时同步到所有设备 ）
 - [ ] 增加git维护版本
 - [ ] 基于 google-diff-match-patch 算法优化
 
-## BUGLIST (已知问题)
-
-- webgui 除了登录/注册/复制配置之外的 界面无实际功能或点击异常
-- 部分用户连接ws后, 认证成功,但是不显示nickname
 
 ## 更新日志
 

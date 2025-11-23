@@ -9,12 +9,36 @@
 
  A high-performance, low-latency note synchronization service built with Golang + Websocket + Sqlite + React, requiring [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) for use.
 
+
+ ===
+
+##### WebGui展示
+
+Vault Management：
+
+<img src="https://image.diybeta.com/blog/fast-note-sync-service-1.png" alt="fast-note-sync-service-2" width="700" />
+
+
+note Management：
+
+<img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="700" />
+
+
 ## Feature List
 
 - [x] Real-time synchronization of notes across multiple devices
-- [ ] Note cloud storage synchronization
+- [ ] Note cloud storage synchronization backup - s3
+- [ ] Note cloud storage synchronization backup - Alibaba Cloud
+- [ ] Note cloud storage synchronization backup - CF R2
+- [ ] Note cloud storage synchronization backup - minio
+- [ ] Note cloud storage synchronization backup - webdav
+- [ ] Note cloud storage synchronization backup - Add backup strategies
 - [x] Web page management
 - [x] Currently only supports Sqlite storage
+- [x] Add repository management
+- [x] Add note management (Support creating/deleting/renaming/viewing/editing notes, all changes are synchronized to all devices in real time)
+- [ ] Add git version maintenance
+- [ ] Optimize based on google-diff-match-patch algorithm
 
 
 ## Changelog
