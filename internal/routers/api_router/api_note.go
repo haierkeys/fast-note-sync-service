@@ -87,13 +87,16 @@ func (n *Note) List(c *gin.Context) {
 	}
 	uid := app.GetUID(c)
 	svc := service.New(c)
-	notes, err := svc.NoteList(uid, params)
+
+	pager := &app.Pager{Page: app.GetPage(c), PageSize: app.GetPageSize(c)}
+
+	notes, count, err := svc.NoteList(uid, params, pager)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.List svc NoteList err: %v", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
-	response.ToResponse(code.Success.WithData(notes))
+	response.ToResponseList(code.Success, notes, count)
 }
 
 // CreateOrUpdate 创建或更新笔记

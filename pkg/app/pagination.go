@@ -8,7 +8,15 @@ import (
 )
 
 func GetPage(c *gin.Context) int {
-	page := convert.StrTo(c.Query("page")).MustInt()
+
+	var page int
+
+	if s, exist := c.GetQuery("page"); exist {
+		page = convert.StrTo(s).MustInt()
+	} else if s := c.PostForm("page"); s != "" {
+		page = convert.StrTo(s).MustInt()
+	}
+
 	if page <= 0 {
 		return 1
 	}
@@ -17,7 +25,15 @@ func GetPage(c *gin.Context) int {
 }
 
 func GetPageSize(c *gin.Context) int {
-	pageSize := convert.StrTo(c.Query("pageSize")).MustInt()
+
+	var pageSize int
+
+	if s, exist := c.GetQuery("pageSize"); exist {
+		pageSize = convert.StrTo(s).MustInt()
+	} else if s := c.PostForm("pageSize"); s != "" {
+		pageSize = convert.StrTo(s).MustInt()
+	}
+
 	if pageSize <= 0 {
 		return global.Config.App.DefaultPageSize
 	}

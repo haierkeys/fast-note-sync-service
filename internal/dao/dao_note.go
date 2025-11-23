@@ -129,11 +129,28 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 }
 
 // NoteList 获取笔记列表
+func (d *Dao) NoteListCount(vaultID int64, uid int64) (int64, error) {
+	u := d.note(uid).Note
+	count, err := u.WithContext(d.ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.Action.Neq("delete"),
+	).Order(u.CreatedAt).
+		Count()
+
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// NoteList 获取笔记列表
 func (d *Dao) NoteList(vaultID int64, page int, pageSize int, uid int64) ([]*Note, error) {
 	u := d.note(uid).Note
 	modelList, err := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
-	).Order(u.CreatedAt).
+		u.Action.Neq("delete"),
+	).Order(u.Path.Desc(), u.CreatedAt.Desc()).
 		Limit(pageSize).
 		Offset(app.GetPageOffset(page, pageSize)).
 		Find()

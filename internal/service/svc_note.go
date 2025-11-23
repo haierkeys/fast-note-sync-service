@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
@@ -126,9 +127,7 @@ type NoteGetRequestParams struct {
 
 // NoteListRequestParams 获取笔记列表的分页参数。
 type NoteListRequestParams struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"` // 仓库标识
-	Page     int    `json:"page" form:"page"`                      // 页码（从1开始）
-	PageSize int    `json:"pageSize" form:"pageSize"`              // 每页大小
+	Vault string `json:"vault" form:"vault" binding:"required"` // 仓库标识
 }
 
 // NoteGet 获取单条笔记
@@ -362,14 +361,14 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 // 返回值说明:
 //   - []*NoteNoContent: 不包含 content 的笔记切片
 //   - error: 出错时返回错误
-func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*NoteNoContent, error) {
+func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *app.Pager) ([]*NoteNoContent, int, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
 		return svc.VaultGetOrCreate(params.Vault, uid)
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	vaultID = vID.(int64)
 
@@ -377,16 +376,14 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*NoteN
 		return nil, svc.dao.Note(uid)
 	})
 
-	if params.Page <= 0 {
-		params.Page = 1
-	}
-	if params.PageSize <= 0 {
-		params.PageSize = 10
+	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid)
+	if err != nil {
+		return nil, 0, err
 	}
 
-	notes, err := svc.dao.NoteList(vaultID, params.Page, params.PageSize, uid)
+	count, err := svc.dao.NoteListCount(vaultID, uid)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var result []*NoteNoContent
@@ -394,7 +391,7 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams) ([]*NoteN
 		result = append(result, convert.StructAssign(n, &NoteNoContent{}).(*NoteNoContent))
 	}
 
-	return result, nil
+	return result, int(count), nil
 }
 
 // NoteListByLastTime 获取在 lastTime 之后更新的笔记（去重 pathHash）
