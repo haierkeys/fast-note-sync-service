@@ -56,9 +56,7 @@ func (n *Note) Get(c *gin.Context) {
 		return
 	}
 
-	if params.PathHash == "" {
-		params.PathHash = util.EncodeHash32(params.Path)
-	}
+	params.PathHash = util.EncodeHash32(params.Path)
 
 	svc := service.New(c)
 	note, err := svc.NoteGet(uid, params)
@@ -227,10 +225,25 @@ func (n *Note) Delete(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	if params.PathHash == "" {
-		params.PathHash = util.EncodeHash32(params.Path)
-	}
+	params.PathHash = util.EncodeHash32(params.Path)
 	svc := service.New(c)
+
+	noteSrc, err := svc.NoteGet(uid, &service.NoteGetRequestParams{
+		Vault:    params.Vault,
+		Path:     params.Path,
+		PathHash: params.PathHash,
+	})
+	if err != nil {
+		global.Logger.Error("apiRouter.Note.Delete svc NoteGet err: %v", zap.Error(err))
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+	// 如果源笔记不存在，或者源笔记是删除状态，直接返回
+	if noteSrc == nil || noteSrc.Action == "delete" {
+		response.ToResponse(code.ErrorNoteNotFound)
+		return
+	}
+
 	note, err := svc.NoteDelete(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Delete svc NoteDelete err: %v", zap.Error(err))
