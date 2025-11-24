@@ -10,14 +10,9 @@
 
 A high-performance, low-latency note synchronization service built with Golang + WebSocket + SQLite + React. It needs to be used together with the [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync).
 
-<<<<<<< HEAD
 ----
 
-##### Web GUI:
-=======
-WebGui Screenshot:
--------------------
->>>>>>> 25a64834ce52bc4b31f63db27946ef9feb44ff4d
+##### Web GUI Screenshot:
 
 Note repository: <br />
 
