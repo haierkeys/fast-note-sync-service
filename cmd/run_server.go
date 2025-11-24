@@ -11,8 +11,10 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
+	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/safe_close"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/haierkeys/fast-note-sync-service/pkg/validator"
 
 	"github.com/gin-gonic/gin"
@@ -63,6 +65,9 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	initValidator()
 
 	validator.RegisterCustom()
+
+	// Start scheduler
+	initScheduler(s)
 
 	s.logger.Info(fmt.Sprintf("%s v%s / Git:%s / BuidTime:%s", global.Name, global.Version, global.GitTag, global.BuildTime))
 
@@ -140,6 +145,44 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	}
 
 	return s, nil
+}
+
+func initScheduler(s *Server) {
+	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	duration, err := util.ParseDuration(retentionTimeStr)
+	if err != nil || duration <= 0 {
+		return
+	}
+
+	s.logger.Info("scheduler starting", zap.String("retention_time", retentionTimeStr))
+
+	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+		defer done()
+		// 每分钟执行一次 (既然单位是秒，检查频率应该更高)
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		// 立即执行一次
+		go func() {
+			svc := service.NewBackground(context.Background())
+			if err := svc.NoteCleanupAll(); err != nil {
+				s.logger.Error("note cleanup error", zap.Error(err))
+			}
+		}()
+
+		for {
+			select {
+			case <-ticker.C:
+				svc := service.NewBackground(context.Background())
+				if err := svc.NoteCleanupAll(); err != nil {
+					s.logger.Error("note cleanup error", zap.Error(err))
+				}
+			case <-closeSignal:
+				s.logger.Info("scheduler stopped")
+				return
+			}
+		}
+	})
 }
 
 func initLogger(s *Server) error {

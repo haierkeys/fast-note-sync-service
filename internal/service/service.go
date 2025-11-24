@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"golang.org/x/sync/singleflight"
@@ -22,6 +24,14 @@ func New(ctx *gin.Context) *Service {
 
 	// svc.dao = dao.New(otgorm.WithContext(svc.ctx, global.DBEngine))
 
+	return &svc
+}
+
+// NewBackground 创建一个用于后台任务的 Service 实例 (ctx 为 nil)
+func NewBackground(ctx context.Context) *Service {
+	svc := Service{ctx: nil}
+	svc.dao = dao.New(global.DBEngine, ctx)
+	svc.SF = &singleflight.Group{}
 	return &svc
 }
 

@@ -118,6 +118,9 @@ type app struct {
 	ImageQuality       int `yaml:"image-quality"`
 	//是否返回成功信息
 	IsReturnSussess bool `yaml:"is-return-sussess"`
+
+	// 软删除笔记保留时间（支持单位: d=天, h=小时, m=分, s=秒），0 或空表示不自动清理
+	DeleteNoteRetentionTime string `yaml:"delete-note-retention-time"`
 }
 
 type email struct {

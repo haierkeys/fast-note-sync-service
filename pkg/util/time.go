@@ -1,6 +1,8 @@
 package util
 
 import (
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -55,4 +57,22 @@ func TimeParse(layout string, in string) time.Time {
 	local, _ := time.LoadLocation("Local")
 	timer, _ := time.ParseInLocation(layout, in, local)
 	return timer
+}
+
+// ParseDuration 解析时间字符串，支持 'd' (天) 后缀
+func ParseDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if strings.HasSuffix(s, "d") {
+		daysStr := strings.TrimSuffix(s, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return 0, err
+		}
+		return time.Duration(days) * 24 * time.Hour, nil
+	}
+	// 如果是纯数字，默认为秒 (兼容旧配置)
+	if _, err := strconv.Atoi(s); err == nil {
+		s += "s"
+	}
+	return time.ParseDuration(s)
 }

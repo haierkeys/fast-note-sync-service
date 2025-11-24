@@ -104,3 +104,25 @@ func (svc *Service) VaultGetOrCreate(name string, uid int64) (int64, error) {
 	return vault.ID, nil
 
 }
+
+func (svc *Service) VaultIdGetByName(name string, uid int64) (int64, error) {
+
+	vault, err := svc.dao.VaultGetByName(name, uid)
+
+	if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, code.ErrorVaultNotFound
+	}
+	return vault.ID, nil
+
+}
+
+func (svc *Service) VaultGetByName(name string, uid int64) (*Vault, error) {
+
+	vault, err := svc.dao.VaultGetByName(name, uid)
+
+	if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, code.ErrorVaultNotFound
+	}
+	return convert.StructAssign(vault, &Vault{}).(*Vault), nil
+
+}
