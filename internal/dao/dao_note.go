@@ -212,3 +212,13 @@ func (d *Dao) NoteCountSizeSum(vaultID int64, uid int64) (*NoteCountSizeSum, err
 	}
 	return result, nil
 }
+
+// NoteDeletePhysicalByTime 根据时间物理删除笔记
+func (d *Dao) NoteDeletePhysicalByTime(timestamp int64, uid int64) error {
+	u := d.note(uid).Note
+	_, err := u.WithContext(d.ctx).Where(
+		u.Action.Eq("delete"),
+		u.UpdatedTimestamp.Lt(timestamp),
+	).Delete()
+	return err
+}
