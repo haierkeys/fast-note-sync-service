@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
@@ -154,8 +153,6 @@ func initScheduler(s *Server) {
 	if err != nil || duration <= 0 {
 		return
 	}
-
-	dump.P(duration)
 
 	s.logger.Info("scheduler starting", zap.String("retention_time", retentionTimeStr))
 

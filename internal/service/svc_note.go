@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"go.uber.org/zap"
 )
 
 // Note 表示笔记的完整数据结构（包含内容）。
@@ -485,8 +485,10 @@ func (svc *Service) NoteCleanup(uid int64) error {
 	// 计算截止时间戳 (当前时间 - 保留时间)
 	// 注意: UpdatedTimestamp 是毫秒级时间戳
 	cutoffTime := time.Now().Add(-retentionDuration).UnixMilli()
+	//转换成 2006-01-02 15:04:05.000
+	cutoffTimeStr := time.UnixMilli(cutoffTime).Format("2006-01-02 15:04:05.000")
 
-	dump.P(cutoffTime)
+	global.Logger.Info("note cleanup", zap.Int64("uid", uid), zap.String("retention_time", retentionTimeStr), zap.String("cutoff_time", cutoffTimeStr))
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
 		return nil, svc.dao.Note(uid)
