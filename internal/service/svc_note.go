@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -11,6 +12,11 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
+)
+
+var (
+	lastCleanupTime time.Time
+	cleanupMutex    sync.Mutex
 )
 
 // Note 表示笔记的完整数据结构（包含内容）。
@@ -499,6 +505,45 @@ func (svc *Service) NoteCleanup(uid int64) error {
 
 // NoteCleanupAll 清理所有用户的过期软删除笔记
 func (svc *Service) NoteCleanupAll() error {
+	// 获取保留时间配置
+	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	if retentionTimeStr == "" || retentionTimeStr == "0" {
+		return nil
+	}
+
+	retentionDuration, err := util.ParseDuration(retentionTimeStr)
+	if err != nil {
+		return err
+	}
+
+	if retentionDuration <= 0 {
+		return nil
+	}
+
+	cleanupMutex.Lock()
+	defer cleanupMutex.Unlock()
+
+	// 动态计算检查间隔
+	// 如果保留时间很短（< 1小时），则最小间隔为 1 分钟
+	// 如果保留时间较长（>= 1小时），则间隔为保留时间的 1/10，但最大不超过 1 小时
+	var checkInterval time.Duration
+	if retentionDuration < time.Hour {
+		checkInterval = time.Minute
+	} else {
+		checkInterval = retentionDuration / 10
+		if checkInterval > time.Hour {
+			checkInterval = time.Hour
+		}
+		if checkInterval < time.Minute {
+			checkInterval = time.Minute
+		}
+	}
+
+	// 如果距离上次清理时间不足检查间隔，则跳过
+	if time.Since(lastCleanupTime) < checkInterval {
+		return nil
+	}
+
 	uids, err := svc.dao.GetAllUserUIDs()
 	if err != nil {
 		return err
@@ -508,5 +553,7 @@ func (svc *Service) NoteCleanupAll() error {
 		// 忽略单个用户的清理错误，继续清理下一个
 		_ = svc.NoteCleanup(uid)
 	}
+
+	lastCleanupTime = time.Now()
 	return nil
 }
