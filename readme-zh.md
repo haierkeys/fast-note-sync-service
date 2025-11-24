@@ -52,26 +52,20 @@
 
 ## 私有部署
 
-- 目录设置
+1) 推荐：一键安装脚本（自动检测平台并安装）
 
   ```bash
-  # 创建项目所需的目录
-  mkdir -p /data/fast-note-sync
-  cd /data/fast-note-sync
-
-  mkdir -p ./config && mkdir -p ./storage/logs && mkdir -p ./storage/uploads
+  bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
   ```
+脚本主要功能：
+- 自动下载对应平台的 Release 资产并安装二进制
+- 创建 /opt/fast-note 作为默认安装目录
+- 在 /usr/local/bin/fast-note 创建快捷命令
+- 为 systemd 环境创建 systemd 服务（fast-note.service）并启用
+- 支持命令：install|uninstall|full-uninstall|start|stop|status|update|install-self|menu
+- full-uninstall 会删除安装目录、日志、安装脚本与软链（执行前有交互确认）
 
-  首次启动如果不下载配置文件,程序会自动生成一个默认配置到 **config/config.yaml**
-
-  如果你想从网络下载一个默认配置 使用以下命令来下载
-
-  ```bash
-  # 从开源库下载默认配置文件到配置目录
-  wget -P ./config/ https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/main/config/config.yaml
-  ```
-
-- 二进制安装
+2) 二进制手动安装
 
   从 [Releases](https://github.com/haierkeys/fast-note-sync-service/releases) 下载最新版本，解压后执行：
 
@@ -79,8 +73,7 @@
   ./fast-note-sync-service run -c config/config.yaml
   ```
 
-
-- 容器化安装（Docker 方式）
+3) 容器化安装（Docker 命令方式）
 
   Docker 命令:
 
@@ -96,12 +89,11 @@
           haierkeys/fast-note-sync-service:latest
   ```
 
-  Docker Compose
-  使用 *containrrr/watchtower* 来监听镜像实现自动更新项目
+4) 容器化安装（Docker Compose）
   **docker-compose.yaml** 内容如下
 
   ```yaml
-  # docker-compose.yaml
+  # /data/docker-compose.yaml
   services:
     fast-note-sync-service:
       image: haierkeys/fast-note-sync-service:latest
@@ -122,13 +114,13 @@
   以服务方式注册 docker 容器
 
   ```bash
-  docker compose up -d
+  docker compose -f /data/docker-compose.yaml up -d
   ```
 
   注销并销毁 docker 容器
 
   ```bash
-  docker compose down
+ docker compose -f /data/docker-compose.yaml down
   ```
 
 ### 使用
