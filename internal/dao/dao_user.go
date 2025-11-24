@@ -87,3 +87,14 @@ func (d *Dao) UserUpdatePassword(password string, uid int64) error {
 	return err
 }
 
+// GetAllUserUIDs 获取所有用户的UID
+func (d *Dao) GetAllUserUIDs() ([]int64, error) {
+	var uids []int64
+	u := d.user().User
+	// 查询所有未删除的用户UID
+	err := u.WithContext(d.ctx).Select(u.UID).Where(u.IsDeleted.Eq(0)).Scan(&uids)
+	if err != nil {
+		return nil, err
+	}
+	return uids, nil
+}

@@ -2,11 +2,15 @@ package service
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/gookit/goutil/dump"
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 )
 
 // Note 表示笔记的完整数据结构（包含内容）。
@@ -452,4 +456,55 @@ func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
 		return err
 	}
 	return svc.dao.VaultUpdateNoteCountSize(result.Size, result.Count, vaultID, uid)
+}
+
+// NoteCleanup 清理过期的软删除笔记
+// 函数名: NoteCleanup
+// 函数使用说明: 根据配置的保留时间，物理删除过期的软删除笔记。
+// 参数说明:
+//   - uid int64: 用户ID
+//
+// 返回值说明:
+//   - error: 出错时返回错误
+func (svc *Service) NoteCleanup(uid int64) error {
+	// 获取保留时间配置
+	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	if retentionTimeStr == "" || retentionTimeStr == "0" {
+		return nil
+	}
+
+	retentionDuration, err := util.ParseDuration(retentionTimeStr)
+	if err != nil {
+		return err
+	}
+
+	if retentionDuration <= 0 {
+		return nil
+	}
+
+	// 计算截止时间戳 (当前时间 - 保留时间)
+	// 注意: UpdatedTimestamp 是毫秒级时间戳
+	cutoffTime := time.Now().Add(-retentionDuration).UnixMilli()
+
+	dump.P(cutoffTime)
+
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.Note(uid)
+	})
+
+	return svc.dao.NoteDeletePhysicalByTime(cutoffTime, uid)
+}
+
+// NoteCleanupAll 清理所有用户的过期软删除笔记
+func (svc *Service) NoteCleanupAll() error {
+	uids, err := svc.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	for _, uid := range uids {
+		// 忽略单个用户的清理错误，继续清理下一个
+		_ = svc.NoteCleanup(uid)
+	}
+	return nil
 }

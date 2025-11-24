@@ -32,6 +32,10 @@ app:
   # 是否返回成功消息
   # Whether to return success messages
   is-return-sussess: false
+  # 软删除笔记保留时长（如：30d/12h/30m/30s，0表示不清理），建议设置足够长以确保离线设备能同步删除操作
+  # Soft delete note retention time (e.g., 30d/12h/30m/30s, 0 means no cleanup), recommended to set a long enough time to ensure offline devices can synchronize delete operations
+  delete-note-retention-time: "7d"
+
 
 user:
   # 是否开启注册功能
