@@ -154,7 +154,7 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return isNew, false, false, nil, err
@@ -247,7 +247,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return isNew, nil, err
@@ -327,7 +327,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
@@ -375,7 +375,7 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -418,7 +418,7 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
-		return svc.VaultGetOrCreate(params.Vault, uid)
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
