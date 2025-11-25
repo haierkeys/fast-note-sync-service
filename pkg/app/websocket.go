@@ -151,7 +151,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 }
 
 // BroadcastResponse 将结果转换为 JSON 格式并广播给所有客户端
-// 第二个options参数为是否排除自己 第三个options参数为动作类型
+// options参数的1为是否排除自己 options参数的2 为动作类型
 func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 
 	var actionType string
@@ -159,7 +159,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		actionType = options[1].(string)
 	}
 
-	if len(*c.UserClients) > 0 {
+	if len(*c.UserClients) <= 0 {
 		return
 	}
 
