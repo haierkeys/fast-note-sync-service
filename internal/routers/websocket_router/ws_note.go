@@ -1,6 +1,7 @@
 package websocket_router
 
 import (
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -49,7 +50,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
-	_, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
+	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
@@ -57,7 +58,9 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	var note *service.Note
-	if isNeedSyncMtime || isNeedUpdate {
+
+	dump.P(isNew, isNeedSyncMtime, isNeedUpdate)
+	if isNew || isNeedSyncMtime || isNeedUpdate {
 		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
 			c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
