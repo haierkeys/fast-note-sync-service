@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -91,17 +92,23 @@ func (svc *Service) VaultDelete(param *VaultGetRequest, uid int64) error {
 
 func (svc *Service) VaultGetOrCreate(name string, uid int64) (int64, error) {
 
-	vault, err := svc.dao.VaultGetByName(name, uid)
-
-	if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
-		vault, err = svc.dao.VaultCreate(&dao.VaultSet{
-			Vault: name,
-		}, uid)
-		if err != nil {
-			return 0, err
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_GetOrCreate_%d", uid), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(name, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			vault, err = svc.dao.VaultCreate(&dao.VaultSet{
+				Vault: name,
+			}, uid)
+			if err != nil {
+				return 0, err
+			}
 		}
+		return vault.ID, nil
+	})
+	if err != nil {
+		return 0, err
 	}
-	return vault.ID, nil
+
+	return vID.(int64), nil
 
 }
 

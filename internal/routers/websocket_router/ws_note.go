@@ -1,7 +1,6 @@
 package websocket_router
 
 import (
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -49,6 +48,8 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
 	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
@@ -59,7 +60,6 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	var note *service.Note
 
-	dump.P(isNew, isNeedSyncMtime, isNeedUpdate)
 	if isNew || isNeedSyncMtime || isNeedUpdate {
 		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
@@ -69,9 +69,9 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		// 通知所有客户端更新mtime
 		if isNeedSyncMtime {
 			c.ToResponse(code.Success.Reset())
-			c.BroadcastResponse(code.Success.WithData(note), false, "NoteSyncModify")
+			c.BroadcastResponse(code.Success.Reset().WithData(note), false, "NoteSyncModify")
 			return
-		} else if isNeedUpdate {
+		} else if isNeedUpdate || isNew {
 
 			c.ToResponse(code.Success.Reset())
 			c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
@@ -147,6 +147,8 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
 	note, err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
@@ -178,6 +180,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	list, err := svc.NoteListByLastTime(c.User.UID, params)
 

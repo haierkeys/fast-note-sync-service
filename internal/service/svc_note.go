@@ -153,7 +153,7 @@ type NoteListRequestParams struct {
 func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
@@ -190,7 +190,7 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 	var isUpdateOnlyMtime bool
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
@@ -246,7 +246,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 	var isNew bool
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
@@ -374,7 +374,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *app.Pager) ([]*NoteNoContent, int, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
@@ -417,7 +417,7 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*Note, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_%d", uid), func() (any, error) {
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
