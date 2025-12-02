@@ -48,6 +48,8 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("NoteCheck", websocket_router.NoteModifyCheck)
 	// 基于mtime的更新通知
 	wss.Use("NoteSync", websocket_router.NoteSync)
+
+	wss.Use("FileSync", websocket_router.FileSync)
 	wss.UserDataSelectUse(websocket_router.UserInfo)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")

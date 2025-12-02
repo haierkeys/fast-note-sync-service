@@ -10,6 +10,9 @@ import (
 func AutoMigrate(db *gorm.DB, key string) error {
 	switch key {
 
+	case "File":
+		return db.AutoMigrate(File{})
+
 	case "Note":
 		return db.AutoMigrate(Note{})
 

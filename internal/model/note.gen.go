@@ -11,9 +11,9 @@ const TableNameNote = "note"
 // Note mapped from table <note>
 type Note struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_path_hash,priority:1" json:"vaultId" form:"vaultId"`
+	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_vault_id_path,priority:1;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_path_hash,priority:1" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action" json:"action" form:"action"`
-	Path             string     `gorm:"column:path" json:"path" form:"path"`
+	Path             string     `gorm:"column:path;index:idx_vault_id_path,priority:2" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;index:idx_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
 	Content          string     `gorm:"column:content" json:"content" form:"content"`
 	ContentHash      string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`

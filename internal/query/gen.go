@@ -18,6 +18,7 @@ import (
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:    db,
+		File:  newFile(db, opts...),
 		Note:  newNote(db, opts...),
 		User:  newUser(db, opts...),
 		Vault: newVault(db, opts...),
@@ -27,6 +28,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	File  file
 	Note  note
 	User  user
 	Vault vault
@@ -37,6 +39,7 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:    db,
+		File:  q.File.clone(db),
 		Note:  q.Note.clone(db),
 		User:  q.User.clone(db),
 		Vault: q.Vault.clone(db),
@@ -54,6 +57,7 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:    db,
+		File:  q.File.replaceDB(db),
 		Note:  q.Note.replaceDB(db),
 		User:  q.User.replaceDB(db),
 		Vault: q.Vault.replaceDB(db),
@@ -61,6 +65,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	File  IFileDo
 	Note  INoteDo
 	User  IUserDo
 	Vault IVaultDo
@@ -68,6 +73,7 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		File:  q.File.WithContext(ctx),
 		Note:  q.Note.WithContext(ctx),
 		User:  q.User.WithContext(ctx),
 		Vault: q.Vault.WithContext(ctx),

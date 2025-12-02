@@ -25,20 +25,20 @@ Note management: <br />
 
 ## Features
 
-- [x] Real-time multi-device note synchronization
-- [ ] Note cloud backup sync - S3
-- [ ] Note cloud backup sync - Alibaba Cloud
-- [ ] Note cloud backup sync - Cloudflare R2
-- [ ] Note cloud backup sync - MinIO
-- [ ] Note cloud backup sync - WebDAV
-- [ ] Note cloud backup sync - Add backup strategies
-- [x] Web-based management
+- [x] Web page management
 - [x] Currently only supports SQLite storage
-- [x] Repository management added
-- [x] Note management added (supports create/delete/rename/view/edit notes; all changes are synchronized in real time across all devices)
-- [ ] Add git-based versioning
-- [ ] Optimizations based on the google-diff-match-patch algorithm
-
+- [x] Add repository management
+- [x] Add note management ( Supports creating/deleting/renaming/viewing/editing notes, all changes will be synced to all devices in real time )
+- [x] Real-time note sync across multiple devices
+- [x] Add support for images and other types of non-note attachments
+- [ ] Add Git support
+- [ ] Note cloud storage sync backup - S3
+- [ ] Note cloud storage sync backup - Alibaba Cloud
+- [ ] Note cloud storage sync backup - Cloudflare R2
+- [ ] Note cloud storage sync backup - MinIO
+- [ ] Note cloud storage sync backup - WebDAV
+- [ ] Note cloud storage sync backup - Add backup strategies
+- [ ] Optimize using the Google diff-match-patch algorithm1
 
 ## Changelog
 
