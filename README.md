@@ -30,7 +30,7 @@ Note management: <br />
 - [x] Add repository management
 - [x] Add note management ( Supports creating/deleting/renaming/viewing/editing notes, all changes will be synced to all devices in real time )
 - [x] Real-time note sync across multiple devices
-- [x] Add support for images and other types of non-note attachments
+- [ ] Add support for images and other types of non-note attachments
 - [ ] Add Git support
 - [ ] Note cloud storage sync backup - S3
 - [ ] Note cloud storage sync backup - Alibaba Cloud
