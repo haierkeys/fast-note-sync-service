@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -32,8 +33,9 @@ func newFile(db *gorm.DB, opts ...gen.DOOption) file {
 	_file.Action = field.NewString(tableName, "action")
 	_file.Path = field.NewString(tableName, "path")
 	_file.PathHash = field.NewString(tableName, "path_hash")
-	_file.FilePath = field.NewString(tableName, "file_path")
-	_file.FileSize = field.NewInt64(tableName, "file_size")
+	_file.ContentHash = field.NewString(tableName, "content_hash")
+	_file.SavePath = field.NewString(tableName, "save_path")
+	_file.Size = field.NewInt64(tableName, "size")
 	_file.Ctime = field.NewInt64(tableName, "ctime")
 	_file.Mtime = field.NewInt64(tableName, "mtime")
 	_file.UpdatedTimestamp = field.NewInt64(tableName, "updated_timestamp")
@@ -54,8 +56,9 @@ type file struct {
 	Action           field.String
 	Path             field.String
 	PathHash         field.String
-	FilePath         field.String
-	FileSize         field.Int64
+	ContentHash      field.String
+	SavePath         field.String
+	Size             field.Int64
 	Ctime            field.Int64
 	Mtime            field.Int64
 	UpdatedTimestamp field.Int64
@@ -82,8 +85,9 @@ func (f *file) updateTableName(table string) *file {
 	f.Action = field.NewString(table, "action")
 	f.Path = field.NewString(table, "path")
 	f.PathHash = field.NewString(table, "path_hash")
-	f.FilePath = field.NewString(table, "file_path")
-	f.FileSize = field.NewInt64(table, "file_size")
+	f.ContentHash = field.NewString(table, "content_hash")
+	f.SavePath = field.NewString(table, "save_path")
+	f.Size = field.NewInt64(table, "size")
 	f.Ctime = field.NewInt64(table, "ctime")
 	f.Mtime = field.NewInt64(table, "mtime")
 	f.UpdatedTimestamp = field.NewInt64(table, "updated_timestamp")
@@ -113,14 +117,15 @@ func (f *file) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (f *file) fillFieldMap() {
-	f.fieldMap = make(map[string]field.Expr, 12)
+	f.fieldMap = make(map[string]field.Expr, 13)
 	f.fieldMap["id"] = f.ID
 	f.fieldMap["vault_id"] = f.VaultID
 	f.fieldMap["action"] = f.Action
 	f.fieldMap["path"] = f.Path
 	f.fieldMap["path_hash"] = f.PathHash
-	f.fieldMap["file_path"] = f.FilePath
-	f.fieldMap["file_size"] = f.FileSize
+	f.fieldMap["content_hash"] = f.ContentHash
+	f.fieldMap["save_path"] = f.SavePath
+	f.fieldMap["size"] = f.Size
 	f.fieldMap["ctime"] = f.Ctime
 	f.fieldMap["mtime"] = f.Mtime
 	f.fieldMap["updated_timestamp"] = f.UpdatedTimestamp
@@ -195,6 +200,8 @@ type IFileDo interface {
 	FirstOrCreate() (*model.File, error)
 	FindByPage(offset int, limit int) (result []*model.File, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IFileDo
 	UnderlyingDB() *gorm.DB

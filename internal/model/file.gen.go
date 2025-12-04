@@ -15,8 +15,9 @@ type File struct {
 	Action           string     `gorm:"column:action" json:"action" form:"action"`
 	Path             string     `gorm:"column:path;index:idx_file_vault_id_path,priority:2" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;index:idx_file_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
-	FilePath         string     `gorm:"column:file_path" json:"filePath" form:"filePath"`
-	FileSize         int64      `gorm:"column:file_size;not null" json:"fileSize" form:"fileSize"`
+	ContentHash      string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`
+	SavePath         string     `gorm:"column:save_path" json:"savePath" form:"savePath"`
+	Size             int64      `gorm:"column:size;not null" json:"size" form:"size"`
 	Ctime            int64      `gorm:"column:ctime;not null" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_file_vault_id_updated_timestamp,priority:2" json:"updatedTimestamp" form:"updatedTimestamp"`

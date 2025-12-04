@@ -54,12 +54,14 @@ type WebsocketServerConfig struct {
 
 // WebsocketClient 结构体来存储每个 WebSocket 连接及其相关状态
 type WebsocketClient struct {
-	conn        *gws.Conn
-	done        chan struct{}
-	Ctx         *gin.Context
-	User        *UserEntity
-	UserClients *ConnStorage
-	SF          *singleflight.Group // 用于处理并发请求的缓存
+	conn                *gws.Conn           // WebSocket 底层连接句柄
+	done                chan struct{}       // 关闭信号通道，用于优雅关闭读/写协程
+	Ctx                 *gin.Context        // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
+	User                *UserEntity         // 已认证用户信息，通常在握手阶段绑定
+	UserClients         *ConnStorage        // 用户连接池，支持多设备在线时广播或单点通信
+	SF                  *singleflight.Group // 并发控制：相同 key 的请求只执行一次，其余等待结果
+	BinaryMu            sync.Mutex          // 二进制分块会话的互斥锁，防止并发冲突
+	BinaryChunkSessions map[string]any      // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
@@ -221,13 +223,14 @@ func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
 type ConnStorage = map[*gws.Conn]*WebsocketClient
 
 type WebsocketServer struct {
-	handlers        map[string]func(*WebsocketClient, *WebSocketMessage)
-	userDataHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	clients         ConnStorage
-	userClients     map[string]ConnStorage
-	mu              sync.Mutex
-	up              *gws.Upgrader
-	config          *WebsocketServerConfig
+	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
+	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	binaryHandler     func(*WebsocketClient, []byte)
+	clients           ConnStorage
+	userClients       map[string]ConnStorage
+	mu                sync.Mutex
+	up                *gws.Upgrader
+	config            *WebsocketServerConfig
 }
 
 func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
@@ -271,8 +274,12 @@ func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *Web
 	w.handlers[action] = handler
 }
 
-func (w *WebsocketServer) UserDataSelectUse(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
-	w.userDataHandler = handler
+func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
+	w.userVerifyHandler = handler
+}
+
+func (w *WebsocketServer) UseBinary(handler func(*WebsocketClient, []byte)) {
+	w.binaryHandler = handler
 }
 
 func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
@@ -294,7 +301,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		}
 
 		// 用户有效性强制验证
-		userSelect, err := w.userDataHandler(c, uid)
+		userSelect, err := w.userVerifyHandler(c, uid)
 		if userSelect == nil || err != nil {
 			log(LogError, "WebsocketServer Authorization FAILD USER Not Exist", zap.Error(err))
 			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
@@ -384,7 +391,7 @@ func (w *WebsocketServer) OnPong(socket *gws.Conn, payload []byte) {
 
 func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	defer message.Close()
-	if message.Opcode != gws.OpcodeText {
+	if message.Opcode != gws.OpcodeText && message.Opcode != gws.OpcodeBinary {
 		return
 	}
 	if message.Data.String() == "close" {
@@ -393,6 +400,13 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 
 	c := w.GetClient(conn)
+
+	if message.Opcode == gws.OpcodeBinary {
+		if w.binaryHandler != nil {
+			w.binaryHandler(c, message.Data.Bytes())
+		}
+		return
+	}
 
 	messageStr := message.Data.String()
 	// 使用 strings.Index 找到分隔符的位置
