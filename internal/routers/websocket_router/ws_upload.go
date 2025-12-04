@@ -15,17 +15,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// UploadSession stores the state of an active upload
+// BinaryChunkSession stores the state of an active upload
 type BinaryChunkSession struct {
-	UploadID    string
-	Filename    string
-	Hash        string
-	TotalSize   int64
-	TotalChunks int
-	ChunkSize   int
-	TempPath    string
-	FileHandle  *os.File
-	CreatedAt   time.Time
+	ID          string   // 上传会话ID
+	Path        string   // 文件路径
+	ContentHash string   // 文件内容哈希值
+	Size        int64    // 文件总大小
+	TotalChunks int      // 总分块数
+	ChunkSize   int      // 每个分块大小
+	SavePath    string   // 临时保存路径
+	FileHandle  *os.File // 文件句柄
+	Ctime       int64    // 创建时间戳
 }
 
 type UploadInitParams struct {
@@ -69,15 +69,15 @@ func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	session := &BinaryChunkSession{
-		UploadID:    uploadID,
-		Filename:    params.Filename,
-		Hash:        params.Hash,
-		TotalSize:   params.Size,
+		ID:          uploadID,
+		Path:        params.Filename,
+		ContentHash: params.Hash,
+		Size:        params.Size,
 		TotalChunks: params.TotalChunks,
 		ChunkSize:   1024 * 1024, // Default 1MB, or calculated
-		TempPath:    tempPath,
+		SavePath:    tempPath,
 		FileHandle:  file,
-		CreatedAt:   time.Now(),
+		Ctime:       time.Now().Unix(),
 	}
 
 	c.BinaryMu.Lock()
@@ -161,16 +161,16 @@ func FileChunkEnd(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	finalPath := filepath.Join(finalDir, fmt.Sprintf("%d_%s", time.Now().Unix(), session.Filename))
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("%d_%s", time.Now().Unix(), session.Path))
 
-	if err := os.Rename(session.TempPath, finalPath); err != nil {
+	if err := os.Rename(session.SavePath, finalPath); err != nil {
 		// Try copy if rename fails (different volume)
-		if err := copyFile(session.TempPath, finalPath); err != nil {
+		if err := copyFile(session.SavePath, finalPath); err != nil {
 			global.Logger.Error("FileChunkUploadComplete Move file err", zap.Error(err))
 			c.ToResponse(code.ErrorServerInternal)
 			return
 		}
-		os.Remove(session.TempPath)
+		os.Remove(session.SavePath)
 	}
 
 	response := map[string]interface{}{
