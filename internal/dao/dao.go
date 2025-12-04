@@ -25,16 +25,42 @@ type Dao struct {
 	ctx   context.Context
 }
 
+// New 创建 Dao 实例
+// 函数名: New
+// 函数使用说明: 创建并初始化一个新的 Dao 实例,用于数据库操作。
+// 参数说明:
+//   - db *gorm.DB: GORM 数据库连接实例
+//   - ctx context.Context: 上下文对象
+//
+// 返回值说明:
+//   - *Dao: Dao 实例
 func New(db *gorm.DB, ctx context.Context) *Dao {
 	return &Dao{Db: db, ctx: ctx, KeyDb: make(map[string]*gorm.DB)}
 }
 
+// Use 获取查询对象
+// 函数名: Use
+// 函数使用说明: 获取指定数据库的查询对象,并执行初始化函数。
+// 参数说明:
+//   - f func(*gorm.DB): 数据库初始化函数
+//   - key ...string: 数据库键名(可选)
+//
+// 返回值说明:
+//   - *query.Query: 查询对象
 func (d *Dao) Use(f func(*gorm.DB), key ...string) *query.Query {
 	db := d.UseKey(key...)
 	f(db)
 	return query.Use(db)
 }
 
+// UseKey 获取数据库连接
+// 函数名: UseKey
+// 函数使用说明: 根据键名获取对应的数据库连接,如果未指定键名则返回默认数据库连接。
+// 参数说明:
+//   - key ...string: 数据库键名(可选)
+//
+// 返回值说明:
+//   - *gorm.DB: 数据库连接实例
 func (d *Dao) UseKey(key ...string) *gorm.DB {
 	var db *gorm.DB
 	if len(key) > 0 {
@@ -45,6 +71,14 @@ func (d *Dao) UseKey(key ...string) *gorm.DB {
 	return db
 }
 
+// UseDb 获取或创建指定键名的数据库连接
+// 函数名: UseDb
+// 函数使用说明: 根据键名获取数据库连接,如果不存在则创建新的数据库连接并缓存。
+// 参数说明:
+//   - k ...string: 数据库键名
+//
+// 返回值说明:
+//   - *gorm.DB: 数据库连接实例
 func (d *Dao) UseDb(k ...string) *gorm.DB {
 
 	key := k[0]
@@ -68,6 +102,15 @@ func (d *Dao) UseDb(k ...string) *gorm.DB {
 
 }
 
+// NewDBEngine 创建数据库引擎
+// 函数名: NewDBEngine
+// 函数使用说明: 根据配置创建并初始化 GORM 数据库引擎,配置连接池参数和日志模式。
+// 参数说明:
+//   - c global.Database: 数据库配置
+//
+// 返回值说明:
+//   - *gorm.DB: 数据库连接实例
+//   - error: 出错时返回错误
 func NewDBEngine(c global.Database) (*gorm.DB, error) {
 
 	var db *gorm.DB
@@ -110,6 +153,14 @@ func NewDBEngine(c global.Database) (*gorm.DB, error) {
 
 }
 
+// useDia 获取数据库方言
+// 函数名: useDia
+// 函数使用说明: 根据数据库配置返回对应的 GORM 方言(MySQL 或 SQLite)。
+// 参数说明:
+//   - c global.Database: 数据库配置
+//
+// 返回值说明:
+//   - gorm.Dialector: GORM 数据库方言
 func useDia(c global.Database) gorm.Dialector {
 	if c.Type == "mysql" {
 		return mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=%t&loc=Local",

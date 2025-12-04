@@ -57,7 +57,9 @@ CREATE TABLE "vault" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault" text DEFAULT '',
     "note_count" integer NOT NULL DEFAULT 0,
-    "size" integer NOT NULL DEFAULT 0,
+    "note_size" integer NOT NULL DEFAULT 0,
+    "file_count" integer NOT NULL DEFAULT 0,
+    "file_size" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );

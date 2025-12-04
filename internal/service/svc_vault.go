@@ -15,7 +15,10 @@ type Vault struct {
 	ID        int64      `json:"id"`        // ID 字段
 	Vault     string     `json:"vault"`     // 保险库字段
 	NoteCount int64      `json:"noteCount"` // 笔记数量字段
-	Size      int64      `json:"size"`      // 大小字段
+	NoteSize  int64      `json:"noteSize"`  // 笔记总大小字段
+	FileCount int64      `json:"fileCount"` // 文件数量字段
+	FileSize  int64      `json:"fileSize"`  // 文件总大小字段
+	Size      int64      `json:"size"`      // 总大小字段(noteSize + fileSize)
 	UpdatedAt timex.Time `json:"updatedAt"` // 更新时间字段
 	CreatedAt timex.Time `json:"createdAt"` // 创建时间字段
 }
