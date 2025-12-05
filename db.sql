@@ -35,10 +35,10 @@ CREATE TABLE "note" (
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',
     "content_hash" text DEFAULT '',
-    "size" integer NOT NULL DEFAULT 0,
-    "ctime" integer NOT NULL DEFAULT 0,
-    "mtime" integer NOT NULL DEFAULT 0,
-    "updated_timestamp" integer NOT NULL DEFAULT 0,
+    "size" integer DEFAULT 0,
+    "ctime" integer DEFAULT 0,
+    "mtime" integer DEFAULT 0,
+    "updated_timestamp" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
@@ -56,10 +56,10 @@ DROP TABLE IF EXISTS "vault";
 CREATE TABLE "vault" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault" text DEFAULT '',
-    "note_count" integer NOT NULL DEFAULT 0,
-    "note_size" integer NOT NULL DEFAULT 0,
-    "file_count" integer NOT NULL DEFAULT 0,
-    "file_size" integer NOT NULL DEFAULT 0,
+    "note_count" integer DEFAULT 0,
+    "note_size" integer DEFAULT 0,
+    "file_count" integer DEFAULT 0,
+    "file_size" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );

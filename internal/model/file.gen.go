@@ -11,16 +11,16 @@ const TableNameFile = "file"
 // File mapped from table <file>
 type File struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_file_vault_id_path,priority:1;index:idx_file_vault_id_updated_timestamp,priority:1;index:idx_file_vault_id_updated_at,priority:1;index:idx_file_vault_id_path_hash,priority:1" json:"vaultId" form:"vaultId"`
+	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_file_vault_id_path,priority:1;index:idx_file_vault_id_updated_timestamp,priority:1;index:idx_file_vault_id_updated_at,priority:1;index:idx_file_vault_id_path_hash,priority:1;default:0" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action" json:"action" form:"action"`
 	Path             string     `gorm:"column:path;index:idx_file_vault_id_path,priority:2" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;index:idx_file_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
 	ContentHash      string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`
 	SavePath         string     `gorm:"column:save_path" json:"savePath" form:"savePath"`
-	Size             int64      `gorm:"column:size;not null" json:"size" form:"size"`
-	Ctime            int64      `gorm:"column:ctime;not null" json:"ctime" form:"ctime"`
+	Size             int64      `gorm:"column:size;not null;default:0" json:"size" form:"size"`
+	Ctime            int64      `gorm:"column:ctime;not null;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_file_vault_id_updated_timestamp,priority:2" json:"updatedTimestamp" form:"updatedTimestamp"`
+	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_file_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
 	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_file_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

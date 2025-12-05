@@ -56,7 +56,7 @@ func Db(dsn string, dbType string) *gorm.DB {
 	db, err := gorm.Open(useDia(dsn, dbType), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true, // 使用单数表名，启用该选项，此时，`User` 的表名应该是 `t_user`
+			SingularTable: true, // 使用单数表名,启用该选项,此时,`User` 的表名应该是 `t_user`
 		},
 	})
 	if err != nil {
@@ -78,18 +78,62 @@ func useDia(dsn string, dbType string) gorm.Dialector {
 	return nil
 }
 
+// getIntFieldGORMTags 获取所有 int 类型字段的 GORM tag 配置
+func getIntFieldGORMTags(db *gorm.DB, tables []string) []gen.ModelOpt {
+	var opts []gen.ModelOpt
+
+	for _, table := range tables {
+		if table == "sqlite_sequence" || strings.HasPrefix(table, "sqlite_") {
+			continue
+		}
+
+		// 获取表的所有列信息
+		columnTypes, err := db.Migrator().ColumnTypes(table)
+		if err != nil {
+			continue
+		}
+
+		for _, col := range columnTypes {
+			// 检查是否是 int 类型
+			dbType := strings.ToLower(col.DatabaseTypeName())
+			if dbType == "integer" || dbType == "int" || dbType == "bigint" {
+				// 跳过主键字段
+				if isPrimaryKey(col) {
+					continue
+				}
+
+				fieldName := col.Name()
+				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+					tag.Set("default", "0")
+					return tag
+				}))
+			}
+		}
+	}
+
+	return opts
+}
+
+// isPrimaryKey 检查列是否是主键
+func isPrimaryKey(col gorm.ColumnType) bool {
+	if pk, ok := col.PrimaryKey(); ok && pk {
+		return true
+	}
+	return false
+}
+
 func main() {
 
 	g := gen.NewGenerator(gen.Config{
-		// 默认会在 OutPath 目录生成CRUD代码，并且同目录下生成 model 包
-		// 所以OutPath最终package不能设置为model，在有数据库表同步的情况下会产生冲突
+		// 默认会在 OutPath 目录生成CRUD代码,并且同目录下生成 model 包
+		// 所以OutPath最终package不能设置为model,在有数据库表同步的情况下会产生冲突
 		// 若一定要使用可以通过ModelPkgPath单独指定model package的名称
 		OutPath: "./internal/query",
 		/* ModelPkgPath: "dal/model"*/
 
-		// gen.WithoutContext：禁用WithContext模式
-		// gen.WithDefaultQuery：生成一个全局Query对象Q
-		// gen.WithQueryInterface：生成Query接口
+		// gen.WithoutContext:禁用WithContext模式
+		// gen.WithDefaultQuery:生成一个全局Query对象Q
+		// gen.WithQueryInterface:生成Query接口
 		Mode:              gen.WithQueryInterface,
 		WithUnitTest:      false,
 		FieldWithTypeTag:  false,
@@ -116,6 +160,10 @@ func main() {
 	}
 	g.WithDataTypeMap(dataMap)
 
+	// 获取表列表
+	tableList, _ := db.Migrator().GetTables()
+
+	// 基础配置
 	opts := []gen.ModelOpt{
 		//gen.FieldType("uid", "int64"),
 		gen.FieldType("created_at", "timex.Time"),
@@ -153,7 +201,9 @@ func main() {
 		}),
 	}
 
-	tableList, _ := db.Migrator().GetTables()
+	// 自动为所有 int 类型字段添加 GORM default:0
+	intFieldOpts := getIntFieldGORMTags(db, tableList)
+	opts = append(opts, intFieldOpts...)
 
 	for _, table := range tableList {
 		if table == "sqlite_sequence" {

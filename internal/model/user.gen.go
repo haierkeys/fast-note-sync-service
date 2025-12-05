@@ -17,7 +17,7 @@ type User struct {
 	Salt      string     `gorm:"column:salt" json:"salt" form:"salt"`
 	Token     string     `gorm:"column:token" json:"token" form:"token"`
 	Avatar    string     `gorm:"column:avatar" json:"avatar" form:"avatar"`
-	IsDeleted int64      `gorm:"column:is_deleted" json:"isDeleted" form:"isDeleted"`
+	IsDeleted int64      `gorm:"column:is_deleted;default:0" json:"isDeleted" form:"isDeleted"`
 	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;default:0" json:"deletedAt" form:"deletedAt"`

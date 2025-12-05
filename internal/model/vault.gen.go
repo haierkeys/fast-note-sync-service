@@ -12,10 +12,10 @@ const TableNameVault = "vault"
 type Vault struct {
 	ID        int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	Vault     string     `gorm:"column:vault;index:idx_vault_uid,priority:1" json:"vault" form:"vault"`
-	NoteCount int64      `gorm:"column:note_count;not null" json:"noteCount" form:"noteCount"`
-	NoteSize  int64      `gorm:"column:note_size;not null" json:"noteSize" form:"noteSize"`
-	FileCount int64      `gorm:"column:file_count;not null" json:"fileCount" form:"fileCount"`
-	FileSize  int64      `gorm:"column:file_size;not null" json:"fileSize" form:"fileSize"`
+	NoteCount int64      `gorm:"column:note_count;default:0" json:"noteCount" form:"noteCount"`
+	NoteSize  int64      `gorm:"column:note_size;default:0" json:"noteSize" form:"noteSize"`
+	FileCount int64      `gorm:"column:file_count;default:0" json:"fileCount" form:"fileCount"`
+	FileSize  int64      `gorm:"column:file_size;default:0" json:"fileSize" form:"fileSize"`
 	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

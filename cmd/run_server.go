@@ -148,6 +148,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 }
 
 func initScheduler(s *Server) {
+	return
 	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
 	duration, err := util.ParseDuration(retentionTimeStr)
 	if err != nil || duration <= 0 {
