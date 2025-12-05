@@ -136,3 +136,28 @@ func (svc *Service) VaultGetByName(name string, uid int64) (*Vault, error) {
 	return convert.StructAssign(vault, &Vault{}).(*Vault), nil
 
 }
+
+// VaultMigrationAll 迁移所有用户的保险库
+func (svc *Service) VaultMigrationQuery(sql string, options ...bool) error {
+
+	isAutoMigrate := false
+	if len(options) > 0 {
+		isAutoMigrate = options[0]
+	}
+
+	uids, err := svc.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	for _, uid := range uids {
+		// 忽略单个用户的清理错误，继续清理下一个
+		if isAutoMigrate {
+			_ = svc.dao.VaultAutoMigrate(uid)
+		}
+		db := svc.dao.Query(uid)
+		db.Exec(sql)
+	}
+
+	return nil
+}

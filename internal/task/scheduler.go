@@ -1,0 +1,90 @@
+package task
+
+import (
+	"context"
+	"time"
+
+	"github.com/haierkeys/fast-note-sync-service/pkg/safe_close"
+	"go.uber.org/zap"
+)
+
+// Task 定义任务接口
+type Task interface {
+	Name() string                  // 任务名称
+	Run(ctx context.Context) error // 执行任务
+	Interval() time.Duration       // 执行间隔
+	RunImmediately() bool          // 是否立即执行一次
+}
+
+// Scheduler 任务调度器
+type Scheduler struct {
+	logger *zap.Logger
+	tasks  []Task
+	sc     *safe_close.SafeClose
+}
+
+// NewScheduler 创建任务调度器
+func NewScheduler(logger *zap.Logger, sc *safe_close.SafeClose) *Scheduler {
+	return &Scheduler{
+		logger: logger,
+		tasks:  make([]Task, 0),
+		sc:     sc,
+	}
+}
+
+// AddTask 添加任务
+func (s *Scheduler) AddTask(task Task) {
+	s.tasks = append(s.tasks, task)
+}
+
+// Start 启动所有任务
+func (s *Scheduler) Start() {
+	if len(s.tasks) == 0 {
+		s.logger.Info("no tasks to schedule")
+		return
+	}
+
+	s.logger.Info("scheduler starting", zap.Int("task_count", len(s.tasks)))
+
+	for _, task := range s.tasks {
+		s.startTask(task)
+	}
+}
+
+// startTask 启动单个任务
+func (s *Scheduler) startTask(task Task) {
+	s.logger.Info("starting task", zap.String("task_name", task.Name()), zap.Duration("interval", task.Interval()))
+
+	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+		defer done()
+
+		ticker := time.NewTicker(task.Interval())
+		defer ticker.Stop()
+
+		// 如果任务需要立即执行
+		if task.RunImmediately() {
+			go func() {
+				if err := task.Run(context.Background()); err != nil {
+					s.logger.Error("task execution error",
+						zap.String("task_name", task.Name()),
+						zap.Error(err))
+				}
+			}()
+		}
+
+		// 定时执行
+		for {
+			select {
+			case <-ticker.C:
+				if err := task.Run(context.Background()); err != nil {
+					s.logger.Error("task execution error",
+						zap.String("task_name", task.Name()),
+						zap.Error(err))
+				}
+			case <-closeSignal:
+				s.logger.Info("task stopped", zap.String("task_name", task.Name()))
+				return
+			}
+		}
+	})
+}

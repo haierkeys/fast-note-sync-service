@@ -128,7 +128,7 @@ func (svc *Service) FileGet(uid int64, params *FileGetRequestParams) (*File, err
 	}
 	vaultID = vID.(int64)
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 	file, err := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
@@ -167,7 +167,7 @@ func (svc *Service) FileUpdateCheck(uid int64, params *FileUpdateCheckRequestPar
 
 	// 检查数据表是否存在
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
@@ -233,7 +233,7 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequ
 	}
 
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
@@ -302,7 +302,7 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteRequestParams) (*Fil
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	file, err := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
@@ -350,7 +350,7 @@ func (svc *Service) FileList(uid int64, params *FileListRequestParams, pager *ap
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	files, err := svc.dao.FileList(vaultID, pager.Page, pager.PageSize, uid)
@@ -393,7 +393,7 @@ func (svc *Service) FileListByLastTime(uid int64, params *FileSyncRequestParams)
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	files, err := svc.dao.FileListByUpdatedTimestamp(params.LastTime, vaultID, uid)
@@ -464,7 +464,7 @@ func (svc *Service) FileCleanup(uid int64) error {
 	global.Logger.Info("file cleanup", zap.Int64("uid", uid), zap.String("retention_time", retentionTimeStr), zap.String("cutoff_time", cutoffTimeStr))
 
 	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.File(uid)
+		return nil, svc.dao.FileAutoMigrate(uid)
 	})
 
 	return svc.dao.FileDeletePhysicalByTime(cutoffTime, uid)

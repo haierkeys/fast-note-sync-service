@@ -40,15 +40,16 @@ type NoteSet struct {
 	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
-// Note 初始化笔记表
-// 函数名: Note
+// NoteAutoMigrate 自动迁移笔记表
+// 函数名: NoteAutoMigrate
 // 函数使用说明: 为指定用户初始化笔记表,确保表结构存在。
 // 参数说明:
 //   - uid int64: 用户ID
 //
 // 返回值说明:
 //   - error: 出错时返回错误
-func (d *Dao) Note(uid int64) error {
+
+func (d *Dao) NoteAutoMigrate(uid int64) error {
 	key := "note_" + strconv.FormatInt(uid, 10)
 	b := d.UseKey(key)
 	return model.AutoMigrate(b, "Note")
@@ -63,6 +64,15 @@ func (d *Dao) Note(uid int64) error {
 // 返回值说明:
 //   - *query.Query: 查询对象
 func (d *Dao) note(uid int64) *query.Query {
+	key := "note_" + strconv.FormatInt(uid, 10)
+	return d.Use(
+		func(g *gorm.DB) {
+			model.AutoMigrate(g, "Note")
+		}, key,
+	)
+}
+
+func (d *Dao) Note(uid int64) *query.Query {
 	key := "note_" + strconv.FormatInt(uid, 10)
 	return d.Use(
 		func(g *gorm.DB) {

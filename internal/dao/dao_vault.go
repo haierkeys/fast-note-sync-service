@@ -43,6 +43,18 @@ func (d *Dao) vault(uid int64) *query.Query {
 	)
 }
 
+func (d *Dao) VaultAutoMigrate(uid int64) error {
+	key := "note_" + strconv.FormatInt(uid, 10)
+	b := d.UseKey(key)
+	return model.AutoMigrate(b, "Vault")
+}
+
+func (d *Dao) Query(uid int64) *gorm.DB {
+	key := "note_" + strconv.FormatInt(uid, 10)
+	b := d.UseKey(key)
+	return b
+}
+
 // VaultGet 根据ID获取保险库记录
 // 函数名: VaultGet
 // 函数使用说明: 根据保险库ID查询保险库记录。

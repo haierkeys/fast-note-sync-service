@@ -13,8 +13,8 @@ import (
 
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrade database schema to the latest version",
-	Long: `Upgrade database schema to the latest version.
+	Short: "Upgrade legacy database schema and other data to the latest version",
+	Long: `Upgrade legacy database schema and other data to the latest version.
 
 This command will check the current database version and apply all pending migrations.
 It is safe to run this command multiple times - already applied migrations will be skipped.`,

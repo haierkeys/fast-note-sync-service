@@ -2,7 +2,6 @@ package api_router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -52,10 +51,9 @@ func (t *Vault) CreateOrUpdate(c *gin.Context) {
 	svc := service.New(c)
 	var vault *service.Vault
 	var err error
-	dump.P(params)
+
 	if params.ID > 0 {
 		// Update logic
-		dump.P(1)
 		vault, err = svc.VaultUpdate(params, uid)
 		if err != nil {
 			global.Logger.Error("apiRouter.Vault.CreateOrUpdate svc VaultUpdate err: %v", zap.Error(err))
@@ -64,7 +62,6 @@ func (t *Vault) CreateOrUpdate(c *gin.Context) {
 		}
 		response.ToResponse(code.SuccessUpdate.WithData(vault))
 	} else {
-		dump.P(2)
 		// Create logic
 		vault, err = svc.VaultCreate(params, uid)
 		if err != nil {

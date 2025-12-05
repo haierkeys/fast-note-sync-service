@@ -161,7 +161,7 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 	}
 	vaultID = vID.(int64)
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
@@ -200,7 +200,7 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 
 	// 检查数据表是否存在
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
@@ -266,7 +266,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 	}
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
@@ -335,7 +335,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
@@ -383,7 +383,7 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid)
@@ -426,7 +426,7 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 	vaultID = vID.(int64)
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	notes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
@@ -497,7 +497,7 @@ func (svc *Service) NoteCleanup(uid int64) error {
 	global.Logger.Info("note cleanup", zap.Int64("uid", uid), zap.String("retention_time", retentionTimeStr), zap.String("cutoff_time", cutoffTimeStr))
 
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.Note(uid)
+		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
 
 	return svc.dao.NoteDeletePhysicalByTime(cutoffTime, uid)

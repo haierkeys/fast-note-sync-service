@@ -27,7 +27,7 @@ func New(ctx *gin.Context) *Service {
 	return &svc
 }
 
-// NewBackground 创建一个用于后台任务的 Service 实例 (ctx 为 nil)
+// NewBackground 创建一个用于后台任务 / 升级脚本 的 Service 实例 (ctx 为 nil)
 func NewBackground(ctx context.Context) *Service {
 	svc := Service{ctx: nil}
 	svc.dao = dao.New(global.DBEngine, ctx)

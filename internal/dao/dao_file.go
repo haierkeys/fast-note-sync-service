@@ -39,15 +39,15 @@ type FileSet struct {
 	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
-// File 初始化文件表
-// 函数名: File
-// 函数使用说明: 为指定用户初始化文件表,确保表结构存在。
+// FileAutoMigrate 自动迁移文件表
+// 函数名: FileAutoMigrate
+// 函数使用说明: 为指定用户自动迁移文件表,确保表结构存在。
 // 参数说明:
 //   - uid int64: 用户ID
 //
 // 返回值说明:
 //   - error: 出错时返回错误
-func (d *Dao) File(uid int64) error {
+func (d *Dao) FileAutoMigrate(uid int64) error {
 	key := "file_" + strconv.FormatInt(uid, 10)
 	b := d.UseKey(key)
 	return model.AutoMigrate(b, "File")
