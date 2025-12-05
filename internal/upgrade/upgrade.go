@@ -44,7 +44,7 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
 		logger: logger,
 		migrations: []Migration{
 			// 在这里注册所有的升级脚本
-			&Migration001{},
+			&VaultMigrate{},
 		},
 	}
 }

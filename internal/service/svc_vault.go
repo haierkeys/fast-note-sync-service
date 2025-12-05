@@ -137,8 +137,8 @@ func (svc *Service) VaultGetByName(name string, uid int64) (*Vault, error) {
 
 }
 
-// VaultMigrationAll 迁移所有用户的保险库
-func (svc *Service) VaultMigrationQuery(sql string, options ...bool) error {
+// VaultMigrateAll 迁移所有用户的保险库
+func (svc *Service) VaultMigrateQuery(sql string, options ...bool) error {
 
 	isAutoMigrate := false
 	if len(options) > 0 {
