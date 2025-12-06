@@ -484,7 +484,7 @@ func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
 //   - error: 出错时返回错误
 func (svc *Service) NoteCleanup(uid int64) error {
 	// 获取保留时间配置
-	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}
@@ -512,7 +512,7 @@ func (svc *Service) NoteCleanup(uid int64) error {
 // NoteCleanupAll 清理所有用户的过期软删除笔记
 func (svc *Service) NoteCleanupAll() error {
 	// 获取保留时间配置
-	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}

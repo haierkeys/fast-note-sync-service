@@ -45,7 +45,7 @@ type FileUpdateParams struct {
 }
 
 // FileDeleteRequestParams 删除文件所需参数。
-type FileDeleteRequestParams struct {
+type FileDeleteParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"` // 仓库标识
 	Path     string `json:"path" form:"path" binding:"required"`   // 路径
 	PathHash string `json:"pathHash" form:"pathHash" `             // 路径哈希（可选）
@@ -288,12 +288,12 @@ func (svc *Service) FileModifyOrCreate(uid int64, params *FileUpdateParams, mtim
 // 函数使用说明: 将指定路径的文件标记为删除（action = "delete"），并更新 vault 的统计信息。
 // 参数说明:
 //   - uid int64: 用户ID
-//   - params *FileDeleteRequestParams: 删除请求参数，包含 vault/path/pathHash
+//   - params *FileDeleteParams: 删除请求参数，包含 vault/path/pathHash
 //
 // 返回值说明:
 //   - *File: 更新后的文件数据（service.File）
 //   - error: 出错时返回错误
-func (svc *Service) FileDelete(uid int64, params *FileDeleteRequestParams) (*File, error) {
+func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
@@ -444,7 +444,7 @@ func (svc *Service) FileCountSizeSum(vaultID int64, uid int64) error {
 //   - error: 出错时返回错误
 func (svc *Service) FileCleanup(uid int64) error {
 	// 获取保留时间配置
-	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}
@@ -476,7 +476,7 @@ func (svc *Service) FileCleanup(uid int64) error {
 // FileCleanupAll 清理所有用户的过期软删除文件
 func (svc *Service) FileCleanupAll() error {
 	// 获取保留时间配置
-	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}

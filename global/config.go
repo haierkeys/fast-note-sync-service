@@ -103,24 +103,19 @@ type app struct {
 	LogFile string `yaml:"log-file"`
 
 	// 上传临时路径
-	TempPath string `yaml:"temp-fileurl"`
-	// 上传服务器URL
-	UploadUrlPre string `yaml:"upload-url-pre"`
-	//上传日期路径设置
-	UploadDatePath string `yaml:"upload-date-path"`
-	// 上传图片最大尺寸
-	UploadMaxSize int `yaml:"upload-max-size"`
-	// 上传图片允许的扩展名
-	UploadAllowExts []string `yaml:"upload-allow-exts"`
+	TempPath string `yaml:"temp-path"`
 
-	ImageMaxSizeWidth  int `yaml:"image-max-size-width"`
-	ImageMaxSizeHeight int `yaml:"image-max-size-height"`
-	ImageQuality       int `yaml:"image-quality"`
+	//上传保存路径设置
+	UploadSavePath string `yaml:"upload-save-path"`
+
 	//是否返回成功信息
 	IsReturnSussess bool `yaml:"is-return-sussess"`
 
-	// 软删除笔记保留时间（支持单位: d=天, h=小时, m=分, s=秒），0 或空表示不自动清理
-	DeleteNoteRetentionTime string `yaml:"delete-note-retention-time"`
+	// 软删除笔记保留时间(支持单位: d=天, h=小时, m=分, s=秒),0 或空表示不自动清理
+	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time"`
+
+	// 文件上传会话超时时间(支持单位: d=天, h=小时, m=分, s=秒),0 或空表示不超时
+	UploadSessionTimeout string `yaml:"upload-session-timeout"`
 }
 
 type email struct {

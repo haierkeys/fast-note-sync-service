@@ -166,3 +166,35 @@ func GetAbsPath(path string, root string) (string, error) {
 		return "", errors.New("file not exists")
 	}
 }
+
+// CopyFile 将临时文件复制到目标保存路径
+// srcPath: 源文件的绝对或相对路径
+// destPath: 目标保存文件的完整路径（包含文件名）
+func CopyFile(srcPath, destPath string) error {
+	// 1. 打开源文件
+	sourceFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	// 2. 确保目标目录存在
+	// 递归创建目录，权限设置为 0755
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
+
+	// 3. 创建目标文件
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	// 4. 执行复制操作
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	return nil
+}

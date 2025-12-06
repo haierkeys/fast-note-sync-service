@@ -5,27 +5,24 @@ import (
 	"time"
 )
 
-// GenerateRandomNumber 生成指定范围的随机数切片
+// GenerateRandomNumber 生成一组指定范围内、不重复的随机整数切片
 // start: 随机数的最小值
 // end: 随机数的最大值
 // count: 生成的随机数个数
 // 返回值: 生成的随机数切片
+
 func GenerateRandomNumber(start int, end int, count int) []int {
 	if end < start || (end-start) < count {
 		return nil
 	}
+	total := end - start
+	// 这是一个打乱的序列 [0, 1, 5, 2, 4...]
+	perm := rand.Perm(total)
 
-	nums := make([]int, 0)
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	for len(nums) < count {
-		num := r.Intn(end-start) + start
-		// 检查是否已存在
-		if !InArray(nums, num) {
-			nums = append(nums, num)
-		}
+	nums := make([]int, count)
+	for i := 0; i < count; i++ {
+		nums[i] = perm[i] + start
 	}
-
 	return nums
 }
 
@@ -54,15 +51,14 @@ func GenerateRandomSingleNumber(start int, end int) int {
 	return r.Intn(end-start) + start
 }
 
-// GenerateRandom 生成指定长度的随机字符串
-// n: 随机字符串的长度
-// 返回值: 生成的随机字符串
-func GenerateRandom(n int) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]byte, n)
+// GetRandomString 生成指定长度的随机字符串
+func GetRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	b := make([]byte, length)
 	for i := range b {
-		b[i] = letterBytes[r.Intn(len(letterBytes))]
+		// 直接使用全局 rand，无需每次都 NewSource
+		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
 }

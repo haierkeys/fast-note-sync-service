@@ -376,6 +376,20 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		w.RemoveUserClient(c)
 	}
 
+	// 清理所有未完成的上传会话
+	if len(c.BinaryChunkSessions) > 0 {
+		c.BinaryMu.Lock()
+		sessionCount := len(c.BinaryChunkSessions)
+		// 清空所有会话(具体的文件清理由超时机制或 cleanupSession 处理)
+		c.BinaryChunkSessions = make(map[string]any)
+		c.BinaryMu.Unlock()
+
+		if sessionCount > 0 {
+			log(LogWarn, "OnClose: cleared upload sessions on disconnect",
+				zap.Int("sessionCount", sessionCount))
+		}
+	}
+
 	log(LogInfo, "WebsocketServer Client Leave", zap.Int("Count", len(w.clients)))
 
 }

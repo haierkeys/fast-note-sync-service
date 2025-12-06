@@ -21,7 +21,7 @@ type CleanupTask struct {
 
 // NewCleanupTask 创建清理任务
 func NewCleanupTask() (Task, error) {
-	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	duration, err := util.ParseDuration(retentionTimeStr)
 	if err != nil {
 		return nil, err

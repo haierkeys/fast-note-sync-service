@@ -3,38 +3,44 @@ server:
   # Server operating mode: release | debug
   run-mode: release
   # http-port
-  # 服务器端口 - 格式为 -ip:port（绑定特定 IP）或 :port（绑定所有 IPs）
+  # 服务器端口 - 格式为 -ip:port(绑定特定 IP)或 :port(绑定所有 IPs)
   # Server port - format: -ip:port (bind to a specific IP) or :port (bind to all IPs)
   http-port: :9000
-  # 读取超时时间（秒），请求超时前等待的最大时间
+  # 读取超时时间(秒),请求超时前等待的最大时间
   # Read timeout (seconds), maximum time to wait before request timeout
   read-timeout: 60
-  # 写入超时时间（秒），写入超时前等待的最大时间
+  # 写入超时时间(秒),写入超时前等待的最大时间
   # Write timeout (seconds), maximum time to wait before write timeout
   write-timeout: 60
-  # 性能监控接口（私有 HTTP 服务器）
+  # 性能监控接口(私有 HTTP 服务器)
   # Performance monitoring interface (private HTTP server)
   private-http-listen: :9001
 
 app:
-  # 默认每页显示的项目数（分页）
+  # 默认每页显示的项目数(分页)
   # Default number of items per page (pagination)
   default-page-size: 10
-  # 最大每页允许的项目数（分页）
+  # 最大每页允许的项目数(分页)
   # Maximum number of items allowed per page (pagination)
   max-page-size: 100
-  # 应用操作的默认超时时间（秒）
+  # 应用操作的默认超时时间(秒)
   # Default timeout for application operations (seconds)
   default-context-timeout: 60
   # 临时文件存储路径
   # Temporary file storage path
   temp-path: storage/temp
+  # 上传保存路径设置
+  # Upload save path setting
+  upload-save-path: storage/uploads
   # 是否返回成功消息
   # Whether to return success messages
   is-return-sussess: false
-  # 软删除笔记保留时长（如：30d/12h/30m/30s，0表示不清理），建议设置足够长以确保离线设备能同步删除操作
+  # 软删除笔记保留时长(如:30d/12h/30m/30s,0表示不清理),建议设置足够长以确保离线设备能同步删除操作
   # Soft delete note retention time (e.g., 30d/12h/30m/30s, 0 means no cleanup), recommended to set a long enough time to ensure offline devices can synchronize delete operations
-  delete-note-retention-time: "7d"
+  soft-delete-retention-time: "7d"
+  # 文件上传会话超时时间(如:5m/30s,0表示不超时)
+  # File upload session timeout (e.g., 5m/30s, 0 means no timeout)
+  upload-session-timeout: "5m"
 
 
 user:
@@ -71,4 +77,3 @@ database:
   path: storage/database/db.sqlite3
   table-prefix:
   auto-migrate: true
-

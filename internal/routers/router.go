@@ -50,9 +50,12 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("NoteSync", websocket_router.NoteSync)
 
 	wss.Use("FileSync", websocket_router.FileSync)
-	wss.Use("FileChunkStart", websocket_router.FileChunkStart)
-	wss.Use("FileChunkEnd", websocket_router.FileChunkEnd)
-	wss.UseBinary(websocket_router.FileChunkBinary)
+	//附件上传前检查
+	wss.Use("FileUploadCheck", websocket_router.FileUploadCheck)
+	//附件上传完成
+	wss.Use("FileUploadComplete", websocket_router.FileUploadComplete)
+	//附件上传分块
+	wss.UseBinary(websocket_router.FileUploadChunkBinary)
 
 	wss.UseUserVerify(websocket_router.UserInfo)
 
