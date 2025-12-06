@@ -151,18 +151,25 @@ type NoteListRequestParams struct {
 //   - *Note: 笔记数据（包含 content）
 //   - error: 出错时返回错误
 func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, error) {
-	var vaultID int64
-	// 单例模式获取VaultID
+
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
 	}
-	vaultID = vID.(int64)
+	vaultID := vID.(int64)
+
 	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
 		return nil, svc.dao.NoteAutoMigrate(uid)
 	})
+
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
@@ -185,23 +192,23 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 //   - error: 出错时返回错误
 func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestParams) (bool, bool, bool, *Note, error) {
 
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
 	var isNew bool
 	var isUpdate bool
 	var isUpdateOnlyMtime bool
-	var vaultID int64
-	// 单例模式获取VaultID
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return isNew, false, false, nil, err
 	}
-	vaultID = vID.(int64)
-
-	// 检查数据表是否存在
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
+	vaultID := vID.(int64)
 
 	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if note != nil {
@@ -243,16 +250,21 @@ NoteModifyOrCreate
 */
 func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequestParams, mtimeCheck bool) (bool, *Note, error) {
 
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
 	var isNew bool
-	var vaultID int64
-	// 单例模式获取VaultID
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return isNew, nil, err
 	}
-	vaultID = vID.(int64)
+	vaultID := vID.(int64)
 
 	noteSet := &dao.NoteSet{
 		VaultID:     vaultID,
@@ -264,10 +276,6 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		Mtime:       params.Mtime,
 		Ctime:       params.Ctime,
 	}
-
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
 
 	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if note != nil {
@@ -324,19 +332,19 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 //   - *Note: 更新后的笔记数据（service.Note）
 //   - error: 出错时返回错误
 func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
-	var vaultID int64
-	// 单例模式获取VaultID
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
 	}
-	vaultID = vID.(int64)
-
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
+	vaultID := vID.(int64)
 
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
@@ -372,19 +380,20 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 //   - []*NoteNoContent: 不包含 content 的笔记切片
 //   - error: 出错时返回错误
 func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *app.Pager) ([]*NoteNoContent, int, error) {
-	var vaultID int64
-	// 单例模式获取VaultID
+
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, 0, err
 	}
-	vaultID = vID.(int64)
-
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
+	vaultID := vID.(int64)
 
 	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid)
 	if err != nil {
@@ -415,19 +424,20 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 //   - []*Note: 返回符合条件的笔记切片（包含 content）
 //   - error: 出错时返回错误
 func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*Note, error) {
-	var vaultID int64
-	// 单例模式获取VaultID
+
+	//避免重复创建问题，合并并发创建请求
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
+	// 避免重复创建问题，合并并发请求
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
 		return nil, err
 	}
-	vaultID = vID.(int64)
-
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
+	vaultID := vID.(int64)
 
 	notes, err := svc.dao.NoteListByUpdatedTimestamp(params.LastTime, vaultID, uid)
 
@@ -495,10 +505,6 @@ func (svc *Service) NoteCleanup(uid int64) error {
 	cutoffTimeStr := time.UnixMilli(cutoffTime).Format("2006-01-02 15:04:05.000")
 
 	global.Logger.Info("note cleanup", zap.Int64("uid", uid), zap.String("retention_time", retentionTimeStr), zap.String("cutoff_time", cutoffTimeStr))
-
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
 
 	return svc.dao.NoteDeletePhysicalByTime(cutoffTime, uid)
 }

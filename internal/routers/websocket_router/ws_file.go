@@ -1,15 +1,199 @@
 package websocket_router
 
 import (
+	"encoding/binary"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"go.uber.org/zap"
 )
+
+type FileUploadCompleteParams struct {
+	SessionID string `json:"sessionID" binding:"required"`
+}
+
+func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.FileUpdateCheckParams{}
+
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("websocket_router.file.FileUploadCheck.BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
+	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		return
+	}
+
+	// 需要客户端上传附件
+	if updateMode == "UpdateContent" || updateMode == "Create" {
+
+		sessionID := uuid.New().String()
+		tempDir := global.Config.App.TempPath
+		if tempDir == "" {
+			tempDir = "storage/temp"
+		}
+		if err := os.MkdirAll(tempDir, 0755); err != nil {
+			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
+			c.ToResponse(code.ErrorServerInternal)
+			return
+		}
+
+		tempPath := filepath.Join(tempDir, fmt.Sprintf("%s_%s", sessionID, params.Path))
+		file, err := os.Create(tempPath)
+		if err != nil {
+			global.Logger.Error("websocket_router.file.FileUploadCheck Create file err", zap.Error(err))
+			c.ToResponse(code.ErrorServerInternal)
+			return
+		}
+
+		session := &BinaryChunkSession{
+			ID:          sessionID,
+			Vault:       params.Path,
+			Path:        params.Path,
+			PathHash:    params.PathHash,
+			ContentHash: params.ContentHash,
+			Size:        params.Size,
+			Ctime:       params.Ctime,
+			Mtime:       params.Mtime,
+			ChunkSize:   1024 * 1024, // Default 1MB, or calculated
+			SavePath:    tempPath,
+			FileHandle:  file,
+		}
+		session.ChunkSize = util.Ceil(session.Size, session.ChunkSize)
+
+		c.BinaryMu.Lock()
+		c.BinaryChunkSessions[sessionID] = session
+		c.BinaryMu.Unlock()
+
+		data := &service.FilePushMessage{
+			Path:      fileSvc.Path,
+			Ctime:     fileSvc.Ctime,
+			Mtime:     fileSvc.Mtime,
+			SessionID: session.ID,
+			ChunkSize: session.ChunkSize,
+		}
+		c.ToResponse(code.Success.WithData(data), "FileNeedUpload")
+		return
+
+	} else if updateMode == "UpdateMtime" {
+
+		data := &service.FileMtimePushMessage{
+			Path:  fileSvc.Path,
+			Ctime: fileSvc.Ctime,
+			Mtime: fileSvc.Mtime,
+		}
+		c.ToResponse(code.Success.WithData(data), "FileSyncMtime")
+		return
+	}
+	c.ToResponse(code.SuccessNoUpdate.Reset())
+}
+
+func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
+	if len(data) < 40 {
+		global.Logger.Error("UploadBinary Invalid data length")
+		return
+	}
+
+	sessionID := string(data[:36])
+	chunkIndex := binary.BigEndian.Uint32(data[36:40])
+	chunkData := data[40:]
+
+	c.BinaryMu.Lock()
+	binarySession, exists := c.BinaryChunkSessions[sessionID]
+	c.BinaryMu.Unlock()
+	session := binarySession.(*BinaryChunkSession)
+
+	if !exists {
+		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
+		return
+	}
+
+	// Write to file
+	// Note: For simplicity, we assume sequential upload or use Seek.
+	// Using Seek is safer for parallel chunks.
+	offset := int64(chunkIndex) * int64(session.ChunkSize)
+
+	if _, err := session.FileHandle.Seek(offset, 0); err != nil {
+		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle Seek err", zap.Error(err))
+		return
+	}
+
+	if _, err := session.FileHandle.Write(chunkData); err != nil {
+		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle Write err", zap.Error(err))
+		return
+	}
+}
+
+// FileUploadComplete handles the completion of a file upload
+func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &FileUploadCompleteParams{}
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("FileChunkUploadComplete BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	c.BinaryMu.Lock()
+	binarySession, exists := c.BinaryChunkSessions[params.SessionID]
+	delete(c.BinaryChunkSessions, params.SessionID) // Remove session
+	c.BinaryMu.Unlock()
+	session := binarySession.(*BinaryChunkSession)
+
+	if !exists {
+		c.ToResponse(code.ErrorInvalidParams.WithDetails("Session not found"))
+		return
+	}
+
+	session.FileHandle.Close()
+
+	// Move to final destination
+	finalDir := "storage/uploads"
+	if err := os.MkdirAll(finalDir, 0755); err != nil {
+		global.Logger.Error("FileChunkUploadComplete MkdirAll err", zap.Error(err))
+		c.ToResponse(code.ErrorServerInternal)
+		return
+	}
+
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("%d_%s", time.Now().Unix(), session.Path))
+
+	if err := os.Rename(session.SavePath, finalPath); err != nil {
+		// Try copy if rename fails (different volume)
+		if err := copyFile(session.SavePath, finalPath); err != nil {
+			global.Logger.Error("FileChunkUploadComplete Move file err", zap.Error(err))
+			c.ToResponse(code.ErrorServerInternal)
+			return
+		}
+		os.Remove(session.SavePath)
+	}
+
+	response := map[string]interface{}{
+		"path": finalPath,
+		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
+	}
+	c.ToResponse(code.Success.WithData(response), "FileChunkUploadComplete")
+}
 
 // NoteModify 处理文件修改的 WebSocket 消息
 // 函数名: NoteModify
@@ -20,8 +204,8 @@ import (
 //
 // 返回值说明:
 //   - 无
-func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.NoteModifyOrCreateRequestParams{}
+func FileUpload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.FileUpdateParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
@@ -48,20 +232,21 @@ func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
-	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
+	checkParams := convert.StructAssign(params, &service.FileUpdateCheckParams{}).(*service.FileUpdateCheckParams)
+	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.FileUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
 
-	var note *service.Note
+	var file *service.File
 
 	if isNew || isNeedSyncMtime || isNeedUpdate {
-		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+		_, file, err = svc.FileModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
 			c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 			return
@@ -69,12 +254,12 @@ func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		// 通知所有客户端更新mtime
 		if isNeedSyncMtime {
 			c.ToResponse(code.Success.Reset())
-			c.BroadcastResponse(code.Success.Reset().WithData(note), false, "NoteSyncModify")
+			c.BroadcastResponse(code.Success.Reset().WithData(file), false, "NoteSyncModify")
 			return
 		} else if isNeedUpdate || isNew {
 
 			c.ToResponse(code.Success.Reset())
-			c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
+			c.BroadcastResponse(code.Success.Reset().WithData(file), true, "NoteSyncModify")
 			return
 		}
 	} else {
@@ -82,48 +267,6 @@ func FileModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-}
-
-// NoteModifyCheck 检查文件修改必要性
-// 函数名: NoteModifyCheck
-// 函数使用说明: 仅用于检查客户端提供的笔记状态与服务器状态的差异，决定客户端是否需要上传笔记或只需同步 mtime。
-// 参数说明:
-//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文和用户信息。
-//   - msg *app.WebSocketMessage: 接收到的消息，包含需要检查的笔记信息。
-//
-// 返回值说明:
-//   - 无
-func FileModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.NoteUpdateCheckRequestParams{}
-
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	svc := service.New(c.Ctx).WithSF(c.SF)
-	_, isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
-
-	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
-		return
-	}
-
-	// 通知客户端上传笔记
-	if isNeedUpdate {
-		NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
-		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
-		return
-	}
-	// 强制客户端更新mtime 不传输笔记内容
-	if isNeedSyncMtime {
-		NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
-		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
-		return
-	}
-	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
 // NoteDelete 处理文件删除的 WebSocket 消息
@@ -147,6 +290,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	note, err := svc.NoteDelete(c.User.UID, params)
@@ -181,6 +325,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	list, err := svc.NoteListByLastTime(c.User.UID, params)

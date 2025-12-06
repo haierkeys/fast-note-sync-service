@@ -30,18 +30,8 @@ type File struct {
 	CreatedAt        timex.Time `json:"createdAt"`                                // 创建时间字段（time 类型包装）
 }
 
-// FileUpdateCheckRequestParams 客户端用于检查是否需要更新的请求参数。
-type FileUpdateCheckRequestParams struct {
-	Vault       string `json:"vault" form:"vault"  binding:"required"`       // 仓库标识
-	Path        string `json:"path" form:"path"  binding:"required"`         // 路径
-	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"` // 路径哈希
-	ContentHash string `json:"contentHash" form:"contentHash"  binding:""`   // 内容哈希（可选）
-	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`       // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`       // 修改时间戳
-}
-
 // FileModifyOrCreateRequestParams 用于创建或修改文件的请求参数。
-type FileModifyOrCreateRequestParams struct {
+type FileUpdateParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`     // 仓库标识
 	Path        string `json:"path" form:"path"  binding:"required"`       // 路径
 	PathHash    string `json:"pathHash" form:"pathHash"`                   // 路径哈希
@@ -82,17 +72,19 @@ type FileSyncEndMessage struct {
 	LastTime int64  `json:"lastTime" form:"lastTime"` // 本次同步更新时间
 }
 
-// FileSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
-type FileSyncNeedPushMessage struct {
-	Path  string `json:"path" form:"path"`   // 路径
-	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳
+// FilePushMessage 服务端告知客户端需要推送的文件信息。
+type FilePushMessage struct {
+	Path      string `json:"path"`        // 路径
+	Ctime     int64  `json:"ctime" `      // 创建时间戳
+	Mtime     int64  `json:"mtime" `      // 修改时间戳
+	SessionID string `json:"session_id" ` // 每个分块大小
+	ChunkSize int64  `json:"chunk_size" ` // 每个分块大小
 }
 
-// FileSyncMtimeMessage 同步时用于更新 mtime 的消息结构。
-type FileSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path"`   // 路径
-	Ctime int64  `json:"ctime" form:"ctime"` // 创建时间戳
-	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳
+type FileMtimePushMessage struct {
+	Path  string `json:"path"`   // 路径
+	Ctime int64  `json:"ctime" ` // 创建时间戳
+	Mtime int64  `json:"mtime" ` // 修改时间戳
 }
 
 // FileGetRequestParams 用于获取单条文件的请求参数。
@@ -137,55 +129,66 @@ func (svc *Service) FileGet(uid int64, params *FileGetRequestParams) (*File, err
 	return convert.StructAssign(file, &File{}).(*File), nil
 }
 
+// FileUpdateCheckParams 客户端用于检查是否需要更新的请求参数。
+type FileUpdateCheckParams struct {
+	Vault       string `json:"vault" form:"vault"  binding:"required"`       // 仓库标识
+	Path        string `json:"path" form:"path"  binding:"required"`         // 路径
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"` // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""`   // 内容哈希（可选）
+	Size        int64  `json:"size" form:"size" binding:""`                  // 大小
+	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`       // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`       // 修改时间戳
+}
+
 // FileUpdateCheck 检查文件是否需要更新
-// 函数名: FileUpdateCheck
-// 函数使用说明: 根据客户端传来的路径哈希、内容哈希和 mtime 对比服务端记录，决定是否需要服务端/客户端更新。
+// 根据客户端传来的路径哈希、内容哈希和 mtime 对比服务端记录，决定是否需要服务端/客户端更新。
 // 参数说明:
 //   - uid int64: 用户ID，用于多租户/隔离数据
-//   - params *FileUpdateCheckRequestParams: 请求参数，包含 vault、path、pathHash、contentHash、ctime、mtime
+//   - params *FileUpdateCheckParams: 请求参数，包含 vault、path、pathHash、contentHash、ctime、mtime
 //
 // 返回值说明:
-//   - bool: 是否新建
-//   - bool: 是否需要服务端更新（即客户端应该 push）
-//   - bool: 是否需要客户端修改其本地 mtime（即服务端比客户端新）
+//   - updateMode: 更新模式，可选值为 "Create"（创建）、"UpdateContent"（更新内容）、"UpdateMtime"（需要用户更新 mtime）
 //   - *File: 若存在服务端记录，返回该记录（struct File）以便调用者使用；不存在则返回 nil
 //   - error: 出错时返回错误
-func (svc *Service) FileUpdateCheck(uid int64, params *FileUpdateCheckRequestParams) (bool, bool, bool, *File, error) {
+//
 
-	var isNew bool
-	var isUpdate bool
-	var isUpdateOnlyMtime bool
+func (svc *Service) FileUpdateCheck(uid int64, params *FileUpdateCheckParams) (string, *File, error) {
+
 	var vaultID int64
+
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
-		return isNew, false, false, nil, err
+		return "", nil, err
 	}
 	vaultID = vID.(int64)
 
 	// 检查数据表是否存在
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
+	_, err, _ = svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
 		return nil, svc.dao.FileAutoMigrate(uid)
 	})
+	if err != nil {
+		return "", nil, err
+	}
 
-	file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
-	if file != nil {
+	if file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid); file != nil {
 		fileSvc := convert.StructAssign(file, &File{}).(*File)
 		// 检查内容是否一致
 		if file.ContentHash == params.ContentHash {
-			// 修改时间是否
+			// 当用户 mtime 小于服务端 mtime 时，通知用户更新mtime
 			if params.Mtime < file.Mtime {
-				isUpdate, isUpdateOnlyMtime = false, true
+				return "UpdateMtime", fileSvc, nil
+			} else if params.Mtime > file.Mtime {
+				svc.dao.FileUpdateMtime(params.Mtime, fileSvc.ID, uid)
 			}
+			return "", fileSvc, nil
 		} else {
-			isUpdate, isUpdateOnlyMtime = true, false
+			return "UpdateContent", fileSvc, nil
 		}
-		return isNew, isUpdate, isUpdateOnlyMtime, fileSvc, nil
 	} else {
-		isNew = true
-		return isNew, isUpdate, isUpdateOnlyMtime, nil, nil
+		return "Create", nil, nil
 	}
 }
 
@@ -208,7 +211,7 @@ FileModifyOrCreate
   - *File: 更新或创建后的文件数据（转换为 service.File 结构）
   - error: 出错则返回错误
 */
-func (svc *Service) FileModifyOrCreate(uid int64, params *FileModifyOrCreateRequestParams, mtimeCheck bool) (bool, *File, error) {
+func (svc *Service) FileModifyOrCreate(uid int64, params *FileUpdateParams, mtimeCheck bool) (bool, *File, error) {
 
 	var isNew bool
 	var vaultID int64

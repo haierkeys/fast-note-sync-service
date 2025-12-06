@@ -1,7 +1,6 @@
 package websocket_router
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -18,28 +17,20 @@ import (
 // BinaryChunkSession stores the state of an active upload
 type BinaryChunkSession struct {
 	ID          string   // 上传会话ID
-	Path        string   // 文件路径
-	ContentHash string   // 文件内容哈希值
+	Vault       string   // 仓库标识
+	Path        string   // 路径
+	PathHash    string   // 路径哈希
+	ContentHash string   // 内容哈希（可选）
+	Ctime       int64    // 创建时间戳
+	Mtime       int64    // 修改时间戳
 	Size        int64    // 文件总大小
-	TotalChunks int      // 总分块数
-	ChunkSize   int      // 每个分块大小
+	TotalChunks int64    // 总分块数
+	ChunkSize   int64    // 每个分块大小
 	SavePath    string   // 临时保存路径
 	FileHandle  *os.File // 文件句柄
-	Ctime       int64    // 创建时间戳
 }
 
-type UploadInitParams struct {
-	Filename    string `json:"filename" binding:"required"`
-	Hash        string `json:"hash" binding:"required"`
-	Size        int64  `json:"size" binding:"required"`
-	TotalChunks int    `json:"totalChunks" binding:"required"`
-}
-
-type UploadCompleteParams struct {
-	UploadID string `json:"uploadId" binding:"required"`
-}
-
-// FileChunkUploadInit handles the initialization of a file upload
+// FileChunkStart handles the initialization of a file upload
 func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &UploadInitParams{}
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -49,7 +40,7 @@ func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	uploadID := uuid.New().String()
+	sessionID := uuid.New().String()
 	tempDir := global.Config.App.TempPath
 	if tempDir == "" {
 		tempDir = "storage/temp"
@@ -60,7 +51,7 @@ func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	tempPath := filepath.Join(tempDir, fmt.Sprintf("%s_%s", uploadID, params.Filename))
+	tempPath := filepath.Join(tempDir, fmt.Sprintf("%s_%s", sessionID, params.Filename))
 	file, err := os.Create(tempPath)
 	if err != nil {
 		global.Logger.Error("FileChunkUploadInit Create file err", zap.Error(err))
@@ -69,7 +60,7 @@ func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	session := &BinaryChunkSession{
-		ID:          uploadID,
+		ID:          sessionID,
 		Path:        params.Filename,
 		ContentHash: params.Hash,
 		Size:        params.Size,
@@ -81,104 +72,18 @@ func FileChunkStart(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.BinaryMu.Lock()
-	c.BinaryChunkSessions[uploadID] = session
+	c.BinaryChunkSessions[sessionID] = session
 	c.BinaryMu.Unlock()
 
 	response := map[string]interface{}{
-		"uploadId":  uploadID,
+		"sessionID": sessionID,
 		"chunkSize": session.ChunkSize,
 	}
 	c.ToResponse(code.Success.WithData(response), "FileChunkUploadInit")
 }
 
 // UploadBinary handles binary chunks
-// Protocol: [UploadID (36 bytes)][ChunkIndex (4 bytes BigEndian)][Data...]
-func FileChunkBinary(c *app.WebsocketClient, data []byte) {
-	if len(data) < 40 {
-		global.Logger.Error("UploadBinary Invalid data length")
-		return
-	}
-
-	uploadID := string(data[:36])
-	chunkIndex := binary.BigEndian.Uint32(data[36:40])
-	chunkData := data[40:]
-
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[uploadID]
-
-	c.BinaryMu.Unlock()
-	session := binarySession.(*BinaryChunkSession)
-
-	if !exists {
-		global.Logger.Error("UploadBinary Session not found", zap.String("uploadId", uploadID))
-		return
-	}
-
-	// Write to file
-	// Note: For simplicity, we assume sequential upload or use Seek.
-	// Using Seek is safer for parallel chunks.
-	offset := int64(chunkIndex) * int64(session.ChunkSize)
-
-	if _, err := session.FileHandle.Seek(offset, 0); err != nil {
-		global.Logger.Error("UploadBinary Seek err", zap.Error(err))
-		return
-	}
-
-	if _, err := session.FileHandle.Write(chunkData); err != nil {
-		global.Logger.Error("UploadBinary Write err", zap.Error(err))
-		return
-	}
-}
-
-// FileChunkUploadComplete handles the completion of a file upload
-func FileChunkEnd(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &UploadCompleteParams{}
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("FileChunkUploadComplete BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[params.UploadID]
-	delete(c.BinaryChunkSessions, params.UploadID) // Remove session
-	c.BinaryMu.Unlock()
-	session := binarySession.(*BinaryChunkSession)
-
-	if !exists {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("Session not found"))
-		return
-	}
-
-	session.FileHandle.Close()
-
-	// Move to final destination
-	finalDir := "storage/uploads"
-	if err := os.MkdirAll(finalDir, 0755); err != nil {
-		global.Logger.Error("FileChunkUploadComplete MkdirAll err", zap.Error(err))
-		c.ToResponse(code.ErrorServerInternal)
-		return
-	}
-
-	finalPath := filepath.Join(finalDir, fmt.Sprintf("%d_%s", time.Now().Unix(), session.Path))
-
-	if err := os.Rename(session.SavePath, finalPath); err != nil {
-		// Try copy if rename fails (different volume)
-		if err := copyFile(session.SavePath, finalPath); err != nil {
-			global.Logger.Error("FileChunkUploadComplete Move file err", zap.Error(err))
-			c.ToResponse(code.ErrorServerInternal)
-			return
-		}
-		os.Remove(session.SavePath)
-	}
-
-	response := map[string]interface{}{
-		"path": finalPath,
-		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
-	}
-	c.ToResponse(code.Success.WithData(response), "FileChunkUploadComplete")
-}
+// Protocol: [sessionID (36 bytes)][ChunkIndex (4 bytes BigEndian)][Data...]
 
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)

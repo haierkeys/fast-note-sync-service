@@ -9,13 +9,18 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 )
 
+// init 自动注册清理任务
+func init() {
+	Register(NewCleanupTask)
+}
+
 // CleanupTask 清理任务
 type CleanupTask struct {
 	interval time.Duration
 }
 
 // NewCleanupTask 创建清理任务
-func NewCleanupTask() (*CleanupTask, error) {
+func NewCleanupTask() (Task, error) {
 	retentionTimeStr := global.Config.App.DeleteNoteRetentionTime
 	duration, err := util.ParseDuration(retentionTimeStr)
 	if err != nil {

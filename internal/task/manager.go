@@ -20,23 +20,29 @@ func NewManager(logger *zap.Logger, sc *safe_close.SafeClose) *Manager {
 }
 
 // RegisterTasks 注册所有任务
+// 从全局注册表获取所有已注册的任务工厂,并创建任务实例
 func (m *Manager) RegisterTasks() error {
-	// 创建并添加清理任务
-	cleanupTask, err := NewCleanupTask()
-	if err != nil {
-		m.logger.Warn("failed to create cleanup task", zap.Error(err))
-		return err
+	factories := GetFactories()
+
+	if len(factories) == 0 {
+		m.logger.Info("no task factories registered")
+		return nil
 	}
 
-	if cleanupTask != nil {
-		m.scheduler.AddTask(cleanupTask)
-	} else {
-		m.logger.Info("cleanup task is disabled (retention time not configured)")
-	}
+	m.logger.Info("registering tasks from registry", zap.Int("factory_count", len(factories)))
 
-	// 未来可以在这里添加更多任务
-	// otherTask := NewOtherTask()
-	// m.scheduler.AddTask(otherTask)
+	for _, factory := range factories {
+		task, err := factory()
+		if err != nil {
+			m.logger.Warn("failed to create task", zap.Error(err))
+			continue
+		}
+
+		if task != nil {
+			m.scheduler.AddTask(task)
+			m.logger.Info("task registered successfully", zap.String("task_name", task.Name()))
+		}
+	}
 
 	return nil
 }

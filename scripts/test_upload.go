@@ -79,13 +79,13 @@ func main() {
 
 	// Read response
 	resp := readResponse(handler)
-	uploadId := extractUploadId(resp)
-	fmt.Println("Upload ID:", uploadId)
+	sessionID := extractsessionID(resp)
+	fmt.Println("Upload ID:", sessionID)
 
 	// 5. Send Binary
-	// Protocol: [UploadID (36 bytes)][ChunkIndex (4 bytes BigEndian)][Data...]
+	// Protocol: [sessionID (36 bytes)][ChunkIndex (4 bytes BigEndian)][Data...]
 	buf := new(bytes.Buffer)
-	buf.WriteString(uploadId)                      // 36 bytes
+	buf.WriteString(sessionID)                     // 36 bytes
 	binary.Write(buf, binary.BigEndian, uint32(0)) // Index 0
 	buf.Write(data)                                // Data
 
@@ -97,7 +97,7 @@ func main() {
 
 	// 6. Complete
 	completeData := map[string]interface{}{
-		"uploadId": uploadId,
+		"sessionID": sessionID,
 	}
 	completeBytes, _ := json.Marshal(completeData)
 	sendJSON(socket, "FileChunkUploadComplete", completeBytes)
@@ -172,9 +172,9 @@ func readResponse(h *Handler) string {
 	}
 }
 
-func extractUploadId(resp string) string {
+func extractsessionID(resp string) string {
 	// resp format: Action|JSON
-	// e.g. FileChunkUploadInit|{"code":200,"data":{"uploadId":"...","chunkSize":...}}
+	// e.g. FileChunkUploadInit|{"code":200,"data":{"sessionID":"...","chunkSize":...}}
 	// But wait, `ToResponse` does:
 	// `c.send(actionType, ResResult{...})`
 	// `send` does: `fmt.Sprintf("%s|%s", actionType, string(responseBytes))`
@@ -215,9 +215,9 @@ func extractUploadId(resp string) string {
 
 	var res struct {
 		Data struct {
-			UploadId string `json:"uploadId"`
+			sessionID string `json:"sessionID"`
 		} `json:"data"`
 	}
 	json.Unmarshal(jsonPart, &res)
-	return res.Data.UploadId
+	return res.Data.sessionID
 }

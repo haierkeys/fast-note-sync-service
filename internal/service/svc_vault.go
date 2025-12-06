@@ -93,6 +93,7 @@ func (svc *Service) VaultDelete(param *VaultGetRequest, uid int64) error {
 	return svc.dao.VaultDelete(param.ID, uid)
 }
 
+// VaultGetOrCreate  检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 func (svc *Service) VaultGetOrCreate(name string, uid int64) (int64, error) {
 
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_GetOrCreate_%d", uid), func() (any, error) {

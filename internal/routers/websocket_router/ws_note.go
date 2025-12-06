@@ -25,7 +25,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -48,6 +48,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
@@ -98,12 +99,16 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
 	_, isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
@@ -140,13 +145,14 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteDelete.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("websocket_router.note.NoteDelete.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	note, err := svc.NoteDelete(c.User.UID, params)
@@ -174,13 +180,14 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	list, err := svc.NoteListByLastTime(c.User.UID, params)
