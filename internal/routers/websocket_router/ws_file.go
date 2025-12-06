@@ -22,6 +22,24 @@ import (
 	"go.uber.org/zap"
 )
 
+// BinaryChunkSession stores the state of an active upload
+type FileUploadBinaryChunkSession struct {
+	ID          string             // 上传会话ID
+	Vault       string             // 仓库标识
+	Path        string             // 路径
+	PathHash    string             // 路径哈希
+	ContentHash string             // 内容哈希(可选)
+	Ctime       int64              // 创建时间戳
+	Mtime       int64              // 修改时间戳
+	Size        int64              // 文件总大小
+	TotalChunks int64              // 总分块数
+	ChunkSize   int64              // 每个分块大小
+	SavePath    string             // 临时保存路径
+	FileHandle  *os.File           // 文件句柄
+	CreatedAt   time.Time          // 会话创建时间
+	CancelFunc  context.CancelFunc // 用于取消超时定时器
+}
+
 type FileUploadCompleteParams struct {
 	SessionID string `json:"sessionID" binding:"required"`
 }
@@ -44,7 +62,7 @@ func cleanupSession(c *app.WebsocketClient, sessionID string) {
 		return
 	}
 
-	session := binarySession.(*BinaryChunkSession)
+	session := binarySession.(*FileUploadBinaryChunkSession)
 
 	// 取消超时定时器
 	if session.CancelFunc != nil {
@@ -176,7 +194,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			return
 		}
 
-		session := &BinaryChunkSession{
+		session := &FileUploadBinaryChunkSession{
 			ID:          sessionID,
 			Vault:       params.Path,
 			Path:        params.Path,
@@ -250,7 +268,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	c.BinaryMu.Lock()
 	binarySession, exists := c.BinaryChunkSessions[sessionID]
 	c.BinaryMu.Unlock()
-	session := binarySession.(*BinaryChunkSession)
+	session := binarySession.(*FileUploadBinaryChunkSession)
 
 	if !exists {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
@@ -296,7 +314,7 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	session := binarySession.(*BinaryChunkSession)
+	session := binarySession.(*FileUploadBinaryChunkSession)
 
 	// 取消超时定时器
 	if session.CancelFunc != nil {
@@ -369,6 +387,61 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		os.Remove(session.SavePath)
 	}
 
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	svcParams := &service.FileUpdateParams{
+		Vault:       session.Vault,
+		Path:        finalPath,
+		PathHash:    session.PathHash,
+		SrcPath:     session.SrcPath,
+		SrcPathHash: session.SrcPathHash,
+		ContentHash: session.ContentHash,
+		SavePath:    finalPath,
+		Size:        session.Size,
+		Ctime:       session.Ctime,
+		Mtime:       session.Mtime,
+	}
+
+	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		return
+	}
+
+	// 需要客户端上传附件
+	if updateMode == "UpdateContent" || updateMode == "Create" {
+
+		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+
+	}
+
+	response := map[string]interface{}{
+		"path": finalPath,
+		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
+	}
+	c.ToResponse(code.Success.WithData(response), "FileUploadComplete")
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希（可选）
+	SavePath    string `json:"savePath" form:"savePath"  binding:""`       // 文件保存路径
+	Size        int64  `json:"size" form:"size" `                          // 文件大小
+	Ctime       int64  `json:"ctime" form:"ctime" `                        // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime" `                        // 修改时间戳
+	}
+
+	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		return
+	}
+
+	// 需要客户端上传附件
+	if updateMode == "UpdateContent" || updateMode == "Create" {
+
+		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+
+	}
+
 	response := map[string]interface{}{
 		"path": finalPath,
 		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
@@ -400,7 +473,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	_, err := svc.FileDelete(c.User.UID, params)
+	file, err := svc.FileDelete(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
@@ -408,7 +481,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
+	c.BroadcastResponse(code.Success.WithData(file), true, "NoteSyncDelete")
 }
 
 // NoteSync 处理全量或增量笔记同步
