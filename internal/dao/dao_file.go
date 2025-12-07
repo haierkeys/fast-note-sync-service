@@ -352,6 +352,7 @@ func (d *Dao) FileCountSizeSum(vaultID int64, uid int64) (*FileCountSizeSum, err
 //   - error: 出错时返回错误
 func (d *Dao) FileDeletePhysicalByTime(timestamp int64, uid int64) error {
 	u := d.file(uid).File
+
 	_, err := u.WithContext(d.ctx).Where(
 		u.Action.Eq("delete"),
 		u.UpdatedTimestamp.Lt(timestamp),
