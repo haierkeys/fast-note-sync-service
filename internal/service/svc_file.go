@@ -58,42 +58,25 @@ type FileSyncCheckRequestParams struct {
 }
 
 // FileSyncRequestParams 同步请求主体，包含 vault、上次同步时间和要检查的文件列表。
-type FileSyncRequestParams struct {
+type FileSyncParams struct {
 	Vault    string                       `json:"vault" form:"vault" binding:"required"` // 仓库标识
 	LastTime int64                        `json:"lastTime" form:"lastTime"`              // 上次同步时间戳
 	Files    []FileSyncCheckRequestParams `json:"files" form:"files"`                    // 客户端文件信息列表
 }
 
-// FileSyncEndMessage 同步结束时返回的信息结构。
-type FileSyncEndMessage struct {
-	Vault    string `json:"vault" form:"vault"`       // 仓库标识
-	LastTime int64  `json:"lastTime" form:"lastTime"` // 本次同步更新时间
-}
-
-// FilePushMessage 服务端告知客户端需要推送的文件信息。
-type FilePushMessage struct {
-	Path      string `json:"path"`        // 路径
-	Ctime     int64  `json:"ctime" `      // 创建时间戳
-	Mtime     int64  `json:"mtime" `      // 修改时间戳
-	SessionID string `json:"session_id" ` // 每个分块大小
-	ChunkSize int64  `json:"chunk_size" ` // 每个分块大小
-}
-
-type FileMtimePushMessage struct {
-	Path  string `json:"path"`   // 路径
-	Ctime int64  `json:"ctime" ` // 创建时间戳
-	Mtime int64  `json:"mtime" ` // 修改时间戳
+type FileUploadCompleteParams struct {
+	SessionID string `json:"sessionID" binding:"required"`
 }
 
 // FileGetRequestParams 用于获取单条文件的请求参数。
-type FileGetRequestParams struct {
+type FileGetParams struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"` // 仓库标识
 	Path     string `json:"path" form:"path" binding:"required"`   // 路径
 	PathHash string `json:"pathHash" form:"pathHash"`              // 路径哈希（可选）
 }
 
 // FileListRequestParams 获取文件列表的分页参数。
-type FileListRequestParams struct {
+type FileListParams struct {
 	Vault string `json:"vault" form:"vault" binding:"required"` // 仓库标识
 }
 
@@ -107,7 +90,7 @@ type FileListRequestParams struct {
 // 返回值说明:
 //   - *File: 文件数据
 //   - error: 出错时返回错误
-func (svc *Service) FileGet(uid int64, params *FileGetRequestParams) (*File, error) {
+func (svc *Service) FileGet(uid int64, params *FileGetParams) (*File, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
@@ -257,7 +240,7 @@ func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtim
 		if file.Action == "delete" {
 			fileSet.Action = "create"
 		} else {
-			fileSet.Action = "modify"
+			fileSet.Action = "update"
 		}
 
 		fileDao, err := svc.dao.FileUpdate(fileSet, file.ID, uid)
@@ -345,7 +328,7 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 // 返回值说明:
 //   - []*File: 文件切片
 //   - error: 出错时返回错误
-func (svc *Service) FileList(uid int64, params *FileListRequestParams, pager *app.Pager) ([]*File, int, error) {
+func (svc *Service) FileList(uid int64, params *FileListParams, pager *app.Pager) ([]*File, int, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
@@ -388,7 +371,7 @@ func (svc *Service) FileList(uid int64, params *FileListRequestParams, pager *ap
 // 返回值说明:
 //   - []*File: 返回符合条件的文件切片
 //   - error: 出错时返回错误
-func (svc *Service) FileListByLastTime(uid int64, params *FileSyncRequestParams) ([]*File, error) {
+func (svc *Service) FileListByLastTime(uid int64, params *FileSyncParams) ([]*File, error) {
 	var vaultID int64
 	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {

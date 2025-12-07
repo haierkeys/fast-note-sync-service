@@ -23,119 +23,59 @@ import (
 	"go.uber.org/zap"
 )
 
-// BinaryChunkSession stores the state of an active upload
+// FileUploadBinaryChunkSession 定义文件分块上传的会话状态。
+// 用于跟踪大文件分块上传的进度和临时文件信息。
 type FileUploadBinaryChunkSession struct {
-	ID             string             // 上传会话ID
-	Vault          string             // 仓库标识
-	Path           string             // 路径
-	PathHash       string             // 路径哈希
-	ContentHash    string             // 内容哈希(可选)
-	Ctime          int64              // 创建时间戳
-	Mtime          int64              // 修改时间戳
-	Size           int64              // 文件总大小
+	ID             string             // 会话 ID
+	Vault          string             // 仓库名称
+	Path           string             // 文件路径
+	PathHash       string             // 文件路径哈希值
+	ContentHash    string             // 文件内容哈希值
+	Ctime          int64              // 创建时间
+	Mtime          int64              // 修改时间
+	Size           int64              // 文件大小
 	TotalChunks    int64              // 总分块数
 	UploadedChunks int64              // 已上传分块数
-	ChunkSize      int64              // 每个分块大小
+	ChunkSize      int64              // 分块大小
 	SavePath       string             // 临时保存路径
 	FileHandle     *os.File           // 文件句柄
-	mu             sync.Mutex         // 互斥锁
-	CreatedAt      time.Time          // 会话创建时间
-	CancelFunc     context.CancelFunc // 用于取消超时定时器
+	mu             sync.Mutex         // 互斥锁，保护并发操作
+	CreatedAt      time.Time          // 创建时间
+	CancelFunc     context.CancelFunc // 取消函数，用于超时控制
 }
 
-type FileUploadCompleteParams struct {
-	SessionID string `json:"sessionID" binding:"required"`
+// FileSyncEndMessage 定义文件同步结束时的消息结构。
+type FileSyncEndMessage struct {
+	Vault    string `json:"vault" form:"vault"`       // 仓库名称
+	LastTime int64  `json:"lastTime" form:"lastTime"` // 最后同步时间
 }
 
-// cleanupSession 清理单个上传会话
-// 函数名: cleanupSession
-// 函数使用说明: 关闭文件句柄、删除临时文件、从会话map中移除
-// 参数说明:
-//   - c *app.WebsocketClient: WebSocket 客户端连接
-//   - sessionID string: 会话ID
-func cleanupSession(c *app.WebsocketClient, sessionID string) {
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[sessionID]
-	if exists {
-		delete(c.BinaryChunkSessions, sessionID)
-	}
-	c.BinaryMu.Unlock()
-
-	if !exists {
-		return
-	}
-
-	session := binarySession.(*FileUploadBinaryChunkSession)
-
-	// 取消超时定时器
-	if session.CancelFunc != nil {
-		session.CancelFunc()
-	}
-
-	// 关闭文件句柄
-	if session.FileHandle != nil {
-		if err := session.FileHandle.Close(); err != nil {
-			global.Logger.Warn("cleanupSession: failed to close file handle",
-				zap.String("sessionID", sessionID),
-				zap.Error(err))
-		}
-	}
-
-	// 删除临时文件
-	if session.SavePath != "" {
-		if err := os.Remove(session.SavePath); err != nil && !os.IsNotExist(err) {
-			global.Logger.Warn("cleanupSession: failed to remove temp file",
-				zap.String("sessionID", sessionID),
-				zap.String("path", session.SavePath),
-				zap.Error(err))
-		}
-	}
-
-	global.Logger.Info("cleanupSession: session cleaned up",
-		zap.String("sessionID", sessionID),
-		zap.String("path", session.Path))
+// FileNeedUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
+type FileNeedUploadMessage struct {
+	Path      string `json:"path"`        // 文件路径
+	Ctime     int64  `json:"ctime" `      // 创建时间
+	Mtime     int64  `json:"mtime" `      // 修改时间
+	SessionID string `json:"session_id" ` // 会话 ID
+	ChunkSize int64  `json:"chunk_size" ` // 分块大小
 }
 
-// startSessionTimeout 启动会话超时定时器
-// 函数名: startSessionTimeout
-// 函数使用说明: 创建一个定时器,在超时后自动清理会话
-// 参数说明:
-//   - c *app.WebsocketClient: WebSocket 客户端连接
-//   - sessionID string: 会话ID
-//   - timeout time.Duration: 超时时长
-//
-// 返回值说明:
-//   - context.CancelFunc: 用于取消超时的函数
-func startSessionTimeout(c *app.WebsocketClient, sessionID string, timeout time.Duration) context.CancelFunc {
-	if timeout <= 0 {
-		return nil
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		timer := time.NewTimer(timeout)
-		defer timer.Stop()
-
-		select {
-		case <-timer.C:
-			// 超时,清理会话
-			global.Logger.Warn("startSessionTimeout: session timeout, cleaning up",
-				zap.String("sessionID", sessionID),
-				zap.Duration("timeout", timeout))
-			cleanupSession(c, sessionID)
-		case <-ctx.Done():
-			// 被取消,正常完成
-			return
-		}
-	}()
-
-	return cancel
+// FileSyncMtimeMessage 定义文件元数据更新消息结构。
+type FileSyncMtimeMessage struct {
+	Path  string `json:"path"`   // 文件路径
+	Ctime int64  `json:"ctime" ` // 创建时间
+	Mtime int64  `json:"mtime" ` // 修改时间
 }
 
+// FileSyncNeedUploadMessage 定义文件同步中需要上传的文件消息结构。
+type FileSyncNeedUploadMessage struct {
+	Path string `json:"path"` // 文件路径
+}
+
+// FileUploadCheck 检查文件上传请求，初始化上传会话或确认无需上传。
 func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileUpdateCheckParams{}
 
+	// 绑定并验证参数
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.file.FileUploadCheck.BindAndValid errs: %v", zap.Error(errs))
@@ -143,6 +83,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
+	// 必填参数校验
 	if params.PathHash == "" {
 		c.ToResponse(code.ErrorInvalidParams.WithDetails("pathHash is required"))
 		return
@@ -162,9 +103,10 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	// 获取或创建仓库
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
+	// 检查文件更新状态
 	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
 
 	if err != nil {
@@ -172,7 +114,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	// 需要客户端上传附件
+	// UpdateContent 或 Create 模式，需要客户端上传文件
 	if updateMode == "UpdateContent" || updateMode == "Create" {
 
 		sessionID := uuid.New().String()
@@ -180,15 +122,15 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		if tempDir == "" {
 			tempDir = "storage/temp"
 		}
+		// 创建临时目录
 		if err := os.MkdirAll(tempDir, 0755); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
 			c.ToResponse(code.ErrorServerInternal)
 			return
 		}
 
-		// 获取原文件扩展名
+		// 获取文件扩展名并生成临时路径
 		fileExt := filepath.Ext(params.Path)
-		// 使用 sessionID 作为随机文件名,保持原文件扩展名
 		tempPath := filepath.Join(tempDir, fmt.Sprintf("%s%s", sessionID, fileExt))
 		file, err := os.Create(tempPath)
 		if err != nil {
@@ -197,6 +139,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			return
 		}
 
+		// 初始化分块上传会话
 		session := &FileUploadBinaryChunkSession{
 			ID:          sessionID,
 			Vault:       params.Path,
@@ -206,14 +149,15 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Size:        params.Size,
 			Ctime:       params.Ctime,
 			Mtime:       params.Mtime,
-			ChunkSize:   1024 * 1024, // Default 1MB, or calculated
+			ChunkSize:   1024 * 1024, // 默认 1MB
 			SavePath:    tempPath,
 			FileHandle:  file,
 			CreatedAt:   time.Now(),
 		}
+		// 根据文件大小调整分块大小
 		session.ChunkSize = util.Ceil(session.Size, session.ChunkSize)
 
-		// 解析超时配置
+		// 配置超时时间
 		var timeout time.Duration
 		if global.Config.App.UploadSessionTimeout != "" && global.Config.App.UploadSessionTimeout != "0" {
 			var err error
@@ -225,17 +169,18 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				timeout = 5 * time.Minute
 			}
 		} else {
-			timeout = 5 * time.Minute // 默认5分钟
+			timeout = 5 * time.Minute
 		}
 
-		// 启动超时定时器
+		// 启动超时清理任务
 		session.CancelFunc = startSessionTimeout(c, sessionID, timeout)
 
+		// 注册会话
 		c.BinaryMu.Lock()
 		c.BinaryChunkSessions[sessionID] = session
 		c.BinaryMu.Unlock()
 
-		data := &service.FilePushMessage{
+		data := &FileNeedUploadMessage{
 			Path:      fileSvc.Path,
 			Ctime:     fileSvc.Ctime,
 			Mtime:     fileSvc.Mtime,
@@ -246,8 +191,8 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 
 	} else if updateMode == "UpdateMtime" {
-
-		data := &service.FileMtimePushMessage{
+		// 仅更新修改时间
+		data := &FileSyncMtimeMessage{
 			Path:  fileSvc.Path,
 			Ctime: fileSvc.Ctime,
 			Mtime: fileSvc.Mtime,
@@ -255,15 +200,18 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.ToResponse(code.Success.WithData(data), "FileSyncMtime")
 		return
 	}
+	// 无需更新
 	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
+// FileUploadChunkBinary 处理文件分块上传的二进制数据。
 func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	if len(data) < 40 {
 		global.Logger.Error("UploadBinary Invalid data length")
 		return
 	}
 
+	// 解析会话 ID 和分块索引
 	sessionID := string(data[:36])
 	chunkIndex := binary.BigEndian.Uint32(data[36:40])
 	chunkData := data[40:]
@@ -279,6 +227,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	session := binarySession.(*FileUploadBinaryChunkSession)
 
+	// 计算写入偏移量并写入数据
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
 	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
@@ -286,15 +235,15 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		return
 	}
 
-	// 更新已上传分块数
+	// 更新已上传计数
 	session.mu.Lock()
 	session.UploadedChunks++
 	session.mu.Unlock()
 }
 
-// FileUploadComplete handles the completion of a file upload
+// FileUploadComplete 处理文件上传完成请求，进行文件移动和元数据更新。
 func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &FileUploadCompleteParams{}
+	params := &service.FileUploadCompleteParams{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.file.FileUploadComplete BindAndValid errs: %v", zap.Error(errs))
@@ -302,11 +251,11 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	//获取用户上传数据
+	// 获取并移除会话
 	c.BinaryMu.Lock()
 	binarySession, exists := c.BinaryChunkSessions[params.SessionID]
 	if exists {
-		delete(c.BinaryChunkSessions, params.SessionID) // Remove session
+		delete(c.BinaryChunkSessions, params.SessionID)
 	}
 	c.BinaryMu.Unlock()
 
@@ -322,7 +271,7 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		session.CancelFunc()
 	}
 
-	// 关闭文件句柄
+	// 关闭临时文件句柄
 	if err := session.FileHandle.Close(); err != nil {
 		global.Logger.Error("FileUploadComplete: failed to close file handle", zap.Error(err))
 		c.ToResponse(code.ErrorServerInternal)
@@ -334,57 +283,49 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		baseUploadDir = "storage/uploads"
 	}
 
-	// 生成日期子目录 (格式: YYMMDD, 如 240520)
+	// 按月生成存储子目录
 	dateDir := time.Now().Format("200601")
 	finalDir := filepath.Join(baseUploadDir, dateDir)
 
-	// 创建目标目录
 	if err := os.MkdirAll(finalDir, 0755); err != nil {
 		global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
 		c.ToResponse(code.ErrorServerInternal)
 		return
 	}
 
-	// 生成唯一文件名 (循环检查直到文件名不冲突)
+	// 生成唯一文件名
 	originalName := filepath.Base(session.Path)
 	ext := filepath.Ext(originalName)
 	nameOnly := strings.TrimSuffix(originalName, ext)
 
 	var finalPath string
 
-	// 最多重试 10 次，防止极端情况死循环
+	// 尝试生成不冲突的文件名
 	for i := 0; i < 10; i++ {
-		// 使用 util 包生成随机字符串 (例如长度为 8)
 		randStr := util.GetRandomString(8)
-
-		// 拼接文件名: 原文件名_随机串.后缀
 		tryFileName := fmt.Sprintf("%s_%s%s", nameOnly, randStr, ext)
 		tryPath := filepath.Join(finalDir, tryFileName)
 
-		// 判断文件是否存在
-		// 如果返回 IsNotExist，说明文件名可用，跳出循环
 		if _, err := os.Stat(tryPath); os.IsNotExist(err) {
 			finalPath = tryPath
 			break
 		}
 	}
 
-	// 如果重试 10 次后 finalPath 依然为空，报错
 	if finalPath == "" {
 		global.Logger.Error("websocket_router.file.FileUploadComplete Generate unique filename failed after retries")
 		c.ToResponse(code.ErrorServerInternal)
 		return
 	}
 
-	// 移动文件 (优先 Rename，失败则 Copy+Remove)
+	// 移动文件到最终路径
 	if err := os.Rename(session.SavePath, finalPath); err != nil {
-		// Rename 失败（通常因跨磁盘分区），使用流式复制
+		// 跨设备移动失败时尝试复制并删除
 		if err := fileurl.CopyFile(session.SavePath, finalPath); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadComplete Move/Copy file err", zap.Error(err))
 			c.ToResponse(code.ErrorServerInternal)
 			return
 		}
-		// 复制成功后删除原临时文件
 		os.Remove(session.SavePath)
 	}
 
@@ -401,6 +342,7 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		Mtime:       session.Mtime,
 	}
 
+	// 更新或创建文件记录
 	_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
 
 	if err != nil {
@@ -409,18 +351,11 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success.Reset())
-	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpload")
+	// 广播文件更新消息
+	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpdate")
 }
 
-// NoteDelete 处理文件删除的 WebSocket 消息
-// 函数名: NoteDelete
-// 函数使用说明: 接收客户端的笔记删除请求，执行删除操作并通知其他客户端同步删除事件。
-// 参数说明:
-//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含发送响应与广播能力。
-//   - msg *app.WebSocketMessage: 接收到的删除请求消息，包含要删除的笔记标识等参数。
-//
-// 返回值说明:
-//   - 无
+// FileDelete 处理文件删除请求。
 func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileDeleteParams{}
 
@@ -433,9 +368,10 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	// 获取或创建仓库
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
+	// 执行删除逻辑
 	fileSvc, err := svc.FileDelete(c.User.UID, params)
 
 	if err != nil {
@@ -444,20 +380,14 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success.Reset())
+	// 广播文件删除消息
 	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncDelete")
 }
 
-// FileSync 处理全量或增量笔记同步
-// 函数名: FileSync
-// 函数使用说明: 根据客户端提供的本地文件列表与服务器端最近更新列表比较，决定返回哪些文件需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
-// 参数说明:
-//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文与响应发送能力。
-//   - msg *app.WebSocketMessage: 接收到的同步请求，包含客户端的文件摘要和同步起始时间等信息。
-//
-// 返回值说明:
-//   - 无
+// FileSync 处理文件同步请求。
+// 对比客户端和服务端的文件列表，决定哪些文件需要上传、更新或删除。
 func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileSyncRequestParams{}
+	params := &service.FileSyncParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
@@ -468,9 +398,10 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	// 获取或创建仓库
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
+	// 获取最后一次同步后的变更文件列表
 	list, err := svc.FileListByLastTime(c.User.UID, params)
 
 	if err != nil {
@@ -478,6 +409,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
+	// 构建客户端文件索引
 	var cFiles map[string]service.FileSyncCheckRequestParams = make(map[string]service.FileSyncCheckRequestParams, 0)
 	var cFilesKeys map[string]struct{} = make(map[string]struct{}, 0)
 
@@ -490,29 +422,39 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	var lastTime int64
 
+	// 遍历服务端文件列表进行处理
 	for _, file := range list {
 		if file.UpdatedTimestamp >= lastTime {
 			lastTime = file.UpdatedTimestamp
 		}
 
 		if file.Action == "delete" {
-			c.ToResponse(code.Success.WithData(file), "FileSyncDelete")
-		} else {
-			if cFile, ok := cFiles[file.PathHash]; ok {
+			// 服务端已删除，通知客户端删除
+			if _, ok := cFiles[file.PathHash]; ok {
+				c.ToResponse(code.Success.WithData(file), "FileSyncDelete")
+			}
 
+		} else {
+
+			if cFile, ok := cFiles[file.PathHash]; ok {
+				// 客户端存在该文件
 				delete(cFilesKeys, file.PathHash)
 
 				if file.ContentHash == cFile.ContentHash && file.Mtime == cFile.Mtime {
+					// 内容与时间一致，无操作
 					continue
 				} else if file.ContentHash != cFile.ContentHash {
-					FileCheck := convert.StructAssign(file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
-					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedPush")
+					// 内容不一致，需要客户端上传
+					FileCheck := convert.StructAssign(file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
+					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedUpload")
 				} else {
-					FileCheck := convert.StructAssign(file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
+					// 仅元数据变更，通知客户端更新
+					FileCheck := convert.StructAssign(file, &FileSyncMtimeMessage{}).(*FileSyncMtimeMessage)
 					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncMtime")
 				}
 			} else {
-				c.ToResponse(code.Success.WithData(file), "FileSyncModify")
+				// 客户端不存在，通知客户端下载更新
+				c.ToResponse(code.Success.WithData(file), "FileSyncUpdate")
 			}
 		}
 	}
@@ -520,17 +462,92 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if list == nil {
 		lastTime = timex.Now().UnixMilli()
 	}
+	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
-			FileCheck := convert.StructAssign(&file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
-			c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedPush")
+			FileCheck := convert.StructAssign(&file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
+			c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedUpload")
 		}
 	}
 
-	message := &service.FileSyncEndMessage{
+	message := &FileSyncEndMessage{
 		Vault:    params.Vault,
 		LastTime: lastTime,
 	}
+	// 发送同步结束消息
 	c.ToResponse(code.Success.WithData(message), "FileSyncEnd")
+}
+
+// cleanupSession 清理因为完成或超时而废弃的上传会话。
+func cleanupSession(c *app.WebsocketClient, sessionID string) {
+	c.BinaryMu.Lock()
+	binarySession, exists := c.BinaryChunkSessions[sessionID]
+	if exists {
+		delete(c.BinaryChunkSessions, sessionID)
+	}
+	c.BinaryMu.Unlock()
+
+	if !exists {
+		return
+	}
+
+	session := binarySession.(*FileUploadBinaryChunkSession)
+
+	// 停止超时定时器
+	if session.CancelFunc != nil {
+		session.CancelFunc()
+	}
+
+	// 关闭文件句柄
+	if session.FileHandle != nil {
+		if err := session.FileHandle.Close(); err != nil {
+			global.Logger.Warn("cleanupSession: failed to close file handle",
+				zap.String("sessionID", sessionID),
+				zap.Error(err))
+		}
+	}
+
+	// 清理临时文件
+	if session.SavePath != "" {
+		if err := os.Remove(session.SavePath); err != nil && !os.IsNotExist(err) {
+			global.Logger.Warn("cleanupSession: failed to remove temp file",
+				zap.String("sessionID", sessionID),
+				zap.String("path", session.SavePath),
+				zap.Error(err))
+		}
+	}
+
+	global.Logger.Info("cleanupSession: session cleaned up",
+		zap.String("sessionID", sessionID),
+		zap.String("path", session.Path))
+}
+
+// startSessionTimeout 启动会话超时定时器。
+// 返回一个取消函数，调用后可阻止超时清理的执行。
+func startSessionTimeout(c *app.WebsocketClient, sessionID string, timeout time.Duration) context.CancelFunc {
+	if timeout <= 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+			// 超时触发，清理会话
+			global.Logger.Warn("startSessionTimeout: session timeout, cleaning up",
+				zap.String("sessionID", sessionID),
+				zap.Duration("timeout", timeout))
+			cleanupSession(c, sessionID)
+		case <-ctx.Done():
+			// 外部取消
+			return
+		}
+	}()
+
+	return cancel
 }
