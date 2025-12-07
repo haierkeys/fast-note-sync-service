@@ -152,8 +152,14 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	code.Reset()
 }
 
-// BroadcastResponse 将结果转换为 JSON 格式并广播给所有客户端
-// options参数的1为是否排除自己 options参数的2 为动作类型
+// BroadcastResponse 将结果转换为 JSON 格式并广播给当前用户的所有连接客户端
+//
+// 参数:
+//
+//	code: 业务响应状态码对象，包含状态码、消息和数据
+//	options: 可选参数列表
+//	  - options[0] (bool):   必填，是否排除当前客户端 (true: 排除自己, false: 广播给所有端)
+//	  - options[1] (string): 选填，动作类型标识 (ActionType)，用于客户端区分消息类型
 func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 
 	var actionType string

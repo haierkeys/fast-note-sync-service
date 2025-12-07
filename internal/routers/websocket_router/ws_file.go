@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,20 +25,22 @@ import (
 
 // BinaryChunkSession stores the state of an active upload
 type FileUploadBinaryChunkSession struct {
-	ID          string             // 上传会话ID
-	Vault       string             // 仓库标识
-	Path        string             // 路径
-	PathHash    string             // 路径哈希
-	ContentHash string             // 内容哈希(可选)
-	Ctime       int64              // 创建时间戳
-	Mtime       int64              // 修改时间戳
-	Size        int64              // 文件总大小
-	TotalChunks int64              // 总分块数
-	ChunkSize   int64              // 每个分块大小
-	SavePath    string             // 临时保存路径
-	FileHandle  *os.File           // 文件句柄
-	CreatedAt   time.Time          // 会话创建时间
-	CancelFunc  context.CancelFunc // 用于取消超时定时器
+	ID             string             // 上传会话ID
+	Vault          string             // 仓库标识
+	Path           string             // 路径
+	PathHash       string             // 路径哈希
+	ContentHash    string             // 内容哈希(可选)
+	Ctime          int64              // 创建时间戳
+	Mtime          int64              // 修改时间戳
+	Size           int64              // 文件总大小
+	TotalChunks    int64              // 总分块数
+	UploadedChunks int64              // 已上传分块数
+	ChunkSize      int64              // 每个分块大小
+	SavePath       string             // 临时保存路径
+	FileHandle     *os.File           // 文件句柄
+	mu             sync.Mutex         // 互斥锁
+	CreatedAt      time.Time          // 会话创建时间
+	CancelFunc     context.CancelFunc // 用于取消超时定时器
 }
 
 type FileUploadCompleteParams struct {
@@ -268,27 +271,25 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	c.BinaryMu.Lock()
 	binarySession, exists := c.BinaryChunkSessions[sessionID]
 	c.BinaryMu.Unlock()
-	session := binarySession.(*FileUploadBinaryChunkSession)
 
 	if !exists {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
 		return
 	}
 
-	// Write to file
-	// Note: For simplicity, we assume sequential upload or use Seek.
-	// Using Seek is safer for parallel chunks.
+	session := binarySession.(*FileUploadBinaryChunkSession)
+
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
-	if _, err := session.FileHandle.Seek(offset, 0); err != nil {
-		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle Seek err", zap.Error(err))
+	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
+		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle WriteAt err", zap.Error(err))
 		return
 	}
 
-	if _, err := session.FileHandle.Write(chunkData); err != nil {
-		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle Write err", zap.Error(err))
-		return
-	}
+	// 更新已上传分块数
+	session.mu.Lock()
+	session.UploadedChunks++
+	session.mu.Unlock()
 }
 
 // FileUploadComplete handles the completion of a file upload
@@ -391,10 +392,8 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svcParams := &service.FileUpdateParams{
 		Vault:       session.Vault,
-		Path:        finalPath,
+		Path:        session.Path,
 		PathHash:    session.PathHash,
-		SrcPath:     session.SrcPath,
-		SrcPathHash: session.SrcPathHash,
 		ContentHash: session.ContentHash,
 		SavePath:    finalPath,
 		Size:        session.Size,
@@ -402,51 +401,15 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		Mtime:       session.Mtime,
 	}
 
-	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
+	_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorServerInternal.WithDetails(err.Error()))
 		return
 	}
 
-	// 需要客户端上传附件
-	if updateMode == "UpdateContent" || updateMode == "Create" {
-
-		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
-
-	}
-
-	response := map[string]interface{}{
-		"path": finalPath,
-		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
-	}
-	c.ToResponse(code.Success.WithData(response), "FileUploadComplete")
-	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希（可选）
-	SavePath    string `json:"savePath" form:"savePath"  binding:""`       // 文件保存路径
-	Size        int64  `json:"size" form:"size" `                          // 文件大小
-	Ctime       int64  `json:"ctime" form:"ctime" `                        // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime" `                        // 修改时间戳
-	}
-
-	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
-
-	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
-		return
-	}
-
-	// 需要客户端上传附件
-	if updateMode == "UpdateContent" || updateMode == "Create" {
-
-		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
-
-	}
-
-	response := map[string]interface{}{
-		"path": finalPath,
-		"url":  "/uploads/" + filepath.Base(finalPath), // Mock URL
-	}
-	c.ToResponse(code.Success.WithData(response), "FileUploadComplete")
+	c.ToResponse(code.Success.Reset())
+	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpload")
 }
 
 // NoteDelete 处理文件删除的 WebSocket 消息
@@ -463,7 +426,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteDelete.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.file.FileDelete.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -473,15 +436,15 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	file, err := svc.FileDelete(c.User.UID, params)
+	fileSvc, err := svc.FileDelete(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 		return
 	}
 
-	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(file), true, "NoteSyncDelete")
+	c.ToResponse(code.Success.Reset())
+	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncDelete")
 }
 
 // NoteSync 处理全量或增量笔记同步

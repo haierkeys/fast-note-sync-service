@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"os"
 
 	"time"
 
@@ -21,7 +22,6 @@ type File struct {
 	Path             string     `json:"path" form:"path"`                         // 路径信息（文件路径）
 	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值，用于快速查找
 	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希，用于判定内容是否变更
-	SavePath         string     `json:"savePath" form:"savePath"`                 // 文件保存路径
 	Size             int64      `json:"size" form:"size"`                         // 文件大小
 	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`                       // 文件修改时间戳（秒）
@@ -35,8 +35,6 @@ type FileUpdateParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`     // 仓库标识
 	Path        string `json:"path" form:"path"  binding:"required"`       // 路径
 	PathHash    string `json:"pathHash" form:"pathHash"`                   // 路径哈希
-	SrcPath     string `json:"srcPath" form:"srcPath" `                    // 源路径用于删除文件
-	SrcPathHash string `json:"srcPathHash" form:"srcPathHash"`             // 源路径哈希用于删除文件
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希（可选）
 	SavePath    string `json:"savePath" form:"savePath"  binding:""`       // 文件保存路径
 	Size        int64  `json:"size" form:"size" `                          // 文件大小
@@ -211,7 +209,7 @@ FileModifyOrCreate
   - *File: 更新或创建后的文件数据（转换为 service.File 结构）
   - error: 出错则返回错误
 */
-func (svc *Service) FileModifyOrCreate(uid int64, params *FileUpdateParams, mtimeCheck bool) (bool, *File, error) {
+func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtimeCheck bool) (bool, *File, error) {
 
 	var isNew bool
 	var vaultID int64
@@ -318,10 +316,16 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 		Path:        file.Path,
 		PathHash:    file.PathHash,
 		ContentHash: "",
-		SavePath:    "",
 		Size:        0,
+		Mtime:       0,
+		Ctime:       0,
 	}
 	fileDao, err := svc.dao.FileUpdate(fileSet, file.ID, uid)
+	if err != nil {
+		return nil, err
+	}
+	// 删除文件
+	err = os.Remove(fileDao.SavePath)
 	if err != nil {
 		return nil, err
 	}
