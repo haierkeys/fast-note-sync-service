@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	lastCleanupTime time.Time
-	cleanupMutex    sync.Mutex
+	lastNoteCleanupTime time.Time
+	cleanupMutex        sync.Mutex
 )
 
 // Note 表示笔记的完整数据结构（包含内容）。
@@ -546,7 +546,7 @@ func (svc *Service) NoteCleanupAll() error {
 	}
 
 	// 如果距离上次清理时间不足检查间隔，则跳过
-	if time.Since(lastCleanupTime) < checkInterval {
+	if time.Since(lastNoteCleanupTime) < checkInterval {
 		return nil
 	}
 
@@ -560,6 +560,6 @@ func (svc *Service) NoteCleanupAll() error {
 		_ = svc.NoteCleanup(uid)
 	}
 
-	lastCleanupTime = time.Now()
+	lastNoteCleanupTime = time.Now()
 	return nil
 }

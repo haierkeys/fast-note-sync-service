@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	lastFileCleanupTime time.Time
+)
+
 // File 表示文件的完整数据结构。
 type File struct {
 	ID               int64      `json:"id" form:"id"`                             // 主键ID
@@ -498,7 +502,7 @@ func (svc *Service) FileCleanupAll() error {
 	}
 
 	// 如果距离上次清理时间不足检查间隔，则跳过
-	if time.Since(lastCleanupTime) < checkInterval {
+	if time.Since(lastFileCleanupTime) < checkInterval {
 		return nil
 	}
 
@@ -512,6 +516,6 @@ func (svc *Service) FileCleanupAll() error {
 		_ = svc.FileCleanup(uid)
 	}
 
-	lastCleanupTime = time.Now()
+	lastFileCleanupTime = time.Now()
 	return nil
 }

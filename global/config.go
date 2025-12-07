@@ -112,7 +112,7 @@ type app struct {
 	IsReturnSussess bool `yaml:"is-return-sussess"`
 
 	// 软删除笔记保留时间(支持单位: d=天, h=小时, m=分, s=秒),0 或空表示不自动清理
-	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time"`
+	SoftDeleteRetentionTime string `yaml:"delete-note-retention-time"`
 
 	// 文件上传会话超时时间(支持单位: d=天, h=小时, m=分, s=秒),0 或空表示不超时
 	UploadSessionTimeout string `yaml:"upload-session-timeout"`

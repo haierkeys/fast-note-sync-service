@@ -11,16 +11,16 @@ import (
 
 // init 自动注册清理任务
 func init() {
-	Register(NewCleanupTask)
+	Register(NewFileCleanupTask)
 }
 
-// CleanupTask 清理任务
-type CleanupTask struct {
+// FileCleanupTask 文件清理任务
+type FileCleanupTask struct {
 	interval time.Duration
 }
 
-// NewCleanupTask 创建清理任务
-func NewCleanupTask() (Task, error) {
+// NewFileCleanupTask 创建文件清理任务
+func NewFileCleanupTask() (Task, error) {
 	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" {
 		return nil, nil
@@ -34,29 +34,29 @@ func NewCleanupTask() (Task, error) {
 		return nil, nil
 	}
 
-	// 每分钟执行一次检查
-	return &CleanupTask{
+	// 每10分钟执行一次检查
+	return &FileCleanupTask{
 		interval: 10 * time.Minute,
 	}, nil
 }
 
 // Name 返回任务名称
-func (t *CleanupTask) Name() string {
-	return "CleanupTask"
+func (t *FileCleanupTask) Name() string {
+	return "FileCleanupTask"
 }
 
 // Run 执行清理任务
-func (t *CleanupTask) Run(ctx context.Context) error {
+func (t *FileCleanupTask) Run(ctx context.Context) error {
 	svc := service.NewBackground(ctx)
-	return svc.NoteCleanupAll()
+	return svc.FileCleanupAll()
 }
 
 // Interval 返回执行间隔
-func (t *CleanupTask) Interval() time.Duration {
+func (t *FileCleanupTask) Interval() time.Duration {
 	return t.interval
 }
 
 // RunImmediately 是否立即执行一次
-func (t *CleanupTask) RunImmediately() bool {
+func (t *FileCleanupTask) RunImmediately() bool {
 	return true
 }
