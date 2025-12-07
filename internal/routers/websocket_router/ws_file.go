@@ -188,7 +188,6 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			ChunkSize: session.ChunkSize,
 		}
 
-		global.Dump(data)
 		c.ToResponse(code.Success.WithData(data), "FileNeedUpload")
 		return
 
