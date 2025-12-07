@@ -447,21 +447,21 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncDelete")
 }
 
-// NoteSync 处理全量或增量笔记同步
-// 函数名: NoteSync
-// 函数使用说明: 根据客户端提供的本地笔记列表与服务器端最近更新列表比较，决定返回哪些笔记需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
+// FileSync 处理全量或增量笔记同步
+// 函数名: FileSync
+// 函数使用说明: 根据客户端提供的本地文件列表与服务器端最近更新列表比较，决定返回哪些文件需要上传、需要同步 mtime、需要删除或需要更新；最后返回同步结束消息。
 // 参数说明:
 //   - c *app.WebsocketClient: 当前 WebSocket 客户端连接，包含上下文与响应发送能力。
-//   - msg *app.WebSocketMessage: 接收到的同步请求，包含客户端的笔记摘要和同步起始时间等信息。
+//   - msg *app.WebSocketMessage: 接收到的同步请求，包含客户端的文件摘要和同步起始时间等信息。
 //
 // 返回值说明:
 //   - 无
 func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.NoteSyncRequestParams{}
+	params := &service.FileSyncRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("api_router.file.FileSync.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -471,48 +471,48 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	list, err := svc.NoteListByLastTime(c.User.UID, params)
+	list, err := svc.FileListByLastTime(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
 		return
 	}
 
-	var cNotes map[string]service.NoteSyncCheckRequestParams = make(map[string]service.NoteSyncCheckRequestParams, 0)
-	var cNotesKeys map[string]struct{} = make(map[string]struct{}, 0)
+	var cFiles map[string]service.FileSyncCheckRequestParams = make(map[string]service.FileSyncCheckRequestParams, 0)
+	var cFilesKeys map[string]struct{} = make(map[string]struct{}, 0)
 
-	if len(params.Notes) > 0 {
-		for _, note := range params.Notes {
-			cNotes[note.PathHash] = note
-			cNotesKeys[note.PathHash] = struct{}{}
+	if len(params.Files) > 0 {
+		for _, file := range params.Files {
+			cFiles[file.PathHash] = file
+			cFilesKeys[file.PathHash] = struct{}{}
 		}
 	}
 
 	var lastTime int64
 
-	for _, note := range list {
-		if note.UpdatedTimestamp >= lastTime {
-			lastTime = note.UpdatedTimestamp
+	for _, file := range list {
+		if file.UpdatedTimestamp >= lastTime {
+			lastTime = file.UpdatedTimestamp
 		}
 
-		if note.Action == "delete" {
-			c.ToResponse(code.Success.WithData(note), "NoteSyncDelete")
+		if file.Action == "delete" {
+			c.ToResponse(code.Success.WithData(file), "FileSyncDelete")
 		} else {
-			if cNote, ok := cNotes[note.PathHash]; ok {
+			if cFile, ok := cFiles[file.PathHash]; ok {
 
-				delete(cNotesKeys, note.PathHash)
+				delete(cFilesKeys, file.PathHash)
 
-				if note.ContentHash == cNote.ContentHash && note.Mtime == cNote.Mtime {
+				if file.ContentHash == cFile.ContentHash && file.Mtime == cFile.Mtime {
 					continue
-				} else if note.ContentHash != cNote.ContentHash {
-					NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
-					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+				} else if file.ContentHash != cFile.ContentHash {
+					FileCheck := convert.StructAssign(file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
+					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedPush")
 				} else {
-					NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
-					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
+					FileCheck := convert.StructAssign(file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
+					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncMtime")
 				}
 			} else {
-				c.ToResponse(code.Success.WithData(note), "NoteSyncModify")
+				c.ToResponse(code.Success.WithData(file), "FileSyncModify")
 			}
 		}
 	}
@@ -520,17 +520,17 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if list == nil {
 		lastTime = timex.Now().UnixMilli()
 	}
-	if len(cNotesKeys) > 0 {
-		for pathHash := range cNotesKeys {
-			note := cNotes[pathHash]
-			NoteCheck := convert.StructAssign(&note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
-			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+	if len(cFilesKeys) > 0 {
+		for pathHash := range cFilesKeys {
+			file := cFiles[pathHash]
+			FileCheck := convert.StructAssign(&file, &service.FileMtimePushMessage{}).(*service.FileMtimePushMessage)
+			c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedPush")
 		}
 	}
 
-	message := &service.NoteSyncEndMessage{
+	message := &service.FileSyncEndMessage{
 		Vault:    params.Vault,
 		LastTime: lastTime,
 	}
-	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
+	c.ToResponse(code.Success.WithData(message), "FileSyncEnd")
 }
