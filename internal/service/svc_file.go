@@ -22,6 +22,7 @@ type File struct {
 	Path             string     `json:"path" form:"path"`                         // 路径信息（文件路径）
 	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值，用于快速查找
 	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希，用于判定内容是否变更
+	SavePath         string     `json:"savePath" form:"savePath"  binding:""`     // 文件保存路径
 	Size             int64      `json:"size" form:"size"`                         // 文件大小
 	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`                       // 文件修改时间戳（秒）

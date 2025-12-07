@@ -99,6 +99,10 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApi.Delete)
 		api.Use(middleware.UserAuthToken()).GET("/notes", noteApi.List)
 	}
+
+	if global.Config.App.UploadSavePath != "" {
+		r.StaticFS(global.Config.App.UploadSavePath, http.Dir(global.Config.App.UploadSavePath))
+	}
 	r.Use(middleware.Cors())
 	r.NoRoute(middleware.NoFound())
 
