@@ -36,6 +36,7 @@ var (
 	ErrorNoteNotFound                       = NewError(incr(400), lang{zh: "笔记不存在", en: "Note does not exist"})
 	ErrorNoteExist                          = NewError(incr(400), lang{zh: "笔记已经存在", en: "Note already exists"})
 	ErrorNoteModifyOrCreate                 = NewError(incr(400), lang{zh: "笔记修改或创建失败", en: "Note modify or create failed"})
+	ErrorFileModifyOrCreate                 = NewError(incr(400), lang{zh: "附件修改或创建失败", en: "File modify or create failed"})
 	ErrorNoteDelete                         = NewError(incr(400), lang{zh: "笔记删除失败", en: "Note delete failed"})
 	ErrorUploadFileFailed                   = NewError(incr(400), lang{zh: "上传文件失败", en: "Upload file failed"})
 	ErrorInvalidCloudStorageType            = NewError(incr(400), lang{zh: "云存储类型无效", en: "Invalid cloud storage type"})

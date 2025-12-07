@@ -66,7 +66,7 @@ type FileSyncParams struct {
 }
 
 type FileUploadCompleteParams struct {
-	SessionID string `json:"sessionID" binding:"required"`
+	SessionID string `json:"sessionId" binding:"required"`
 }
 
 // FileGetRequestParams 用于获取单条文件的请求参数。
@@ -241,7 +241,7 @@ func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtim
 		if file.Action == "delete" {
 			fileSet.Action = "create"
 		} else {
-			fileSet.Action = "update"
+			fileSet.Action = "modify"
 		}
 
 		fileDao, err := svc.dao.FileUpdate(fileSet, file.ID, uid)

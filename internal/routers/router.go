@@ -93,11 +93,11 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.UserAuthToken()).POST("/vault", api_router.NewVault().CreateOrUpdate)
 		api.Use(middleware.UserAuthToken()).DELETE("/vault", api_router.NewVault().Delete)
 
-		noteApi := api_router.NewNote(wss)
-		api.Use(middleware.UserAuthToken()).GET("/note", noteApi.Get)
-		api.Use(middleware.UserAuthToken()).POST("/note", noteApi.CreateOrUpdate)
-		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApi.Delete)
-		api.Use(middleware.UserAuthToken()).GET("/notes", noteApi.List)
+		noteApiWithWss := api_router.NewNote(wss)
+		api.Use(middleware.UserAuthToken()).GET("/note", noteApiWithWss.Get)
+		api.Use(middleware.UserAuthToken()).POST("/note", noteApiWithWss.CreateOrUpdate)
+		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApiWithWss.Delete)
+		api.Use(middleware.UserAuthToken()).GET("/notes", noteApiWithWss.List)
 	}
 
 	if global.Config.App.UploadSavePath != "" {

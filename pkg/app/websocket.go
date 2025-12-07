@@ -324,6 +324,11 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		userClients := w.userClients[user.ID]
 
+		c.BinaryMu.Lock()
+		// 清空所有会话(具体的文件清理由超时机制或 cleanupSession 处理)
+		c.BinaryChunkSessions = make(map[string]any)
+		c.BinaryMu.Unlock()
+
 		c.UserClients = &userClients
 		c.ToResponse(code.Success, "Authorization")
 		log(LogInfo, "WebsocketServer User Enters", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(userClients)))

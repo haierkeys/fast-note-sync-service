@@ -52,11 +52,11 @@ type FileSyncEndMessage struct {
 
 // FileNeedUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
 type FileNeedUploadMessage struct {
-	Path      string `json:"path"`        // 文件路径
-	Ctime     int64  `json:"ctime" `      // 创建时间
-	Mtime     int64  `json:"mtime" `      // 修改时间
-	SessionID string `json:"session_id" ` // 会话 ID
-	ChunkSize int64  `json:"chunk_size" ` // 分块大小
+	Path      string `json:"path"`      // 文件路径
+	Ctime     int64  `json:"ctime" `    // 创建时间
+	Mtime     int64  `json:"mtime" `    // 修改时间
+	SessionID string `json:"sessionId"` // 会话 ID
+	ChunkSize int64  `json:"chunkSize"` // 分块大小
 }
 
 // FileSyncMtimeMessage 定义文件元数据更新消息结构。
@@ -103,7 +103,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
-	// 获取或创建仓库
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	// 检查文件更新状态
@@ -155,7 +155,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			CreatedAt:   time.Now(),
 		}
 		// 根据文件大小调整分块大小
-		session.ChunkSize = util.Ceil(session.Size, session.ChunkSize)
+		session.TotalChunks = util.Ceil(session.Size, session.ChunkSize)
 
 		// 配置超时时间
 		var timeout time.Duration
@@ -181,12 +181,14 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.BinaryMu.Unlock()
 
 		data := &FileNeedUploadMessage{
-			Path:      fileSvc.Path,
-			Ctime:     fileSvc.Ctime,
-			Mtime:     fileSvc.Mtime,
+			Path:      params.Path,
+			Ctime:     params.Ctime,
+			Mtime:     params.Mtime,
 			SessionID: session.ID,
 			ChunkSize: session.ChunkSize,
 		}
+
+		global.Dump(data)
 		c.ToResponse(code.Success.WithData(data), "FileNeedUpload")
 		return
 
@@ -331,6 +333,9 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
 
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+	svc.VaultGetOrCreate(session.Vault, c.User.UID)
+
 	svcParams := &service.FileUpdateParams{
 		Vault:       session.Vault,
 		Path:        session.Path,
@@ -346,7 +351,7 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
 
 	if err != nil {
-		c.ToResponse(code.ErrorServerInternal.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorFileModifyOrCreate.WithDetails(err.Error()))
 		return
 	}
 
