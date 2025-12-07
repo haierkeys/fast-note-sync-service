@@ -68,7 +68,7 @@ func (m *MigrationManager) Run() error {
 	executed := 0
 	for _, migration := range m.migrations {
 		if migration.Version() <= currentVersion {
-			//continue
+			continue
 		}
 
 		m.logger.Info("applying migration",
@@ -83,14 +83,14 @@ func (m *MigrationManager) Run() error {
 			}
 
 			// 记录版本
-			// record := &SchemaVersion{
-			// 	Version:     migration.Version(),
-			// 	Description: migration.Description(),
-			// 	AppliedAt:   time.Now(),
-			// }
-			// if err := tx.Create(record).Error; err != nil {
-			// 	return fmt.Errorf("failed to record version: %w", err)
-			// }
+			record := &SchemaVersion{
+				Version:     migration.Version(),
+				Description: migration.Description(),
+				AppliedAt:   time.Now(),
+			}
+			if err := tx.Create(record).Error; err != nil {
+				return fmt.Errorf("failed to record version: %w", err)
+			}
 
 			return nil
 		}); err != nil {

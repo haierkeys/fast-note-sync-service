@@ -2,6 +2,10 @@ package upgrade
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
@@ -24,6 +28,37 @@ func (m *VaultMigrate) Description() string {
 
 // Up 执行升级
 func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
+
+	// 0. 重命名数据库文件
+	global.Logger.Info("Step 0: Renaming database files from db_note_ prefix to db_user_ prefix")
+	dbDir := filepath.Dir(global.Config.Database.Path)
+	files, err := os.ReadDir(dbDir)
+	if err != nil {
+		global.Logger.Error("Step 0 failed: unable to read database directory", zap.Error(err))
+		return err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		name := file.Name()
+		if strings.HasPrefix(name, "db_note_") {
+
+			oldPath := filepath.Join(dbDir, name)
+			newName := "db_user_" + strings.TrimPrefix(name, "db_note_")
+			newPath := filepath.Join(dbDir, newName)
+
+			global.Logger.Info("Renaming file", zap.String("old", name), zap.String("new", newName))
+			if err := os.Rename(oldPath, newPath); err != nil {
+				// 记录错误但尝试继续，或者根据需求决定是否中断
+				// 这里选择如果重命名失败则报错停止，保证数据一致性
+				global.Logger.Error("Step 0 failed: unable to rename file", zap.Error(err))
+				return fmt.Errorf("failed to rename file %s to %s: %w", name, newName, err)
+			}
+		}
+	}
+	global.Logger.Info("Step 0: Database files renamed successfully")
 
 	global.Logger.Info("VaultMigrate Up - Starting vault table migration")
 	svc := service.NewBackground(ctx)
