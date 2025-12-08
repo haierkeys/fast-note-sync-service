@@ -74,7 +74,14 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	// Start scheduler
 	initScheduler(s)
 
-	s.logger.Info(fmt.Sprintf("%s v%s / Git:%s / BuidTime:%s", global.Name, global.Version, global.GitTag, global.BuildTime))
+	banner := `
+    ______           __     _   __      __         _____
+   / ____/___ ______/ /_   / | / /___  / /____     / ___/__  ______  _____
+  / /_  / __  / ___/ __/  /  |/ / __ \/ __/ _ \    \__ \/ / / / __ \/ ___/
+ / __/ / /_/ (__  ) /_   / /|  / /_/ / /_/  __/   ___/ / /_/ / / / / /__
+/_/    \__,_/____/\__/  /_/ |_/\____/\__/\___/   /____/\__, /_/ /_/\___/
+                                                      /____/              `
+	s.logger.Info(fmt.Sprintf("%s\n\n%s v%s\nGit: %s\nBuildTime: %s\n", banner, global.Name, global.Version, global.GitTag, global.BuildTime))
 
 	s.logger.Info("loading config file: " + configRealpath)
 

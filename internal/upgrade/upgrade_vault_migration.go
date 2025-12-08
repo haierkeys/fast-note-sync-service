@@ -18,7 +18,7 @@ type VaultMigrate struct{}
 
 // Version 返回版本号
 func (m *VaultMigrate) Version() string {
-	return "0.0.1"
+	return "0.8.10"
 }
 
 // Description 返回描述

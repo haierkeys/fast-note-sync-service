@@ -65,59 +65,63 @@ func (m *MigrationManager) Run() error {
 		return fmt.Errorf("failed to get applied versions: %w", err)
 	}
 
-	refVer := m.getReferenceVersion()
+	lastVersion := m.getReferenceVersion()
 	// 确保 reference version 有 "v" 前缀用于比较 (semver 库需要)
-	if !strings.HasPrefix(refVer, "v") {
-		refVer = "v" + refVer
+	if !strings.HasPrefix(lastVersion, "v") {
+		lastVersion = "v" + lastVersion
 	}
 
-	if !semver.IsValid(refVer) {
-		m.logger.Warn("reference version (from config/lastVersion) is not a valid semver, using v0.0.0", zap.String("version", refVer))
-		refVer = "v0.0.0"
+	if !semver.IsValid(lastVersion) {
+		m.logger.Warn("reference version (from config/lastVersion) is not a valid semver, using v0.8.10", zap.String("lastVersion", lastVersion))
+		lastVersion = "v0.8.1"
 	}
 
-	m.logger.Info("LastVersion", zap.String("version", refVer))
+	m.logger.Info("LastVersion", zap.String("lastVersion", lastVersion))
 
 	// [NEW] 如果当前 global.Version 与 config/lastVersion 一致，则跳过后续检查
 	// 这意味着在当前版本下已经运行过一次升级逻辑(无论是执行了还是跳过了)
 	// 避免每次重启都进行不必要的数据库查询或日志输出
-	currentGlobal := global.Version
-	if !strings.HasPrefix(currentGlobal, "v") {
-		currentGlobal = "v" + currentGlobal
+	runningVersion := global.Version
+	if !strings.HasPrefix(runningVersion, "v") {
+		runningVersion = "v" + runningVersion
 	}
-	if currentGlobal == refVer {
-		m.logger.Info("skipping upgrade", zap.String("run_version", global.Version))
+	// [NEW] 如果 runningVersion <= lastVersion，则跳过
+	// 意味着当前版本没有比上一次运行的版本更新，不需要执行升级检查
+	if semver.Compare(runningVersion, lastVersion) <= 0 {
+		m.logger.Info("skipping upgrade", zap.String("runningVersion", runningVersion), zap.String("lastVersion", lastVersion))
 		return nil
 	}
 
 	// 执行所有未执行的升级
 	executed := 0
 	for _, migration := range m.migrations {
-		migVer := migration.Version()
+		scriptVersion := migration.Version()
 
-		// 检查是否已应用
-		if appliedVersions[migVer] {
-			continue
-		}
-
-		// 比较版本: 如果 migration.Version > refVer, 则跳过
+		// [NEW] Prioritize matching against lastVersion
+		// 比较版本: 如果 migration.Version > lastVersion, 则跳过
 		// 先标准化 format
-		cmpVer := migVer
-		if !strings.HasPrefix(cmpVer, "v") {
-			cmpVer = "v" + cmpVer
+		currentScriptVersion := scriptVersion
+		if !strings.HasPrefix(currentScriptVersion, "v") {
+			currentScriptVersion = "v" + currentScriptVersion
 		}
 
-		if semver.IsValid(refVer) && semver.IsValid(cmpVer) {
-			if semver.Compare(cmpVer, refVer) > 0 {
-				m.logger.Info("skip migration > ref version",
-					zap.String("mig", migVer),
-					zap.String("ref", refVer))
+		// 比较版本: 如果 migration.Version <= lastVersion, 则跳过
+		if semver.IsValid(lastVersion) && semver.IsValid(currentScriptVersion) {
+			if semver.Compare(currentScriptVersion, lastVersion) <= 0 {
+				m.logger.Info("skip migration <= lastVersion",
+					zap.String("scriptVersion", scriptVersion),
+					zap.String("lastVersion", lastVersion))
 				continue
 			}
 		}
 
+		// 检查是否已应用
+		if appliedVersions[scriptVersion] {
+			continue
+		}
+
 		m.logger.Info("applying migration",
-			zap.String("ver", migration.Version()),
+			zap.String("scriptVersion", migration.Version()),
 			zap.String("desc", migration.Description()))
 
 		// 在事务中执行升级
@@ -142,7 +146,7 @@ func (m *MigrationManager) Run() error {
 			return fmt.Errorf("failed to apply migration %s: %w", migration.Version(), err)
 		}
 
-		m.logger.Info("migration applied successfully", zap.String("version", migration.Version()))
+		m.logger.Info("migration applied successfully", zap.String("scriptVersion", migration.Version()))
 		executed++
 	}
 
@@ -191,16 +195,16 @@ func (m *MigrationManager) getReferenceVersion() string {
 		if !os.IsNotExist(err) {
 			m.logger.Warn("read config/lastVersion failed", zap.Error(err))
 		} else {
-			m.logger.Info("config/lastVersion not found, default v0.0.0")
+			m.logger.Info("config/lastVersion not found, default v0.8.10")
 		}
-		return "v0.0.0"
+		return "v0.8.1"
 	}
 
 	ver := strings.TrimSpace(string(content))
 
 	if ver == "" {
-		m.logger.Info("config/lastVersion empty, default v0.0.0")
-		return "v0.0.0"
+		m.logger.Info("config/lastVersion empty, default v0.8.10")
+		return "v0.8.1"
 	}
 	return ver
 }
