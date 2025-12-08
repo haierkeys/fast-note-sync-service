@@ -5,13 +5,14 @@ import (
 	"strings"
 
 	"github.com/bytedance/sonic"
+	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 )
 
 // CopyStruct
 // dst 目标结构体，src 源结构体
 // 它会把src与dst的相同字段名的值，复制到dst中
-func StructAssign(src any, dst any) any {
+func StructAssign2(src any, dst any) any {
 
 	bVal := reflect.ValueOf(dst).Elem() // 获取reflect.Type类型
 	vVal := reflect.ValueOf(src).Elem() // 获取reflect.Type类型
@@ -24,6 +25,14 @@ func StructAssign(src any, dst any) any {
 		}
 	}
 
+	return dst
+}
+
+// CopyStruct
+// dst 目标结构体，src 源结构体
+// 它会把src与dst的相同字段名的值，复制到dst中
+func StructAssign(src any, dst any) any {
+	copier.Copy(dst, src)
 	return dst
 }
 
