@@ -1,9 +1,9 @@
 package app
 
 import (
-	"encoding/json"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -61,7 +61,7 @@ func (v ValidErrors) Maps() []map[string]string {
 
 func (v ValidErrors) MapsToString() string {
 	maps := v.Maps()
-	re, _ := json.Marshal(maps)
+	re, _ := sonic.Marshal(maps)
 	return string(re)
 }
 

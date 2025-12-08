@@ -1,10 +1,10 @@
 package convert
 
 import (
-	"encoding/json"
 	"reflect"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 )
 
@@ -34,8 +34,8 @@ func StructAssign(src any, dst any) any {
  * @return []string{}
  */
 func StructToMap(param any, data map[string]interface{}) error {
-	str, _ := json.Marshal(param)
-	error := json.Unmarshal(str, &data)
+	str, _ := sonic.Marshal(param)
+	error := sonic.Unmarshal(str, &data)
 	if error != nil {
 		return error
 	} else {

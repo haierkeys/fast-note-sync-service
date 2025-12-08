@@ -1,13 +1,13 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"golang.org/x/sync/singleflight"
@@ -69,7 +69,7 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 	var errs ValidErrors
 
 	// Step 1: JSON 反序列化（可替换成其他格式）
-	if err := json.Unmarshal(data, obj); err != nil {
+	if err := sonic.Unmarshal(data, obj); err != nil {
 		// 解码错误处理
 		errs = append(errs, &ValidError{
 			Key:     "body",
@@ -193,7 +193,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 }
 
 func (c *WebsocketClient) send(actionType string, content any, isBroadcast bool, isExcludeSelf bool) {
-	responseBytes, _ := json.Marshal(content)
+	responseBytes, _ := sonic.Marshal(content)
 	if actionType != "" {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
 	}
@@ -491,7 +491,7 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 			Data:    code.Data(),
 			Details: details,
 		}
-		responseBytes, _ = json.Marshal(content)
+		responseBytes, _ = sonic.Marshal(content)
 	} else {
 		content := ResResult{
 			Code:   code.Code(),
@@ -499,7 +499,7 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 			Msg:    code.Lang.GetMessage(),
 			Data:   code.Data(),
 		}
-		responseBytes, _ = json.Marshal(content)
+		responseBytes, _ = sonic.Marshal(content)
 	}
 
 	if action != "" {

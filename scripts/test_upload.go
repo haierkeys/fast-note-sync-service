@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/lxzan/gws"
 )
 
@@ -74,7 +74,7 @@ func main() {
 		"size":        size,
 		"totalChunks": 1,
 	}
-	initBytes, _ := json.Marshal(initData)
+	initBytes, _ := sonic.Marshal(initData)
 	sendJSON(socket, "FileChunkUploadInit", initBytes)
 
 	// Read response
@@ -99,7 +99,7 @@ func main() {
 	completeData := map[string]interface{}{
 		"sessionID": sessionID,
 	}
-	completeBytes, _ := json.Marshal(completeData)
+	completeBytes, _ := sonic.Marshal(completeData)
 	sendJSON(socket, "FileChunkUploadComplete", completeBytes)
 
 	// Read response
@@ -130,7 +130,7 @@ func loginOrRegister() string {
 			Token string `json:"token"`
 		} `json:"data"`
 	}
-	json.Unmarshal(body, &res)
+	sonic.Unmarshal(body, &res)
 	if res.Data.Token != "" {
 		return res.Data.Token
 	}
@@ -149,7 +149,7 @@ func loginOrRegister() string {
 			Token string `json:"token"`
 		} `json:"data"`
 	}
-	json.Unmarshal(body, &loginRes)
+	sonic.Unmarshal(body, &loginRes)
 	if loginRes.Data.Token == "" {
 		fmt.Println("Login failed response:", string(body))
 	}
@@ -218,6 +218,6 @@ func extractsessionID(resp string) string {
 			sessionID string `json:"sessionID"`
 		} `json:"data"`
 	}
-	json.Unmarshal(jsonPart, &res)
+	sonic.Unmarshal(jsonPart, &res)
 	return res.Data.sessionID
 }

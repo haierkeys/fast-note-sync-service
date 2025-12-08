@@ -5,10 +5,11 @@
 package gin_tools
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+
+	"github.com/bytedance/sonic"
 )
 
 // EnableDecoderUseNumber is used to call the UseNumber method on the JSON
@@ -38,9 +39,12 @@ func (jsonBinding) Parse(req *http.Request, params *map[string]string) error {
 }
 
 func decodeJSON(r io.Reader, obj any) error {
-	decoder := json.NewDecoder(r)
-	if err := decoder.Decode(obj); err != nil {
-		//return err
+
+	// decoder := json.NewDecoder(r)
+	// if err := decoder.Decode(obj); err != nil {
+	var dec = sonic.ConfigDefault.NewDecoder(r)
+	if err := dec.Decode(obj); err != nil {
+		return err
 	}
 	return nil
 }

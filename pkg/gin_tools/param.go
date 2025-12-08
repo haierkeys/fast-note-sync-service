@@ -8,11 +8,11 @@ package gin_tools
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,7 +32,8 @@ func RequestParams(c *gin.Context) (map[string]interface{}, error) {
 		queryMap[k] = c.Query(k)
 	}
 
-	if "application/json" == contentType {
+	switch contentType {
+	case "application/json":
 		var bodyBytes []byte
 		if c.Request.Body != nil {
 			bodyBytes, _ = io.ReadAll(c.Request.Body)
@@ -40,12 +41,14 @@ func RequestParams(c *gin.Context) (map[string]interface{}, error) {
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		// @see gin@v1.7.7/binding/json.go ==> func (jsonBinding) Bind(req *httpclient.Request, obj interface{})
 		if c.Request != nil && c.Request.Body != nil {
-			if err := json.NewDecoder(c.Request.Body).Decode(&postMap); err != nil {
+			//if err := json.NewDecoder(c.Request.Body).Decode(&postMap); err != nil {
+			var dec = sonic.ConfigDefault.NewDecoder(c.Request.Body)
+			if err := dec.Decode(&postMap); err != nil {
 				return nil, err
 			}
 		}
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	} else if "multipart/form-data" == contentType {
+	case "multipart/form-data":
 		// @see gin@v1.7.7/binding/form.go ==> func (formMultipartBinding) Bind(req *httpclient.Request, obj interface{})
 		if err := c.Request.ParseMultipartForm(defaultMemory); err != nil {
 			return nil, err
@@ -57,7 +60,7 @@ func RequestParams(c *gin.Context) (map[string]interface{}, error) {
 				postMap[k] = v[0]
 			}
 		}
-	} else {
+	default:
 		// ParseForm 解析 URL 中的查询字符串，并将解析结果更新到 r.Form 字段
 		// 对于 POST 或 PUT 请求，ParseForm 还会将 body 当作表单解析，
 		// 并将结果既更新到 r.PostForm 也更新到 r.Form。解析结果中，
