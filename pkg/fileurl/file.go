@@ -179,8 +179,8 @@ func CopyFile(srcPath, destPath string) error {
 	defer sourceFile.Close()
 
 	// 2. 确保目标目录存在
-	// 递归创建目录，权限设置为 0755
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+	// 递归创建目录，权限设置为 0644
+	if err := os.MkdirAll(filepath.Dir(destPath), 0644); err != nil {
 		return err
 	}
 

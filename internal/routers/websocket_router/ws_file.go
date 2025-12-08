@@ -123,7 +123,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			tempDir = "storage/temp"
 		}
 		// 创建临时目录
-		if err := os.MkdirAll(tempDir, 0755); err != nil {
+		if err := os.MkdirAll(tempDir, 0644); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
 			c.ToResponse(code.ErrorServerInternal)
 			return
@@ -288,7 +288,7 @@ func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	dateDir := time.Now().Format("200601")
 	finalDir := filepath.Join(baseUploadDir, dateDir)
 
-	if err := os.MkdirAll(finalDir, 0755); err != nil {
+	if err := os.MkdirAll(finalDir, 0644); err != nil {
 		global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
 		c.ToResponse(code.ErrorServerInternal)
 		return
