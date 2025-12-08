@@ -17,8 +17,8 @@ import (
 type VaultMigrate struct{}
 
 // Version 返回版本号
-func (m *VaultMigrate) Version() int {
-	return 1
+func (m *VaultMigrate) Version() string {
+	return "0.0.1"
 }
 
 // Description 返回描述

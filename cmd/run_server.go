@@ -12,6 +12,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
 	"github.com/haierkeys/fast-note-sync-service/internal/task"
+	"github.com/haierkeys/fast-note-sync-service/internal/upgrade"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/safe_close"
 	"github.com/haierkeys/fast-note-sync-service/pkg/validator"
@@ -60,6 +61,11 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	initLogger(s)
 
 	initDatabase()
+
+	// 自动执行迁移任务
+	if err := upgrade.Execute(); err != nil {
+		return nil, fmt.Errorf("database upgrade failed: %w", err)
+	}
 
 	initValidator()
 
