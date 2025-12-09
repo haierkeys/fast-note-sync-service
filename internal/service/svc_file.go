@@ -21,18 +21,18 @@ var (
 
 // File 表示文件的完整数据结构。
 type File struct {
-	ID               int64      `json:"id" form:"id"`                             // 主键ID
-	Action           string     `json:"action" form:"action"`                     // 操作：create/modify/delete
-	Path             string     `json:"path" form:"path"`                         // 路径信息（文件路径）
-	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值，用于快速查找
-	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希，用于判定内容是否变更
-	SavePath         string     `json:"savePath" form:"savePath"  binding:""`     // 文件保存路径
-	Size             int64      `json:"size" form:"size"`                         // 文件大小
-	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳（秒）
-	Mtime            int64      `json:"mtime" form:"mtime"`                       // 文件修改时间戳（秒）
-	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
-	UpdatedAt        timex.Time `json:"updatedAt"`                                // 更新时间字段（time 类型包装）
-	CreatedAt        timex.Time `json:"createdAt"`                                // 创建时间字段（time 类型包装）
+	ID               int64      `json:"id" form:"id"`                         // 主键ID
+	Action           string     `json:"-" form:"action"`                      // 操作：create/modify/delete
+	Path             string     `json:"path" form:"path"`                     // 路径信息（文件路径）
+	PathHash         string     `json:"pathHash" form:"pathHash"`             // 路径哈希值，用于快速查找
+	ContentHash      string     `json:"contentHash" form:"contentHash"`       // 内容哈希，用于判定内容是否变更
+	SavePath         string     `json:"savePath" form:"savePath"  binding:""` // 文件保存路径
+	Size             int64      `json:"size" form:"size"`                     // 文件大小
+	Ctime            int64      `json:"ctime" form:"ctime"`                   // 创建时间戳（秒）
+	Mtime            int64      `json:"mtime" form:"mtime"`                   // 文件修改时间戳（秒）
+	UpdatedTimestamp int64      `json:"-" form:"updatedTimestamp"`            // 记录更新时间戳（用于同步）
+	UpdatedAt        timex.Time `json:"-"`                                    // 更新时间字段（time 类型包装）
+	CreatedAt        timex.Time `json:"-"`                                    // 创建时间字段（time 类型包装）
 }
 
 // FileModifyOrCreateRequestParams 用于创建或修改文件的请求参数。
@@ -167,7 +167,7 @@ func (svc *Service) FileUpdateCheck(uid int64, params *FileUpdateCheckParams) (s
 			if params.Mtime < file.Mtime {
 				return "UpdateMtime", fileSvc, nil
 			} else if params.Mtime > file.Mtime {
-				svc.dao.FileUpdateMtime(params.Mtime, fileSvc.ID, uid)
+				svc.dao.FileUpdateMtime(params.Mtime, file.ID, uid)
 			}
 			return "", fileSvc, nil
 		} else {

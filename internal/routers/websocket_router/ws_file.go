@@ -71,6 +71,10 @@ type FileSyncNeedUploadMessage struct {
 	Path string `json:"path"` // 文件路径
 }
 
+type FileDeleteMessage struct {
+	Path string `json:"path" form:"path"` // 路径信息（文件路径）
+}
+
 // FileUploadCheck 检查文件上传请求，初始化上传会话或确认无需上传。
 func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileUpdateCheckParams{}
@@ -180,7 +184,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.BinaryChunkSessions[sessionID] = session
 		c.BinaryMu.Unlock()
 
-		data := &FileNeedUploadMessage{
+		fileNeedUploadMessage := &FileNeedUploadMessage{
 			Path:      params.Path,
 			Ctime:     params.Ctime,
 			Mtime:     params.Mtime,
@@ -188,17 +192,17 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			ChunkSize: session.ChunkSize,
 		}
 
-		c.ToResponse(code.Success.WithData(data), "FileNeedUpload")
+		c.ToResponse(code.Success.WithData(fileNeedUploadMessage), "FileNeedUpload")
 		return
 
 	} else if updateMode == "UpdateMtime" {
 		// 仅更新修改时间
-		data := &FileSyncMtimeMessage{
+		fileSyncMtimeMessage := &FileSyncMtimeMessage{
 			Path:  fileSvc.Path,
 			Ctime: fileSvc.Ctime,
 			Mtime: fileSvc.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(data), "FileSyncMtime")
+		c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
 		return
 	}
 	// 无需更新
@@ -384,11 +388,13 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success.Reset())
+
+	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
 	// 广播文件删除消息
-	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncDelete")
+	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
 }
 
-// FileSync 处理文件同步请求。
+// FileSync 批量检测用户文件是否需要更新。
 // 对比客户端和服务端的文件列表，决定哪些文件需要上传、更新或删除。
 func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileSyncParams{}
@@ -449,12 +455,12 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					continue
 				} else if file.ContentHash != cFile.ContentHash {
 					// 内容不一致，需要客户端上传
-					FileCheck := convert.StructAssign(file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
-					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedUpload")
+					fileSyncNeedUploadMessage := convert.StructAssign(file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
+					c.ToResponse(code.Success.WithData(fileSyncNeedUploadMessage), "FileSyncNeedUpload")
 				} else {
 					// 仅元数据变更，通知客户端更新
-					FileCheck := convert.StructAssign(file, &FileSyncMtimeMessage{}).(*FileSyncMtimeMessage)
-					c.ToResponse(code.Success.WithData(FileCheck), "FileSyncMtime")
+					fileSyncMtimeMessage := convert.StructAssign(file, &FileSyncMtimeMessage{}).(*FileSyncMtimeMessage)
+					c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
 				}
 			} else {
 				// 客户端不存在，通知客户端下载更新
