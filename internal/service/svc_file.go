@@ -298,12 +298,14 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 	if err != nil {
 		return nil, err
 	}
+	savePath := file.SavePath
 	fileSet := &dao.FileSet{
 		VaultID:     vaultID,
 		Action:      "delete",
 		Path:        file.Path,
 		PathHash:    file.PathHash,
 		ContentHash: "",
+		SavePath:    "",
 		Size:        0,
 		Mtime:       0,
 		Ctime:       0,
@@ -313,7 +315,7 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 		return nil, err
 	}
 	// 删除文件
-	err = os.Remove(fileDao.SavePath)
+	err = os.Remove(savePath)
 	if err != nil {
 		return nil, err
 	}
