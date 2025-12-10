@@ -1,149 +1,150 @@
-[中文文档](readme-zh.md) / [English Document](README.md)
-# Fast Note Sync Service
+[中文文档](https://www.google.com/search?q=readme-zh.md) / [English Document](README.md)
+
+<h1 align="center">Fast Note Sync Service</h1>
 
 <p align="center">
-    <img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service" alt="version">
-    <img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service" alt="license">
+    <a href="https://github.com/haierkeys/fast-note-sync-service/releases"><img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service?style=flat-square" alt="release"></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/LICENSE"><img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service?style=flat-square" alt="license"></a>
+    <img src="https://img.shields.io/badge/Language-Go-00ADD8?style=flat-square" alt="Go">
 </p>
 
 
-
-A high-performance, low-latency note synchronization service built with Golang + WebSocket + SQLite + React. It needs to be used together with the [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync).
-
-
-## Web GUI Screenshot:
-
-
-Note repository: <br />
-
-<img src="https://image.diybeta.com/blog/fast-note-sync-service-1.png" alt="fast-note-sync-service-2" width="800" />
-
-Note management: <br />
-
-<img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-2" width="800" />
+<p align="center">
+  <strong>High-Performance, Low-Latency Note Synchronization Service Solution</strong>
+  <br>
+  <em>Built with Golang + WebSocket + SQLite + React</em>
+</p>
 
 
-## Features
+<p align="center">
+Requires the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+</p>
 
-- [x] Web page management
-- [x] Currently only supports SQLite storage
-- [x] Add repository management
-- [x] Add note management ( Supports creating/deleting/renaming/viewing/editing notes, all changes will be synced to all devices in real time )
-- [x] Real-time note sync across multiple devices
-- [ ] Add support for images and other types of non-note attachments
-- [ ] Add Git support
-- [ ] Note cloud storage sync backup - S3
-- [ ] Note cloud storage sync backup - Alibaba Cloud
-- [ ] Note cloud storage sync backup - Cloudflare R2
-- [ ] Note cloud storage sync backup - MinIO
-- [ ] Note cloud storage sync backup - WebDAV
-- [ ] Note cloud storage sync backup - Add backup strategies
-- [ ] Optimize using the Google diff-match-patch algorithm1
+<div align="center">
+    <img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-preview" width="800" />
+</div>
 
-## Changelog
+-----
 
-To view the full changelog, please visit [Changelog](https://github.com/haierkeys/fast-note-sync-service/releases).
+## ✨ Core Features
 
-## Pricing
+  * **💻 Web Admin Panel**: Built-in modern management interface to easily create users, generate plugin configurations, and manage vaults and note content.
+  * **🔄 Multi-Device Real-Time Sync**:
+      * Supports automatic **Vault** creation.
+      * Supports note management (Create, Read, Update, Delete), with changes distributed to all online devices in milliseconds.
+  * **🖼️ Attachment Sync Support**:
+      * Perfectly supports syncing non-note files such as images.
+      * *(Note: Requires Server v0.9+ and Obsidian Plugin v1.0+. Does not support Obsidian settings files)*
 
-This software is open source and free. If you'd like to show appreciation or help support continued development, you can support me via:
+## 🗺️ Roadmap
+
+We are continuously improving. Here is the future development plan:
+
+  - [ ] **Git Version Control Integration**: Safer version rollback for notes.
+  - [ ] **Sync Algorithm Optimization**: Integrate `google-diff-match-patch` for more efficient incremental syncing.
+  - [ ] **Cloud Storage & Backup Strategy**:
+      - [ ] Custom backup policy configuration.
+      - [ ] Multi-protocol adaptation: S3 / Minio / Cloudflare R2 / Aliyun OSS / WebDAV.
+
+## 🚀 Quick Deployment
+
+We provide multiple installation methods. **One-click Script** or **Docker** is recommended.
+
+### Method 1: One-click Script (Recommended)
+
+Automatically detects the system environment and completes installation and service registration.
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
+```
+
+**Script Main Actions:**
+
+  * Automatically downloads the Release binary adapted to the current system.
+  * Installs to `/opt/fast-note` by default and creates a shortcut command at `/usr/local/bin/fast-note`.
+  * Configures and starts the Systemd service (`fast-note.service`) for auto-start on boot.
+  * **Management Command**: `fast-note [install|uninstall|start|stop|status|update|menu]`
+
+-----
+
+### Method 2: Docker Deployment
+
+#### Docker Run
+
+```bash
+# 1. Pull image
+docker pull haierkeys/fast-note-sync-service:latest
+
+# 2. Start container
+docker run -tid --name fast-note-sync-service \
+    -p 9000:9000 -p 9001:9001 \
+    -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
+    -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
+    haierkeys/fast-note-sync-service:latest
+```
+
+#### Docker Compose
+
+Create a `docker-compose.yaml` file:
+
+```yaml
+version: '3'
+services:
+  fast-note-sync-service:
+    image: haierkeys/fast-note-sync-service:latest
+    container_name: fast-note-sync-service
+    restart: always
+    ports:
+      - "9000:9000"  # API Port
+      - "9001:9001"  # WebSocket Port
+    volumes:
+      - ./storage:/fast-note-sync/storage    # Data Storage
+      - ./config:/fast-note-sync/config      # Configuration File
+```
+
+Start the service:
+
+```bash
+docker compose up -d
+```
+
+-----
+
+### Method 3: Manual Binary Installation
+
+Download the latest version for your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), unzip, and run:
+
+```bash
+./fast-note-sync-service run -c config/config.yaml
+```
+
+## 📖 User Guide
+
+1.  **Access Admin Panel**:
+    Open `http://{Server-IP}:9000` in your browser.
+2.  **Initial Setup**:
+    Registration is required for the first visit. *(To disable registration, set `user.register-is-enable: false` in the config file)*.
+3.  **Configure Client**:
+    Log in to the admin panel and click **"Copy API Config"**.
+4.  **Connect Obsidian**:
+    Open the Obsidian plugin settings page and paste the configuration information you just copied.
+
+## ⚙️ Configuration
+
+The default configuration file is `config.yaml`. The program will automatically look for it in the **root directory** or the **config/** directory.
+
+View full configuration example: [config/config.yaml](https://www.google.com/search?q=https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+
+## 📅 Changelog
+
+For full version history, please visit the [Releases Page](https://github.com/haierkeys/fast-note-sync-service/releases).
+
+## ☕ Sponsor & Support
+
+This project is completely open-source and free. If you find it helpful, please **Star** this project or buy the author a coffee. This will motivate me to continue maintenance. Thank you\!
 
 [<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
 
-## Self-hosting
+## 🔗 Related Resources
 
-1) Recommended: one-click install script (automatically detects platform and installs)
-
-  ```bash
-  bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
-  ```
-Main features of the script:
-- Automatically download the Release asset for the detected platform and install the binary
-- Create /opt/fast-note as the default installation directory
-- Create a shortcut command at /usr/local/bin/fast-note
-- Create and enable a systemd service (fast-note.service) for systemd environments
-- Support commands: install|uninstall|full-uninstall|start|stop|status|update|install-self|menu
-- full-uninstall will remove the installation directory, logs, install script, and symlink (interactive confirmation before execution)
-
-2) Manual binary installation
-
-  Download the latest release from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), extract and run:
-
-  ```bash
-  ./fast-note-sync-service run -c config/config.yaml
-  ```
-
-3) Containerized installation (Docker CLI)
-
-  Docker commands:
-
-  ```bash
-  # Pull the latest container image
-  docker pull haierkeys/fast-note-sync-service:latest
-
-  # Create and start the container
-  docker run -tid --name fast-note-sync-service \
-          -p 9000:9000 -p 9001:9001 \
-          -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
-          -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
-          haierkeys/fast-note-sync-service:latest
-  ```
-
-4) Containerized installation (Docker Compose)
-  The **docker-compose.yaml** content is as follows
-
-  ```yaml
-  # /data/docker-compose.yaml
-  services:
-    fast-note-sync-service:
-      image: haierkeys/fast-note-sync-service:latest
-      container_name: fast-note-sync-service
-      ports:
-        - "9000:9000"
-        - "9001:9001"
-      volumes:
-        - /data/fast-note-sync/storage/:/fast-note-sync/storage/  # map storage directory
-        - /data/fast-note-sync/config/:/fast-note-sync/config/    # map config directory
-      networks:
-        - app-network  # on the same network as image-api
-
-  ```
-
-  Run **docker compose**
-
-  Register the docker container as a service
-
-  ```bash
-  docker compose -f /data/docker-compose.yaml up -d
-  ```
-
-  Unregister and destroy the docker container
-
-  ```bash
- docker compose -f /data/docker-compose.yaml down
-  ```
-
-### Usage
-
-Visit the Web GUI at `http://{IP:PORT}`
-
-Click "Copy API Configuration" to obtain the configuration info, then paste it into the `Fast Note Sync For Obsidian` plugin.
-
-The first visit requires user registration. To disable registration, set `user.register-is-enable` to `false`.
-
-
-
-
-
-### Configuration
-
-The default configuration file name is **config.yaml**. Please place it in the **root directory** or the **config** directory.
-
-For more configuration details, see:
-
-- [config/config.yaml](config/config.yaml)
-
-
-## Other resources
-
-- [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync)
+  * [Obsidian Fast Note Sync Plugin (Client Plugin)](https://github.com/haierkeys/obsidian-fast-note-sync)
