@@ -1,4 +1,4 @@
-[中文文档](https://www.google.com/search?q=readme-zh.md) / [English Document](README.md)
+[中文文档](readme-zh.md) / [English Document](README.md)
 
 <h1 align="center">Fast Note Sync Service</h1>
 
