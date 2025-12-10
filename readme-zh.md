@@ -32,7 +32,7 @@
     * 支持笔记管理（增、删、改、查），变更毫秒级实时分发至所有在线设备。
 * **🖼️ 附件同步支持**：
     * 完美支持图片等非笔记文件同步。
-    * *(注：需服务端 v0.9+ 及 Obsidian 插件端 v1.0+, 不支持 Obsidian 设置文件)*
+    * *(注：需服务端 v0.9+ 及 [Obsidian 插件端 v1.0+ ](https://github.com/haierkeys/obsidian-fast-note-sync/releases), 不支持 Obsidian 设置文件)*
 
 ## 🗺️ 路线图 (Roadmap)
 
@@ -53,7 +53,7 @@
 自动检测系统环境并完成安装、服务注册。
 
 ```bash
-bash <(curl -fsSL [https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh](https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh))
+bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
 ```
 
 **脚本主要行为：**
@@ -146,3 +146,5 @@ docker compose up -d
 ## 🔗 相关资源
 
   * [Obsidian Fast Note Sync Plugin (客户端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
+
+

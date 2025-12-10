@@ -34,7 +34,7 @@ Requires the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-
       * Supports note management (Create, Read, Update, Delete), with changes distributed to all online devices in milliseconds.
   * **🖼️ Attachment Sync Support**:
       * Perfectly supports syncing non-note files such as images.
-      * *(Note: Requires Server v0.9+ and Obsidian Plugin v1.0+. Does not support Obsidian settings files)*
+      * *(Note: Requires Server v0.9+ and [Obsidian Plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases), . Does not support Obsidian settings files)*
 
 ## 🗺️ Roadmap
 
