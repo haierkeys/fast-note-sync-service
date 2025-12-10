@@ -30,7 +30,7 @@ type File struct {
 	Size             int64      `json:"size" form:"size"`                     // 文件大小
 	Ctime            int64      `json:"ctime" form:"ctime"`                   // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`                   // 文件修改时间戳（秒）
-	UpdatedTimestamp int64      `json:"-" form:"updatedTimestamp"`            // 记录更新时间戳（用于同步）
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`     // 记录更新时间戳（用于同步）
 	UpdatedAt        timex.Time `json:"-"`                                    // 更新时间字段（time 类型包装）
 	CreatedAt        timex.Time `json:"-"`                                    // 创建时间字段（time 类型包装）
 }

@@ -21,17 +21,17 @@ var (
 
 // Note 表示笔记的完整数据结构（包含内容）。
 type Note struct {
-	ID               int64      `json:"id" form:"id"`                   // 主键ID
-	Action           string     `json:"-" form:"action"`                // 操作：create/modify/delete
-	Path             string     `json:"path" form:"path"`               // 路径信息（文件路径）
-	PathHash         string     `json:"pathHash" form:"pathHash"`       // 路径哈希值，用于快速查找
-	Content          string     `json:"content" form:"content"`         // 内容详情（完整文本）
-	ContentHash      string     `json:"contentHash" form:"contentHash"` // 内容哈希，用于判定内容是否变更
-	Ctime            int64      `json:"ctime" form:"ctime"`             // 创建时间戳（秒）
-	Mtime            int64      `json:"mtime" form:"mtime"`             // 文件修改时间戳（秒）
-	UpdatedTimestamp int64      `json:"-" form:"updatedTimestamp"`      // 记录更新时间戳（用于同步）
-	UpdatedAt        timex.Time `json:"-"`                              // 更新时间字段（time 类型包装）
-	CreatedAt        timex.Time `json:"-"`                              // 创建时间字段（time 类型包装）
+	ID               int64      `json:"id" form:"id"`                     // 主键ID
+	Action           string     `json:"-" form:"action"`                  // 操作：create/modify/delete
+	Path             string     `json:"path" form:"path"`                 // 路径信息（文件路径）
+	PathHash         string     `json:"pathHash" form:"pathHash"`         // 路径哈希值，用于快速查找
+	Content          string     `json:"content" form:"content"`           // 内容详情（完整文本）
+	ContentHash      string     `json:"contentHash" form:"contentHash"`   // 内容哈希，用于判定内容是否变更
+	Ctime            int64      `json:"ctime" form:"ctime"`               // 创建时间戳（秒）
+	Mtime            int64      `json:"mtime" form:"mtime"`               // 文件修改时间戳（秒）
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
+	UpdatedAt        timex.Time `json:"-"`                                // 更新时间字段（time 类型包装）
+	CreatedAt        timex.Time `json:"-"`                                // 创建时间字段（time 类型包装）
 }
 
 // NoteNoContent 表示不包含 content 字段的笔记数据结构，适合列表查询返回简洁信息。
@@ -111,8 +111,7 @@ type NoteSyncEndMessage struct {
 
 // NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
 type NoteSyncNeedPushMessage struct {
-	Path  string `json:"path" form:"path"`   // 路径
-	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳
+	Path string `json:"path" form:"path"` // 路径
 }
 
 // NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构。

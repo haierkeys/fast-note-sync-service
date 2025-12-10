@@ -51,7 +51,7 @@ type FileSyncEndMessage struct {
 }
 
 // FileNeedUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
-type FileNeedUploadMessage struct {
+type FileUploadMessage struct {
 	Path      string `json:"path"`      // 文件路径
 	Ctime     int64  `json:"ctime" `    // 创建时间
 	Mtime     int64  `json:"mtime" `    // 修改时间
@@ -67,7 +67,7 @@ type FileSyncMtimeMessage struct {
 }
 
 // FileSyncNeedUploadMessage 定义文件同步中需要上传的文件消息结构。
-type FileSyncNeedUploadMessage struct {
+type FileNeedUploadMessage struct {
 	Path string `json:"path"` // 文件路径
 }
 
@@ -146,7 +146,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		// 初始化分块上传会话
 		session := &FileUploadBinaryChunkSession{
 			ID:          sessionID,
-			Vault:       params.Path,
+			Vault:       params.Vault,
 			Path:        params.Path,
 			PathHash:    params.PathHash,
 			ContentHash: params.ContentHash,
@@ -184,7 +184,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.BinaryChunkSessions[sessionID] = session
 		c.BinaryMu.Unlock()
 
-		fileNeedUploadMessage := &FileNeedUploadMessage{
+		fileUploadMessage := &FileUploadMessage{
 			Path:      params.Path,
 			Ctime:     params.Ctime,
 			Mtime:     params.Mtime,
@@ -192,7 +192,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			ChunkSize: session.ChunkSize,
 		}
 
-		c.ToResponse(code.Success.WithData(fileNeedUploadMessage), "FileNeedUpload")
+		c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
 		return
 
 	} else if updateMode == "UpdateMtime" {
@@ -455,8 +455,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					continue
 				} else if file.ContentHash != cFile.ContentHash {
 					// 内容不一致，需要客户端上传
-					fileSyncNeedUploadMessage := convert.StructAssign(file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
-					c.ToResponse(code.Success.WithData(fileSyncNeedUploadMessage), "FileSyncNeedUpload")
+					fileSyncNeedUploadMessage := convert.StructAssign(file, &FileNeedUploadMessage{}).(*FileNeedUploadMessage)
+					c.ToResponse(code.Success.WithData(fileSyncNeedUploadMessage), "FileNeedUpload")
 				} else {
 					// 仅元数据变更，通知客户端更新
 					fileSyncMtimeMessage := convert.StructAssign(file, &FileSyncMtimeMessage{}).(*FileSyncMtimeMessage)
@@ -476,8 +476,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if len(cFilesKeys) > 0 {
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
-			FileCheck := convert.StructAssign(&file, &FileSyncNeedUploadMessage{}).(*FileSyncNeedUploadMessage)
-			c.ToResponse(code.Success.WithData(FileCheck), "FileSyncNeedUpload")
+			FileCheck := convert.StructAssign(&file, &FileNeedUploadMessage{}).(*FileNeedUploadMessage)
+			c.ToResponse(code.Success.WithData(FileCheck), "FileNeedUpload")
 		}
 	}
 
