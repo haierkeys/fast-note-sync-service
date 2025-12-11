@@ -53,7 +53,7 @@
 自动检测系统环境并完成安装、服务注册。
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
 **脚本主要行为：**

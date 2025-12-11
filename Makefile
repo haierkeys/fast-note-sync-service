@@ -1,6 +1,6 @@
 
 # docker login --username=xxxxxx registry.cn-shanghai.aliyuncs.com
-include .env
+# include .env
 #export $(shell sed 's/=.*//' .env)
 REPO = $(eval REPO := $$(shell go list -f '{{.ImportPath}}' .))$(value REPO)
 

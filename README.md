@@ -55,7 +55,7 @@ We provide multiple installation methods. **One-click Script** or **Docker** is 
 Automatically detects the system environment and completes installation and service registration.
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/quest_install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
 **Script Main Actions:**
