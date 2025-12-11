@@ -53,8 +53,6 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("FileSync", websocket_router.FileSync)
 	//附件上传前检查
 	wss.Use("FileUploadCheck", websocket_router.FileUploadCheck)
-	//附件上传完成
-	wss.Use("FileUploadComplete", websocket_router.FileUploadComplete)
 	//附件删除
 	wss.Use("FileDelete", websocket_router.FileDelete)
 	//附件上传分块

@@ -249,34 +249,21 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	session.mu.Unlock()
 
 	if session.UploadedChunks == session.TotalChunks {
-		FileUploadComplete(c, nil)
+		FileUploadChunkBinaryComplete(c, session)
 	}
 }
 
-// FileUploadComplete 处理文件上传完成请求，进行文件移动和元数据更新。
-func FileUploadComplete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileUploadCompleteParams{}
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("websocket_router.file.FileUploadComplete BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
+// FileUploadChunkBinaryComplete 处理文件上传完成请求，进行文件移动和元数据更新。
+func FileUploadChunkBinaryComplete(c *app.WebsocketClient, session *FileUploadBinaryChunkSession) {
 
-	// 获取并移除会话
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[params.SessionID]
-	if exists {
-		delete(c.BinaryChunkSessions, params.SessionID)
-	}
-	c.BinaryMu.Unlock()
-
-	if !exists {
+	if session == nil {
 		c.ToResponse(code.ErrorInvalidParams.WithDetails("Session not found"))
 		return
 	}
-
-	session := binarySession.(*FileUploadBinaryChunkSession)
+	// 获取并移除会话
+	c.BinaryMu.Lock()
+	delete(c.BinaryChunkSessions, session.ID)
+	c.BinaryMu.Unlock()
 
 	// 取消超时定时器
 	if session.CancelFunc != nil {
