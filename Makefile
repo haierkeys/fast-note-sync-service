@@ -102,7 +102,7 @@ clean:
 
 push-online:  build-linux
 	$(call dockerImageClean)
-	docker build --platform linux/amd64  -t  $(DockerHubUser)/$(DockerHubName):latest -f Dockerfile .
+	docker build --platform linux/amd64  -t  $(DockerHubUser)/$(DockerHubName):latest -f docker/Dockerfile .
 	docker tag  $(DockerHubUser)/$(DockerHubName):latest $(DockerHubUser)/$(DockerHubName):$(ReleaseTagPre)$(GitTag)
 
 	docker push $(DockerHubUser)/$(DockerHubName):$(ReleaseTagPre)$(GitTag)
@@ -111,7 +111,7 @@ push-online:  build-linux
 
 push-dev:  build-linux
 	$(call dockerImageClean)
-	docker build --platform linux/amd64 -t $(DockerHubUser)/$(DockerHubName):dev-latest -f Dockerfile .
+	docker build --platform linux/amd64 -t $(DockerHubUser)/$(DockerHubName):dev-latest -f docker/Dockerfile .
 	docker tag $(DockerHubUser)/$(DockerHubName):dev-latest $(DockerHubUser)/$(DockerHubName):$(DevelopTagPre)$(GitTag)
 
 	docker push $(DockerHubUser)/$(DockerHubName):$(DevelopTagPre)$(GitTag)

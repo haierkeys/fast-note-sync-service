@@ -76,7 +76,7 @@ jobs:
       - name: Docker Build & Publish to GitHub Container Registry
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
-          dockerfile: Dockerfile
+          dockerfile: docker/Dockerfile
           name: ${{ github.actor }}/${{ env.NAME }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -92,7 +92,7 @@ jobs:
       - name: Docker Build & Publish to DockerHub
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
-          dockerfile: Dockerfile
+          dockerfile: docker/Dockerfile
           name: ${{ github.actor }}/${{ env.NAME }}
           username: ${{ github.actor }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

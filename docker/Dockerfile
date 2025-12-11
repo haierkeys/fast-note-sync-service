@@ -48,7 +48,7 @@ VOLUME /${P_NAME}/storage
 COPY ./build/${TARGETOS}_${TARGETARCH}/${P_BIN} /${P_NAME}/
 
 # 将脚本复制到容器中
-COPY entrypoint.sh /entrypoint.sh
+COPY COPY ./docker/entrypoint.sh  /entrypoint.sh
 
 # 给脚本执行权限
 RUN chmod +x /entrypoint.sh
