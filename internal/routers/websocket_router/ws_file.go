@@ -235,6 +235,14 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	session := binarySession.(*FileUploadBinaryChunkSession)
 
+	if session == nil {
+		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
+		c.ToResponse(code.ErrorSessionNotFound.WithData(map[string]string{
+			"sessionID": sessionID,
+		}))
+		return
+	}
+
 	// 计算写入偏移量并写入数据
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
@@ -248,113 +256,105 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	session.UploadedChunks++
 	session.mu.Unlock()
 
+	// 检查是否所有分块都已上传
 	if session.UploadedChunks == session.TotalChunks {
-		FileUploadChunkBinaryComplete(c, session)
-	}
-}
 
-// FileUploadChunkBinaryComplete 处理文件上传完成请求，进行文件移动和元数据更新。
-func FileUploadChunkBinaryComplete(c *app.WebsocketClient, session *FileUploadBinaryChunkSession) {
+		// 获取并移除会话
+		c.BinaryMu.Lock()
+		delete(c.BinaryChunkSessions, session.ID)
+		c.BinaryMu.Unlock()
 
-	if session == nil {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("Session not found"))
-		return
-	}
-	// 获取并移除会话
-	c.BinaryMu.Lock()
-	delete(c.BinaryChunkSessions, session.ID)
-	c.BinaryMu.Unlock()
-
-	// 取消超时定时器
-	if session.CancelFunc != nil {
-		session.CancelFunc()
-	}
-
-	// 关闭临时文件句柄
-	if err := session.FileHandle.Close(); err != nil {
-		global.Logger.Error("FileUploadComplete: failed to close file handle", zap.Error(err))
-		c.ToResponse(code.ErrorServerInternal)
-		return
-	}
-
-	baseUploadDir := global.Config.App.UploadSavePath
-	if baseUploadDir == "" {
-		baseUploadDir = "storage/uploads"
-	}
-
-	// 按月生成存储子目录
-	dateDir := time.Now().Format("200601")
-	finalDir := filepath.Join(baseUploadDir, dateDir)
-
-	if err := os.MkdirAll(finalDir, 0644); err != nil {
-		global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
-		c.ToResponse(code.ErrorServerInternal)
-		return
-	}
-
-	// 生成唯一文件名
-	originalName := filepath.Base(session.Path)
-	ext := filepath.Ext(originalName)
-	nameOnly := strings.TrimSuffix(originalName, ext)
-
-	var finalPath string
-
-	// 尝试生成不冲突的文件名
-	for i := 0; i < 10; i++ {
-		randStr := util.GetRandomString(8)
-		tryFileName := fmt.Sprintf("%s_%s%s", nameOnly, randStr, ext)
-		tryPath := filepath.Join(finalDir, tryFileName)
-
-		if _, err := os.Stat(tryPath); os.IsNotExist(err) {
-			finalPath = tryPath
-			break
+		// 取消超时定时器
+		if session.CancelFunc != nil {
+			session.CancelFunc()
 		}
-	}
 
-	if finalPath == "" {
-		global.Logger.Error("websocket_router.file.FileUploadComplete Generate unique filename failed after retries")
-		c.ToResponse(code.ErrorServerInternal)
-		return
-	}
-
-	// 移动文件到最终路径
-	if err := os.Rename(session.SavePath, finalPath); err != nil {
-		// 跨设备移动失败时尝试复制并删除
-		if err := fileurl.CopyFile(session.SavePath, finalPath); err != nil {
-			global.Logger.Error("websocket_router.file.FileUploadComplete Move/Copy file err", zap.Error(err))
+		// 关闭临时文件句柄
+		if err := session.FileHandle.Close(); err != nil {
+			global.Logger.Error("FileUploadComplete: failed to close file handle", zap.Error(err))
 			c.ToResponse(code.ErrorServerInternal)
 			return
 		}
-		os.Remove(session.SavePath)
+
+		baseUploadDir := global.Config.App.UploadSavePath
+		if baseUploadDir == "" {
+			baseUploadDir = "storage/uploads"
+		}
+
+		// 按月生成存储子目录
+		dateDir := time.Now().Format("200601")
+		finalDir := filepath.Join(baseUploadDir, dateDir)
+
+		if err := os.MkdirAll(finalDir, 0644); err != nil {
+			global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
+			c.ToResponse(code.ErrorServerInternal)
+			return
+		}
+
+		// 生成唯一文件名
+		originalName := filepath.Base(session.Path)
+		ext := filepath.Ext(originalName)
+		nameOnly := strings.TrimSuffix(originalName, ext)
+
+		var finalPath string
+
+		// 尝试生成不冲突的文件名
+		for i := 0; i < 10; i++ {
+			randStr := util.GetRandomString(8)
+			tryFileName := fmt.Sprintf("%s_%s%s", nameOnly, randStr, ext)
+			tryPath := filepath.Join(finalDir, tryFileName)
+
+			if _, err := os.Stat(tryPath); os.IsNotExist(err) {
+				finalPath = tryPath
+				break
+			}
+		}
+
+		if finalPath == "" {
+			global.Logger.Error("websocket_router.file.FileUploadComplete Generate unique filename failed after retries")
+			c.ToResponse(code.ErrorServerInternal)
+			return
+		}
+
+		// 移动文件到最终路径
+		if err := os.Rename(session.SavePath, finalPath); err != nil {
+			// 跨设备移动失败时尝试复制并删除
+			if err := fileurl.CopyFile(session.SavePath, finalPath); err != nil {
+				global.Logger.Error("websocket_router.file.FileUploadComplete Move/Copy file err", zap.Error(err))
+				c.ToResponse(code.ErrorServerInternal)
+				return
+			}
+			os.Remove(session.SavePath)
+		}
+
+		svc := service.New(c.Ctx).WithSF(c.SF)
+
+		// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
+		svc.VaultGetOrCreate(session.Vault, c.User.UID)
+
+		svcParams := &service.FileUpdateParams{
+			Vault:       session.Vault,
+			Path:        session.Path,
+			PathHash:    session.PathHash,
+			ContentHash: session.ContentHash,
+			SavePath:    finalPath,
+			Size:        session.Size,
+			Ctime:       session.Ctime,
+			Mtime:       session.Mtime,
+		}
+
+		// 更新或创建文件记录
+		_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
+
+		if err != nil {
+			c.ToResponse(code.ErrorFileModifyOrCreate.WithDetails(err.Error()))
+			return
+		}
+
+		c.ToResponse(code.Success.Reset())
+		// 广播文件更新消息
+		c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpdate")
 	}
-
-	svc := service.New(c.Ctx).WithSF(c.SF)
-
-	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
-	svc.VaultGetOrCreate(session.Vault, c.User.UID)
-
-	svcParams := &service.FileUpdateParams{
-		Vault:       session.Vault,
-		Path:        session.Path,
-		PathHash:    session.PathHash,
-		ContentHash: session.ContentHash,
-		SavePath:    finalPath,
-		Size:        session.Size,
-		Ctime:       session.Ctime,
-		Mtime:       session.Mtime,
-	}
-
-	// 更新或创建文件记录
-	_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
-
-	if err != nil {
-		c.ToResponse(code.ErrorFileModifyOrCreate.WithDetails(err.Error()))
-		return
-	}
-
-	c.ToResponse(code.Success.Reset())
-	// 广播文件更新消息
-	c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpdate")
 }
 
 // FileDelete 处理文件删除请求。
