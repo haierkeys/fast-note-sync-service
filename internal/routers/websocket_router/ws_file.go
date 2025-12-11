@@ -227,6 +227,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	if !exists {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
+		c.ToResponse(code.ErrorSessionNotFound.WithData(map[string]string{
+			"sessionID": sessionID,
+		}))
 		return
 	}
 
@@ -244,6 +247,10 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 	session.mu.Lock()
 	session.UploadedChunks++
 	session.mu.Unlock()
+
+	if session.UploadedChunks == session.TotalChunks {
+		FileUploadComplete(c, nil)
+	}
 }
 
 // FileUploadComplete 处理文件上传完成请求，进行文件移动和元数据更新。

@@ -56,4 +56,5 @@ var (
 	ErrorFileCreateFailed                   = NewError(incr(400), lang{zh: "创建文件失败", en: "Create file failed"})
 	ErrorNoteModifyFailed                   = NewError(incr(400), lang{zh: "修改文件失败", en: "Modify file failed"})
 	ErrorFileContentModifyFailed            = NewError(incr(400), lang{zh: "修改文件内容失败", en: "Modify file content failed"})
+	ErrorSessionNotFound                    = NewError(incr(400), lang{zh: "会话不存在", en: "Session not found"})
 )
