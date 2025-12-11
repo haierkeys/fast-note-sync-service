@@ -23,6 +23,18 @@ import (
 	"go.uber.org/zap"
 )
 
+type FileMessage struct {
+	Path             string `json:"path" form:"path"`                     // 路径信息（文件路径）
+	PathHash         string `json:"pathHash" form:"pathHash"`             // 路径哈希值，用于快速查找
+	ContentHash      string `json:"contentHash" form:"contentHash"`       // 内容哈希，用于判定内容是否变更
+	SavePath         string `json:"savePath" form:"savePath"  binding:""` // 文件保存路径
+	Size             int64  `json:"size" form:"size"`                     // 文件大小
+	Ctime            int64  `json:"ctime" form:"ctime"`                   // 创建时间戳（秒）
+	Mtime            int64  `json:"mtime" form:"mtime"`                   // 文件修改时间戳（秒）
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`     // 记录更新时间戳（用于同步）
+	SessionID        string `json:"sessionId" binding:"required"`
+}
+
 // FileUploadBinaryChunkSession 定义文件分块上传的会话状态。
 // 用于跟踪大文件分块上传的进度和临时文件信息。
 type FileUploadBinaryChunkSession struct {
@@ -114,7 +126,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	updateMode, fileSvc, err := svc.FileUpdateCheck(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
 		return
 	}
 
@@ -129,7 +141,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		// 创建临时目录
 		if err := os.MkdirAll(tempDir, 0644); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
-			c.ToResponse(code.ErrorServerInternal)
+			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
 			return
 		}
 
@@ -139,7 +151,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		file, err := os.Create(tempPath)
 		if err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadCheck Create file err", zap.Error(err))
-			c.ToResponse(code.ErrorServerInternal)
+			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
 			return
 		}
 
@@ -227,7 +239,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	if !exists {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
-		c.ToResponse(code.ErrorSessionNotFound.WithData(map[string]string{
+		c.ToResponse(code.ErrorFileUploadSessionNotFound.WithData(map[string]string{
 			"sessionID": sessionID,
 		}))
 		return
@@ -237,7 +249,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	if session == nil {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary Session not found", zap.String("sessionID", sessionID))
-		c.ToResponse(code.ErrorSessionNotFound.WithData(map[string]string{
+		c.ToResponse(code.ErrorFileUploadSessionNotFound.WithData(map[string]string{
 			"sessionID": sessionID,
 		}))
 		return
@@ -248,6 +260,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
 		global.Logger.Error("websocket_router.file.FileUploadChunkBinary FileHandle WriteAt err", zap.Error(err))
+		c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
+			"sessionID": sessionID,
+		}).WithDetails(err.Error()))
 		return
 	}
 
@@ -272,7 +287,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		// 关闭临时文件句柄
 		if err := session.FileHandle.Close(); err != nil {
 			global.Logger.Error("FileUploadComplete: failed to close file handle", zap.Error(err))
-			c.ToResponse(code.ErrorServerInternal)
+			c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
+				"sessionID": sessionID,
+			}).WithDetails(err.Error()))
 			return
 		}
 
@@ -287,7 +304,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 		if err := os.MkdirAll(finalDir, 0644); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
-			c.ToResponse(code.ErrorServerInternal)
+			c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
+				"sessionID": sessionID,
+			}).WithDetails(err.Error()))
 			return
 		}
 
@@ -312,7 +331,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 		if finalPath == "" {
 			global.Logger.Error("websocket_router.file.FileUploadComplete Generate unique filename failed after retries")
-			c.ToResponse(code.ErrorServerInternal)
+			c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
+				"sessionID": sessionID,
+			}))
 			return
 		}
 
@@ -321,7 +342,9 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 			// 跨设备移动失败时尝试复制并删除
 			if err := fileurl.CopyFile(session.SavePath, finalPath); err != nil {
 				global.Logger.Error("websocket_router.file.FileUploadComplete Move/Copy file err", zap.Error(err))
-				c.ToResponse(code.ErrorServerInternal)
+				c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
+					"sessionID": sessionID,
+				}).WithDetails(err.Error()))
 				return
 			}
 			os.Remove(session.SavePath)
@@ -347,14 +370,63 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		_, fileSvc, err := svc.FileUpdateOrCreate(c.User.UID, svcParams, true)
 
 		if err != nil {
-			c.ToResponse(code.ErrorFileModifyOrCreate.WithDetails(err.Error()))
+			c.ToResponse(code.ErrorFileModifyOrCreateFailed.WithDetails(err.Error()))
 			return
+		}
+
+		// 用于给客户端
+		sessionID := uuid.New().String()
+
+		fileMsg := &FileMessage{
+			Path:             fileSvc.Path,
+			PathHash:         fileSvc.PathHash,
+			ContentHash:      fileSvc.ContentHash,
+			SavePath:         fileSvc.SavePath,
+			Size:             fileSvc.Size,
+			Ctime:            fileSvc.Ctime,
+			Mtime:            fileSvc.Mtime,
+			UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+			SessionID:        sessionID,
 		}
 
 		c.ToResponse(code.Success.Reset())
 		// 广播文件更新消息
-		c.BroadcastResponse(code.Success.Reset().WithData(fileSvc), true, "FileSyncUpdate")
+		c.BroadcastResponse(code.Success.Reset().WithData(fileMsg), true, "FileSyncUpdate")
 	}
+}
+
+func FileDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.FileGetParams{}
+
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("api_router.file.FileDownload.BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	// 获取或创建仓库
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
+	// 执行删除逻辑
+	fileSvc, err := svc.FileGet(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorFileGetFailed.WithDetails(err.Error()))
+		return
+	}
+
+	c.ToResponse(code.Success.Reset())
+
+	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
+	// 广播文件删除消息
+	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
+}
+
+func FileDownloadChunkBinary(c *app.WebsocketClient, data []byte) {
+
 }
 
 // FileDelete 处理文件删除请求。
@@ -377,7 +449,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	fileSvc, err := svc.FileDelete(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorFileDeleteFailed.WithDetails(err.Error()))
 		return
 	}
 
@@ -409,7 +481,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	list, err := svc.FileListByLastTime(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorFileListFailed.WithDetails(err.Error()))
 		return
 	}
 

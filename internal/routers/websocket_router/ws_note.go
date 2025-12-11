@@ -55,7 +55,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 		return
 	}
 
@@ -64,7 +64,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if isNew || isNeedSyncMtime || isNeedUpdate {
 		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
-			c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 			return
 		}
 		// 通知所有客户端更新mtime
@@ -112,7 +112,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	_, isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteUpdateCheckFailed.WithDetails(err.Error()))
 		return
 	}
 
@@ -193,7 +193,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	list, err := svc.NoteListByLastTime(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteListFailed.WithDetails(err.Error()))
 		return
 	}
 

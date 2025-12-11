@@ -52,7 +52,7 @@ func (n *Note) Get(c *gin.Context) {
 	uid := app.GetUID(c)
 	if uid == 0 {
 		global.Logger.Error("apiRouter.Note.Get err uid=0")
-		response.ToResponse(code.ErrorNotUserAuthToken)
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
 
@@ -62,7 +62,7 @@ func (n *Note) Get(c *gin.Context) {
 	note, err := svc.NoteGet(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Get svc NoteGet err: %v", zap.Error(err))
-		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		response.ToResponse(code.ErrorNoteGetFailed.WithDetails(err.Error()))
 		return
 	}
 	response.ToResponse(code.Success.WithData(note))
@@ -86,6 +86,13 @@ func (n *Note) List(c *gin.Context) {
 		return
 	}
 	uid := app.GetUID(c)
+
+	if uid == 0 {
+		global.Logger.Error("apiRouter.Note.List err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
 	svc := service.New(c)
 
 	pager := &app.Pager{Page: app.GetPage(c), PageSize: app.GetPageSize(c)}
@@ -93,7 +100,7 @@ func (n *Note) List(c *gin.Context) {
 	notes, count, err := svc.NoteList(uid, params, pager)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.List svc NoteList err: %v", zap.Error(err))
-		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		response.ToResponse(code.ErrorNoteListFailed.WithDetails(err.Error()))
 		return
 	}
 	response.ToResponseList(code.Success, notes, count)
@@ -124,7 +131,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	uid := app.GetUID(c)
 	if uid == 0 {
 		global.Logger.Error("apiRouter.Note.CreateOrUpdate err uid=0")
-		response.ToResponse(code.ErrorNotUserAuthToken)
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
 
@@ -149,7 +156,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		})
 		if err != nil {
 			global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteGet err: %v", zap.Error(err))
-			response.ToResponse(code.Failed.WithDetails(err.Error()))
+			response.ToResponse(code.ErrorNoteGetFailed.WithDetails(err.Error()))
 			return
 		}
 		// 如果源笔记不存在，或者源笔记是删除状态，直接返回
@@ -169,7 +176,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 
 	if noteSelect != nil {
 		if noteSelect.Action == "delete" {
-			response.ToResponse(code.ErrorNoteDelete)
+			response.ToResponse(code.ErrorNoteNotFound)
 			return
 		}
 
@@ -188,7 +195,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		note, err := svc.NoteDelete(uid, params)
 		if err != nil {
 			global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteDelete err: %v", zap.Error(err))
-			response.ToResponse(code.ErrorNoteDelete.WithDetails(err.Error()))
+			response.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 			return
 		}
 		n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncDelete")
@@ -197,7 +204,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	_, note, err := svc.NoteModifyOrCreate(uid, params, false)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteModifyOrCreate err: %v", zap.Error(err))
-		response.ToResponse(code.ErrorNoteModifyOrCreate.WithDetails(err.Error()))
+		response.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 		return
 	}
 
@@ -225,7 +232,7 @@ func (n *Note) Delete(c *gin.Context) {
 	uid := app.GetUID(c)
 	if uid == 0 {
 		global.Logger.Error("apiRouter.Note.Delete err uid=0")
-		response.ToResponse(code.ErrorNotUserAuthToken)
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
 	params.PathHash = util.EncodeHash32(params.Path)
@@ -238,7 +245,7 @@ func (n *Note) Delete(c *gin.Context) {
 	})
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Delete svc NoteGet err: %v", zap.Error(err))
-		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		response.ToResponse(code.ErrorNoteGetFailed.WithDetails(err.Error()))
 		return
 	}
 	// 如果源笔记不存在，或者源笔记是删除状态，直接返回
@@ -250,7 +257,7 @@ func (n *Note) Delete(c *gin.Context) {
 	note, err := svc.NoteDelete(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Delete svc NoteDelete err: %v", zap.Error(err))
-		response.ToResponse(code.ErrorNoteDelete.WithDetails(err.Error()))
+		response.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 		return
 	}
 	response.ToResponse(code.Success.WithData(note))
