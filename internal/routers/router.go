@@ -55,6 +55,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("FileUploadCheck", websocket_router.FileUploadCheck)
 	//附件删除
 	wss.Use("FileDelete", websocket_router.FileDelete)
+
+	wss.Use("FileChunkDownload", websocket_router.FileChunkDownload)
+
 	//附件上传分块
 	wss.UseBinary(websocket_router.FileUploadChunkBinary)
 
