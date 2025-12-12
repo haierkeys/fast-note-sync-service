@@ -88,7 +88,6 @@ interface FileSyncUpdateData {
   ctime: number;            // 创建时间戳 (毫秒)
   mtime: number;            // 修改时间戳 (毫秒)
   lastTime: number;         // 记录更新时间戳 (毫秒)
-  sessionId: string;        // 会话 ID
 }
 ```
 
