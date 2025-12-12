@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -186,7 +187,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Size:        params.Size,
 			Ctime:       params.Ctime,
 			Mtime:       params.Mtime,
-			ChunkSize:   1024 * 1024, // 默认 1MB
+			ChunkSize:   getChunkSize(), // 从配置获取
 			SavePath:    tempPath,
 			FileHandle:  file,
 			CreatedAt:   time.Now(),
@@ -482,7 +483,7 @@ func FileChunkDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	// 创建下载会话
 	sessionID := uuid.New().String()
-	chunkSize := int64(1024 * 1024) // 默认 1MB
+	chunkSize := getChunkSize() // 从配置获取
 
 	// 计算总分块数
 	totalChunks := util.Ceil(fileSvc.Size, chunkSize)
@@ -802,12 +803,55 @@ func startSessionTimeout(c *app.WebsocketClient, sessionID string, timeout time.
 			global.Logger.Warn("startSessionTimeout: session timeout, cleaning up",
 				zap.String("sessionID", sessionID),
 				zap.Duration("timeout", timeout))
+
+			// 超时执行清理
 			cleanupSession(c, sessionID)
 		case <-ctx.Done():
-			// 外部取消
+			// 取消定时器
 			return
 		}
 	}()
 
 	return cancel
+}
+
+// getChunkSize 获取配置的分片大小, 默认为 1MB
+func getChunkSize() int64 {
+	// 从全局配置中读取文件分片大小的设置字符串
+	sizeStr := global.Config.App.FileChunkSize
+	// 如果配置为空，则直接按照默认值 1MB 处理
+	if sizeStr == "" {
+		return 1024 * 512 // 默认 512KB
+	}
+
+	// 预处理字符串：去除首尾空格并转换为大写，以便统一处理后缀（如 mb, MB, Mb 等）
+	sizeStr = strings.ToUpper(strings.TrimSpace(sizeStr))
+	// 定义基础倍数，默认为 1（即单位为字节 B）
+	var multiplier int64 = 1
+
+	// 判断是否包含 MB 后缀
+	if strings.HasSuffix(sizeStr, "MB") {
+		multiplier = 1024 * 1024                    // 如果是 MB，倍数为 1024*1024
+		sizeStr = strings.TrimSuffix(sizeStr, "MB") // 去除后缀，只保留数字部分字符串
+	} else if strings.HasSuffix(sizeStr, "KB") {
+		// 判断是否包含 KB 后缀
+		multiplier = 1024                           // 如果是 KB，倍数为 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "KB") // 去除后缀
+	} else if strings.HasSuffix(sizeStr, "B") {
+		// 判断是否包含 B 后缀
+		multiplier = 1                             // 如果是 B，倍数为 1
+		sizeStr = strings.TrimSuffix(sizeStr, "B") // 去除后缀
+	}
+
+	// 解析剩余的数字字符串为 int64 整数
+	// 再次 trim 是为了防止 "1 MB" 这种中间有空格的情况被去除后缀后变成 "1 " 导致解析失败
+	size, err := strconv.ParseInt(strings.TrimSpace(sizeStr), 10, 64)
+
+	// 如果解析出错（例如包含非数字字符）或者数值小于等于0
+	if err != nil || size <= 0 {
+		return 1024 * 512 // 解析失败或配置了无效值，回退到默认值 512KB
+	}
+
+	// 返回最终计算出的字节大小（数字 * 倍数）
+	return size * multiplier
 }

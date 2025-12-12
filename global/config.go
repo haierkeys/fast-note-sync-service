@@ -116,6 +116,9 @@ type app struct {
 
 	// 文件上传会话超时时间(支持单位: d=天, h=小时, m=分, s=秒),0 或空表示不超时
 	UploadSessionTimeout string `yaml:"upload-session-timeout"`
+
+	// 文件分片大小(支持单位: MB, KB, B), 默认 512KB
+	FileChunkSize string `yaml:"file-chunk-size"`
 }
 
 type email struct {
