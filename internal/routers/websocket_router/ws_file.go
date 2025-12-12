@@ -55,6 +55,17 @@ type FileUploadBinaryChunkSession struct {
 	CancelFunc     context.CancelFunc // 取消函数，用于超时控制
 }
 
+// FileDownloadChunkSession 定义文件分块下载的会话状态。
+// 用于跟踪大文件分块下载的进度和文件信息。
+type FileDownloadChunkSession struct {
+	SessionID   string // 会话 ID
+	Path        string // 文件路径(用于日志)
+	Size        int64  // 文件大小
+	TotalChunks int64  // 总分块数
+	ChunkSize   int64  // 分块大小
+	SavePath    string // 文件实际保存路径
+}
+
 // FileSyncEndMessage 定义文件同步结束时的消息结构。
 type FileSyncEndMessage struct {
 	Vault    string `json:"vault" form:"vault"`       // 仓库名称
@@ -68,6 +79,17 @@ type FileUploadMessage struct {
 	Mtime     int64  `json:"mtime" `    // 修改时间
 	SessionID string `json:"sessionId"` // 会话 ID
 	ChunkSize int64  `json:"chunkSize"` // 分块大小
+}
+
+// FileDownloadMessage 定义服务端通知客户端准备下载文件的消息结构。
+type FileDownloadMessage struct {
+	Path        string `json:"path"`        // 文件路径
+	Ctime       int64  `json:"ctime"`       // 创建时间
+	Mtime       int64  `json:"mtime"`       // 修改时间
+	SessionID   string `json:"sessionId"`   // 会话 ID
+	ChunkSize   int64  `json:"chunkSize"`   // 分块大小
+	TotalChunks int64  `json:"totalChunks"` // 总分块数
+	Size        int64  `json:"size"`        // 文件总大小
 }
 
 // FileSyncMtimeMessage 定义文件元数据更新消息结构。
@@ -424,12 +446,14 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
 }
 
+// FileChunkDownload 处理文件分片下载请求。
+// 客户端通过此接口请求下载文件,服务端创建下载会话并开始发送分片。
 func FileChunkDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	params := &service.FileGetParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		global.Logger.Error("api_router.file.FileDownload.BindAndValid errs: %v", zap.Error(errs))
+		global.Logger.Error("websocket_router.file.FileChunkDownload.BindAndValid errs: %v", zap.Error(errs))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -439,20 +463,153 @@ func FileChunkDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	// 获取或创建仓库
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	// 执行删除逻辑
-	_, err := svc.FileGet(c.User.UID, params)
+	// 获取文件信息
+	fileSvc, err := svc.FileGet(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorFileGetFailed.WithDetails(err.Error()))
 		return
 	}
 
-	c.ToResponse(code.Success.Reset())
+	// 检查文件是否存在于磁盘
+	if _, err := os.Stat(fileSvc.SavePath); os.IsNotExist(err) {
+		global.Logger.Error("websocket_router.file.FileChunkDownload file not found on disk",
+			zap.String("path", fileSvc.SavePath),
+			zap.String("pathHash", fileSvc.PathHash))
+		c.ToResponse(code.ErrorFileGetFailed.WithDetails("file not found on disk"))
+		return
+	}
 
+	// 创建下载会话
+	sessionID := uuid.New().String()
+	chunkSize := int64(1024 * 1024) // 默认 1MB
+
+	// 计算总分块数
+	totalChunks := util.Ceil(fileSvc.Size, chunkSize)
+
+	// 初始化下载会话
+	session := &FileDownloadChunkSession{
+		SessionID:   sessionID,
+		Path:        fileSvc.Path,
+		Size:        fileSvc.Size,
+		TotalChunks: totalChunks,
+		ChunkSize:   chunkSize,
+		SavePath:    fileSvc.SavePath,
+	}
+
+	// 构造下载消息
+	fileDownloadMessage := &FileDownloadMessage{
+		Path:        fileSvc.Path,
+		Ctime:       fileSvc.Ctime,
+		Mtime:       fileSvc.Mtime,
+		SessionID:   session.SessionID,
+		ChunkSize:   session.ChunkSize,
+		TotalChunks: session.TotalChunks,
+		Size:        session.Size,
+	}
+
+	// 发送下载准备消息
+	c.ToResponse(code.Success.WithData(fileDownloadMessage), "FileSyncChunkDownload")
+
+	// 启动分片发送,传入超时时间
+	go sendFileChunks(c, session)
 }
 
-func FileDownloadBinary(c *app.WebsocketClient, data []byte) {
+// sendFileChunks 执行文件分片发送。
+// 在独立的 goroutine 中运行,读取文件并通过 WebSocket 发送二进制分片。
+func sendFileChunks(c *app.WebsocketClient, session *FileDownloadChunkSession) {
+	// 创建超时上下文
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
+	// 打开文件
+	file, err := os.Open(session.SavePath)
+	if err != nil {
+		global.Logger.Error("sendFileChunks: failed to open file",
+			zap.String("sessionID", session.SessionID),
+			zap.String("path", session.SavePath),
+			zap.Error(err))
+		c.ToResponse(code.ErrorFileGetFailed.WithDetails("failed to open file"))
+		return
+	}
+	defer file.Close()
+
+	global.Logger.Info("sendFileChunks: starting file download",
+		zap.String("sessionID", session.SessionID),
+		zap.String("path", session.Path),
+		zap.Int64("size", session.Size),
+		zap.Int64("totalChunks", session.TotalChunks))
+
+	// 循环发送分片
+	for chunkIndex := int64(0); chunkIndex < session.TotalChunks; chunkIndex++ {
+		// 检查超时
+		select {
+		case <-ctx.Done():
+			global.Logger.Warn("sendFileChunks: download timeout",
+				zap.String("sessionID", session.SessionID),
+				zap.Int64("sentChunks", chunkIndex),
+				zap.Int64("totalChunks", session.TotalChunks))
+			return
+		default:
+		}
+
+		// 计算当前分片的大小
+		chunkStart := chunkIndex * session.ChunkSize
+		chunkEnd := chunkStart + session.ChunkSize
+		if chunkEnd > session.Size {
+			chunkEnd = session.Size
+		}
+		currentChunkSize := chunkEnd - chunkStart
+
+		// 读取分片数据
+		chunkData := make([]byte, currentChunkSize)
+		n, err := file.ReadAt(chunkData, chunkStart)
+		if err != nil && err.Error() != "EOF" {
+			global.Logger.Error("sendFileChunks: failed to read chunk",
+				zap.String("sessionID", session.SessionID),
+				zap.Int64("chunkIndex", chunkIndex),
+				zap.Error(err))
+			c.ToResponse(code.ErrorFileGetFailed.WithDetails("failed to read file chunk"))
+			return
+		}
+
+		// 构造二进制消息
+		// 格式: [36 bytes session_id][4 bytes chunk_index][chunk_data]
+		headerSize := 40
+		packet := make([]byte, headerSize+n)
+
+		// 1. Session ID (36 bytes)
+		copy(packet[0:36], []byte(session.SessionID))
+
+		// 2. Chunk Index (4 bytes, Big Endian)
+		binary.BigEndian.PutUint32(packet[36:40], uint32(chunkIndex))
+
+		// 3. Chunk Data
+		copy(packet[40:], chunkData[:n])
+
+		// 发送二进制消息
+		err = c.SendBinary(packet)
+		if err != nil {
+			global.Logger.Error("sendFileChunks: failed to send chunk",
+				zap.String("sessionID", session.SessionID),
+				zap.Int64("chunkIndex", chunkIndex),
+				zap.Error(err))
+			return
+		}
+
+		// 每发送 100 个分片记录一次日志
+		if (chunkIndex+1)%100 == 0 || chunkIndex == session.TotalChunks-1 {
+			global.Logger.Info("sendFileChunks: progress",
+				zap.String("sessionID", session.SessionID),
+				zap.Int64("sent", chunkIndex+1),
+				zap.Int64("total", session.TotalChunks))
+		}
+	}
+
+	global.Logger.Info("sendFileChunks: download completed",
+		zap.String("sessionID", session.SessionID),
+		zap.String("path", session.Path),
+		zap.Int64("totalChunks", session.TotalChunks))
 }
 
 // FileSync 批量检测用户文件是否需要更新。

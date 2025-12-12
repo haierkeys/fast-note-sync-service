@@ -208,6 +208,11 @@ func (c *WebsocketClient) message(payload []byte) {
 	c.conn.WriteMessage(gws.OpcodeText, payload)
 }
 
+// SendBinary 发送二进制消息到客户端
+func (c *WebsocketClient) SendBinary(payload []byte) error {
+	return c.conn.WriteMessage(gws.OpcodeBinary, payload)
+}
+
 func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
 	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
 	defer b.Close()
