@@ -2,9 +2,9 @@
 /**
  * 用法（在项目根目录）：
  *  node scripts/update-version.js 0.8.11      # 将 version 设置为 0.8.11
- *  node scripts/update-version.js patch       # 将 patch 自增（如 0.8.10 -> 0.8.11）
- *  node scripts/update-version.js minor       # 将 minor 自增（如 0.8.10 -> 0.9.0）
- *  node scripts/update-version.js major       # 将 major 自增（如 0.8.10 -> 1.0.0）
+ *  node scripts/update-version.js patch (或 c) # 将 patch 自增（如 0.8.10 -> 0.8.11）
+ *  node scripts/update-version.js minor (或 b) # 将 minor 自增（如 0.8.10 -> 0.9.0）
+ *  node scripts/update-version.js major (或 a) # 将 major 自增（如 0.8.10 -> 1.0.0）
  *  或者使用环境变量： NEW_VERSION=0.8.11 node scripts/update-version.js
  *
  * 优先级（目标版本来源）：
@@ -106,8 +106,12 @@ function updateFileVersion(filePath, targetVersion, bumpOption) {
 // 主逻辑
 (function main() {
     const rawArgs = process.argv.slice(2);
-    const arg = rawArgs[0];
-    const envVersion = process.env.NEW_VERSION || null;
+
+    const aliasMap = { 'a': 'major', 'b': 'minor', 'c': 'patch' };
+    const resolve = (v) => aliasMap[v] || v;
+
+    const arg = resolve(rawArgs[0]);
+    const envVersion = resolve(process.env.NEW_VERSION || null);
     const bumpOptions = new Set(['major', 'minor', 'patch']);
 
     let newVersion = null;
