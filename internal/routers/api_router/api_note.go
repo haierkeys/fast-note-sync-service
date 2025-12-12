@@ -167,7 +167,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	}
 
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
-	_, _, _, noteSelect, err := svc.NoteUpdateCheck(uid, checkParams)
+	_, noteSelect, err := svc.NoteUpdateCheck(uid, checkParams)
 
 	if err != nil {
 		response.ToResponse(code.Failed.WithDetails(err.Error()))

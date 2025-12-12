@@ -103,24 +103,6 @@ type NoteSyncRequestParams struct {
 	Notes    []NoteSyncCheckRequestParams `json:"notes" form:"notes"`                    // 客户端笔记信息列表
 }
 
-// NoteSyncEndMessage 同步结束时返回的信息结构。
-type NoteSyncEndMessage struct {
-	Vault    string `json:"vault" form:"vault"`       // 仓库标识
-	LastTime int64  `json:"lastTime" form:"lastTime"` // 本次同步更新时间
-}
-
-// NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
-type NoteSyncNeedPushMessage struct {
-	Path string `json:"path" form:"path"` // 路径
-}
-
-// NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构。
-type NoteSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path"`   // 路径
-	Ctime int64  `json:"ctime" form:"ctime"` // 创建时间戳
-	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳
-}
-
 // ModifyMtimeFilesRequestParams 用于按 mtime 查询修改文件。
 type ModifyMtimeFilesRequestParams struct {
 	Vault string `json:"vault" form:"vault"  binding:"required"` // 仓库标识
@@ -176,55 +158,54 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 	return convert.StructAssign(note, &Note{}).(*Note), nil
 }
 
-// NoteUpdateCheck 检查文件是否需要更新
+// NoteUpdateCheck 检查笔记是否需要更新
 // 函数名: NoteUpdateCheck
-// 函数使用说明: 根据客户端传来的路径哈希、内容哈希和 mtime 对比服务端记录，决定是否需要服务端/客户端更新。
+// 函数使用说明: 根据客户端传来的路径哈希、内容哈希和 mtime 对比服务端记录,决定需要执行的操作类型。
 // 参数说明:
-//   - uid int64: 用户ID，用于多租户/隔离数据
-//   - params *NoteUpdateCheckRequestParams: 请求参数，包含 vault、path、pathHash、contentHash、ctime、mtime
+//   - uid int64: 用户ID,用于多租户/隔离数据
+//   - params *NoteUpdateCheckRequestParams: 请求参数,包含 vault、path、pathHash、contentHash、ctime、mtime
 //
 // 返回值说明:
-//   - bool: 是否新建
-//   - bool: 是否需要服务端更新（即客户端应该 push）
-//   - bool: 是否需要客户端修改其本地 mtime（即服务端比客户端新）
-//   - *Note: 若存在服务端记录，返回该记录（struct Note）以便调用者使用；不存在则返回 nil
+//   - string: 操作类型 - "UpdateMtime"(仅更新客户端mtime)、"UpdateContent"(需要更新内容)、"Create"(需要创建)、""(无需操作)
+//   - *Note: 若存在服务端记录,返回该记录(struct Note)以便调用者使用;不存在则返回 nil
 //   - error: 出错时返回错误
-func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestParams) (bool, bool, bool, *Note, error) {
+func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestParams) (string, *Note, error) {
 
-	//避免重复创建问题，合并并发创建请求
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
+	var vaultID int64
 
-	var isNew bool
-	var isUpdate bool
-	var isUpdateOnlyMtime bool
-
-	// 避免重复创建问题，合并并发请求
+	// 单例模式获取VaultID
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
 	})
 	if err != nil {
-		return isNew, false, false, nil, err
+		return "", nil, err
 	}
-	vaultID := vID.(int64)
+	vaultID = vID.(int64)
 
-	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
-	if note != nil {
+	// 检查数据表是否存在
+	_, err, _ = svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+	if err != nil {
+		return "", nil, err
+	}
+
+	if note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid); note != nil {
 		noteSvc := convert.StructAssign(note, &Note{}).(*Note)
-		// 检查内容是否一致1
+		// 检查内容是否一致
 		if note.ContentHash == params.ContentHash {
-			// 修改时间是否
+			// 当用户 mtime 小于服务端 mtime 时,通知用户更新mtime
 			if params.Mtime < note.Mtime {
-				isUpdate, isUpdateOnlyMtime = false, true
+				return "UpdateMtime", noteSvc, nil
+			} else if params.Mtime > note.Mtime {
+				svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
 			}
+			return "", noteSvc, nil
 		} else {
-			isUpdate, isUpdateOnlyMtime = true, false
+			return "UpdateContent", noteSvc, nil
 		}
-		return isNew, isUpdate, isUpdateOnlyMtime, noteSvc, nil
 	} else {
-		isNew = true
-		return isNew, isUpdate, isUpdateOnlyMtime, nil, nil
+		return "Create", nil, nil
 	}
 }
 

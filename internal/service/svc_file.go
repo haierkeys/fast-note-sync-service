@@ -35,6 +35,17 @@ type File struct {
 	CreatedAt        timex.Time `json:"-"`                                    // 创建时间字段（time 类型包装）
 }
 
+// FileUpdateCheckParams 客户端用于检查是否需要更新的请求参数。
+type FileUpdateCheckParams struct {
+	Vault       string `json:"vault" form:"vault"  binding:"required"`       // 仓库标识
+	Path        string `json:"path" form:"path"  binding:"required"`         // 路径
+	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"` // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash"  binding:""`   // 内容哈希（可选）
+	Size        int64  `json:"size" form:"size" binding:""`                  // 大小
+	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`       // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`       // 修改时间戳
+}
+
 // FileModifyOrCreateRequestParams 用于创建或修改文件的请求参数。
 type FileUpdateParams struct {
 	Vault       string `json:"vault" form:"vault"  binding:"required"`     // 仓库标识
@@ -113,17 +124,6 @@ func (svc *Service) FileGet(uid int64, params *FileGetParams) (*File, error) {
 		return nil, err
 	}
 	return convert.StructAssign(file, &File{}).(*File), nil
-}
-
-// FileUpdateCheckParams 客户端用于检查是否需要更新的请求参数。
-type FileUpdateCheckParams struct {
-	Vault       string `json:"vault" form:"vault"  binding:"required"`       // 仓库标识
-	Path        string `json:"path" form:"path"  binding:"required"`         // 路径
-	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"` // 路径哈希
-	ContentHash string `json:"contentHash" form:"contentHash"  binding:""`   // 内容哈希（可选）
-	Size        int64  `json:"size" form:"size" binding:""`                  // 大小
-	Ctime       int64  `json:"ctime" form:"ctime"  binding:"required"`       // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`       // 修改时间戳
 }
 
 // FileUpdateCheck 检查文件是否需要更新

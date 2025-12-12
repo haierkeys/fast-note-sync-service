@@ -59,6 +59,9 @@ test:
 dev:
 	air -c ./scripts/.air.toml
 
+air:
+	air -c ./scripts/.air.toml
+
 # 更新版本脚本调用
 ver:
 	@node ./scripts/update-version.js $(filter-out $@,$(MAKECMDGOALS))

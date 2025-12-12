@@ -32,7 +32,6 @@ type FileMessage struct {
 	Ctime            int64  `json:"ctime" form:"ctime"`                   // 创建时间戳（秒）
 	Mtime            int64  `json:"mtime" form:"mtime"`                   // 文件修改时间戳（秒）
 	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`     // 记录更新时间戳（用于同步）
-	SessionID        string `json:"sessionId" binding:"required"`
 }
 
 // FileUploadBinaryChunkSession 定义文件分块上传的会话状态。
@@ -375,7 +374,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		}
 
 		// 用于给客户端
-		sessionID := uuid.New().String()
+		//sessionID := uuid.New().String()
 
 		fileMsg := &FileMessage{
 			Path:             fileSvc.Path,
@@ -386,47 +385,12 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 			Ctime:            fileSvc.Ctime,
 			Mtime:            fileSvc.Mtime,
 			UpdatedTimestamp: fileSvc.UpdatedTimestamp,
-			SessionID:        sessionID,
 		}
 
 		c.ToResponse(code.Success.Reset())
 		// 广播文件更新消息
 		c.BroadcastResponse(code.Success.Reset().WithData(fileMsg), true, "FileSyncUpdate")
 	}
-}
-
-func FileDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.FileGetParams{}
-
-	valid, errs := c.BindAndValid(msg.Data, params)
-	if !valid {
-		global.Logger.Error("api_router.file.FileDownload.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	svc := service.New(c.Ctx).WithSF(c.SF)
-
-	// 获取或创建仓库
-	svc.VaultGetOrCreate(params.Vault, c.User.UID)
-
-	// 执行删除逻辑
-	fileSvc, err := svc.FileGet(c.User.UID, params)
-
-	if err != nil {
-		c.ToResponse(code.ErrorFileGetFailed.WithDetails(err.Error()))
-		return
-	}
-
-	c.ToResponse(code.Success.Reset())
-
-	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
-	// 广播文件删除消息
-	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
-}
-
-func FileDownloadChunkBinary(c *app.WebsocketClient, data []byte) {
-
 }
 
 // FileDelete 处理文件删除请求。
@@ -458,6 +422,37 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
 	// 广播文件删除消息
 	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
+}
+
+func FileChunkDownload(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.FileGetParams{}
+
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("api_router.file.FileDownload.BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	// 获取或创建仓库
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
+	// 执行删除逻辑
+	_, err := svc.FileGet(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorFileGetFailed.WithDetails(err.Error()))
+		return
+	}
+
+	c.ToResponse(code.Success.Reset())
+
+}
+
+func FileDownloadBinary(c *app.WebsocketClient, data []byte) {
+
 }
 
 // FileSync 批量检测用户文件是否需要更新。
@@ -520,17 +515,49 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					// 内容与时间一致，无操作
 					continue
 				} else if file.ContentHash != cFile.ContentHash {
-					// 内容不一致，需要客户端上传
-					fileSyncNeedUploadMessage := convert.StructAssign(file, &FileNeedUploadMessage{}).(*FileNeedUploadMessage)
-					c.ToResponse(code.Success.WithData(fileSyncNeedUploadMessage), "FileNeedUpload")
+					// 内容不一致
+					if file.Mtime > cFile.Mtime {
+						// 服务端修改时间比客户端新, 通知客户端下载更新文件
+						fileMessage := &FileMessage{
+							Path:             file.Path,
+							PathHash:         file.PathHash,
+							ContentHash:      file.ContentHash,
+							SavePath:         file.SavePath,
+							Size:             file.Size,
+							Ctime:            file.Ctime,
+							Mtime:            file.Mtime,
+							UpdatedTimestamp: file.UpdatedTimestamp,
+						}
+						c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
+					} else {
+						// 服务端修改时间比客户端旧, 通知客户端上传文件
+						fileNeedUploadMessage := &FileNeedUploadMessage{
+							Path: file.Path,
+						}
+						c.ToResponse(code.Success.WithData(fileNeedUploadMessage), "FileNeedUpload")
+					}
 				} else {
-					// 仅元数据变更，通知客户端更新
-					fileSyncMtimeMessage := convert.StructAssign(file, &FileSyncMtimeMessage{}).(*FileSyncMtimeMessage)
+					// 内容一致, 但修改时间不一致, 通知客户端更新文件修改时间
+					fileSyncMtimeMessage := &FileSyncMtimeMessage{
+						Path:  file.Path,
+						Ctime: file.Ctime,
+						Mtime: file.Mtime,
+					}
 					c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
 				}
 			} else {
-				// 客户端不存在，通知客户端下载更新
-				c.ToResponse(code.Success.WithData(file), "FileSyncUpdate")
+				// 客户端没有的文件, 通知客户端下载文件
+				fileMessage := &FileMessage{
+					Path:             file.Path,
+					PathHash:         file.PathHash,
+					ContentHash:      file.ContentHash,
+					SavePath:         file.SavePath,
+					Size:             file.Size,
+					Ctime:            file.Ctime,
+					Mtime:            file.Mtime,
+					UpdatedTimestamp: file.UpdatedTimestamp,
+				}
+				c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
 			}
 		}
 	}

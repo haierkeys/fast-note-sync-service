@@ -11,6 +11,38 @@ import (
 	"go.uber.org/zap"
 )
 
+type NoteMessage struct {
+	Path             string `json:"path" form:"path"`                 // 路径信息（文件路径）
+	PathHash         string `json:"pathHash" form:"pathHash"`         // 路径哈希值，用于快速查找
+	Content          string `json:"content" form:"content"`           // 内容详情（完整文本）
+	ContentHash      string `json:"contentHash" form:"contentHash"`   // 内容哈希，用于判定内容是否变更
+	Ctime            int64  `json:"ctime" form:"ctime"`               // 创建时间戳（秒）
+	Mtime            int64  `json:"mtime" form:"mtime"`               // 文件修改时间戳（秒）
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
+}
+
+// NoteSyncEndMessage 同步结束时返回的信息结构。
+type NoteSyncEndMessage struct {
+	Vault    string `json:"vault" form:"vault"`       // 仓库标识
+	LastTime int64  `json:"lastTime" form:"lastTime"` // 本次同步更新时间
+}
+
+// NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
+type NoteSyncNeedPushMessage struct {
+	Path string `json:"path" form:"path"` // 路径
+}
+
+// NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构。
+type NoteSyncMtimeMessage struct {
+	Path  string `json:"path" form:"path"`   // 路径
+	Ctime int64  `json:"ctime" form:"ctime"` // 创建时间戳
+	Mtime int64  `json:"mtime" form:"mtime"` // 修改时间戳
+}
+
+type NoteDeleteMessage struct {
+	Path string `json:"path" form:"path"` // 路径信息（文件路径）
+}
+
 // NoteModify 处理文件修改的 WebSocket 消息
 // 函数名: NoteModify
 // 函数使用说明: 处理客户端发送的笔记修改或创建消息，进行参数校验、更新检查并在需要时写回数据库或通知其他客户端。
@@ -52,37 +84,49 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	checkParams := convert.StructAssign(params, &service.NoteUpdateCheckRequestParams{}).(*service.NoteUpdateCheckRequestParams)
-	isNew, isNeedUpdate, isNeedSyncMtime, _, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
+	updateMode, nodeCheck, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 		return
 	}
 
-	var note *service.Note
+	if updateMode == "UpdateContent" || updateMode == "Create" {
 
-	if isNew || isNeedSyncMtime || isNeedUpdate {
-		_, note, err = svc.NoteModifyOrCreate(c.User.UID, params, true)
+		_, note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
 			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 			return
 		}
-		// 通知所有客户端更新mtime
-		if isNeedSyncMtime {
-			c.ToResponse(code.Success.Reset())
-			c.BroadcastResponse(code.Success.Reset().WithData(note), false, "NoteSyncModify")
-			return
-		} else if isNeedUpdate || isNew {
 
-			c.ToResponse(code.Success.Reset())
-			c.BroadcastResponse(code.Success.Reset().WithData(note), true, "NoteSyncModify")
-			return
+		// 通知所有客户端更新mtime
+		noteMessage := &NoteMessage{
+			Path:             note.Path,
+			PathHash:         note.PathHash,
+			Content:          note.Content,
+			ContentHash:      note.ContentHash,
+			Ctime:            note.Ctime,
+			Mtime:            note.Mtime,
+			UpdatedTimestamp: note.UpdatedTimestamp,
 		}
+
+		c.ToResponse(code.Success.Reset())
+		c.BroadcastResponse(code.Success.Reset().WithData(noteMessage), true, "NoteSyncModify")
+		return
+
+	} else if updateMode == "UpdateMtime" {
+		// 通知 客户端 Note 修改时间更新
+		noteSyncMtimeMessage := &NoteSyncMtimeMessage{
+			Path:  nodeCheck.Path,
+			Ctime: nodeCheck.Ctime,
+			Mtime: nodeCheck.Mtime,
+		}
+		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+		return
 	} else {
 		c.ToResponse(code.SuccessNoUpdate.Reset())
 		return
 	}
-
 }
 
 // NoteModifyCheck 检查文件修改必要性
@@ -109,7 +153,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
-	_, isNeedUpdate, isNeedSyncMtime, note, err := svc.NoteUpdateCheck(c.User.UID, params)
+	updateMode, nodeCheck, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteUpdateCheckFailed.WithDetails(err.Error()))
@@ -117,15 +161,21 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	// 通知客户端上传笔记
-	if isNeedUpdate {
-		NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
-		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+	if updateMode == "UpdateContent" || updateMode == "Create" {
+
+		noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
+			Path: nodeCheck.Path,
+		}
+		c.ToResponse(code.Success.WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
 		return
-	}
-	// 强制客户端更新mtime 不传输笔记内容
-	if isNeedSyncMtime {
-		NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
-		c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
+	} else if updateMode == "UpdateMtime" {
+		// 强制客户端更新mtime 不传输笔记内容
+		noteSyncMtimeMessage := &NoteSyncMtimeMessage{
+			Path:  nodeCheck.Path,
+			Ctime: nodeCheck.Ctime,
+			Mtime: nodeCheck.Mtime,
+		}
+		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 		return
 	}
 	c.ToResponse(code.SuccessNoUpdate.Reset())
@@ -213,25 +263,66 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		if note.UpdatedTimestamp >= lastTime {
 			lastTime = note.UpdatedTimestamp
 		}
-
 		if note.Action == "delete" {
-			c.ToResponse(code.Success.WithData(note), "NoteSyncDelete")
+			// 客户端有,服务端没有, 通知客户端删除
+			if _, ok := cNotes[note.PathHash]; ok {
+				noteDeleteMessage := &NoteDeleteMessage{
+					Path: note.Path,
+				}
+				c.ToResponse(code.Success.WithData(noteDeleteMessage), "NoteSyncDelete")
+			}
 		} else {
+			//检查客户端是否有
 			if cNote, ok := cNotes[note.PathHash]; ok {
 
 				delete(cNotesKeys, note.PathHash)
 
 				if note.ContentHash == cNote.ContentHash && note.Mtime == cNote.Mtime {
+					//内容和修改时间一致, 跳过
 					continue
 				} else if note.ContentHash != cNote.ContentHash {
-					NoteCheck := convert.StructAssign(note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
-					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+					// 内容不一致
+					if note.Mtime > cNote.Mtime {
+						// 服务端修改时间比客户端新, 通知客户端更新笔记
+						noteMessage := &NoteMessage{
+							Path:             note.Path,
+							PathHash:         note.PathHash,
+							Content:          note.Content,
+							ContentHash:      note.ContentHash,
+							Ctime:            note.Ctime,
+							Mtime:            note.Mtime,
+							UpdatedTimestamp: note.UpdatedTimestamp,
+						}
+						c.ToResponse(code.Success.Reset().WithData(noteMessage), "NoteSyncModify")
+
+					} else {
+						// 服务端修改时间比客户端旧, 通知客户端上传笔记
+						noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
+							Path: note.Path,
+						}
+						c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+					}
 				} else {
-					NoteCheck := convert.StructAssign(note, &service.NoteSyncMtimeMessage{}).(*service.NoteSyncMtimeMessage)
-					c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncMtime")
+					// 内容一致, 但修改时间不一致, 通知客户端更新笔记修改时间
+					noteSyncMtimeMessage := &NoteSyncMtimeMessage{
+						Path:  note.Path,
+						Ctime: note.Ctime,
+						Mtime: note.Mtime,
+					}
+					c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 				}
 			} else {
-				c.ToResponse(code.Success.WithData(note), "NoteSyncModify")
+				// 客户端没有的文件, 通知客户端创建文件
+				noteMessage := &NoteMessage{
+					Path:             note.Path,
+					PathHash:         note.PathHash,
+					Content:          note.Content,
+					ContentHash:      note.ContentHash,
+					Ctime:            note.Ctime,
+					Mtime:            note.Mtime,
+					UpdatedTimestamp: note.UpdatedTimestamp,
+				}
+				c.ToResponse(code.Success.WithData(noteMessage), "NoteSyncModify")
 			}
 		}
 	}
@@ -242,12 +333,12 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if len(cNotesKeys) > 0 {
 		for pathHash := range cNotesKeys {
 			note := cNotes[pathHash]
-			NoteCheck := convert.StructAssign(&note, &service.NoteSyncNeedPushMessage{}).(*service.NoteSyncNeedPushMessage)
+			NoteCheck := convert.StructAssign(&note, &NoteSyncNeedPushMessage{}).(*NoteSyncNeedPushMessage)
 			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
 		}
 	}
 
-	message := &service.NoteSyncEndMessage{
+	message := &NoteSyncEndMessage{
 		Vault:    params.Vault,
 		LastTime: lastTime,
 	}
