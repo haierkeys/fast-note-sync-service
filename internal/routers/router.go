@@ -59,7 +59,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("FileChunkDownload", websocket_router.FileChunkDownload)
 
 	//附件上传分块
-	wss.UseBinary(websocket_router.FileUploadChunkBinary)
+	wss.UseBinary(websocket_router.VaultFileSync, websocket_router.FileUploadChunkBinary)
 
 	wss.UseUserVerify(websocket_router.UserInfo)
 

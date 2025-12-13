@@ -208,9 +208,17 @@ func (c *WebsocketClient) message(payload []byte) {
 	c.conn.WriteMessage(gws.OpcodeText, payload)
 }
 
-// SendBinary 发送二进制消息到客户端
-func (c *WebsocketClient) SendBinary(payload []byte) error {
-	return c.conn.WriteMessage(gws.OpcodeBinary, payload)
+// SendBinary 发送二进制消息
+// prefix: 2字节前缀
+func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
+	if len(prefix) != 2 {
+		return fmt.Errorf("prefix must be 2 bytes")
+	}
+	// 拼接前缀和数据
+	data := make([]byte, 2+len(payload))
+	copy(data[0:2], prefix)
+	copy(data[2:], payload)
+	return c.conn.WriteMessage(gws.OpcodeBinary, data)
 }
 
 func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
@@ -236,12 +244,13 @@ type ConnStorage = map[*gws.Conn]*WebsocketClient
 type WebsocketServer struct {
 	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	binaryHandler     func(*WebsocketClient, []byte)
-	clients           ConnStorage
-	userClients       map[string]ConnStorage
-	mu                sync.Mutex
-	up                *gws.Upgrader
-	config            *WebsocketServerConfig
+	// binaryHandler     func(*WebsocketClient, []byte) // Deprecated: replaced by binaryHandlers
+	binaryHandlers map[string]func(*WebsocketClient, []byte) // 二进制消息处理器映射 prefix -> handler
+	clients        ConnStorage
+	userClients    map[string]ConnStorage
+	mu             sync.Mutex
+	up             *gws.Upgrader
+	config         *WebsocketServerConfig
 }
 
 func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
@@ -252,10 +261,11 @@ func NewWebsocketServer(c WebsocketServerConfig) *WebsocketServer {
 		c.PingWait = WebSocketServerPingWait
 	}
 	wss := WebsocketServer{
-		handlers:    make(map[string]func(*WebsocketClient, *WebSocketMessage)),
-		clients:     make(ConnStorage),
-		userClients: make(map[string]ConnStorage),
-		config:      &c,
+		handlers:       make(map[string]func(*WebsocketClient, *WebSocketMessage)),
+		binaryHandlers: make(map[string]func(*WebsocketClient, []byte)),
+		clients:        make(ConnStorage),
+		userClients:    make(map[string]ConnStorage),
+		config:         &c,
 	}
 	return &wss
 }
@@ -289,8 +299,11 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
-func (w *WebsocketServer) UseBinary(handler func(*WebsocketClient, []byte)) {
-	w.binaryHandler = handler
+func (w *WebsocketServer) UseBinary(prefix string, handler func(*WebsocketClient, []byte)) {
+	if len(prefix) != 2 {
+		panic("binary message prefix must be 2 characters")
+	}
+	w.binaryHandlers[prefix] = handler
 }
 
 func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
@@ -432,8 +445,18 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	c := w.GetClient(conn)
 
 	if message.Opcode == gws.OpcodeBinary {
-		if w.binaryHandler != nil {
-			w.binaryHandler(c, message.Data.Bytes())
+		data := message.Data.Bytes()
+		if len(data) < 2 {
+			log(LogError, "WebsocketServer OnMessage Binary too short", zap.String("uid", c.User.ID))
+			return
+		}
+		prefix := string(data[:2])
+		payload := data[2:]
+
+		if handler, ok := w.binaryHandlers[prefix]; ok {
+			handler(c, payload)
+		} else {
+			log(LogWarn, "WebsocketServer OnMessage Unknown Binary Prefix", zap.String("prefix", prefix))
 		}
 		return
 	}

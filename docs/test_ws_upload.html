@@ -118,6 +118,24 @@
             logArea: document.getElementById('logArea')
         };
 
+        // Persistence
+        (function setupPersistence() {
+            const fields = ['wsUrl', 'token', 'vaultName', 'filePath'];
+            fields.forEach(id => {
+                const el = dom[id];
+                if (!el) return;
+
+                // Load
+                const stored = localStorage.getItem('ws_demo_' + id);
+                if (stored) el.value = stored;
+
+                // Save
+                el.addEventListener('input', () => {
+                    localStorage.setItem('ws_demo_' + id, el.value);
+                });
+            });
+        })();
+
         // Logger
         function log(msg, type = 'info') {
             const div = document.createElement('div');
@@ -250,12 +268,32 @@
 
             log('Calculating hashes...', 'info');
 
-            // Calculate Hashes (simulated simple hash for text, SparkMD5 for binary)
+            // Custom Hash Functions
+            const hashContent = function (content) {
+                let hash = 0
+                for (let i = 0; i < content.length; i++) {
+                    const char = content.charCodeAt(i)
+                    hash = (hash << 5) - hash + char
+                    hash &= hash
+                }
+                return String(hash)
+            }
+
+            const hashArrayBuffer = function (buffer) {
+                let hash = 0
+                const view = new Uint8Array(buffer)
+                for (let i = 0; i < view.length; i++) {
+                    const byte = view[i]
+                    hash = (hash << 5) - hash + byte
+                    hash &= hash
+                }
+                return String(hash)
+            }
+
+            // Calculate Hashes
             const arrayBuffer = await file.arrayBuffer();
-            const spark = new SparkMD5.ArrayBuffer();
-            spark.append(arrayBuffer);
-            const contentHash = spark.end();
-            const pathHash = SparkMD5.hash(dom.filePath.value);
+            const contentHash = hashArrayBuffer(arrayBuffer);
+            const pathHash = hashContent(dom.filePath.value);
 
             const mtime = Math.floor(file.lastModified / 1000) * 1000; // ms
             const ctime = mtime; // Use modify time as create time for demo
@@ -315,15 +353,20 @@
                 if (!ws) reject('No connection');
 
                 // Packet Format:
+                // 2 bytes: Prefix "00"
                 // 36 bytes: Session ID (String)
                 // 4 bytes: Chunk Index (BigEndian uint32)
                 // rest: Data
 
-                const headerSize = 40;
+                const headerSize = 42; // 40 + 2
                 const packet = new Uint8Array(headerSize + arrayBuffer.byteLength);
 
-                // 1. Session ID (pad or slice to 36 bytes? UUID is 36 chars)
-                // Go: sessionID := string(data[:36])
+                // 1. Prefix "00"
+                packet[0] = 48; // '0'
+                packet[1] = 48; // '0'
+
+                // 2. Session ID (36 bytes)
+                // Go: sessionID := string(data[:36]) -> now data[2:38]
                 const encoder = new TextEncoder();
                 const sessionBytes = encoder.encode(sessionId); // verify length!
                 if (sessionBytes.length !== 36) {
@@ -331,15 +374,15 @@
                     reject('Invalid session ID length');
                     return;
                 }
-                packet.set(sessionBytes, 0);
+                packet.set(sessionBytes, 2);
 
-                // 2. Chunk Index (Big Endian Uint32)
+                // 3. Chunk Index (Big Endian Uint32)
                 const view = new DataView(packet.buffer);
-                view.setUint32(36, chunkIndex, false); // false = Big Endian
+                view.setUint32(38, chunkIndex, false); // false = Big Endian
 
-                // 3. Data
+                // 4. Data
                 const dataView = new Uint8Array(arrayBuffer);
-                packet.set(dataView, 40);
+                packet.set(dataView, 42);
 
                 ws.send(packet);
                 // log(`Sent chunk ${chunkIndex}`, 'info'); // Too noisy

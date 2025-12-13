@@ -117,6 +117,24 @@
             logArea: document.getElementById('logArea')
         };
 
+        // Persistence
+        (function setupPersistence() {
+            const fields = ['wsUrl', 'token', 'vaultName', 'filePath'];
+            fields.forEach(id => {
+                const el = dom[id];
+                if (!el) return;
+
+                // Load
+                const stored = localStorage.getItem('ws_demo_' + id);
+                if (stored) el.value = stored;
+
+                // Save
+                el.addEventListener('input', () => {
+                    localStorage.setItem('ws_demo_' + id, el.value);
+                });
+            });
+        })();
+
         // Logger
         function log(msg, type = 'info') {
             const div = document.createElement('div');
@@ -239,8 +257,19 @@
                 return;
             }
 
+            // Custom Hash Function
+            const hashContent = function (content) {
+                let hash = 0
+                for (let i = 0; i < content.length; i++) {
+                    const char = content.charCodeAt(i)
+                    hash = (hash << 5) - hash + char
+                    hash &= hash
+                }
+                return String(hash)
+            }
+
             // Calculate path hash
-            const pathHash = SparkMD5.hash(path);
+            const pathHash = hashContent(path);
 
             const params = {
                 vault: dom.vaultName.value,
@@ -271,18 +300,19 @@
             const arrayBuffer = await blob.arrayBuffer();
             const data = new Uint8Array(arrayBuffer);
 
-            if (data.length < 40) {
+            if (data.length < 42) {
                 log('Invalid binary message: too short', 'err');
                 return;
             }
 
             // Parse binary message
-            // Format: [36 bytes session_id][4 bytes chunk_index][chunk_data]
+            // Format: [2 bytes prefix][36 bytes session_id][4 bytes chunk_index][chunk_data]
+            // We ignore prefix for now (or check if it's "00")
             const decoder = new TextDecoder();
-            const sessionId = decoder.decode(data.slice(0, 36));
+            const sessionId = decoder.decode(data.slice(2, 38)); // 2 + 36
             const view = new DataView(arrayBuffer);
-            const chunkIndex = view.getUint32(36, false); // Big Endian
-            const chunkData = data.slice(40);
+            const chunkIndex = view.getUint32(38, false); // Big Endian
+            const chunkData = data.slice(42);
 
             if (sessionId !== currentSessionId) {
                 log(`Session ID mismatch: expected ${currentSessionId}, got ${sessionId}`, 'err');

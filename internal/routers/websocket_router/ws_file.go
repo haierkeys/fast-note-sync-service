@@ -589,7 +589,7 @@ func sendFileChunks(c *app.WebsocketClient, session *FileDownloadChunkSession) {
 		copy(packet[40:], chunkData[:n])
 
 		// 发送二进制消息
-		err = c.SendBinary(packet)
+		err = c.SendBinary(VaultFileSync, packet)
 		if err != nil {
 			global.Logger.Error("sendFileChunks: failed to send chunk",
 				zap.String("sessionID", session.SessionID),
