@@ -91,7 +91,8 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	if updateMode == "UpdateContent" || updateMode == "Create" {
+	switch updateMode {
+	case "UpdateContent", "Create":
 
 		_, note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
@@ -114,7 +115,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.BroadcastResponse(code.Success.Reset().WithData(noteMessage), true, "NoteSyncModify")
 		return
 
-	} else if updateMode == "UpdateMtime" {
+	case "UpdateMtime":
 		// 通知 客户端 Note 修改时间更新
 		noteSyncMtimeMessage := &NoteSyncMtimeMessage{
 			Path:  nodeCheck.Path,
@@ -123,7 +124,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 		return
-	} else {
+	default:
 		c.ToResponse(code.SuccessNoUpdate.Reset())
 		return
 	}
@@ -161,14 +162,14 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	// 通知客户端上传笔记
-	if updateMode == "UpdateContent" || updateMode == "Create" {
-
+	switch updateMode {
+	case "UpdateContent", "Create":
 		noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
 			Path: nodeCheck.Path,
 		}
 		c.ToResponse(code.Success.WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
 		return
-	} else if updateMode == "UpdateMtime" {
+	case "UpdateMtime":
 		// 强制客户端更新mtime 不传输笔记内容
 		noteSyncMtimeMessage := &NoteSyncMtimeMessage{
 			Path:  nodeCheck.Path,
@@ -177,8 +178,10 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 		return
+	default:
+		c.ToResponse(code.SuccessNoUpdate.Reset())
+		return
 	}
-	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
 // NoteDelete 处理文件删除的 WebSocket 消息

@@ -153,7 +153,8 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	// UpdateContent 或 Create 模式，需要客户端上传文件
-	if updateMode == "UpdateContent" || updateMode == "Create" {
+	switch updateMode {
+	case "UpdateContent", "Create":
 
 		sessionID := uuid.New().String()
 		tempDir := global.Config.App.TempPath
@@ -229,7 +230,7 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
 		return
 
-	} else if updateMode == "UpdateMtime" {
+	case "UpdateMtime":
 		// 仅更新修改时间
 		fileSyncMtimeMessage := &FileSyncMtimeMessage{
 			Path:  fileSvc.Path,
@@ -238,9 +239,10 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 		c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
 		return
+	default:
+		// 无需更新
+		c.ToResponse(code.SuccessNoUpdate.Reset())
 	}
-	// 无需更新
-	c.ToResponse(code.SuccessNoUpdate.Reset())
 }
 
 // FileUploadChunkBinary 处理文件分块上传的二进制数据。

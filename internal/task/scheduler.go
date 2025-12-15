@@ -58,9 +58,6 @@ func (s *Scheduler) startTask(task Task) {
 	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
 
-		ticker := time.NewTicker(task.Interval())
-		defer ticker.Stop()
-
 		// 如果任务需要立即执行
 		if task.RunImmediately() {
 			go func() {
@@ -71,6 +68,14 @@ func (s *Scheduler) startTask(task Task) {
 				}
 			}()
 		}
+
+		if task.Interval() <= 0 {
+			s.logger.Info("task scheduled only for immediate execution (interval <= 0)", zap.String("task_name", task.Name()))
+			return
+		}
+
+		ticker := time.NewTicker(task.Interval())
+		defer ticker.Stop()
 
 		// 定时执行
 		for {
