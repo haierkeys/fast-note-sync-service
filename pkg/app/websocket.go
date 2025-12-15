@@ -396,6 +396,9 @@ func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	c := w.GetClient(conn)
+	if c == nil {
+		return
+	}
 
 	w.RemoveClient(conn)
 
@@ -443,6 +446,9 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 
 	c := w.GetClient(conn)
+	if c == nil {
+		return
+	}
 
 	if message.Opcode == gws.OpcodeBinary {
 		data := message.Data.Bytes()
@@ -492,7 +498,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	handler, exists := w.handlers[msg.Type]
 	if exists {
 		log(LogInfo, "WebsocketServer OnMessage", zap.String("Type", msg.Type))
-		c := w.GetClient(conn)
+		// Use the client object retrieved at the beginning of the function
 		handler(c, &msg)
 	} else {
 		log(LogError, "WebsocketServer OnMessage", zap.String("msg", "Unknown message type"))
