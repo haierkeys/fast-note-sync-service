@@ -1,0 +1,280 @@
+name: Go-Alpha-Release
+
+# 触发条件配置
+on:
+  push:
+    branches-ignore:
+      - "master" # 明确忽略 master，由 release.yml 处理
+# 权限配置：允许脚本写入仓库内容（用于发布 Release）
+permissions:
+  contents: write
+  packages: write
+
+env:
+  NAME: ${{ github.event.repository.name }}
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      release_tag: ${{ steps.check.outputs.release_tag }}
+      commit_msg: ${{ steps.check.outputs.commit_msg }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Check Version
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 从 global/version.go (HEAD) 读取当前版本
+          # 预期格式: var Version string = "0.0.1"
+          CURRENT_VERSION=$(grep 'var Version string' global/version.go | awk -F '"' '{print $2}')
+          echo "当前版本 (HEAD): $CURRENT_VERSION"
+
+          # 从 global/version.go (HEAD~1) 获取上一个版本
+          # 使用 git show 获取上一次提交的文件内容
+          # 注意: 我们将其包裹在一个块中以处理 HEAD~1 可能不存在的情况 (例如: 初始提交)
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+             PREV_FILE_CONTENT=$(git show HEAD~1:global/version.go)
+             PREV_VERSION=$(echo "$PREV_FILE_CONTENT" | grep 'var Version string' | awk -F '"' '{print $2}')
+          else
+             PREV_VERSION="0.0.0"
+          fi
+
+          # 如果 PREV_VERSION 为空 (例如: grep 失败), 默认为 0.0.0
+          if [ -z "$PREV_VERSION" ]; then
+             PREV_VERSION="0.0.0"
+          fi
+
+          echo "上一个版本 (HEAD~1): $PREV_VERSION"
+
+          # 规范化版本以进行比较 (如果存在 'v' 前缀则移除)
+          V_LAST=${PREV_VERSION#v}
+          V_CURR=${CURRENT_VERSION#v}
+
+          # 比较版本
+          if [ "$V_CURR" != "$V_LAST" ]; then
+             # 使用 sort -V 确定当前版本是否严格大于旧版本
+             NEWER_VERSION=$(echo -e "$V_LAST\n$V_CURR" | sort -V | tail -n 1)
+
+             if [ "$NEWER_VERSION" == "$V_CURR" ] && [ "$NEWER_VERSION" != "$V_LAST" ]; then
+                echo "检测到新版本: $V_CURR > $V_LAST"
+                echo "should_release=true" >> $GITHUB_OUTPUT
+                echo "release_tag=$V_CURR" >> $GITHUB_OUTPUT
+             else
+                echo "版本 $V_CURR 不大于 $V_LAST。跳过发布..."
+                echo "should_release=false" >> $GITHUB_OUTPUT
+             fi
+          else
+             echo "版本匹配 ($V_CURR == $V_LAST)。跳过发布..."
+             echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  prepare-message:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      commit_msg: ${{ steps.trans.outputs.commit_msg }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Prepare Commit Message
+        id: trans
+        run: |
+          # 获取提交文本信息
+          msg=$(git log -1 --pretty=%B)
+
+          # 设置 Python 进行翻译
+          pip install deep-translator > /dev/null 2>&1 || true
+
+          # 运行翻译脚本
+          export COMMIT_MSG="$msg"
+
+          echo "commit_msg<<EOF" >> $GITHUB_OUTPUT
+          if [ -f "scripts/translate_commit.py" ]; then
+             python3 scripts/translate_commit.py >> $GITHUB_OUTPUT
+          else
+             echo "未找到翻译脚本，使用原始消息"
+             echo "$msg" >> $GITHUB_OUTPUT
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
+
+
+  create-release:
+    needs: [check-version, prepare-message]
+    if: needs.check-version.outputs.should_release == 'true'
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.check-version.outputs.release_tag }}-alpha
+          name: ${{ needs.check-version.outputs.release_tag }}-alpha
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: ${{ needs.prepare-message.outputs.commit_msg }}
+          target_commitish: ${{ github.sha }} # 明确指定在当前分支的 commit 上创建 tag
+          overwrite_files: true
+
+  build-binaries:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Check Go Version
+        run: go version
+
+      - name: Go Build Prepare
+        run: go install github.com/mitchellh/gox@latest
+
+      - name: Go Build Multi-platform
+        run: make gox-all
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_file
+          path: ./build/
+
+      - name: Upload Config Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: config
+          path: ./config
+
+  push-docker:
+    needs: [check-version, build-binaries]
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build_file
+          path: ./build/
+
+      - name: Download Config Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: config
+          path: ./config
+
+      - name: Set Environment Variables
+        run: |
+          # NAME is already set globally
+          # Use the tag from check-version
+          TAG_VERSION=${{ needs.check-version.outputs.release_tag }}
+          echo "TAG_VERSION=${TAG_VERSION}" >> ${GITHUB_ENV}
+          echo "IMAGE_TAG=${TAG_VERSION}" >> ${GITHUB_ENV}
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> ${GITHUB_ENV}
+          echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
+
+      - name: Append 'latest' tag if on main branch
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: echo "IMAGE_TAG=${{ env.IMAGE_TAG }},latest" >> ${GITHUB_ENV}
+
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+
+      - name: Docker Build & Publish to GitHub Container Registry
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          dockerfile: docker/Dockerfile
+          name: ${{ github.actor }}/${{ env.NAME }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          registry: ghcr.io
+          snapshot: false
+          tags: "${{ env.IMAGE_TAG }}"
+          buildargs: |
+            VERSION=${{ env.TAG_VERSION }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
+      - name: Docker Build & Publish to DockerHub
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          dockerfile: docker/Dockerfile
+          name: ${{ github.actor }}/${{ env.NAME }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          snapshot: false
+          tags: "${{ env.IMAGE_TAG }}"
+          buildargs: |
+            VERSION=${{ env.TAG_VERSION }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
+  push-release-files:
+    needs: [create-release, build-binaries, push-docker, check-version]
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jobs:
+          - { goos: darwin, goarch: amd64, cc: "" }
+          - { goos: darwin, goarch: arm64, cc: "" }
+          - { goos: linux, goarch: amd64, cc: "" }
+          - { goos: linux, goarch: arm64, cc: "" }
+          - { goos: windows, goarch: amd64, cc: "", ext: ".exe" }
+    steps:
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build_file
+          path: ./build/
+
+      - name: Download Config Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: config
+          path: ./config
+
+      - name: Create GZip Archive
+        env:
+            # Construct the full release name: Repo-Version
+            RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
+        run: |
+          tar -czvf ./build/${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz ./config  -C ./build/${{ matrix.jobs.goos }}_${{ matrix.jobs.goarch }}/ .
+
+      - name: Upload GZip to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./build/${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
+          asset_name: ${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
+          asset_content_type: application/gzip
