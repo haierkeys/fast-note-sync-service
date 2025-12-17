@@ -1,4 +1,4 @@
-[中文文档](docs/README.zh-CN.md) / [English Document](README.md)
+[中文文档](/docs/README.zh-CN.md) / [English Document](/README.md)
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -8,47 +8,47 @@
     <img src="https://img.shields.io/badge/Language-Go-00ADD8?style=flat-square" alt="Go">
 </p>
 
-
 <p align="center">
-  <strong>High-Performance, Low-Latency Note Synchronization Service Solution</strong>
+  <strong>High-performance, low-latency note sync service solution</strong>
   <br>
-  <em>Built with Golang + WebSocket + SQLite + React</em>
+  <em>Built with Golang + Websocket + Sqlite + React</em>
 </p>
 
-
 <p align="center">
-Requires the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  Requires use with the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
     <img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-preview" width="800" />
 </div>
 
------
+---
 
 ## ✨ Core Features
 
-  * **💻 Web Admin Panel**: Built-in modern management interface to easily create users, generate plugin configurations, and manage vaults and note content.
-  * **🔄 Multi-Device Real-Time Sync**:
-      * Supports automatic **Vault** creation.
-      * Supports note management (Create, Read, Update, Delete), with changes distributed to all online devices in milliseconds.
-  * **🖼️ Attachment Sync Support**:
-      * Perfectly supports syncing non-note files such as images.
-      * *(Note: Requires Server v0.9+ and [Obsidian Plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases), . Does not support Obsidian settings files)*
+* **💻 Web Admin Panel**: Built-in modern management interface for easily creating users, generating plugin configurations, and managing vaults and note content.
+* **🔄 Multi-device Real-time Sync**:
+    * Supports automatic **Vault** creation.
+    * Supports note management (create, delete, update, query), with changes distributed in real-time to all online devices at millisecond speed.
+* **🖼️ Attachment Sync Support**:
+    * Perfectly supports syncing non-note files like images.
+    * *(Note: Requires server v0.9+ and [Obsidian plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases), does not support Obsidian settings files)*
 
 ## 🗺️ Roadmap
 
-We are continuously improving. Here is the future development plan:
+We are continuously improving, here are the future development plans:
 
-  - [ ] **Git Version Control Integration**: Safer version rollback for notes.
-  - [ ] **Sync Algorithm Optimization**: Integrate `google-diff-match-patch` for more efficient incremental syncing.
-  - [ ] **Cloud Storage & Backup Strategy**:
-      - [ ] Custom backup policy configuration.
-      - [ ] Multi-protocol adaptation: S3 / Minio / Cloudflare R2 / Aliyun OSS / WebDAV.
+- [ ] **Git Version Control Integration**: Provide safer version rollback for notes.
+- [ ] **Sync Algorithm Optimization**: Integrate `google-diff-match-patch` for more efficient incremental sync.
+- [ ] **Cloud Storage and Backup Strategies**:
+    - [ ] Custom backup strategy configuration.
+    - [ ] Multi-protocol support: S3 / Minio / Cloudflare R2 / Alibaba Cloud OSS / WebDAV.
+
+> **If you have improvement suggestions or new ideas, feel free to share them by submitting an issue—we will carefully evaluate and adopt suitable suggestions.**
 
 ## 🚀 Quick Deployment
 
-We provide multiple installation methods. **One-click Script** or **Docker** is recommended.
+We provide multiple installation methods, recommend using the **One-click Script** or **Docker**.
 
 ### Method 1: One-click Script (Recommended)
 
@@ -58,12 +58,12 @@ Automatically detects the system environment and completes installation and serv
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
-**Script Main Actions:**
+**Main script actions:**
 
-  * Automatically downloads the Release binary adapted to the current system.
+  * Automatically downloads the Release binary compatible with the current system.
   * Installs to `/opt/fast-note` by default and creates a shortcut command at `/usr/local/bin/fast-note`.
-  * Configures and starts the Systemd service (`fast-note.service`) for auto-start on boot.
-  * **Management Command**: `fast-note [install|uninstall|start|stop|status|update|menu]`
+  * Configures and starts a Systemd service (`fast-note.service`) for auto-start on boot.
+  * **Management commands**: `fast-note [install|uninstall|start|stop|status|update|menu]`
 
 -----
 
@@ -72,10 +72,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 #### Docker Run
 
 ```bash
-# 1. Pull image
+# 1. Pull the image
 docker pull haierkeys/fast-note-sync-service:latest
 
-# 2. Start container
+# 2. Start the container
 docker run -tid --name fast-note-sync-service \
     -p 9000:9000 -p 9001:9001 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
@@ -85,7 +85,7 @@ docker run -tid --name fast-note-sync-service \
 
 #### Docker Compose
 
-Create a `docker-compose.yaml` file:
+Create `docker-compose.yaml` file:
 
 ```yaml
 version: '3'
@@ -95,11 +95,11 @@ services:
     container_name: fast-note-sync-service
     restart: always
     ports:
-      - "9000:9000"  # API Port
-      - "9001:9001"  # WebSocket Port
+      - "9000:9000"  # API port
+      - "9001:9001"  # WebSocket port
     volumes:
-      - ./storage:/fast-note-sync/storage    # Data Storage
-      - ./config:/fast-note-sync/config      # Configuration File
+      - ./storage:/fast-note-sync/storage  # Data storage
+      - ./config:/fast-note-sync/config    # Configuration files
 ```
 
 Start the service:
@@ -112,20 +112,20 @@ docker compose up -d
 
 ### Method 3: Manual Binary Installation
 
-Download the latest version for your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), unzip, and run:
+Download the latest version for your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), extract and run:
 
 ```bash
 ./fast-note-sync-service run -c config/config.yaml
 ```
 
-## 📖 User Guide
+## 📖 Usage Guide
 
 1.  **Access Admin Panel**:
-    Open `http://{Server-IP}:9000` in your browser.
+    Open `http://{ServerIP}:9000` in your browser.
 2.  **Initial Setup**:
-    Registration is required for the first visit. *(To disable registration, set `user.register-is-enable: false` in the config file)*.
+    You need to register an account on the first visit. *(To disable registration, set `user.register-is-enable: false` in the configuration file)*
 3.  **Configure Client**:
-    Log in to the admin panel and click **"Copy API Config"**.
+    Log in to the admin panel and click **"Copy API Configuration"**.
 4.  **Connect Obsidian**:
     Open the Obsidian plugin settings page and paste the configuration information you just copied.
 
@@ -133,15 +133,15 @@ Download the latest version for your system from [Releases](https://github.com/h
 
 The default configuration file is `config.yaml`. The program will automatically look for it in the **root directory** or the **config/** directory.
 
-View full configuration example: [config/config.yaml](https://www.google.com/search?q=https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+View full configuration example: [config/config.yaml](https://www.google.com/search?q=config/config.yaml)
 
 ## 📅 Changelog
 
-For full version history, please visit the [Releases Page](https://github.com/haierkeys/fast-note-sync-service/releases).
+For a complete version history, please visit the [Releases page](https://github.com/haierkeys/fast-note-sync-service/releases).
 
-## ☕ Sponsor & Support
+## ☕ Sponsorship & Support
 
-This project is completely open-source and free. If you find it helpful, please **Star** this project or buy the author a coffee. This will motivate me to continue maintenance. Thank you\!
+This project is completely open-source and free. If you find it helpful, you are welcome to **Star** this project or buy the author a coffee. This will motivate me to continue maintaining it. Thank you!
 
 [<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
 

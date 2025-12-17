@@ -1,4 +1,4 @@
-[中文文档](README.zh-CN.md) / [English Document](../README.md)
+[中文文档](/docs/README.zh-CN.md) / [English Document](/README.md)
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -43,6 +43,8 @@
 - [ ] **云存储与备份策略**：
     - [ ] 自定义备份策略配置。
     - [ ] 多协议适配：S3 / Minio / Cloudflare R2 / 阿里云 OSS / WebDAV。
+
+> **如果您有改进建议或新想法，欢迎通过提交 issue 与我们分享——我们会认真评估并采纳合适的建议。**
 
 ## 🚀 快速部署
 
