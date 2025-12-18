@@ -348,7 +348,14 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		c.BinaryMu.Unlock()
 
 		c.UserClients = &userClients
-		c.ToResponse(code.Success, "Authorization")
+
+		versionInfo := map[string]string{
+			"version":   global.Version,
+			"gitTag":    global.GitTag,
+			"buildTime": global.BuildTime,
+		}
+
+		c.ToResponse(code.Success.WithData(versionInfo), "Authorization")
 		log(LogInfo, "WebsocketServer User Enters", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(userClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}
