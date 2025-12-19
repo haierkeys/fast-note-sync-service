@@ -1,0 +1,146 @@
+package dao
+
+import (
+	"strconv"
+
+	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gorm"
+)
+
+type Setting struct {
+	ID               int64      `json:"id" form:"id"`                             // ID
+	VaultID          int64      `json:"vaultId" form:"vaultId"`                   // 保险库ID
+	Action           string     `json:"action" form:"action"`                     // 操作
+	Path             string     `json:"path" form:"path"`                         // 路径
+	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希
+	Content          string     `json:"content" form:"content"`                   // 内容
+	ContentHash      string     `json:"contentHash" form:"contentHash"`           // 内容哈希
+	Size             int64      `json:"size" form:"size"`                         // 大小
+	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	CreatedAt        timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间
+	UpdatedAt        timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间
+}
+
+type SettingSet struct {
+	VaultID     int64  `json:"vaultId" form:"vaultId"`         // 保险库ID
+	Action      string `json:"action" form:"action"`           // 操作
+	Path        string `json:"path" form:"path"`               // 路径
+	PathHash    string `json:"pathHash" form:"pathHash"`       // 路径哈希
+	Content     string `json:"content" form:"content"`         // 内容
+	ContentHash string `json:"contentHash" form:"contentHash"` // 内容哈希
+	Size        int64  `json:"size" form:"size"`               // 大小
+	Ctime       int64  `json:"ctime" form:"ctime"`             // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
+}
+
+// SettingAutoMigrate 自动迁移配置表
+func (d *Dao) SettingAutoMigrate(uid int64) error {
+	key := "user_" + strconv.FormatInt(uid, 10)
+	b := d.UseKey(key)
+	return model.AutoMigrate(b, "Setting")
+}
+
+// setting 获取配置查询对象
+func (d *Dao) setting(uid int64) *query.Query {
+	key := "user_" + strconv.FormatInt(uid, 10)
+	return d.Use(
+		func(g *gorm.DB) {
+			model.AutoMigrate(g, "Setting")
+		}, key,
+	)
+}
+
+// SettingGetByPathHash 根据路径哈希获取配置
+func (d *Dao) SettingGetByPathHash(hash string, vaultID int64, uid int64) (*Setting, error) {
+	u := d.setting(uid).Setting
+	m, err := u.WithContext(d.ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.Eq(hash),
+	).First()
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+}
+
+// SettingCreate 创建配置记录
+func (d *Dao) SettingCreate(params *SettingSet, uid int64) (*Setting, error) {
+	u := d.setting(uid).Setting
+	m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
+
+	m.UpdatedTimestamp = timex.Now().UnixMilli()
+	m.CreatedAt = timex.Now()
+	m.UpdatedAt = timex.Now()
+	err := u.WithContext(d.ctx).Create(m)
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+}
+
+// SettingUpdate 更新配置记录
+func (d *Dao) SettingUpdate(params *SettingSet, id int64, uid int64) (*Setting, error) {
+	u := d.setting(uid).Setting
+	m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
+	m.UpdatedTimestamp = timex.Now().UnixMilli()
+	m.UpdatedAt = timex.Now()
+	m.ID = id
+	err := u.WithContext(d.ctx).Where(
+		u.ID.Eq(id),
+	).Save(m)
+
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+}
+
+// SettingUpdateMtime 更新配置的修改时间
+func (d *Dao) SettingUpdateMtime(mtime int64, id int64, uid int64) error {
+	u := d.setting(uid).Setting
+
+	_, err := u.WithContext(d.ctx).Where(
+		u.ID.Eq(id),
+	).UpdateSimple(
+		u.Mtime.Value(mtime),
+		u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+		u.UpdatedAt.Value(timex.Now()),
+	)
+
+	return err
+}
+
+// SettingListByUpdatedTimestamp 根据更新时间戳获取配置列表
+func (d *Dao) SettingListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int64) ([]*Setting, error) {
+	u := d.setting(uid).Setting
+	mList, err := u.WithContext(d.ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.UpdatedTimestamp.Gt(timestamp),
+	).Order(u.UpdatedTimestamp.Desc()).
+		Find()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*Setting
+	for _, m := range mList {
+		list = append(list, convert.StructAssign(m, &Setting{}).(*Setting))
+	}
+	return list, nil
+}
+
+// SettingDeletePhysicalByTime 根据时间物理删除配置记录
+func (d *Dao) SettingDeletePhysicalByTime(timestamp int64, uid int64) error {
+	u := d.setting(uid).Setting
+	_, err := u.WithContext(d.ctx).Where(
+		u.Action.Eq("delete"),
+		u.UpdatedTimestamp.Lt(timestamp),
+	).Delete()
+	return err
+}

@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS Master Sync Tool - Premium Debug Page</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            font-size: 14px;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #818cf8, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.6rem;
+            text-align: center;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .card h2 {
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 0.6rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+            font-size: 0.85rem;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        button.success {
+            background: var(--success);
+        }
+
+        button.danger {
+            background: var(--error);
+        }
+
+        button.warning {
+            background: var(--warning);
+        }
+
+        #log {
+            height: calc(100vh - 280px);
+            min-height: 1000px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        #log pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 0.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            display: none;
+            /* 默认隐藏 */
+            cursor: pointer;
+        }
+
+        #log .log-entry.expanded pre {
+            display: block;
+            /* 展开状态 */
+        }
+
+        .log-entry {
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .log-entry:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        .log-entry.send {
+            border-left-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .log-entry.recv {
+            border-left-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .log-entry.err {
+            border-left-color: var(--error);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .log-entry.info {
+            border-left-color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .time {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            margin-right: 0.5rem;
+        }
+
+        .tag {
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .send .tag {
+            color: var(--primary);
+        }
+
+        .recv .tag {
+            color: var(--success);
+        }
+
+        .err .tag {
+            color: var(--error);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-disconnected {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .progress-container {
+            margin-top: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        #progressBar {
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 1100px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            #log {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>FNSS Websocket Debug Platform</h1>
+
+    <div class="container">
+        <!-- 左侧分栏 -->
+        <div class="left-column">
+            <!-- 模式切换 Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchMode('setting')">配置同步</div>
+                <div class="tab" onclick="switchMode('note')">笔记同步</div>
+                <div class="tab" onclick="switchMode('download')">文件下载</div>
+                <div class="tab" onclick="switchMode('upload')">文件上传</div>
+            </div>
+
+            <!-- 基础认证卡片 -->
+            <div class="card">
+                <h2>🔐 核心连接</h2>
+                <div class="form-group">
+                    <label>API URL</label>
+                    <input type="text" id="apiUrl" value="ws://localhost:9000/api/user/sync">
+                </div>
+                <div id="authPanel">
+                    <div class="form-group">
+                        <label>Account (Email/User)</label>
+                        <input type="text" id="credentials" value="test@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="password" value="123456">
+                    </div>
+                    <button onclick="login()" id="loginBtn" style="width: 100%;">登录获取 Token</button>
+                </div>
+
+                <div id="connPanel" style="display: none; margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div id="wsStatus" class="status-badge status-disconnected">未连接</div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="connectWS()" id="connectBtn">连接 WS</button>
+                            <button onclick="disconnectWS()" class="danger" id="disconnectBtn"
+                                style="display:none">断开</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 功能操作卡片 -->
+            <div class="card" id="opCard">
+                <h2 id="opTitle">⚙️ Setting 操作</h2>
+
+                <!-- 公共字段 -->
+                <div class="form-group">
+                    <label>Vault</label>
+                    <input type="text" id="vault" value="DefaultVault">
+                </div>
+                <div class="form-group">
+                    <label id="pathLabel">Remote Path</label>
+                    <input type="text" id="path" value="config/theme.json">
+                </div>
+
+                <!-- Setting 专属输入 -->
+                <div id="settingInputs">
+                    <div class="form-group">
+                        <label>Content (JSON or Text)</label>
+                        <textarea id="content" rows="4">{"theme": "dark", "fontSize": 14}</textarea>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>PathHash (Readonly)</label>
+                            <input type="text" id="settingPathHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
+                        </div>
+                        <div class="form-group">
+                            <label>ContentHash (Readonly)</label>
+                            <input type="text" id="settingContentHash" readonly
+                                style="font-size: 0.7rem; opacity: 0.7;">
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="sendSettingWS('SettingModify')" class="success">Modify</button>
+                        <button onclick="sendSettingWS('SettingCheck')" class="outline">Check</button>
+                        <button onclick="sendSettingWS('SettingDelete')" class="danger">Delete</button>
+                        <button onclick="sendSettingWS('SettingSync')" class="warning">Sync</button>
+                    </div>
+                </div>
+
+                <!-- Note 专属输入 -->
+                <div id="noteInputs" style="display: none;">
+                    <div class="form-group">
+                        <label>Note Content</label>
+                        <textarea id="noteContent" rows="4" placeholder="写点什么..."></textarea>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>PathHash (Readonly)</label>
+                            <input type="text" id="pathHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
+                        </div>
+                        <div class="form-group">
+                            <label>ContentHash (Readonly)</label>
+                            <input type="text" id="contentHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
+                        </div>
+                        <div class="form-group">
+                            <label>Ctime (Timestamp)</label>
+                            <input type="number" id="ctime" style="font-size: 0.7rem;">
+                        </div>
+                        <div class="form-group">
+                            <label>Mtime (Timestamp)</label>
+                            <input type="number" id="mtime" style="font-size: 0.7rem;">
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="sendNoteWS('NoteModify')" class="success">Modify/Create</button>
+                        <button onclick="sendNoteWS('NoteModifyCheck')" class="outline">Check</button>
+                        <button onclick="sendNoteWS('NoteDelete')" class="danger">Delete</button>
+                        <button onclick="sendNoteSync()" class="warning">Full Sync</button>
+                    </div>
+                </div>
+
+                <!-- Download 专属 -->
+                <div id="downloadInputs" style="display: none;">
+                    <button onclick="sendDownloadRequest()" id="downloadBtn" disabled
+                        style="width: 100%; background: var(--success);">
+                        🚀 准备下载
+                    </button>
+                </div>
+
+                <!-- Upload 专属 -->
+                <div id="uploadInputs" style="display: none;">
+                    <div class="form-group">
+                        <label>选择本地文件</label>
+                        <input type="file" id="fileInput">
+                    </div>
+                    <button onclick="startUploadProcess()" id="uploadBtn" disabled
+                        style="width: 100%; background: var(--success);">
+                        🚀 准备上传
+                    </button>
+                </div>
+
+                <!-- 进度条 -->
+                <div class="progress-container" id="progressContainer">
+                    <div id="progressBar"></div>
+                </div>
+                <div id="progressText"
+                    style="font-size: 0.75rem; text-align: center; margin-top: 0.5rem; color: var(--text-muted); min-height: 1rem;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧日志面板 -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>📜 通讯日志</h2>
+                <button onclick="clearLog()" class="outline"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">清空</button>
+            </div>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <!-- 逻辑脚本 -->
+    <script>
+        let socket = null;
+        let token = '';
+        let activeMode = 'setting'; // setting, note, download, upload
+
+        // 文件传输状态
+        let currentFile = null;
+        let currentSessionId = null;
+        let downloadChunks = [];
+        let totalChunks = 0;
+        let receivedChunks = 0;
+        let fileSize = 0;
+        let fileName = '';
+
+        // 1. 模式切换
+        function switchMode(mode) {
+            activeMode = mode;
+            const modes = ['setting', 'note', 'download', 'upload'];
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', modes[i] === mode);
+            });
+
+            // UI 内容切换
+            const titleMap = {
+                'setting': '⚙️ Setting 操作',
+                'note': '📝 Note 笔记同步',
+                'download': '📥 下载操作',
+                'upload': '📤 上传操作'
+            };
+            const pathLabelMap = {
+                'setting': 'Remote Path',
+                'note': 'Note Path',
+                'download': 'Remote File Path',
+                'upload': 'Remote File Path'
+            };
+
+            document.getElementById('opTitle').textContent = titleMap[mode];
+            document.getElementById('pathLabel').textContent = pathLabelMap[mode];
+
+            document.getElementById('settingInputs').style.display = mode === 'setting' ? 'block' : 'none';
+            document.getElementById('noteInputs').style.display = mode === 'note' ? 'block' : 'none';
+            document.getElementById('downloadInputs').style.display = mode === 'download' ? 'block' : 'none';
+            document.getElementById('uploadInputs').style.display = mode === 'upload' ? 'block' : 'none';
+
+            // 重置进度条
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('progressText').textContent = '';
+
+            if (mode === 'setting') updateSettingHashes();
+            if (mode === 'note') updateNoteHashes();
+            saveInputs();
+        }
+
+        // 2. 持久化
+        const STORAGE_KEY = 'ws_master_demo_data';
+        const inputIds = ['apiUrl', 'credentials', 'password', 'vault', 'path', 'content', 'noteContent', 'ctime', 'mtime'];
+
+        function saveInputs() {
+            const data = { lastMode: activeMode };
+            inputIds.forEach(id => {
+                data[id] = document.getElementById(id).value;
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function loadInputs() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                inputIds.forEach(id => {
+                    if (data[id] !== undefined) document.getElementById(id).value = data[id];
+                });
+                if (data.lastMode) switchMode(data.lastMode);
+            }
+        }
+
+        window.onload = () => {
+            loadInputs();
+            inputIds.forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    if (activeMode === 'setting') updateSettingHashes();
+                    if (activeMode === 'note') updateNoteHashes();
+                    saveInputs();
+                });
+            });
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    currentFile = e.target.files[0];
+                    document.getElementById('path').value = currentFile.name;
+                    saveInputs();
+                }
+            });
+        };
+
+        // 3. 通用功能
+        function addLog(type, tag, content) {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            let isError = type === 'err' || (content && content.status === false);
+            if (isError) type = 'err';
+
+            entry.className = `log-entry ${type}`;
+            let html = `<span class="time">${new Date().toLocaleTimeString()}</span><span class="tag">${tag}</span>`;
+
+            if (isError && typeof content === 'object') {
+                const reason = content.message || '未知错误';
+                const details = content.details || '';
+                html += `<div style="color: var(--error); font-weight: bold; margin-top: 0.5rem; font-size: 0.9em;">❌ 失败: ${reason} <span style="color: #fca5a5; font-weight: normal;">(详情: ${details})</span></div>`;
+            }
+
+            let displayContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+            html += `<pre>${displayContent}</pre>`;
+            entry.innerHTML = html;
+            entry.onclick = () => entry.classList.toggle('expanded');
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+        async function login() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const credentials = document.getElementById('credentials').value;
+            const password = document.getElementById('password').value;
+            const httpBase = apiUrl.replace(/^ws/, 'http').replace(/\/api\/user\/sync$/, '');
+            const loginUrl = `${httpBase}/api/user/login`;
+
+            addLog('info', 'Auth', `登录中: ${loginUrl}`);
+            try {
+                const res = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ credentials, password })
+                });
+                const result = await res.json();
+                if (result.status) {
+                    token = result.data.token;
+                    document.getElementById('connPanel').style.display = 'block';
+                    addLog('recv', 'Login Success', result);
+                } else {
+                    addLog('err', 'Login Failed', result);
+                }
+            } catch (err) { addLog('err', 'Auth Error', err.message); }
+        }
+
+        function connectWS() {
+            if (!token) return alert('请先登录');
+            const wsUrl = document.getElementById('apiUrl').value;
+            addLog('send', 'Ws Connect', wsUrl);
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                document.getElementById('wsStatus').textContent = '已连接待授权';
+                document.getElementById('wsStatus').className = 'status-badge status-connected';
+                sendWS('Authorization', token);
+            };
+
+            socket.onmessage = async (event) => {
+                if (event.data instanceof Blob) {
+                    handleBinaryMessage(event.data);
+                    return;
+                }
+                const raw = event.data;
+                const idx = raw.indexOf('|');
+                let type = 'Raw', data = raw;
+                if (idx !== -1) {
+                    type = raw.substring(0, idx);
+                    try { data = JSON.parse(raw.substring(idx + 1)); } catch (e) { }
+                }
+
+                addLog((data && data.status === false) ? 'err' : 'recv', type, data);
+
+                if (type === 'Authorization' && data.status) {
+                    document.getElementById('wsStatus').textContent = '已授权';
+                    document.getElementById('connectBtn').style.display = 'none';
+                    document.getElementById('disconnectBtn').style.display = 'block';
+                    document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('uploadBtn').disabled = false;
+                } else if (type === 'FileSyncChunkDownload') {
+                    startDownloadSession(data.data);
+                } else if (type === 'FileNeedUpload') {
+                    startUpload(data.data);
+                }
+            };
+
+            socket.onclose = () => {
+                document.getElementById('wsStatus').textContent = '未连接';
+                document.getElementById('wsStatus').className = 'status-badge status-disconnected';
+                document.getElementById('connectBtn').style.display = 'block';
+                document.getElementById('disconnectBtn').style.display = 'none';
+                document.getElementById('downloadBtn').disabled = true;
+                document.getElementById('uploadBtn').disabled = true;
+                addLog('err', 'Ws', '已关闭');
+            };
+        }
+
+        function disconnectWS() { if (socket) socket.close(); }
+
+        function sendWS(type, data) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(`${type}|${typeof data === 'string' ? data : JSON.stringify(data)}`);
+            if (type !== 'Authorization') addLog('send', type, data);
+        }
+
+        function getHash(content) {
+            let hash = 0;
+            if (typeof content === 'string') {
+                for (let i = 0; i < content.length; i++) {
+                    const char = content.charCodeAt(i);
+                    hash = (hash << 5) - hash + char;
+                    hash &= hash;
+                }
+            } else if (content instanceof Uint8Array) {
+                for (let i = 0; i < content.length; i++) {
+                    const byte = content[i];
+                    hash = (hash << 5) - hash + byte;
+                    hash &= hash;
+                }
+            }
+            return String(hash);
+        }
+
+        function updateSettingHashes() {
+            const path = document.getElementById('path').value;
+            const content = document.getElementById('content').value;
+            document.getElementById('settingPathHash').value = getHash(path);
+            document.getElementById('settingContentHash').value = getHash(content);
+        }
+
+        // 4. Setting 逻辑
+        function sendSettingWS(action) {
+            const vault = document.getElementById('vault').value;
+            const path = document.getElementById('path').value;
+            const content = document.getElementById('content').value;
+            const pathHash = document.getElementById('settingPathHash').value;
+            const contentHash = document.getElementById('settingContentHash').value;
+
+            const params = { vault, path, pathHash, contentHash };
+            if (action === 'SettingModify') params.content = content;
+            if (action === 'SettingDelete') delete params.contentHash;
+
+            sendWS(action, params);
+        }
+
+        // 5. Note 逻辑
+        function updateNoteHashes() {
+            const path = document.getElementById('path').value;
+            const content = document.getElementById('noteContent').value;
+            document.getElementById('pathHash').value = getHash(path);
+            document.getElementById('contentHash').value = getHash(content);
+            if (!document.getElementById('ctime').value) {
+                const now = Math.floor(Date.now() / 1000);
+                document.getElementById('ctime').value = now;
+                document.getElementById('mtime').value = now;
+            }
+        }
+
+        function sendNoteWS(action) {
+            const path = document.getElementById('path').value;
+            const vault = document.getElementById('vault').value;
+            const content = document.getElementById('noteContent').value;
+            const pathHash = document.getElementById('pathHash').value;
+            const contentHash = document.getElementById('contentHash').value;
+            const ctime = parseInt(document.getElementById('ctime').value);
+            const mtime = parseInt(document.getElementById('mtime').value);
+
+            const params = { vault, path, pathHash, contentHash, ctime, mtime };
+            if (action === 'NoteModify') params.content = content;
+            if (action === 'NoteDelete') delete params.contentHash;
+
+            sendWS(action, params);
+        }
+
+        function sendNoteSync() {
+            const vault = document.getElementById('vault').value;
+            const lastTime = 0; // 全量同步
+            sendWS('NoteSync', { vault, lastTime, notes: [] });
+        }
+
+        // 6. 下载逻辑
+        function sendDownloadRequest() {
+            const vault = document.getElementById('vault').value;
+            const path = document.getElementById('path').value;
+            if (!path) return alert('路径不能为空');
+            sendWS('FileChunkDownload', { vault, path, pathHash: getHash(path) });
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '准备下载...';
+        }
+
+        function startDownloadSession(session) {
+            currentSessionId = session.sessionId;
+            totalChunks = session.totalChunks;
+            fileSize = session.size;
+            fileName = session.path.split('/').pop() || 'file';
+            downloadChunks = new Array(totalChunks);
+            receivedChunks = 0;
+            addLog('info', 'Down', `会话开始: ${totalChunks} 分片`);
+        }
+
+        async function handleBinaryMessage(blob) {
+            const arrayBuffer = await blob.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            if (data.length < 42) return;
+            const decoder = new TextDecoder();
+            const sid = decoder.decode(data.slice(2, 38));
+            if (sid !== currentSessionId) return;
+            const idx = new DataView(arrayBuffer).getUint32(38, false);
+            if (!downloadChunks[idx]) {
+                downloadChunks[idx] = data.slice(42);
+                receivedChunks++;
+                const p = Math.round((receivedChunks / totalChunks) * 100);
+                document.getElementById('progressBar').style.width = `${p}%`;
+                document.getElementById('progressText').textContent = `正在下载: ${receivedChunks}/${totalChunks}`;
+            }
+            if (receivedChunks === totalChunks) {
+                const b = new Blob(downloadChunks);
+                const url = URL.createObjectURL(b);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; a.click();
+                addLog('success', 'DOWN', `完成: ${fileName}`);
+                currentSessionId = null;
+            }
+        }
+
+        // 7. 上传逻辑
+        async function startUploadProcess() {
+            if (!currentFile) return alert('先选择文件');
+            const ab = await currentFile.arrayBuffer();
+            const ch = getHash(new Uint8Array(ab));
+            const vault = document.getElementById('vault').value;
+            const path = document.getElementById('path').value;
+            const ph = getHash(path);
+            const mtime = Math.floor(currentFile.lastModified / 1000) * 1000;
+            sendWS('FileUploadCheck', { vault, path, pathHash: ph, contentHash: ch, mtime, ctime: mtime, size: currentFile.size });
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+        }
+
+        async function startUpload(session) {
+            currentSessionId = session.sessionId;
+            const cs = session.chunkSize || 1024 * 1024;
+            const total = Math.ceil(currentFile.size / cs);
+            for (let i = 0; i < total; i++) {
+                const chunk = currentFile.slice(i * cs, (i + 1) * cs);
+                const data = await chunk.arrayBuffer();
+                await sendChunk(currentSessionId, i, data);
+                const p = Math.round(((i + 1) / total) * 100);
+                document.getElementById('progressBar').style.width = `${p}%`;
+                document.getElementById('progressText').textContent = `正在上传: ${i + 1}/${total}`;
+            }
+            sendWS('FileUploadComplete', { sessionId: currentSessionId });
+        }
+
+        function sendChunk(sid, idx, ab) {
+            return new Promise(resolve => {
+                const packet = new Uint8Array(42 + ab.byteLength);
+                packet.set([48, 48], 0);
+                packet.set(new TextEncoder().encode(sid), 2);
+                new DataView(packet.buffer).setUint32(38, idx, false);
+                packet.set(new Uint8Array(ab), 42);
+                socket.send(packet);
+                if (socket.bufferedAmount > 5 * 1024 * 1024) {
+                    const ck = () => socket.bufferedAmount < 1 * 1024 * 1024 ? resolve() : setTimeout(ck, 50);
+                    ck();
+                } else resolve();
+            });
+        }
+    </script>
+</body>
+
+</html>

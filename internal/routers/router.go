@@ -49,6 +49,12 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	// 基于mtime的更新通知
 	wss.Use("NoteSync", websocket_router.NoteSync)
 
+	// 配置同步
+	wss.Use("SettingModify", websocket_router.SettingModify)
+	wss.Use("SettingDelete", websocket_router.SettingDelete)
+	wss.Use("SettingCheck", websocket_router.SettingModifyCheck)
+	wss.Use("SettingSync", websocket_router.SettingSync)
+
 	// 附件同步
 	wss.Use("FileSync", websocket_router.FileSync)
 	//附件上传前检查

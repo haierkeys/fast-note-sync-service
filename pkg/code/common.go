@@ -72,4 +72,16 @@ var (
 	ErrorNoteSyncFailed           = NewError(incr(400), lang{zh: "同步笔记失败", en: "Sync note failed"})
 	ErrorNoteUpdateCheckFailed    = NewError(incr(400), lang{zh: "笔记更新检查失败", en: "Note update check failed"})
 	ErrorNoteListFailed           = NewError(incr(400), lang{zh: "笔记列表获取失败", en: "Note list get failed"})
+
+	// --------- 配置操作错误
+
+	ErrorSettingDeleteFailed         = NewError(incr(400), lang{zh: "配置删除失败", en: "Delete setting failed"})
+	ErrorSettingModifyOrCreateFailed = NewError(incr(400), lang{zh: "配置修改或创建失败", en: "Setting modify or create failed"})
+	ErrorSettingContentModifyFailed  = NewError(incr(400), lang{zh: "修改配置内容失败", en: "Modify setting content failed"})
+	ErrorSettingGetFailed            = NewError(incr(400), lang{zh: "获取配置失败", en: "Get setting failed"})
+	ErrorSettingNotFound             = NewError(incr(400), lang{zh: "配置不存在", en: "Setting does not exist"})
+	ErrorSettingExist                = NewError(incr(400), lang{zh: "配置已经存在", en: "Setting already exists"})
+	ErrorSettingSyncFailed           = NewError(incr(400), lang{zh: "同步配置失败", en: "Sync setting failed"})
+	ErrorSettingUpdateCheckFailed    = NewError(incr(400), lang{zh: "配置更新检查失败", en: "Setting update check failed"})
+	ErrorSettingListFailed           = NewError(incr(400), lang{zh: "配置列表获取失败", en: "Setting list get failed"})
 )

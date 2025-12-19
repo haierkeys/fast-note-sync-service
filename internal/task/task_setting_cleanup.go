@@ -12,17 +12,17 @@ import (
 
 // init 自动注册清理任务
 func init() {
-	Register(NewFileCleanupTask)
+	Register(NewSettingCleanupTask)
 }
 
-// FileCleanupTask 文件清理任务
-type FileCleanupTask struct {
+// SettingCleanupTask 配置清理任务
+type SettingCleanupTask struct {
 	interval time.Duration
 	firstRun bool
 }
 
-// NewFileCleanupTask 创建文件清理任务
-func NewFileCleanupTask() (Task, error) {
+// NewSettingCleanupTask 创建配置清理任务
+func NewSettingCleanupTask() (Task, error) {
 	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" {
 		return nil, nil
@@ -37,19 +37,19 @@ func NewFileCleanupTask() (Task, error) {
 	}
 
 	// 每10分钟执行一次检查
-	return &FileCleanupTask{
+	return &SettingCleanupTask{
 		interval: 10 * time.Minute,
 		firstRun: true,
 	}, nil
 }
 
 // Name 返回任务名称
-func (t *FileCleanupTask) Name() string {
-	return "DbFileCleanupTask"
+func (t *SettingCleanupTask) Name() string {
+	return "DbSettingCleanupTask"
 }
 
 // Run 执行清理任务
-func (t *FileCleanupTask) Run(ctx context.Context) error {
+func (t *SettingCleanupTask) Run(ctx context.Context) error {
 	svc := service.NewBackground(ctx)
 
 	status := "scheduled"
@@ -58,7 +58,7 @@ func (t *FileCleanupTask) Run(ctx context.Context) error {
 		t.firstRun = false
 	}
 
-	err := svc.FileCleanupAll()
+	err := svc.SettingCleanupAll()
 
 	if err != nil {
 		global.Logger.Error(t.Name()+" failed ["+status+"]: ", zap.Error(err))
@@ -70,11 +70,11 @@ func (t *FileCleanupTask) Run(ctx context.Context) error {
 }
 
 // Interval 返回执行间隔
-func (t *FileCleanupTask) Interval() time.Duration {
+func (t *SettingCleanupTask) Interval() time.Duration {
 	return t.interval
 }
 
 // RunImmediately 是否立即执行一次
-func (t *FileCleanupTask) RunImmediately() bool {
+func (t *SettingCleanupTask) RunImmediately() bool {
 	return true
 }

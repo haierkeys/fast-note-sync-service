@@ -115,3 +115,29 @@ CREATE INDEX "idx_file_vault_id_updated_at" ON "file" ("vault_id", "updated_at" 
 CREATE INDEX "idx_file_vault_id_updated_timestamp" ON "file" ("vault_id", "updated_timestamp" DESC);
 
 CREATE INDEX `idx_file_vault_id_path` ON `file`(`vault_id`, `path`);
+
+DROP TABLE IF EXISTS "setting";
+
+CREATE TABLE "setting" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "vault_id" integer NOT NULL DEFAULT 0,
+    "action" text DEFAULT '',
+    "path" text DEFAULT '',
+    "path_hash" text DEFAULT '',
+    "content" text DEFAULT '',
+    "content_hash" text DEFAULT '',
+    "size" integer DEFAULT 0,
+    "ctime" integer DEFAULT 0,
+    "mtime" integer DEFAULT 0,
+    "updated_timestamp" integer DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_setting_id_path_hash" ON "setting" ("id", "path_hash" DESC);
+
+CREATE INDEX "idx_setting_id_updated_at" ON "setting" ("id", "updated_at" DESC);
+
+CREATE INDEX "idx_setting_id_updated_timestamp" ON "setting" ("id", "updated_timestamp" DESC);
+
+CREATE INDEX `idx_setting_id_path` ON `setting`(`id`, `path`);
