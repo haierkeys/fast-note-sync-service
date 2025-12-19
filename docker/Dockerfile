@@ -53,5 +53,8 @@ COPY ./docker/entrypoint.sh  /entrypoint.sh
 # 给脚本执行权限
 RUN chmod +x /entrypoint.sh
 
+# 给服务二进制文件执行权限
+RUN chmod +x /${P_NAME}/${P_BIN}
+
 # 使用 ENTRYPOINT 执行脚本
 ENTRYPOINT ["/entrypoint.sh"]
