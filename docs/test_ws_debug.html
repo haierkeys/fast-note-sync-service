@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WS Master Sync Tool - Premium Debug Page</title>
+    <title>FNSS Websocket Debug Platform</title>
     <style>
         :root {
             --primary: #6366f1;
@@ -274,6 +274,12 @@
 
         .err .tag {
             color: var(--error);
+        }
+
+        .tag-arrow {
+            display: inline-block;
+            margin-right: 0.25rem;
+            font-weight: bold;
         }
 
         .status-badge {
@@ -583,7 +589,11 @@
             if (isError) type = 'err';
 
             entry.className = `log-entry ${type}`;
-            let html = `<span class="time">${new Date().toLocaleTimeString()}</span><span class="tag">${tag}</span>`;
+            let arrow = '';
+            if (type === 'send') arrow = '<span class="tag-arrow">↑</span>';
+            else if (type === 'recv') arrow = '<span class="tag-arrow">↓</span>';
+
+            let html = `<span class="time">${new Date().toLocaleTimeString()}</span>${arrow}<span class="tag">${tag}</span>`;
 
             if (isError && typeof content === 'object') {
                 const reason = content.message || '未知错误';
@@ -645,7 +655,7 @@
                 }
                 const raw = event.data;
                 const idx = raw.indexOf('|');
-                let type = 'Raw', data = raw;
+                let type = '[Status]', data = raw;
                 if (idx !== -1) {
                     type = raw.substring(0, idx);
                     try { data = JSON.parse(raw.substring(idx + 1)); } catch (e) { }
