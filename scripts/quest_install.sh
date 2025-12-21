@@ -91,7 +91,7 @@ load_lang() {
 
     if [ "$CURRENT_LANG" = "zh" ]; then
         L_MENU_1="安装 / 升级服务"
-        L_MENU_1_D="下载并配置最新版的服务程序"
+        L_MENU_1_D="下载服务程序并自动安装管理工具至系统"
         L_MENU_2="启动服务"
         L_MENU_2_D="在后台启动同步服务"
         L_MENU_3="停止服务"
@@ -154,7 +154,7 @@ load_lang() {
         L_NOT_INSTALLED="未安装"
     else
         L_MENU_1="Install / Update Service"
-        L_MENU_1_D="Download and configure the latest version"
+        L_MENU_1_D="Download service and install manager to system"
         L_MENU_2="Start Service"
         L_MENU_2_D="Start the sync service in background"
         L_MENU_3="Stop Service"
@@ -530,6 +530,7 @@ install_cmd() {
     tarball="$(download_release_asset "$ver" "$os" "$arch")" || { error "$L_ERR_NO_REL"; return 1; }
     install_binary_from_tar "$tarball"
     save_version "$ver"
+    install_self >/dev/null 2>&1 || true
     success "$L_INST_ALL_DONE"
     info "$L_INST_TIP"
 }
