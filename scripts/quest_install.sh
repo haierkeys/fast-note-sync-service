@@ -28,6 +28,8 @@ _BLUE=$(tput setaf 4)
 _MAGENTA=$(tput setaf 5)
 _CYAN=$(tput setaf 6)
 _BOLD=$(tput bold)
+_ITALIC=$(tput sitm)
+_DIM=$(tput dim)
 _RESET=$(tput sgr0)
 
 # --- 视觉装饰 ---
@@ -99,7 +101,7 @@ load_lang() {
         L_MENU_5="全部卸载"
         L_MENU_5_D="彻底移除程序、配置及所有日志文件"
         L_MENU_6="安装脚本到系统"
-        L_MENU_6_D="将管理工具添加到全局快捷命令"
+        L_MENU_6_D="将管理工具添加到全局快捷命令 fast-note-installer"
         L_MENU_0="退出"
         L_MENU_L="Switch to English (切换至英文)"
         L_SELECT="请选择"
@@ -162,7 +164,7 @@ load_lang() {
         L_MENU_5="Uninstall All"
         L_MENU_5_D="Remove program, config, and all logs"
         L_MENU_6="Install Self to System"
-        L_MENU_6_D="Add this tool to global commands"
+        L_MENU_6_D="Add this tool to global commands (fast-note-installer)"
         L_MENU_0="Quit"
         L_MENU_L="切换至中文 (Switch to Chinese)"
         L_SELECT="Please select"
@@ -469,17 +471,17 @@ install_self() {
 show_menu() {
     draw_banner
     echo -e "  [1] ${_BOLD}$L_MENU_1${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_1_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_1_D${_RESET}"
     echo -e "  [2] ${_BOLD}$L_MENU_2${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_2_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_2_D${_RESET}"
     echo -e "  [3] ${_BOLD}$L_MENU_3${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_3_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_3_D${_RESET}"
     echo -e "  [4] ${_BOLD}$L_MENU_4${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_4_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_4_D${_RESET}"
     echo -e "  [5] ${_BOLD}$L_MENU_5${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_5_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_5_D${_RESET}"
     echo -e "  [6] ${_BOLD}$L_MENU_6${_RESET}"
-    echo -e "      ${_CYAN}$L_MENU_6_D${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_6_D${_RESET}"
     echo -e "  [L] ${_BOLD}$L_MENU_L${_RESET}"
     echo -e "  [0] ${_BOLD}$L_MENU_0${_RESET}"
     echo -e "\n${_BLUE} ================================================ ${_RESET}"
