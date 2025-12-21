@@ -26,7 +26,7 @@ type SettingSyncEndMessage struct {
 	LastTime int64  `json:"lastTime" form:"lastTime"`
 }
 
-type SettingSyncNeedPushMessage struct {
+type SettingSyncNeedUploadMessage struct {
 	Path string `json:"path" form:"path"`
 }
 
@@ -116,10 +116,10 @@ func SettingModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	switch updateMode {
 	case "UpdateContent", "Create":
-		settingSyncNeedPushMessage := &SettingSyncNeedPushMessage{
+		settingSyncNeedPushMessage := &SettingSyncNeedUploadMessage{
 			Path: settingCheck.Path,
 		}
-		c.ToResponse(code.Success.WithData(settingSyncNeedPushMessage), "SettingSyncNeedPush")
+		c.ToResponse(code.Success.WithData(settingSyncNeedPushMessage), "SettingSyncNeedUpload")
 		return
 	case "UpdateMtime":
 		settingSyncMtimeMessage := &SettingSyncMtimeMessage{
@@ -210,7 +210,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							UpdatedTimestamp: s.UpdatedTimestamp,
 						}), "SettingSyncModify")
 					} else {
-						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedPushMessage{Path: s.Path}), "SettingSyncNeedPush")
+						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedUploadMessage{Path: s.Path}), "SettingSyncNeedUpload")
 					}
 				} else {
 					c.ToResponse(code.Success.WithData(&SettingSyncMtimeMessage{
@@ -238,7 +238,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
-		c.ToResponse(code.Success.WithData(&SettingSyncNeedPushMessage{Path: s.Path}), "SettingSyncNeedPush")
+		c.ToResponse(code.Success.WithData(&SettingSyncNeedUploadMessage{Path: s.Path}), "SettingSyncNeedUpload")
 	}
 
 	c.ToResponse(code.Success.WithData(&SettingSyncEndMessage{
