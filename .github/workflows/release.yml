@@ -141,6 +141,10 @@ jobs:
           ref: ${{ github.ref }}
           fetch-depth: 0
 
+      - name: Add local git tag
+        run: |
+          git tag ${{ needs.check-version.outputs.release_tag }}
+
       - uses: actions/setup-go@v5
         with:
           go-version: 'stable'
