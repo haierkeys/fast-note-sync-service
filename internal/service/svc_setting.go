@@ -58,6 +58,7 @@ type SettingDeleteRequestParams struct {
 type SettingSyncRequestParams struct {
 	Vault    string                          `json:"vault" form:"vault" binding:"required"`
 	LastTime int64                           `json:"lastTime" form:"lastTime"`
+	Cover    bool                            `json:"cover" form:"cover"`
 	Settings []SettingSyncCheckRequestParams `json:"settings" form:"settings"`
 }
 

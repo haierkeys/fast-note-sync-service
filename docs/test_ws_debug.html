@@ -387,6 +387,10 @@
                     <label id="pathLabel">Remote Path</label>
                     <input type="text" id="path" value="config/theme.json">
                 </div>
+                <div class="form-group">
+                    <label>Sync LastTime (ms)</label>
+                    <input type="number" id="lastTime" value="0" style="font-size: 0.7rem;">
+                </div>
 
                 <!-- Setting 专属输入 -->
                 <div id="settingInputs">
@@ -404,12 +408,20 @@
                             <input type="text" id="settingContentHash" readonly
                                 style="font-size: 0.7rem; opacity: 0.7;">
                         </div>
+                        <div class="form-group">
+                            <label>Ctime (ms)</label>
+                            <input type="number" id="settingCtime" style="font-size: 0.7rem;">
+                        </div>
+                        <div class="form-group">
+                            <label>Mtime (ms)</label>
+                            <input type="number" id="settingMtime" style="font-size: 0.7rem;">
+                        </div>
                     </div>
                     <div class="btn-group">
                         <button onclick="sendSettingWS('SettingModify')" class="success">Modify</button>
                         <button onclick="sendSettingWS('SettingCheck')" class="outline">Check</button>
                         <button onclick="sendSettingWS('SettingDelete')" class="danger">Delete</button>
-                        <button onclick="sendSettingWS('SettingSync')" class="warning">Sync</button>
+                        <button onclick="sendSettingSync()" class="warning">Sync</button>
                     </div>
                 </div>
 
@@ -429,11 +441,11 @@
                             <input type="text" id="contentHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
                         </div>
                         <div class="form-group">
-                            <label>Ctime (Timestamp)</label>
+                            <label>Ctime (ms)</label>
                             <input type="number" id="ctime" style="font-size: 0.7rem;">
                         </div>
                         <div class="form-group">
-                            <label>Mtime (Timestamp)</label>
+                            <label>Mtime (ms)</label>
                             <input type="number" id="mtime" style="font-size: 0.7rem;">
                         </div>
                     </div>
@@ -542,7 +554,7 @@
 
         // 2. 持久化
         const STORAGE_KEY = 'ws_master_demo_data';
-        const inputIds = ['apiUrl', 'credentials', 'password', 'vault', 'path', 'content', 'noteContent', 'ctime', 'mtime'];
+        const inputIds = ['apiUrl', 'credentials', 'password', 'vault', 'path', 'content', 'noteContent', 'ctime', 'mtime', 'settingCtime', 'settingMtime', 'lastTime'];
 
         function saveInputs() {
             const data = { lastMode: activeMode };
@@ -566,7 +578,9 @@
         window.onload = () => {
             loadInputs();
             inputIds.forEach(id => {
-                document.getElementById(id).addEventListener('input', () => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('input', () => {
                     if (activeMode === 'setting') updateSettingHashes();
                     if (activeMode === 'note') updateNoteHashes();
                     saveInputs();
@@ -718,6 +732,11 @@
             const content = document.getElementById('content').value;
             document.getElementById('settingPathHash').value = getHash(path);
             document.getElementById('settingContentHash').value = getHash(content);
+            if (!document.getElementById('settingCtime').value) {
+                const now = Date.now();
+                document.getElementById('settingCtime').value = now;
+                document.getElementById('settingMtime').value = now;
+            }
         }
 
         // 4. Setting 逻辑
@@ -727,8 +746,14 @@
             const content = document.getElementById('content').value;
             const pathHash = document.getElementById('settingPathHash').value;
             const contentHash = document.getElementById('settingContentHash').value;
+            let ctime = parseInt(document.getElementById('settingCtime').value);
+            let mtime = parseInt(document.getElementById('settingMtime').value);
 
-            const params = { vault, path, pathHash, contentHash };
+            const now = Date.now();
+            if (ctime === -1) ctime = now;
+            if (mtime === -1) mtime = now;
+
+            const params = { vault, path, pathHash, contentHash, ctime, mtime };
             if (action === 'SettingModify') params.content = content;
             if (action === 'SettingDelete') delete params.contentHash;
 
@@ -742,7 +767,7 @@
             document.getElementById('pathHash').value = getHash(path);
             document.getElementById('contentHash').value = getHash(content);
             if (!document.getElementById('ctime').value) {
-                const now = Math.floor(Date.now() / 1000);
+                const now = Date.now();
                 document.getElementById('ctime').value = now;
                 document.getElementById('mtime').value = now;
             }
@@ -754,8 +779,12 @@
             const content = document.getElementById('noteContent').value;
             const pathHash = document.getElementById('pathHash').value;
             const contentHash = document.getElementById('contentHash').value;
-            const ctime = parseInt(document.getElementById('ctime').value);
-            const mtime = parseInt(document.getElementById('mtime').value);
+            let ctime = parseInt(document.getElementById('ctime').value);
+            let mtime = parseInt(document.getElementById('mtime').value);
+
+            const now = Date.now();
+            if (ctime === -1) ctime = now;
+            if (mtime === -1) mtime = now;
 
             const params = { vault, path, pathHash, contentHash, ctime, mtime };
             if (action === 'NoteModify') params.content = content;
@@ -766,8 +795,16 @@
 
         function sendNoteSync() {
             const vault = document.getElementById('vault').value;
-            const lastTime = 0; // 全量同步
+            let lastTime = parseInt(document.getElementById('lastTime').value) || 0;
+            if (lastTime === -1) lastTime = Date.now();
             sendWS('NoteSync', { vault, lastTime, notes: [] });
+        }
+
+        function sendSettingSync() {
+            const vault = document.getElementById('vault').value;
+            let lastTime = parseInt(document.getElementById('lastTime').value) || 0;
+            if (lastTime === -1) lastTime = Date.now();
+            sendWS('SettingSync', { vault, lastTime, cover: false, settings: [] });
         }
 
         // 6. 下载逻辑

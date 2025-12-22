@@ -190,6 +190,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			lastTime = s.UpdatedTimestamp
 		}
 		if s.Action == "delete" {
+
 			if _, ok := cSettings[s.PathHash]; ok {
 				c.ToResponse(code.Success.WithData(&SettingDeleteMessage{Path: s.Path}), "SettingSyncDelete")
 			}
@@ -198,8 +199,24 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				delete(cSettingsKeys, s.PathHash)
 				if s.ContentHash == cSetting.ContentHash && s.Mtime == cSetting.Mtime {
 					continue
-				} else if s.ContentHash != cSetting.ContentHash {
-					if s.Mtime > cSetting.Mtime {
+				}
+				// 强制覆盖连接端
+				if params.Cover {
+					c.ToResponse(code.Success.Reset().WithData(&SettingMessage{
+						Path:             s.Path,
+						PathHash:         s.PathHash,
+						Content:          s.Content,
+						ContentHash:      s.ContentHash,
+						Ctime:            s.Ctime,
+						Mtime:            s.Mtime,
+						UpdatedTimestamp: s.UpdatedTimestamp,
+					}), "SettingSyncModify")
+					continue
+				}
+				// 链接端和服务端， 文件内容相同
+				if s.ContentHash != cSetting.ContentHash {
+					if s.Mtime >= cSetting.Mtime {
+						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						c.ToResponse(code.Success.Reset().WithData(&SettingMessage{
 							Path:             s.Path,
 							PathHash:         s.PathHash,
@@ -210,9 +227,13 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							UpdatedTimestamp: s.UpdatedTimestamp,
 						}), "SettingSyncModify")
 					} else {
-						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedUploadMessage{Path: s.Path}), "SettingSyncNeedUpload")
+						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
+						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedUploadMessage{
+							Path: s.Path,
+						}), "SettingSyncNeedUpload")
 					}
 				} else {
+					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					c.ToResponse(code.Success.WithData(&SettingSyncMtimeMessage{
 						Path:  s.Path,
 						Ctime: s.Ctime,
