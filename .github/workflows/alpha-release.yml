@@ -4,7 +4,9 @@ name: Go-Alpha-Release
 on:
   push:
     branches-ignore:
-      - "master" # 明确忽略 master，由 release.yml 处理
+      - "master"
+    paths:
+      - "global/version.go"
 # 权限配置：允许脚本写入仓库内容（用于发布 Release）
 permissions:
   contents: write
