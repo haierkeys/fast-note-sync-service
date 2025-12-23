@@ -161,8 +161,9 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		if tempDir == "" {
 			tempDir = "storage/temp"
 		}
+
 		// 创建临时目录
-		if err := os.MkdirAll(tempDir, 0644); err != nil {
+		if err := os.MkdirAll(tempDir, 0754); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
 			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
 			return
@@ -326,7 +327,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		dateDir := time.Now().Format("200601")
 		finalDir := filepath.Join(baseUploadDir, dateDir)
 
-		if err := os.MkdirAll(finalDir, 0644); err != nil {
+		if err := os.MkdirAll("./"+finalDir, 0754); err != nil {
 			global.Logger.Error("websocket_router.file.FileUploadComplete MkdirAll err", zap.Error(err))
 			c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
 				"sessionID": sessionID,

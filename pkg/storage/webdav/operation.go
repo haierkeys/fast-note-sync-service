@@ -16,7 +16,7 @@ func (w *WebDAV) PutFile(fileKey string, file io.Reader, itype string) (string, 
 
 	fileKey = fileurl.PathSuffixCheckAdd(w.Config.CustomPath, "/") + fileKey
 
-	err := w.Client.MkdirAll(w.Config.CustomPath, 0644)
+	err := w.Client.MkdirAll(w.Config.CustomPath, 0754)
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")
 	}

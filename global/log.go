@@ -11,6 +11,6 @@ func Log() *zap.Logger {
 	return Logger
 }
 
-func Dump(a any) {
-	dumpx.P(a)
+func Dump(a ...any) {
+	dumpx.P(a...)
 }

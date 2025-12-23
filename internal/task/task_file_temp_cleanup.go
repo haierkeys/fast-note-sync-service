@@ -59,7 +59,7 @@ func (t *TempFileCleanupTask) Run(ctx context.Context) error {
 	}
 
 	// 重新创建目录
-	if err = os.MkdirAll(tempDir, 0644); err != nil {
+	if err = os.MkdirAll(tempDir, 0754); err != nil {
 		global.Logger.Error(t.Name()+" failed ["+status+"]: failed to recreate temp directory", zap.String("path", tempDir), zap.Error(err))
 		return err
 	}
