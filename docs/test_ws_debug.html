@@ -685,8 +685,6 @@
                     document.getElementById('uploadBtn').disabled = false;
                 } else if (type === 'FileSyncChunkDownload') {
                     startDownloadSession(data.data);
-                } else if (type === 'FileNeedUpload') {
-                    startUpload(data.data);
                 }
             };
 

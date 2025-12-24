@@ -73,7 +73,7 @@ type FileSyncEndMessage struct {
 	LastTime int64  `json:"lastTime" form:"lastTime"` // 最后同步时间
 }
 
-// FileNeedUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
+// FileUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
 type FileUploadMessage struct {
 	Path      string `json:"path"`      // 文件路径
 	Ctime     int64  `json:"ctime" `    // 创建时间
@@ -98,11 +98,6 @@ type FileSyncMtimeMessage struct {
 	Path  string `json:"path"`   // 文件路径
 	Ctime int64  `json:"ctime" ` // 创建时间
 	Mtime int64  `json:"mtime" ` // 修改时间
-}
-
-// FileSyncNeedUploadMessage 定义文件同步中需要上传的文件消息结构。
-type FileNeedUploadMessage struct {
-	Path string `json:"path"` // 文件路径
 }
 
 type FileDeleteMessage struct {
@@ -156,83 +151,17 @@ func FileUploadCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	switch updateMode {
 	case "UpdateContent", "Create":
 
-		sessionID := uuid.New().String()
-		tempDir := global.Config.App.TempPath
-		if tempDir == "" {
-			tempDir = "storage/temp"
-		}
-
-		// 创建临时目录
-		if err := os.MkdirAll(tempDir, 0754); err != nil {
-			global.Logger.Error("websocket_router.file.FileUploadCheck MkdirAll err", zap.Error(err))
-			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
-			return
-		}
-
-		// 获取文件扩展名并生成临时路径
-		fileExt := filepath.Ext(params.Path)
-		tempPath := filepath.Join(tempDir, fmt.Sprintf("%s%s", sessionID, fileExt))
-		file, err := os.Create(tempPath)
+		fileUploadMessage, err := handleFileUploadSession(c, params.Vault, params.Path, params.PathHash, params.ContentHash, params.Size, params.Ctime, params.Mtime)
 		if err != nil {
-			global.Logger.Error("websocket_router.file.FileUploadCheck Create file err", zap.Error(err))
 			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
 			return
-		}
-
-		// 初始化分块上传会话
-		session := &FileUploadBinaryChunkSession{
-			ID:          sessionID,
-			Vault:       params.Vault,
-			Path:        params.Path,
-			PathHash:    params.PathHash,
-			ContentHash: params.ContentHash,
-			Size:        params.Size,
-			Ctime:       params.Ctime,
-			Mtime:       params.Mtime,
-			ChunkSize:   getChunkSize(), // 从配置获取
-			SavePath:    tempPath,
-			FileHandle:  file,
-			CreatedAt:   time.Now(),
-		}
-		// 根据文件大小调整分块大小
-		session.TotalChunks = util.Ceil(session.Size, session.ChunkSize)
-
-		// 配置超时时间
-		var timeout time.Duration
-		if global.Config.App.UploadSessionTimeout != "" && global.Config.App.UploadSessionTimeout != "0" {
-			var err error
-			timeout, err = time.ParseDuration(global.Config.App.UploadSessionTimeout)
-			if err != nil {
-				global.Logger.Warn("FileUploadCheck: invalid upload-session-timeout config, using default 5m",
-					zap.String("config", global.Config.App.UploadSessionTimeout),
-					zap.Error(err))
-				timeout = 5 * time.Minute
-			}
-		} else {
-			timeout = 5 * time.Minute
-		}
-
-		// 启动超时清理任务
-		session.CancelFunc = startSessionTimeout(c, sessionID, timeout)
-
-		// 注册会话
-		c.BinaryMu.Lock()
-		c.BinaryChunkSessions[sessionID] = session
-		c.BinaryMu.Unlock()
-
-		fileUploadMessage := &FileUploadMessage{
-			Path:      params.Path,
-			Ctime:     params.Ctime,
-			Mtime:     params.Mtime,
-			SessionID: session.ID,
-			ChunkSize: session.ChunkSize,
 		}
 
 		c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
 		return
 
 	case "UpdateMtime":
-		// 仅更新修改时间
+		// 当用户 mtime 小于服务端 mtime 时，通知用户更新mtime
 		fileSyncMtimeMessage := &FileSyncMtimeMessage{
 			Path:  fileSvc.Path,
 			Ctime: fileSvc.Ctime,
@@ -692,10 +621,12 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						fileNeedUploadMessage := &FileNeedUploadMessage{
-							Path: file.Path,
+						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, cFile.ContentHash, file.Size, file.Ctime, cFile.Mtime)
+						if ferr != nil {
+							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
+							continue
 						}
-						c.ToResponse(code.Success.WithData(fileNeedUploadMessage), "FileNeedUpload")
+						c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
 					}
 				} else {
 					// 内容一致, 但修改时间不一致, 通知客户端更新文件修改时间
@@ -730,8 +661,13 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if len(cFilesKeys) > 0 {
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
-			FileCheck := convert.StructAssign(&file, &FileNeedUploadMessage{}).(*FileNeedUploadMessage)
-			c.ToResponse(code.Success.WithData(FileCheck), "FileNeedUpload")
+			// 创建上传会话并返回 FileUpload 消息
+			fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, file.ContentHash, 0, 0, file.Mtime)
+			if ferr != nil {
+				global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
+				continue
+			}
+			c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
 		}
 	}
 
@@ -816,6 +752,79 @@ func startSessionTimeout(c *app.WebsocketClient, sessionID string, timeout time.
 	}()
 
 	return cancel
+}
+
+// handleFileUploadSession 初始化一个文件上传会话并返回上传消息。
+func handleFileUploadSession(c *app.WebsocketClient, vault, path, pathHash, contentHash string, size, ctime, mtime int64) (*FileUploadMessage, error) {
+	sessionID := uuid.New().String()
+	tempDir := global.Config.App.TempPath
+	if tempDir == "" {
+		tempDir = "storage/temp"
+	}
+
+	// 创建临时目录
+	if err := os.MkdirAll(tempDir, 0754); err != nil {
+		global.Logger.Error("websocket_router.file.handleFileUploadSession MkdirAll err", zap.Error(err))
+		return nil, err
+	}
+
+	// 获取文件扩展名并生成临时路径
+	fileExt := filepath.Ext(path)
+	tempPath := filepath.Join(tempDir, fmt.Sprintf("%s%s", sessionID, fileExt))
+	file, err := os.Create(tempPath)
+	if err != nil {
+		global.Logger.Error("websocket_router.file.handleFileUploadSession Create file err", zap.Error(err))
+		return nil, err
+	}
+
+	// 初始化分块上传会话
+	session := &FileUploadBinaryChunkSession{
+		ID:          sessionID,
+		Vault:       vault,
+		Path:        path,
+		PathHash:    pathHash,
+		ContentHash: contentHash,
+		Size:        size,
+		Ctime:       ctime,
+		Mtime:       mtime,
+		ChunkSize:   getChunkSize(), // 从配置获取
+		SavePath:    tempPath,
+		FileHandle:  file,
+		CreatedAt:   time.Now(),
+	}
+	// 根据文件大小调整分块大小
+	session.TotalChunks = util.Ceil(session.Size, session.ChunkSize)
+
+	// 配置超时时间
+	var timeout time.Duration
+	if global.Config.App.UploadSessionTimeout != "" && global.Config.App.UploadSessionTimeout != "0" {
+		var err error
+		timeout, err = time.ParseDuration(global.Config.App.UploadSessionTimeout)
+		if err != nil {
+			global.Logger.Warn("handleFileUploadSession: invalid upload-session-timeout config, using default 5m",
+				zap.String("config", global.Config.App.UploadSessionTimeout),
+				zap.Error(err))
+			timeout = 5 * time.Minute
+		}
+	} else {
+		timeout = 5 * time.Minute
+	}
+
+	// 启动超时清理任务
+	session.CancelFunc = startSessionTimeout(c, sessionID, timeout)
+
+	// 注册会话
+	c.BinaryMu.Lock()
+	c.BinaryChunkSessions[sessionID] = session
+	c.BinaryMu.Unlock()
+
+	return &FileUploadMessage{
+		Path:      path,
+		Ctime:     ctime,
+		Mtime:     mtime,
+		SessionID: session.ID,
+		ChunkSize: session.ChunkSize,
+	}, nil
 }
 
 // getChunkSize 获取配置的分片大小, 默认为 1MB

@@ -64,15 +64,6 @@ interface FileSyncMtimeData {
 }
 ```
 
-### 3. `FileNeedUpload`
-**触发场景**: 同步时发现客户端文件需要上传（客户端文件比服务端新，或服务端没有该文件）。
-**Response Data Structure**:
-
-```typescript
-interface FileNeedUploadData {
-  path: string; // 文件路径
-}
-```
 
 ### 4. `FileSyncUpdate`
 **触发场景**: 通知客户端下载或更新文件（服务端文件比客户端新，或客户端没有该文件）。
@@ -227,7 +218,7 @@ FileSyncChunkDownload|{"code":0,"status":"success","msg":"","data":{"path":"test
 服务端会比较客户端文件列表与服务端文件,并返回以下消息组合:
 
 - `FileSyncUpdate`: 客户端需要下载的文件
-- `FileNeedUpload`: 客户端需要上传的文件
+- `FileUpload`: 客户端需要上传的文件
 - `FileSyncMtime`: 仅需更新修改时间的文件
 - `FileSyncDelete`: 客户端需要删除的文件
 - `FileSyncEnd`: 同步结束 (必定最后发送)
@@ -293,7 +284,7 @@ FileSyncChunkDownload|{"code":0,"status":"success","msg":"","data":{"path":"test
 ```
 客户端: FileSync|{"vault":"Default","lastTime":1702345678000,"files":[...]}
 服务端: FileSyncUpdate|{...}      (需要下载的文件)
-服务端: FileNeedUpload|{...}      (需要上传的文件)
+服务端: FileUpload|{...}          (需要上传的文件)
 服务端: FileSyncMtime|{...}       (仅需更新时间的文件)
 服务端: FileSyncDelete|{...}      (需要删除的文件)
 服务端: FileSyncEnd|{"lastTime":1702345999000}  (同步结束)
