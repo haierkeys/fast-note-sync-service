@@ -26,6 +26,7 @@ type Note struct {
 	PathHash         string     `json:"pathHash" form:"pathHash"`         // 路径哈希值，用于快速查找
 	Content          string     `json:"content" form:"content"`           // 内容详情（完整文本）
 	ContentHash      string     `json:"contentHash" form:"contentHash"`   // 内容哈希，用于判定内容是否变更
+	ClientName       string     `json:"clientName" form:"clientName"`     // 客户端名称
 	Ctime            int64      `json:"ctime" form:"ctime"`               // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`               // 文件修改时间戳（秒）
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
@@ -251,6 +252,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		PathHash:    params.PathHash,
 		Content:     params.Content,
 		ContentHash: params.ContentHash,
+		ClientName:  svc.ClientName,
 		Size:        int64(len(params.Content)),
 		Mtime:       params.Mtime,
 		Ctime:       params.Ctime,
@@ -338,6 +340,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		PathHash:    note.PathHash,
 		Content:     "",
 		ContentHash: "",
+		ClientName:  svc.ClientName,
 		Size:        0,
 	}
 	noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)

@@ -33,7 +33,7 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 	_noteHistory.VaultID = field.NewInt64(tableName, "vault_id")
 	_noteHistory.Path = field.NewString(tableName, "path")
 	_noteHistory.Content = field.NewString(tableName, "content")
-	_noteHistory.Client = field.NewString(tableName, "client")
+	_noteHistory.ClientName = field.NewString(tableName, "client_name")
 	_noteHistory.Version = field.NewInt64(tableName, "version")
 	_noteHistory.CreatedAt = field.NewField(tableName, "created_at")
 	_noteHistory.UpdatedAt = field.NewField(tableName, "updated_at")
@@ -46,16 +46,16 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 type noteHistory struct {
 	noteHistoryDo noteHistoryDo
 
-	ALL       field.Asterisk
-	ID        field.Int64
-	NoteID    field.Int64
-	VaultID   field.Int64
-	Path      field.String
-	Content   field.String
-	Client    field.String
-	Version   field.Int64
-	CreatedAt field.Field
-	UpdatedAt field.Field
+	ALL        field.Asterisk
+	ID         field.Int64
+	NoteID     field.Int64
+	VaultID    field.Int64
+	Path       field.String
+	Content    field.String
+	ClientName field.String
+	Version    field.Int64
+	CreatedAt  field.Field
+	UpdatedAt  field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -77,7 +77,7 @@ func (n *noteHistory) updateTableName(table string) *noteHistory {
 	n.VaultID = field.NewInt64(table, "vault_id")
 	n.Path = field.NewString(table, "path")
 	n.Content = field.NewString(table, "content")
-	n.Client = field.NewString(table, "client")
+	n.ClientName = field.NewString(table, "client_name")
 	n.Version = field.NewInt64(table, "version")
 	n.CreatedAt = field.NewField(table, "created_at")
 	n.UpdatedAt = field.NewField(table, "updated_at")
@@ -113,7 +113,7 @@ func (n *noteHistory) fillFieldMap() {
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["content"] = n.Content
-	n.fieldMap["client"] = n.Client
+	n.fieldMap["client_name"] = n.ClientName
 	n.fieldMap["version"] = n.Version
 	n.fieldMap["created_at"] = n.CreatedAt
 	n.fieldMap["updated_at"] = n.UpdatedAt

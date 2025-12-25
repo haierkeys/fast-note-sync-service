@@ -11,24 +11,24 @@ import (
 )
 
 type NoteHistory struct {
-	ID        int64  `json:"id" form:"id"`
-	NoteID    int64  `json:"noteId" form:"noteId"`
-	VaultID   int64  `json:"vaultId" form:"vaultId"`
-	Path      string `json:"path" form:"path"`
-	Content   string `json:"content" form:"content"`
-	Client    string `json:"client" form:"client"`
-	Version   int64  `json:"version" form:"version"`
-	CreatedAt string `json:"createdAt" form:"createdAt"`
-	UpdatedAt string `json:"updatedAt" form:"updatedAt"`
+	ID         int64  `json:"id" form:"id"`
+	NoteID     int64  `json:"noteId" form:"noteId"`
+	VaultID    int64  `json:"vaultId" form:"vaultId"`
+	Path       string `json:"path" form:"path"`
+	Content    string `json:"content" form:"content"`
+	ClientName string `json:"clientName" form:"clientName"`
+	Version    int64  `json:"version" form:"version"`
+	CreatedAt  string `json:"createdAt" form:"createdAt"`
+	UpdatedAt  string `json:"updatedAt" form:"updatedAt"`
 }
 
 type NoteHistorySet struct {
-	NoteID  int64  `json:"noteId" form:"noteId"`
-	VaultID int64  `json:"vaultId" form:"vaultId"`
-	Path    string `json:"path" form:"path"`
-	Content string `json:"content" form:"content"`
-	Client  string `json:"client" form:"client"`
-	Version int64  `json:"version" form:"version"`
+	NoteID     int64  `json:"noteId" form:"noteId"`
+	VaultID    int64  `json:"vaultId" form:"vaultId"`
+	Path       string `json:"path" form:"path"`
+	Content    string `json:"content" form:"content"`
+	ClientName string `json:"clientName" form:"clientName"`
+	Version    int64  `json:"version" form:"version"`
 }
 
 func (d *Dao) NoteHistoryAutoMigrate(uid int64) error {

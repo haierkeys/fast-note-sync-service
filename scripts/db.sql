@@ -37,6 +37,7 @@ CREATE TABLE "note" (
     "content_hash" text DEFAULT '',
     "content_last_snapshot" text DEFAULT '',
     "version" integer DEFAULT 1,
+    "client_name" text DEFAULT '',
     "size" integer DEFAULT 0,
     "ctime" integer DEFAULT 0,
     "mtime" integer DEFAULT 0,
@@ -61,7 +62,7 @@ CREATE TABLE "note_history" (
     "vault_id" integer NOT NULL DEFAULT 0,
     "path" text DEFAULT '',
     "content" text DEFAULT '',
-    "client" text DEFAULT '',
+    "client_name" text DEFAULT '',
     "version" integer DEFAULT 1,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
@@ -85,30 +86,6 @@ CREATE TABLE "vault" (
 );
 
 CREATE INDEX "idx_vault_uid" ON "vault" ("vault" ASC);
-
--- 笔记库索引
-PRAGMA foreign_keys = true;
-
-## mysql
-DROP TABLE IF EXISTS `pre_user`;
-
-CREATE TABLE `pre_user` (
-    `uid` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户id',
-    `email` char(255) NOT NULL DEFAULT '' COMMENT '邮箱地址',
-    `username` char(255) NOT NULL DEFAULT '' COMMENT '用户名',
-    `password` char(32) NOT NULL DEFAULT '' COMMENT '密码',
-    `salt` char(24) NOT NULL DEFAULT '' COMMENT '密码混淆码',
-    `token` char(255) NOT NULL DEFAULT '' COMMENT '用户授权令牌',
-    `avatar` char(255) NOT NULL DEFAULT '' COMMENT '用户头像路径',
-    `is_deleted` tinyint(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否删除',
-    `updated_at` datetime(0) NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT '更新时间',
-    `created_at` datetime(0) NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT '创建时间',
-    `deleted_at` datetime(0) NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT '标记删除时间',
-    PRIMARY KEY (`uid`),
-    UNIQUE INDEX `email`(`email`)
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COMMENT = '用户表';
-
-DROP TABLE IF EXISTS "pre_cloud_config";
 
 DROP TABLE IF EXISTS "file";
 

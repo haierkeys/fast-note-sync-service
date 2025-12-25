@@ -27,14 +27,14 @@ func NoteHistoryDelayPush(noteID int64, uid int64) {
 
 // NoteHistory 笔记历史记录展示结构体
 type NoteHistory struct {
-	ID        int64  `json:"id" form:"id"`
-	NoteID    int64  `json:"noteId" form:"noteId"`
-	VaultId   int64  `json:"vaultId" form:"vaultId"`
-	Path      string `json:"path" form:"path"`
-	Content   string `json:"content" form:"content"`
-	Client    string `json:"client" form:"client"`
-	Version   int64  `json:"version" form:"version"`
-	CreatedAt string `json:"createdAt" form:"createdAt"`
+	ID         int64  `json:"id" form:"id"`
+	NoteID     int64  `json:"noteId" form:"noteId"`
+	VaultId    int64  `json:"vaultId" form:"vaultId"`
+	Path       string `json:"path" form:"path"`
+	Content    string `json:"content" form:"content"`
+	ClientName string `json:"clientName" form:"clientName"`
+	Version    int64  `json:"version" form:"version"`
+	CreatedAt  string `json:"createdAt" form:"createdAt"`
 }
 
 // NoteHistoryListRequestParams 笔记历史列表请求参数
@@ -43,7 +43,7 @@ type NoteHistoryListRequestParams struct {
 }
 
 // NoteHistorySave 手动保存笔记历史版本（直接保存全量内容）
-func (svc *Service) NoteHistorySave(uid int64, note *dao.Note, client string) error {
+func (svc *Service) NoteHistorySave(uid int64, note *dao.Note, clientName string) error {
 	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
 		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
 	})
@@ -54,12 +54,12 @@ func (svc *Service) NoteHistorySave(uid int64, note *dao.Note, client string) er
 	}
 
 	params := &dao.NoteHistorySet{
-		NoteID:  note.ID,
-		VaultID: note.VaultID,
-		Path:    note.Path,
-		Content: note.Content,
-		Client:  client,
-		Version: latestVersion + 1,
+		NoteID:     note.ID,
+		VaultID:    note.VaultID,
+		Path:       note.Path,
+		Content:    note.Content,
+		ClientName: note.ClientName,
+		Version:    latestVersion + 1,
 	}
 
 	_, err = svc.dao.NoteHistoryCreate(params, uid)
@@ -120,12 +120,12 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	}
 
 	params := &dao.NoteHistorySet{
-		NoteID:  note.ID,
-		VaultID: note.VaultID,
-		Path:    note.ContentLastSnapshot, // 复用 Path 存储快照内容
-		Content: patchText,                // 复用 Content 存储补丁
-		Client:  "system-task",
-		Version: latestVersion + 1,
+		NoteID:     note.ID,
+		VaultID:    note.VaultID,
+		Path:       note.ContentLastSnapshot, // 复用 Path 存储快照内容
+		Content:    patchText,                // 复用 Content 存储补丁
+		ClientName: note.ClientName,
+		Version:    latestVersion + 1,
 	}
 
 	_, err = svc.dao.NoteHistoryCreate(params, uid)

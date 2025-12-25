@@ -11,9 +11,10 @@ import (
 )
 
 type Service struct {
-	ctx *gin.Context
-	dao *dao.Dao
-	SF  *singleflight.Group
+	ctx        *gin.Context
+	dao        *dao.Dao
+	SF         *singleflight.Group
+	ClientName string
 }
 
 func New(ctx *gin.Context) *Service {

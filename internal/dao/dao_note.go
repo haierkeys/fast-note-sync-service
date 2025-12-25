@@ -20,6 +20,7 @@ type Note struct {
 	Content             string     `json:"content" form:"content"`         // 内容
 	ContentHash         string     `json:"contentHash" form:"contentHash"` // 内容哈希
 	ContentLastSnapshot string     `gorm:"column:content_last_snapshot" json:"contentLastSnapshot" form:"contentLastSnapshot"`
+	ClientName          string     `json:"clientName" form:"clientName"`             // 客户端名称
 	Size                int64      `json:"size" form:"size"`                         // 大小
 	Ctime               int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
 	Mtime               int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
@@ -37,9 +38,10 @@ type NoteSet struct {
 	Content             string `json:"content" form:"content"`         // 内容
 	ContentHash         string `json:"contentHash" form:"contentHash"` // 内容哈希
 	ContentLastSnapshot string `json:"contentLastSnapshot" form:"contentLastSnapshot"`
-	Size                int64  `json:"size" form:"size"`   // 大小
-	Ctime               int64  `json:"ctime" form:"ctime"` // 创建时间戳
-	Mtime               int64  `json:"mtime" form:"mtime"` // 修改时间戳
+	ClientName          string `json:"clientName" form:"clientName"` // 客户端名称
+	Size                int64  `json:"size" form:"size"`             // 大小
+	Ctime               int64  `json:"ctime" form:"ctime"`           // 创建时间戳
+	Mtime               int64  `json:"mtime" form:"mtime"`           // 修改时间戳
 }
 
 // NoteAutoMigrate 自动迁移笔记表

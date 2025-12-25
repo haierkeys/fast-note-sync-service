@@ -10,15 +10,15 @@ const TableNameNoteHistory = "note_history"
 
 // NoteHistory mapped from table <note_history>
 type NoteHistory struct {
-	ID        int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	NoteID    int64      `gorm:"column:note_id;not null;index:idx_note_history_version,priority:1;index:idx_note_history_note_id,priority:1;default:0" json:"noteId" form:"noteId"`
-	VaultID   int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
-	Path      string     `gorm:"column:path" json:"path" form:"path"`
-	Content   string     `gorm:"column:content" json:"content" form:"content"`
-	Client    string     `gorm:"column:client" json:"client" form:"client"`
-	Version   int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:1" json:"version" form:"version"`
-	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	ID         int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
+	NoteID     int64      `gorm:"column:note_id;not null;index:idx_note_history_version,priority:1;index:idx_note_history_note_id,priority:1;default:0" json:"noteId" form:"noteId"`
+	VaultID    int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
+	Path       string     `gorm:"column:path" json:"path" form:"path"`
+	Content    string     `gorm:"column:content" json:"content" form:"content"`
+	ClientName string     `gorm:"column:client_name" json:"clientName" form:"clientName"`
+	Version    int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:1" json:"version" form:"version"`
+	CreatedAt  timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt  timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName NoteHistory's table name
