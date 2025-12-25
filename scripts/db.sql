@@ -35,6 +35,8 @@ CREATE TABLE "note" (
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',
     "content_hash" text DEFAULT '',
+    "content_last_snapshot" text DEFAULT '',
+    "version" integer DEFAULT 1,
     "size" integer DEFAULT 0,
     "ctime" integer DEFAULT 0,
     "mtime" integer DEFAULT 0,
@@ -50,6 +52,24 @@ CREATE INDEX "idx_vault_id_updated_at" ON "note" ("vault_id", "updated_at" DESC)
 CREATE INDEX "idx_vault_id_updated_timestamp" ON "note" ("vault_id", "updated_timestamp" DESC);
 
 CREATE INDEX `idx_vault_id_path` ON `note`(`vault_id`, `path`);
+
+DROP TABLE IF EXISTS "note_history";
+
+CREATE TABLE "note_history" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "note_id" integer NOT NULL DEFAULT 0,
+    "vault_id" integer NOT NULL DEFAULT 0,
+    "path" text DEFAULT '',
+    "content" text DEFAULT '',
+    "client" text DEFAULT '',
+    "version" integer DEFAULT 1,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_note_history_note_id" ON "note_history" ("note_id");
+
+CREATE INDEX "idx_note_history_version" ON "note_history" ("note_id", "version");
 
 DROP TABLE IF EXISTS "vault";
 
