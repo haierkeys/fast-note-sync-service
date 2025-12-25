@@ -196,3 +196,8 @@ func (svc *Service) UserInfo(uid int64) (*User, error) {
 	}
 	return convert.StructAssign(user, &User{}).(*User), err
 }
+
+// GetAllUserUIDs 获取所有用户的UID
+func (svc *Service) GetAllUserUIDs() ([]int64, error) {
+	return svc.dao.GetAllUserUIDs()
+}

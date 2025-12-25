@@ -540,3 +540,22 @@ func (svc *Service) NoteCleanupAll() error {
 	lastNoteCleanupTime = time.Now()
 	return nil
 }
+
+// NoteListNeedSnapshot 获取需要快照的笔记（内容变更但未快照）
+func (svc *Service) NoteListNeedSnapshot(uid int64) ([]*Note, error) {
+	// 确保表结构存在
+	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteAutoMigrate(uid)
+	})
+
+	list, err := svc.dao.NoteListContentUnchanged(uid)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*Note
+	for _, n := range list {
+		result = append(result, convert.StructAssign(n, &Note{}).(*Note))
+	}
+	return result, nil
+}

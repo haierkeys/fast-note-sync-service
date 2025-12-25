@@ -299,6 +299,36 @@ func (d *Dao) NoteListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int
 	return list, nil
 }
 
+// NoteListContentUnchanged 获取内容未变更（即未快照）的笔记列表
+// 函数名: NoteListContentUnchanged
+// 函数使用说明: 查询 content != content_last_snapshot 的笔记。
+// 参数说明:
+//   - uid int64: 用户ID
+//
+// 返回值说明:
+//   - []*Note: 笔记列表
+//   - error: 出错时返回错误
+func (d *Dao) NoteListContentUnchanged(uid int64) ([]*Note, error) {
+	u := d.note(uid).Note
+	var mList []*model.Note
+
+	// 使用 UnderlyingDB 以支持 raw sql condition "content != content_last_snapshot"
+	err := u.WithContext(d.ctx).UnderlyingDB().Where(
+		"action != ?", "delete",
+	).Where("content != content_last_snapshot").
+		Find(&mList).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*Note
+	for _, m := range mList {
+		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
+	}
+	return list, nil
+}
+
 // NoteListByMtime 根据修改时间戳获取笔记列表
 // 函数名: NoteListByMtime
 // 函数使用说明: 查询指定保险库中笔记修改时间戳大于给定时间戳的所有笔记,按更新时间戳倒序排列。

@@ -46,6 +46,10 @@ func (t *NoteHistoryTask) IsStartupRun() bool {
 // Run 启动任务主循环，处理通道中的消息
 func (t *NoteHistoryTask) Run(ctx context.Context) error {
 	global.Logger.Info("NoteHistoryTask started")
+
+	// 恢复中断的任务
+	go t.resumeInterruptedTasks(ctx)
+
 	for {
 		select {
 		case msg := <-service.NoteHistoryChannel:
@@ -54,6 +58,30 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 			t.cleanup()
 			global.Logger.Info("NoteHistoryTask stopped")
 			return nil
+		}
+	}
+}
+
+// resumeInterruptedTasks 扫描并恢复中断的任务
+func (t *NoteHistoryTask) resumeInterruptedTasks(ctx context.Context) {
+	svc := service.NewBackground(ctx)
+	uids, err := svc.GetAllUserUIDs()
+	if err != nil {
+		global.Logger.Error("NoteHistoryTask resume failed to get uids", zap.Error(err))
+		return
+	}
+
+	for _, uid := range uids {
+		notes, err := svc.NoteListNeedSnapshot(uid)
+		if err != nil {
+			global.Logger.Error("NoteHistoryTask resume failed to get notes", zap.Int64("uid", uid), zap.Error(err))
+			continue
+		}
+		for _, note := range notes {
+			t.handleMsg(service.NoteHistoryMsg{
+				NoteID: note.ID,
+				UID:    uid,
+			})
 		}
 	}
 }
