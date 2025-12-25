@@ -6,8 +6,9 @@ import (
 
 var (
 	// 程序执行目录
-	ROOT string
-	Name string = "Fast Note Sync Service"
+	ROOT          string
+	Name          string = "Fast Note Sync Service"
+	WebClientName string = "Web"
 )
 
 func init() {

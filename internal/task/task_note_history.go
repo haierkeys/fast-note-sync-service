@@ -99,7 +99,7 @@ func (t *NoteHistoryTask) handleMsg(msg service.NoteHistoryMsg) {
 	}
 
 	// 创建新的30秒定时器
-	t.timers[key] = time.AfterFunc(30*time.Second, func() {
+	t.timers[key] = time.AfterFunc(10*time.Second, func() {
 		t.process(msg.NoteID, msg.UID, key)
 	})
 }

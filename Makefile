@@ -62,6 +62,9 @@ dev:
 air:
 	air -c ./scripts/.air.toml
 
+fmt:
+	go fmt ./...
+
 # 更新版本脚本调用
 ver:
 	@node ./scripts/update-version.js $(filter-out $@,$(MAKECMDGOALS))

@@ -36,6 +36,11 @@ func NewBackground(ctx context.Context) *Service {
 	return &svc
 }
 
+func (svc *Service) WithClientName(clientName string) *Service {
+	svc.ClientName = clientName
+	return svc
+}
+
 func (svc *Service) WithSF(sf *singleflight.Group) *Service {
 	svc.SF = sf
 	return svc

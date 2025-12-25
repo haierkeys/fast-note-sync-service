@@ -48,7 +48,7 @@ func (t *Vault) CreateOrUpdate(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	var vault *service.Vault
 	var err error
 
@@ -91,7 +91,7 @@ func (t *Vault) Get(c *gin.Context) {
 		return
 	}
 	uid := app.GetUID(c)
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	vault, err := svc.VaultGet(params, uid)
 	if err != nil {
 		global.Logger.Error("apiRouter.Vault.Get svc VaultGet err: %v", zap.Error(err))
@@ -117,7 +117,7 @@ func (t *Vault) List(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	vaults, err := svc.VaultList(uid)
 	if err != nil {
 		global.Logger.Error("apiRouter.Vault.List svc VaultList err: %v", zap.Error(err))
@@ -150,7 +150,7 @@ func (t *Vault) Delete(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	err := svc.VaultDelete(params, uid)
 	if err != nil {
 		global.Logger.Error("apiRouter.Vault.Delete svc VaultDelete err: %v", zap.Error(err))

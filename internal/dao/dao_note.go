@@ -207,9 +207,13 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 }
 
 // NoteUpdateSnapshot 更新笔记的快照内容
-func (d *Dao) NoteUpdateSnapshot(snapshot string, id int64, uid int64) error {
+func (d *Dao) NoteUpdateSnapshot(snapshot string, version int64, id int64, uid int64) error {
 	u := d.note(uid).Note
-	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).Update(u.ContentLastSnapshot, snapshot)
+	// 使用 UpdateSimple 更新多个字段
+	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).UpdateSimple(
+		u.ContentLastSnapshot.Value(snapshot),
+		u.Version.Value(version),
+	)
 	return err
 }
 

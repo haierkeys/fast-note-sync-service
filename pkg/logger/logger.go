@@ -33,7 +33,7 @@ type Config struct {
 	// Level, See also zapcore.ParseLevel.
 	Level string `yaml:"level"`
 
-	// File that logger will be writen into.
+	// File that logger will be written into.
 	// Default is stderr.
 	File string `yaml:"file"`
 

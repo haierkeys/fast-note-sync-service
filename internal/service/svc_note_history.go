@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -119,11 +120,13 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 		return err
 	}
 
+	dump.P(note.ContentLastSnapshot)
+
 	params := &dao.NoteHistorySet{
 		NoteID:     note.ID,
 		VaultID:    note.VaultID,
-		Path:       note.ContentLastSnapshot, // 复用 Path 存储快照内容
-		Content:    patchText,                // 复用 Content 存储补丁
+		Path:       patchText,                // 存储diff补丁
+		Content:    note.ContentLastSnapshot, // 快照
 		ClientName: note.ClientName,
 		Version:    latestVersion + 1,
 	}
@@ -134,5 +137,5 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	}
 
 	// 更新 ContentLastSnapshot
-	return svc.dao.NoteUpdateSnapshot(note.Content, note.ID, uid)
+	return svc.dao.NoteUpdateSnapshot(note.Content, latestVersion+1, note.ID, uid)
 }

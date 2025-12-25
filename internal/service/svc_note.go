@@ -27,6 +27,7 @@ type Note struct {
 	Content          string     `json:"content" form:"content"`           // 内容详情（完整文本）
 	ContentHash      string     `json:"contentHash" form:"contentHash"`   // 内容哈希，用于判定内容是否变更
 	ClientName       string     `json:"clientName" form:"clientName"`     // 客户端名称
+	Version          int64      `json:"version" form:"version"`           // 版本号
 	Ctime            int64      `json:"ctime" form:"ctime"`               // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`               // 文件修改时间戳（秒）
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
@@ -40,6 +41,7 @@ type NoteNoContent struct {
 	Action           string     `json:"action" form:"action"`                     // 操作：create/modify/delete
 	Path             string     `json:"path" form:"path"`                         // 路径信息（文件路径）
 	PathHash         string     `json:"pathHash" form:"pathHash"`                 // 路径哈希值，用于快速查找
+	Version          int64      `json:"version" form:"version"`                   // 版本号
 	Ctime            int64      `json:"ctime" form:"ctime"`                       // 创建时间戳（秒）
 	Mtime            int64      `json:"mtime" form:"mtime"`                       // 文件修改时间戳（秒）
 	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）

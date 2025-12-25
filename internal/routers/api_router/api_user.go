@@ -45,7 +45,7 @@ func (h *User) Register(c *gin.Context) {
 		return
 	}
 
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	svcData, err := svc.UserRegister(params)
 
 	if err != nil {
@@ -78,7 +78,7 @@ func (h *User) Login(c *gin.Context) {
 		return
 	}
 
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	svcData, err := svc.UserLogin(params)
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (h *User) UserChangePassword(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	err := svc.UserChangePassword(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.user.UserChangePassword svc UserChangePassword err: %v", zap.Error(err))
@@ -140,7 +140,7 @@ func (h *User) UserInfo(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	user, err := svc.UserInfo(uid)
 	if err != nil {
 		global.Logger.Error("apiRouter.user.UserInfo svc UserInfo err: %v", zap.Error(err))

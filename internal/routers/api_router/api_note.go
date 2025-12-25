@@ -58,7 +58,7 @@ func (n *Note) Get(c *gin.Context) {
 
 	params.PathHash = util.EncodeHash32(params.Path)
 
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 	note, err := svc.NoteGet(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.Get svc NoteGet err: %v", zap.Error(err))
@@ -93,7 +93,7 @@ func (n *Note) List(c *gin.Context) {
 		return
 	}
 
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 
 	pager := &app.Pager{Page: app.GetPage(c), PageSize: app.GetPageSize(c)}
 
@@ -146,7 +146,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		params.Ctime = params.Mtime
 	}
 
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 
 	if params.SrcPath != "" && params.SrcPath != params.Path {
 		noteSrc, err := svc.NoteGet(uid, &service.NoteGetRequestParams{
@@ -236,7 +236,7 @@ func (n *Note) Delete(c *gin.Context) {
 		return
 	}
 	params.PathHash = util.EncodeHash32(params.Path)
-	svc := service.New(c)
+	svc := service.New(c).WithClientName(global.WebClientName)
 
 	noteSrc, err := svc.NoteGet(uid, &service.NoteGetRequestParams{
 		Vault:    params.Vault,
