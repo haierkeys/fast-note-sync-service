@@ -16,7 +16,7 @@ type NoteHistory struct {
 	Path      string     `gorm:"column:path" json:"path" form:"path"`
 	Content   string     `gorm:"column:content" json:"content" form:"content"`
 	Client    string     `gorm:"column:client" json:"client" form:"client"`
-	Version   int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:0" json:"version" form:"version"`
+	Version   int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:1" json:"version" form:"version"`
 	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

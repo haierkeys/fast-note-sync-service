@@ -83,7 +83,7 @@ func getIntFieldGORMTags(db *gorm.DB, tables []string) []gen.ModelOpt {
 	var opts []gen.ModelOpt
 
 	for _, table := range tables {
-		if table == "sqlite_sequence" || strings.HasPrefix(table, "sqlite_") {
+		if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {
 			continue
 		}
 
@@ -103,8 +103,13 @@ func getIntFieldGORMTags(db *gorm.DB, tables []string) []gen.ModelOpt {
 				}
 
 				fieldName := col.Name()
+				defaultValue, ok := col.DefaultValue()
 				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-					tag.Set("default", "0")
+					if ok && defaultValue != "" {
+						tag.Set("default", defaultValue)
+					} else {
+						tag.Set("default", "0")
+					}
 					return tag
 				}))
 			}
@@ -206,10 +211,7 @@ func main() {
 	opts = append(opts, intFieldOpts...)
 
 	for _, table := range tableList {
-		if table == "sqlite_sequence" {
-			continue
-		}
-		if strings.HasPrefix(table, "sqlite_") {
+		if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {
 			continue
 		}
 		g.ApplyBasic(g.GenerateModel(table, opts...))
