@@ -54,6 +54,8 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 		select {
 		case msg := <-service.NoteHistoryChannel:
 			t.handleMsg(msg)
+		case msg := <-service.NoteMigrateChannel:
+			t.processMigrate(msg.OldNoteID, msg.NewNoteID, msg.UID)
 		case <-ctx.Done():
 			t.cleanup()
 			global.Logger.Info("NoteHistoryTask stopped")
@@ -133,4 +135,38 @@ func (t *NoteHistoryTask) cleanup() {
 		timer.Stop()
 	}
 	t.timers = make(map[string]*time.Timer)
+}
+
+// processMigrate 执行历史记录迁移
+func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
+
+	svc := service.NewBackground(context.Background())
+
+	err := svc.NoteMigrate(oldNoteID, newNoteID, uid)
+	if err != nil {
+		global.Logger.Error("NoteHistoryTask NoteMigrate failed",
+			zap.Int64("oldNoteID", oldNoteID),
+			zap.Int64("newNoteID", newNoteID),
+			zap.Int64("uid", uid),
+			zap.Error(err))
+	} else {
+		global.Logger.Debug("NoteHistoryTask HistoryMigrate success",
+			zap.Int64("oldNoteID", oldNoteID),
+			zap.Int64("newNoteID", newNoteID),
+			zap.Int64("uid", uid))
+	}
+
+	err = svc.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
+	if err != nil {
+		global.Logger.Error("NoteHistoryTask processMigrate failed",
+			zap.Int64("oldNoteID", oldNoteID),
+			zap.Int64("newNoteID", newNoteID),
+			zap.Int64("uid", uid),
+			zap.Error(err))
+	} else {
+		global.Logger.Debug("NoteHistoryTask processMigrate success",
+			zap.Int64("oldNoteID", oldNoteID),
+			zap.Int64("newNoteID", newNoteID),
+			zap.Int64("uid", uid))
+	}
 }

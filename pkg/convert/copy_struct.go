@@ -9,6 +9,76 @@ import (
 	"github.com/pkg/errors"
 )
 
+func GetCopyStructFields(source interface{}, target interface{}) []interface{} {
+	// 1. 调用您的第一个函数获取 source 的字段名列表
+	sourceFieldsList := GetStructFieldNames(source)
+	if len(sourceFieldsList) == 0 {
+		return nil
+	}
+
+	// 2. 将列表转为 map，方便 O(1) 复杂度查找
+	sourceFieldsMap := make(map[string]bool)
+	for _, name := range sourceFieldsList {
+		sourceFieldsMap[name] = true
+	}
+
+	// 3. 准备提取 target 中的值
+	var result []interface{}
+	tVal := reflect.ValueOf(target)
+
+	// 处理 target 的指针
+	if tVal.Kind() == reflect.Ptr {
+		tVal = tVal.Elem()
+	}
+
+	// 确保 target 是结构体
+	if tVal.Kind() != reflect.Struct {
+		return nil
+	}
+
+	tTyp := tVal.Type()
+	for i := 0; i < tVal.NumField(); i++ {
+		fieldName := tTyp.Field(i).Name
+		// 如果 target 的这个字段名在 source 中也存在
+		if sourceFieldsMap[fieldName] {
+			// 获取字段的值
+			fieldVal := tVal.Field(i)
+
+			// 只有导出字段才能调用 Interface()，否则会 panic
+			if fieldVal.CanInterface() {
+				result = append(result, fieldVal.Interface())
+			}
+		}
+	}
+
+	return result
+}
+
+// GetStructFields 返回传入结构体的所有字段名
+func GetStructFieldNames(input interface{}) []string {
+	getType := reflect.TypeOf(input)
+
+	// 如果传入的是指针，获取其指向的元素类型
+	if getType.Kind() == reflect.Ptr {
+		getType = getType.Elem()
+	}
+
+	// 确保最终处理的是结构体
+	if getType.Kind() != reflect.Struct {
+		return nil
+	}
+
+	fields := make([]string, 0, getType.NumField())
+	for i := 0; i < getType.NumField(); i++ {
+		field := getType.Field(i)
+		// 如果只想获取导出字段（大写开头的），可以直接添加
+		// 如果需要处理嵌套结构体或匿名首元，可在此添加逻辑
+		fields = append(fields, field.Name)
+	}
+
+	return fields
+}
+
 // CopyStruct
 // dst 目标结构体，src 源结构体
 // 它会把src与dst的相同字段名的值，复制到dst中

@@ -98,3 +98,9 @@ func (d *Dao) NoteHistoryGetLatestVersion(noteId int64, uid int64) (int64, error
 	}
 	return m.Version, nil
 }
+
+func (d *Dao) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {
+	u := d.noteHistory(uid).NoteHistory
+	_, err := u.WithContext(d.ctx).Where(u.NoteID.Eq(oldNoteID)).Update(u.NoteID, newNoteID)
+	return err
+}

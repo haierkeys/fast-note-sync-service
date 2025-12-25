@@ -16,23 +16,33 @@ import (
 var (
 	lastNoteCleanupTime time.Time
 	cleanupMutex        sync.Mutex
+	// NoteMigrateChannel 迁移任务通道
+	NoteMigrateChannel = make(chan NoteMigrateMsg, 1000)
 )
+
+// NoteMigrateMsg 笔记迁移消息
+type NoteMigrateMsg struct {
+	OldNoteID int64
+	NewNoteID int64
+	UID       int64
+}
 
 // Note 表示笔记的完整数据结构（包含内容）。
 type Note struct {
-	ID               int64      `json:"id" form:"id"`                     // 主键ID
-	Action           string     `json:"-" form:"action"`                  // 操作：create/modify/delete
-	Path             string     `json:"path" form:"path"`                 // 路径信息（文件路径）
-	PathHash         string     `json:"pathHash" form:"pathHash"`         // 路径哈希值，用于快速查找
-	Content          string     `json:"content" form:"content"`           // 内容详情（完整文本）
-	ContentHash      string     `json:"contentHash" form:"contentHash"`   // 内容哈希，用于判定内容是否变更
-	ClientName       string     `json:"clientName" form:"clientName"`     // 客户端名称
-	Version          int64      `json:"version" form:"version"`           // 版本号
-	Ctime            int64      `json:"ctime" form:"ctime"`               // 创建时间戳（秒）
-	Mtime            int64      `json:"mtime" form:"mtime"`               // 文件修改时间戳（秒）
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // 记录更新时间戳（用于同步）
-	UpdatedAt        timex.Time `json:"-"`                                // 更新时间字段（time 类型包装）
-	CreatedAt        timex.Time `json:"-"`                                // 创建时间字段（time 类型包装）
+	ID                  int64      `json:"id" form:"id"`                                   // 主键ID
+	Action              string     `json:"-" form:"action"`                                // 操作：create/modify/delete
+	Path                string     `json:"path" form:"path"`                               // 路径信息（文件路径）
+	PathHash            string     `json:"pathHash" form:"pathHash"`                       // 路径哈希值，用于快速查找
+	Content             string     `json:"content" form:"content"`                         // 内容详情（完整文本）
+	ContentHash         string     `json:"contentHash" form:"contentHash"`                 // 内容哈希，用于判定内容是否变更
+	ContentLastSnapshot string     `json:"contentLastSnapshot" form:"contentLastSnapshot"` // 上次快照内容
+	ClientName          string     `json:"clientName" form:"clientName"`                   // 客户端名称
+	Version             int64      `json:"version" form:"version"`                         // 版本号
+	Ctime               int64      `json:"ctime" form:"ctime"`                             // 创建时间戳（秒）
+	Mtime               int64      `json:"mtime" form:"mtime"`                             // 文件修改时间戳（秒）
+	UpdatedTimestamp    int64      `json:"lastTime" form:"updatedTimestamp"`               // 记录更新时间戳（用于同步）
+	UpdatedAt           timex.Time `json:"-"`                                              // 更新时间字段（time 类型包装）
+	CreatedAt           timex.Time `json:"-"`                                              // 创建时间字段（time 类型包装）
 }
 
 // NoteNoContent 表示不包含 content 字段的笔记数据结构，适合列表查询返回简洁信息。
@@ -123,6 +133,15 @@ type NoteListRequestParams struct {
 	Vault string `json:"vault" form:"vault" binding:"required"` // 仓库标识
 }
 
+// NoteMigratePush 提交笔记迁移任务
+func NoteMigratePush(oldNoteID, newNoteID int64, uid int64) {
+	NoteMigrateChannel <- NoteMigrateMsg{
+		OldNoteID: oldNoteID,
+		NewNoteID: newNoteID,
+		UID:       uid,
+	}
+}
+
 // NoteGet 获取单条笔记
 // 函数名: NoteGet
 // 函数使用说明: 根据 vault 与 pathHash 获取单条笔记记录并转换为 service.Note 返回。
@@ -149,14 +168,11 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 	}
 	vaultID := vID.(int64)
 
-	svc.SF.Do(fmt.Sprintf("Note_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteAutoMigrate(uid)
-	})
-
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
 	}
+
 	return convert.StructAssign(note, &Note{}).(*Note), nil
 }
 
@@ -299,7 +315,9 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 			return isNew, nil, err
 		}
 		svc.NoteCountSizeSum(vaultID, uid)
+
 		NoteHistoryDelayPush(noteDao.ID, uid)
+
 		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return isNew, rNote, nil
 	}
@@ -350,7 +368,9 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		return nil, err
 	}
 	svc.NoteCountSizeSum(vaultID, uid)
+
 	NoteHistoryDelayPush(noteDao.ID, uid)
+
 	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
 	return rNote, nil
@@ -563,4 +583,25 @@ func (svc *Service) NoteListNeedSnapshot(uid int64) ([]*Note, error) {
 		result = append(result, convert.StructAssign(n, &Note{}).(*Note))
 	}
 	return result, nil
+}
+
+func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
+	// 1. 获取旧笔记信息
+	oldNote, err := svc.dao.NoteGetById(oldNoteID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 2. 将旧笔记的 ContentLastSnapshot 和 Version 迁移到新笔记
+	err = svc.dao.NoteUpdateSnapshot(oldNote.ContentLastSnapshot, oldNote.Version, newNoteID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 3. 删除旧笔记
+	err = svc.dao.NoteDelete(oldNoteID, uid)
+	if err != nil {
+		return err
+	}
+	return nil
 }

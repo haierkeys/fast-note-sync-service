@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -120,8 +119,6 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 		return err
 	}
 
-	dump.P(note.ContentLastSnapshot)
-
 	params := &dao.NoteHistorySet{
 		NoteID:     note.ID,
 		VaultID:    note.VaultID,
@@ -138,4 +135,14 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 
 	// 更新 ContentLastSnapshot
 	return svc.dao.NoteUpdateSnapshot(note.Content, latestVersion+1, note.ID, uid)
+}
+
+// NoteHistoryMigrate 处理笔记历史迁移
+func (svc *Service) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {
+
+	// 3. 迁移历史记录
+	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
+		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
+	})
+	return svc.dao.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
 }

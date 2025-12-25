@@ -185,6 +185,8 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		}
 	}
 
+	var noteNew *service.Note
+	var noteOld *service.Note
 	// 如果路径发生变化，删除旧笔记
 	if params.SrcPath != "" && params.SrcPath != params.Path {
 		params := &service.NoteDeleteRequestParams{
@@ -192,24 +194,29 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 			Path:     params.SrcPath,
 			PathHash: params.SrcPathHash,
 		}
-		note, err := svc.NoteDelete(uid, params)
+		noteOld, err = svc.NoteDelete(uid, params)
 		if err != nil {
 			global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteDelete err: %v", zap.Error(err))
 			response.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 			return
 		}
-		n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncDelete")
+		n.wss.BroadcastToUser(uid, code.Success.WithData(noteOld), "NoteSyncDelete")
 	}
 
-	_, note, err := svc.NoteModifyOrCreate(uid, params, false)
+	_, noteNew, err = svc.NoteModifyOrCreate(uid, params, false)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.CreateOrUpdate svc NoteModifyOrCreate err: %v", zap.Error(err))
 		response.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
 		return
 	}
 
-	response.ToResponse(code.Success.WithData(note))
-	n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncModify")
+	response.ToResponse(code.Success.WithData(noteNew))
+	n.wss.BroadcastToUser(uid, code.Success.WithData(noteNew), "NoteSyncModify")
+
+	if params.SrcPath != "" && params.SrcPath != params.Path {
+		service.NoteMigratePush(noteOld.ID, noteNew.ID, uid)
+	}
+
 }
 
 // Delete 删除笔记

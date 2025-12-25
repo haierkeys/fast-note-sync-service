@@ -19,8 +19,9 @@ type Note struct {
 	PathHash            string     `json:"pathHash" form:"pathHash"`       // 路径哈希
 	Content             string     `json:"content" form:"content"`         // 内容
 	ContentHash         string     `json:"contentHash" form:"contentHash"` // 内容哈希
-	ContentLastSnapshot string     `gorm:"column:content_last_snapshot" json:"contentLastSnapshot" form:"contentLastSnapshot"`
+	ContentLastSnapshot string     `json:"contentLastSnapshot" form:"contentLastSnapshot"`
 	ClientName          string     `json:"clientName" form:"clientName"`             // 客户端名称
+	Version             int64      `json:"version" form:"version"`                   // 版本
 	Size                int64      `json:"size" form:"size"`                         // 大小
 	Ctime               int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
 	Mtime               int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
@@ -31,17 +32,16 @@ type Note struct {
 }
 
 type NoteSet struct {
-	VaultID             int64  `json:"vaultId" form:"vaultId"`         // 保险库ID
-	Action              string `json:"action" form:"action"`           // 操作
-	Path                string `json:"path" form:"path"`               // 路径
-	PathHash            string `json:"pathHash" form:"pathHash"`       // 路径哈希
-	Content             string `json:"content" form:"content"`         // 内容
-	ContentHash         string `json:"contentHash" form:"contentHash"` // 内容哈希
-	ContentLastSnapshot string `json:"contentLastSnapshot" form:"contentLastSnapshot"`
-	ClientName          string `json:"clientName" form:"clientName"` // 客户端名称
-	Size                int64  `json:"size" form:"size"`             // 大小
-	Ctime               int64  `json:"ctime" form:"ctime"`           // 创建时间戳
-	Mtime               int64  `json:"mtime" form:"mtime"`           // 修改时间戳
+	VaultID     int64  `json:"vaultId" form:"vaultId"`         // 保险库ID
+	Action      string `json:"action" form:"action"`           // 操作
+	Path        string `json:"path" form:"path"`               // 路径
+	PathHash    string `json:"pathHash" form:"pathHash"`       // 路径哈希
+	Content     string `json:"content" form:"content"`         // 内容
+	ContentHash string `json:"contentHash" form:"contentHash"` // 内容哈希
+	ClientName  string `json:"clientName" form:"clientName"`   // 客户端名称
+	Size        int64  `json:"size" form:"size"`               // 大小
+	Ctime       int64  `json:"ctime" form:"ctime"`             // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
 // NoteAutoMigrate 自动迁移笔记表
@@ -106,6 +106,7 @@ func (d *Dao) NoteGetById(id int64, uid int64) (*Note, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return convert.StructAssign(m, &Note{}).(*Note), nil
 }
 
@@ -170,11 +171,29 @@ func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 	u := d.note(uid).Note
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
+	//fields := convert.GetCopyStructFields(params, u)
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.UpdatedAt = timex.Now()
 	m.ID = id
+
+	//fields = append(fields, m.UpdatedAt, m.UpdatedTimestamp)
+
 	err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
+	).Select(
+		u.ID,
+		u.VaultID,
+		u.Action,
+		u.Path,
+		u.PathHash,
+		u.Content,
+		u.ContentHash,
+		u.ClientName,
+		u.Size,
+		u.Ctime,
+		u.Mtime,
+		u.UpdatedAt,
+		u.UpdatedTimestamp,
 	).Save(m)
 
 	if err != nil {
@@ -414,4 +433,14 @@ func (d *Dao) NoteDeletePhysicalByTime(timestamp int64, uid int64) error {
 		u.UpdatedTimestamp.Lt(timestamp),
 	).Delete()
 	return err
+}
+
+func (d *Dao) NoteDelete(id int64, uid int64) error {
+
+	u := d.note(uid).Note
+	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).Delete()
+	if err != nil {
+		return err
+	}
+	return nil
 }
