@@ -69,12 +69,12 @@ func (t *FileCleanupTask) Run(ctx context.Context) error {
 	return err
 }
 
-// Interval 返回执行间隔
-func (t *FileCleanupTask) Interval() time.Duration {
+// LoopInterval 返回执行间隔
+func (t *FileCleanupTask) LoopInterval() time.Duration {
 	return t.interval
 }
 
-// RunImmediately 是否立即执行一次
-func (t *FileCleanupTask) RunImmediately() bool {
+// IsStartupRun 是否立即执行一次
+func (t *FileCleanupTask) IsStartupRun() bool {
 	return true
 }

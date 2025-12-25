@@ -284,6 +284,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 			return isNew, nil, err
 		}
 		svc.NoteCountSizeSum(vaultID, uid)
+		NoteHistoryDelayPush(noteDao.ID, uid)
 		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return isNew, rNote, nil
 	} else {
@@ -294,6 +295,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 			return isNew, nil, err
 		}
 		svc.NoteCountSizeSum(vaultID, uid)
+		NoteHistoryDelayPush(noteDao.ID, uid)
 		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return isNew, rNote, nil
 	}
@@ -343,6 +345,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		return nil, err
 	}
 	svc.NoteCountSizeSum(vaultID, uid)
+	NoteHistoryDelayPush(noteDao.ID, uid)
 	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
 	return rNote, nil

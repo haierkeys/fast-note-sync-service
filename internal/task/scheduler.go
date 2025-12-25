@@ -12,8 +12,8 @@ import (
 type Task interface {
 	Name() string                  // 任务名称
 	Run(ctx context.Context) error // 执行任务
-	Interval() time.Duration       // 执行间隔
-	RunImmediately() bool          // 是否立即执行一次
+	LoopInterval() time.Duration   // 执行间隔
+	IsStartupRun() bool            // 是否立即执行一次
 }
 
 // Scheduler 任务调度器
@@ -53,13 +53,13 @@ func (s *Scheduler) Start() {
 
 // startTask 启动单个任务
 func (s *Scheduler) startTask(task Task) {
-	s.logger.Info("starting task", zap.String("task_name", task.Name()), zap.Duration("interval", task.Interval()))
+	s.logger.Info("starting task", zap.String("task_name", task.Name()), zap.Duration("interval", task.LoopInterval()))
 
 	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
 
 		// 如果任务需要立即执行
-		if task.RunImmediately() {
+		if task.IsStartupRun() {
 			go func() {
 				if err := task.Run(context.Background()); err != nil {
 					s.logger.Error("task execution error",
@@ -69,12 +69,12 @@ func (s *Scheduler) startTask(task Task) {
 			}()
 		}
 
-		if task.Interval() <= 0 {
+		if task.LoopInterval() <= 0 {
 			s.logger.Info("task scheduled only for immediate execution (interval <= 0)", zap.String("task_name", task.Name()))
 			return
 		}
 
-		ticker := time.NewTicker(task.Interval())
+		ticker := time.NewTicker(task.LoopInterval())
 		defer ticker.Stop()
 
 		// 定时执行

@@ -69,12 +69,12 @@ func (t *SettingCleanupTask) Run(ctx context.Context) error {
 	return err
 }
 
-// Interval 返回执行间隔
-func (t *SettingCleanupTask) Interval() time.Duration {
+// LoopInterval 返回执行间隔
+func (t *SettingCleanupTask) LoopInterval() time.Duration {
 	return t.interval
 }
 
-// RunImmediately 是否立即执行一次
-func (t *SettingCleanupTask) RunImmediately() bool {
+// IsStartupRun 是否立即执行一次
+func (t *SettingCleanupTask) IsStartupRun() bool {
 	return true
 }

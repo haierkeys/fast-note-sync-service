@@ -19,13 +19,13 @@ func (t *TempFileCleanupTask) Name() string {
 	return "TempDirStartCleanupTask"
 }
 
-// Interval 执行间隔 (0 表示不进行周期性执行)
-func (t *TempFileCleanupTask) Interval() time.Duration {
+// LoopInterval 执行间隔 (0 表示不进行周期性执行)
+func (t *TempFileCleanupTask) LoopInterval() time.Duration {
 	return 0
 }
 
-// RunImmediately 是否立即执行一次
-func (t *TempFileCleanupTask) RunImmediately() bool {
+// IsStartupRun 是否立即执行一次
+func (t *TempFileCleanupTask) IsStartupRun() bool {
 	return true
 }
 
@@ -64,11 +64,7 @@ func (t *TempFileCleanupTask) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err != nil {
-		global.Logger.Error(t.Name()+" failed ["+status+"]: ", zap.Error(err))
-	} else {
-		global.Logger.Info(t.Name() + " completed successfully [" + status + "]")
-	}
+	global.Logger.Info(t.Name() + " completed successfully [" + status + "]")
 
 	return nil
 }
