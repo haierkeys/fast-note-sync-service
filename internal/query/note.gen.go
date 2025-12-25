@@ -35,6 +35,8 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.PathHash = field.NewString(tableName, "path_hash")
 	_note.Content = field.NewString(tableName, "content")
 	_note.ContentHash = field.NewString(tableName, "content_hash")
+	_note.ContentLastSnapshot = field.NewString(tableName, "content_last_snapshot")
+	_note.Version = field.NewInt64(tableName, "version")
 	_note.Size = field.NewInt64(tableName, "size")
 	_note.Ctime = field.NewInt64(tableName, "ctime")
 	_note.Mtime = field.NewInt64(tableName, "mtime")
@@ -50,20 +52,22 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 type note struct {
 	noteDo noteDo
 
-	ALL              field.Asterisk
-	ID               field.Int64
-	VaultID          field.Int64
-	Action           field.String
-	Path             field.String
-	PathHash         field.String
-	Content          field.String
-	ContentHash      field.String
-	Size             field.Int64
-	Ctime            field.Int64
-	Mtime            field.Int64
-	UpdatedTimestamp field.Int64
-	CreatedAt        field.Field
-	UpdatedAt        field.Field
+	ALL                 field.Asterisk
+	ID                  field.Int64
+	VaultID             field.Int64
+	Action              field.String
+	Path                field.String
+	PathHash            field.String
+	Content             field.String
+	ContentHash         field.String
+	ContentLastSnapshot field.String
+	Version             field.Int64
+	Size                field.Int64
+	Ctime               field.Int64
+	Mtime               field.Int64
+	UpdatedTimestamp    field.Int64
+	CreatedAt           field.Field
+	UpdatedAt           field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -87,6 +91,8 @@ func (n *note) updateTableName(table string) *note {
 	n.PathHash = field.NewString(table, "path_hash")
 	n.Content = field.NewString(table, "content")
 	n.ContentHash = field.NewString(table, "content_hash")
+	n.ContentLastSnapshot = field.NewString(table, "content_last_snapshot")
+	n.Version = field.NewInt64(table, "version")
 	n.Size = field.NewInt64(table, "size")
 	n.Ctime = field.NewInt64(table, "ctime")
 	n.Mtime = field.NewInt64(table, "mtime")
@@ -117,7 +123,7 @@ func (n *note) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *note) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 13)
+	n.fieldMap = make(map[string]field.Expr, 15)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["action"] = n.Action
@@ -125,6 +131,8 @@ func (n *note) fillFieldMap() {
 	n.fieldMap["path_hash"] = n.PathHash
 	n.fieldMap["content"] = n.Content
 	n.fieldMap["content_hash"] = n.ContentHash
+	n.fieldMap["content_last_snapshot"] = n.ContentLastSnapshot
+	n.fieldMap["version"] = n.Version
 	n.fieldMap["size"] = n.Size
 	n.fieldMap["ctime"] = n.Ctime
 	n.fieldMap["mtime"] = n.Mtime
