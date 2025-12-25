@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.2
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.12
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.92.1
+	github.com/bytedance/sonic v1.14.2
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
@@ -19,12 +20,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/goutil v0.7.2
 	github.com/haierkeys/gormTracing v0.0.0-20250102131738-31ab6d84a1ab
+	github.com/jinzhu/copier v0.4.0
 	github.com/juju/ratelimit v1.0.2
 	github.com/lxzan/gws v1.8.9
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/radovskyb/watcher v1.0.7
+	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.1
 	github.com/studio-b12/gowebdav v0.11.0
 	github.com/swaggo/swag v1.16.6
@@ -32,6 +35,7 @@ require (
 	github.com/w3liu/go-common v0.0.0-20210108072342-826b2f3582be
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.45.0
+	golang.org/x/mod v0.30.0
 	golang.org/x/sync v0.18.0
 	golang.org/x/text v0.31.0
 	golang.org/x/tools v0.39.0
@@ -65,7 +69,6 @@ require (
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic v1.14.2 // indirect
 	github.com/bytedance/sonic/loader v0.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
@@ -88,7 +91,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -119,7 +121,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
-	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
