@@ -64,7 +64,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	// 自动执行迁移任务
 	if err := upgrade.Execute(); err != nil {
-		return nil, fmt.Errorf("database upgrade failed: %w", err)
+		return nil, fmt.Errorf("upgrade.Execute: %w", err)
 	}
 
 	initValidator()

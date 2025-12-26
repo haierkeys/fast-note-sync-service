@@ -92,17 +92,24 @@ func (t *NoteHistoryTask) resumeInterruptedTasks(ctx context.Context) {
 				zap.Error(err))
 			continue
 		}
-		for _, note := range notes {
-			t.handleMsg(service.NoteHistoryMsg{
+		for i, note := range notes {
+			// 增加微小的错峰延迟，避免瞬间触发大量写事务
+			delay := time.Duration(i%100) * 10 * time.Millisecond
+			t.handleMsgWithDelay(service.NoteHistoryMsg{
 				NoteID: note.ID,
 				UID:    uid,
-			})
+			}, delay)
 		}
 	}
 }
 
 // handleMsg 处理单条消息并管理定时器
 func (t *NoteHistoryTask) handleMsg(msg service.NoteHistoryMsg) {
+	t.handleMsgWithDelay(msg, 10*time.Second)
+}
+
+// handleMsgWithDelay 处理单条消息并设置自定义定时器延迟
+func (t *NoteHistoryTask) handleMsgWithDelay(msg service.NoteHistoryMsg, baseDelay time.Duration) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -113,8 +120,12 @@ func (t *NoteHistoryTask) handleMsg(msg service.NoteHistoryMsg) {
 		timer.Stop()
 	}
 
-	// 创建新的30秒定时器
-	t.timers[key] = time.AfterFunc(10*time.Second, func() {
+	// 实际延迟为基础延迟 + 30秒固定业务延迟（或者根据需求调整）
+	// 这里我们保持原有的 10 秒逻辑，但在 baseDelay 基础上叠加
+	totalDelay := 10*time.Second + baseDelay
+
+	// 创建定时器
+	t.timers[key] = time.AfterFunc(totalDelay, func() {
 		t.process(msg.NoteID, msg.UID, key)
 	})
 }

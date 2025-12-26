@@ -53,6 +53,11 @@ func (svc *Service) Ctx() *gin.Context {
 // ExposeAutoMigrate 暴露自动迁移接口
 func (svc *Service) ExposeAutoMigrate() error {
 
+	//先迁移
+	err := svc.dao.AutoMigrate(0, "User")
+	if err != nil {
+		return err
+	}
 	uids, err := svc.dao.GetAllUserUIDs()
 	if err != nil {
 		return err

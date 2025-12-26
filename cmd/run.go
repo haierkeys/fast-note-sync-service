@@ -71,7 +71,8 @@ func init() {
 
 			s, err := NewServer(runEnv)
 			if err != nil {
-				s.logger.Error("api service start err ", zap.Error(err))
+				log.Println("api service start err: ", err)
+				return
 			}
 
 			go func() {
@@ -96,7 +97,8 @@ func init() {
 							// 重新初始化 server
 							s, err = NewServer(runEnv)
 							if err != nil {
-								s.logger.Error("service start err", zap.Error(err))
+								log.Println("service start err: ", err)
+								continue
 							}
 
 						case err := <-w.Error:

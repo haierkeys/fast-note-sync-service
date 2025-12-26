@@ -8,6 +8,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gorm"
 )
 
 type Note struct {
@@ -53,7 +54,9 @@ type NoteSet struct {
 //   - *query.Query: 查询对象
 func (d *Dao) note(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.UseQuery(key)
+	return d.Use(func(g *gorm.DB) {
+		model.AutoMigrate(g, "Note")
+	}, key)
 }
 
 // NoteGetByPathHash 根据路径哈希获取笔记

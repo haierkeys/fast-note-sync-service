@@ -59,7 +59,7 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 	svc := service.NewBackground(ctx)
 	err := svc.ExposeAutoMigrate()
 	if err != nil {
-		return fmt.Errorf("failed to dao db auto migrate: %w", err)
+		return fmt.Errorf("svc.ExposeAutoMigrate: %w", err)
 	}
 
 	// 确保 schema_version 表存在

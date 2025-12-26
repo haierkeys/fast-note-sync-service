@@ -7,6 +7,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gorm"
 )
 
 type Setting struct {
@@ -40,7 +41,9 @@ type SettingSet struct {
 // setting 获取配置查询对象
 func (d *Dao) setting(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.UseQuery(key)
+	return d.Use(func(g *gorm.DB) {
+		model.AutoMigrate(g, "Setting")
+	}, key)
 }
 
 // SettingGetByPathHash 根据路径哈希获取配置
