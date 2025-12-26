@@ -78,8 +78,8 @@ func useDia(dsn string, dbType string) gorm.Dialector {
 	return nil
 }
 
-// getIntFieldGORMTags 获取所有 int 类型字段的 GORM tag 配置
-func getIntFieldGORMTags(db *gorm.DB, tables []string) []gen.ModelOpt {
+// getFieldDefaultValueTags 获取所有字段的 GORM tag 配置（自动注入默认值以解决 SQLite 迁移限制）
+func getFieldDefaultValueTags(db *gorm.DB, tables []string) []gen.ModelOpt {
 	var opts []gen.ModelOpt
 
 	for _, table := range tables {
@@ -94,22 +94,35 @@ func getIntFieldGORMTags(db *gorm.DB, tables []string) []gen.ModelOpt {
 		}
 
 		for _, col := range columnTypes {
-			// 检查是否是 int 类型
-			dbType := strings.ToLower(col.DatabaseTypeName())
-			if dbType == "integer" || dbType == "int" || dbType == "bigint" {
-				// 跳过主键字段
-				if isPrimaryKey(col) {
-					continue
-				}
+			// 跳过主键字段
+			if isPrimaryKey(col) {
+				continue
+			}
 
-				fieldName := col.Name()
-				defaultValue, ok := col.DefaultValue()
+			fieldName := col.Name()
+			dbType := strings.ToLower(col.DatabaseTypeName())
+			defaultValue, ok := col.DefaultValue()
+
+			// 如果数据库中已经有默认值，则使用数据库的默认值
+			if ok && defaultValue != "" {
 				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-					if ok && defaultValue != "" {
-						tag.Set("default", defaultValue)
-					} else {
-						tag.Set("default", "0")
-					}
+					tag.Set("default", defaultValue)
+					return tag
+				}))
+				continue
+			}
+
+			// 根据类型自动注入默认值（主要解决 SQLite Add Column 时 NOT NULL 冲突）
+			var autoDefault string
+			if dbType == "integer" || dbType == "int" || dbType == "bigint" {
+				autoDefault = "0"
+			} else if dbType == "text" || strings.Contains(dbType, "char") {
+				autoDefault = "''"
+			}
+
+			if autoDefault != "" {
+				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+					tag.Set("default", autoDefault)
 					return tag
 				}))
 			}
@@ -206,9 +219,9 @@ func main() {
 		}),
 	}
 
-	// 自动为所有 int 类型字段添加 GORM default:0
-	intFieldOpts := getIntFieldGORMTags(db, tableList)
-	opts = append(opts, intFieldOpts...)
+	// 自动为字段添加 GORM default 标签
+	fieldOpts := getFieldDefaultValueTags(db, tableList)
+	opts = append(opts, fieldOpts...)
 
 	for _, table := range tableList {
 		if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {

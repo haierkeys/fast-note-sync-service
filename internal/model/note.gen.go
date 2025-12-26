@@ -12,14 +12,14 @@ const TableNameNote = "note"
 type Note struct {
 	ID                  int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	VaultID             int64      `gorm:"column:vault_id;not null;index:idx_vault_id_path,priority:1;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_path_hash,priority:1;default:0" json:"vaultId" form:"vaultId"`
-	Action              string     `gorm:"column:action" json:"action" form:"action"`
-	Path                string     `gorm:"column:path;index:idx_vault_id_path,priority:2" json:"path" form:"path"`
-	PathHash            string     `gorm:"column:path_hash;index:idx_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
-	Content             string     `gorm:"column:content" json:"content" form:"content"`
-	ContentHash         string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`
-	ContentLastSnapshot string     `gorm:"column:content_last_snapshot;not null" json:"contentLastSnapshot" form:"contentLastSnapshot"`
-	Version             int64      `gorm:"column:version;default:1" json:"version" form:"version"`
-	ClientName          string     `gorm:"column:client_name;not null" json:"clientName" form:"clientName"`
+	Action              string     `gorm:"column:action;default:''" json:"action" form:"action"`
+	Path                string     `gorm:"column:path;index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	PathHash            string     `gorm:"column:path_hash;index:idx_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
+	Content             string     `gorm:"column:content;default:''" json:"content" form:"content"`
+	ContentHash         string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
+	ContentLastSnapshot string     `gorm:"column:content_last_snapshot;not null;default:''" json:"contentLastSnapshot" form:"contentLastSnapshot"`
+	Version             int64      `gorm:"column:version;default:0" json:"version" form:"version"`
+	ClientName          string     `gorm:"column:client_name;not null;default:''" json:"clientName" form:"clientName"`
 	Size                int64      `gorm:"column:size;default:0" json:"size" form:"size"`
 	Ctime               int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime               int64      `gorm:"column:mtime;default:0" json:"mtime" form:"mtime"`

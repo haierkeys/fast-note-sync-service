@@ -11,7 +11,7 @@ const TableNameVault = "vault"
 // Vault mapped from table <vault>
 type Vault struct {
 	ID        int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	Vault     string     `gorm:"column:vault;index:idx_vault_uid,priority:1" json:"vault" form:"vault"`
+	Vault     string     `gorm:"column:vault;index:idx_vault_uid,priority:1;default:''" json:"vault" form:"vault"`
 	NoteCount int64      `gorm:"column:note_count;default:0" json:"noteCount" form:"noteCount"`
 	NoteSize  int64      `gorm:"column:note_size;default:0" json:"noteSize" form:"noteSize"`
 	FileCount int64      `gorm:"column:file_count;default:0" json:"fileCount" form:"fileCount"`

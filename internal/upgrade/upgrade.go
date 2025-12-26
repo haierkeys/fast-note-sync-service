@@ -56,10 +56,8 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
 // Run 执行升级
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
-	global.Dump(111)
 	svc := service.NewBackground(ctx)
 	err := svc.ExposeAutoMigrate()
-	global.Dump(err)
 	if err != nil {
 		return fmt.Errorf("failed to dao db auto migrate: %w", err)
 	}

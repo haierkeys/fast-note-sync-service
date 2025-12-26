@@ -64,7 +64,7 @@ CREATE TABLE "note_history" (
     "content" text DEFAULT '',
     "diff_patch" text DEFAULT '',
     "client_name" text DEFAULT '',
-    "version" integer DEFAULT 1,
+    "version" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
