@@ -122,7 +122,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	if httpAddr := global.Config.Server.PrivateHttpListen; len(httpAddr) > 0 {
 
-		s.logger.Info("api_router private", zap.String("config.server.PrivateHttpListen", global.Config.Server.PrivateHttpListen))
+		s.logger.Info("api_router", zap.String("config.server.PrivateHttpListen", global.Config.Server.PrivateHttpListen))
 		s.privateHttpServer = &http.Server{
 			Addr:           global.Config.Server.PrivateHttpListen,
 			Handler:        routers.NewPrivateRouter(),

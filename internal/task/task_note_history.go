@@ -17,17 +17,6 @@ type NoteHistoryTask struct {
 	mu     sync.Mutex
 }
 
-func init() {
-	Register(NewNoteHistoryTask)
-}
-
-// NewNoteHistoryTask 创建一个新的笔记历史记录任务实例
-func NewNoteHistoryTask() (Task, error) {
-	return &NoteHistoryTask{
-		timers: make(map[string]*time.Timer),
-	}, nil
-}
-
 // Name 返回任务名称
 func (t *NoteHistoryTask) Name() string {
 	return "NoteHistory"
@@ -216,4 +205,15 @@ func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
 			zap.String("event", "processMigrate success"),
 			zap.String("msg", "success"))
 	}
+}
+
+// NewNoteHistoryTask 创建一个新的笔记历史记录任务实例
+func NewNoteHistoryTask() (Task, error) {
+	return &NoteHistoryTask{
+		timers: make(map[string]*time.Timer),
+	}, nil
+}
+
+func init() {
+	Register(NewNoteHistoryTask)
 }

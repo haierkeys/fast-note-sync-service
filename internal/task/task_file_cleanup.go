@@ -10,42 +10,23 @@ import (
 	"go.uber.org/zap"
 )
 
-// init 自动注册清理任务
-func init() {
-	Register(NewFileCleanupTask)
-}
-
 // FileCleanupTask 文件清理任务
 type FileCleanupTask struct {
-	interval time.Duration
-	firstRun bool
-}
-
-// NewFileCleanupTask 创建文件清理任务
-func NewFileCleanupTask() (Task, error) {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
-	if retentionTimeStr == "" {
-		return nil, nil
-	}
-	duration, err := util.ParseDuration(retentionTimeStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if duration <= 0 {
-		return nil, nil
-	}
-
-	// 每10分钟执行一次检查
-	return &FileCleanupTask{
-		interval: 10 * time.Minute,
-		firstRun: true,
-	}, nil
 }
 
 // Name 返回任务名称
 func (t *FileCleanupTask) Name() string {
 	return "DbFileCleanup"
+}
+
+// LoopInterval 返回执行间隔
+func (t *FileCleanupTask) LoopInterval() time.Duration {
+	return 10 * time.Minute
+}
+
+// IsStartupRun 是否立即执行一次
+func (t *FileCleanupTask) IsStartupRun() bool {
+	return true
 }
 
 // Run 执行清理任务
@@ -69,12 +50,23 @@ func (t *FileCleanupTask) Run(ctx context.Context) error {
 	return err
 }
 
-// LoopInterval 返回执行间隔
-func (t *FileCleanupTask) LoopInterval() time.Duration {
-	return t.interval
+// NewFileCleanupTask 创建文件清理任务
+func NewFileCleanupTask() (Task, error) {
+	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if retentionTimeStr == "" {
+		return nil, nil
+	}
+	duration, err := util.ParseDuration(retentionTimeStr)
+	if err != nil {
+		return nil, err
+	}
+	if duration <= 0 {
+		return nil, nil
+	}
+	return &FileCleanupTask{}, nil
 }
 
-// IsStartupRun 是否立即执行一次
-func (t *FileCleanupTask) IsStartupRun() bool {
-	return true
+// init 自动注册清理任务
+func init() {
+	Register(NewFileCleanupTask)
 }

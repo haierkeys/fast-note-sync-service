@@ -1,11 +1,8 @@
-
 package model
 
 import (
 	"gorm.io/gorm"
 )
-
-
 
 func AutoMigrate(db *gorm.DB, key string) error {
 	switch key {
@@ -28,6 +25,7 @@ func AutoMigrate(db *gorm.DB, key string) error {
 	case "Vault":
 		return db.AutoMigrate(Vault{})
 	case "":
-		return db.AutoMigrate(File{}, Note{}, NoteHistory{}, Setting{}, User{}, Vault{})	}
+		return db.AutoMigrate(File{}, Note{}, NoteHistory{}, Setting{}, User{}, Vault{})
+	}
 	return nil
 }

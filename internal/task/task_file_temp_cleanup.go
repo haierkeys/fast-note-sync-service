@@ -33,7 +33,7 @@ func (t *TempFileCleanupTask) IsStartupRun() bool {
 func (t *TempFileCleanupTask) Run(ctx context.Context) error {
 	t.firstRun = false
 
-	tempDir := global.Config.App.UploadSavePath
+	tempDir := global.Config.App.TempPath
 	if tempDir == "" {
 		tempDir = "storage/temp"
 	}

@@ -85,7 +85,7 @@ func (svc *Service) ExecuteSQL(sql string) error {
 }
 
 // UserExecuteSQL 用户执行 SQL 接口
-func (svc *Service) UserExecuteSQL(uid int64, sql string) error {
+func (svc *Service) UserExecuteSQL(sql string) error {
 	uids, err := svc.dao.GetAllUserUIDs()
 	if err != nil {
 		return err
