@@ -77,15 +77,22 @@ func (svc *Service) ExposeAutoMigrate() error {
 	return nil
 }
 
-// ExposeExecuteSQL 暴露执行 SQL 接口
-func (svc *Service) ExposeExecuteSQL(sql string) error {
+// ExecuteSQL 执行 SQL 接口
+func (svc *Service) ExecuteSQL(sql string) error {
+	db := svc.dao.UseKey()
+	db.Exec(sql)
+	return nil
+}
+
+// UserExecuteSQL 用户执行 SQL 接口
+func (svc *Service) UserExecuteSQL(uid int64, sql string) error {
 	uids, err := svc.dao.GetAllUserUIDs()
 	if err != nil {
 		return err
 	}
 	for _, uid := range uids {
 		// 忽略单个用户的清理错误，继续清理下一个
-		db := svc.dao.Query(uid)
+		db := svc.dao.UserDB(uid)
 		db.Exec(sql)
 	}
 	return nil

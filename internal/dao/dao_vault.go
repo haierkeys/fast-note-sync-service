@@ -36,15 +36,9 @@ type VaultSet struct {
 //   - *query.Query: 查询对象
 func (d *Dao) vault(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(func(g *gorm.DB) {
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Vault")
-	}, key)
-}
-
-func (d *Dao) Query(uid int64) *gorm.DB {
-	key := "user_" + strconv.FormatInt(uid, 10)
-	b := d.UseKey(key)
-	return b
+	}, key+"#vault", key)
 }
 
 // VaultGet 根据ID获取保险库记录

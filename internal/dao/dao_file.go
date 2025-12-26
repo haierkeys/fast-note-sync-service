@@ -49,9 +49,9 @@ type FileSet struct {
 //   - *query.Query: 查询对象
 func (d *Dao) file(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(func(g *gorm.DB) {
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "File")
-	}, key)
+	}, key+"#file", key)
 }
 
 // FileGetByPathHash 根据路径哈希获取文件

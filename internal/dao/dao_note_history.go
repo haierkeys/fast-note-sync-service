@@ -35,9 +35,9 @@ type NoteHistorySet struct {
 
 func (d *Dao) noteHistory(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(func(g *gorm.DB) {
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
-	}, key)
+	}, key+"#noteHistory", key)
 }
 
 func (d *Dao) NoteHistoryCreate(params *NoteHistorySet, uid int64) (*NoteHistory, error) {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -22,72 +23,54 @@ import (
 )
 
 type Dao struct {
-	Db    *gorm.DB
-	KeyDb map[string]*gorm.DB
-	ctx   context.Context
+	Db       *gorm.DB
+	KeyDb    map[string]*gorm.DB
+	ctx      context.Context
+	onceKeys sync.Map
 }
 
-// New 创建 Dao 实例
-// 函数名: New
-// 函数使用说明: 创建并初始化一个新的 Dao 实例,用于数据库操作。
-// 参数说明:
-//   - db *gorm.DB: GORM 数据库连接实例
-//   - ctx context.Context: 上下文对象
-//
-// 返回值说明:
-//   - *Dao: Dao 实例
 func New(db *gorm.DB, ctx context.Context) *Dao {
 	return &Dao{Db: db, ctx: ctx, KeyDb: make(map[string]*gorm.DB)}
 }
 
-// Use 获取查询对象
-// 函数名: Use
-// 函数使用说明: 获取指定数据库的查询对象,并执行初始化函数。
-// 参数说明:
-//   - f func(*gorm.DB): 数据库初始化函数
-//   - key ...string: 数据库键名(可选)
-//
-// 返回值说明:
-//   - *query.Query: 查询对象
-func (d *Dao) Use(f func(*gorm.DB), key ...string) *query.Query {
+func (d *Dao) UseQueryWithFunc(f func(*gorm.DB), key ...string) *query.Query {
 	db := d.UseKey(key...)
 	f(db)
 	return query.Use(db)
 }
 
-func (d *Dao) UseQuery(key ...string) *query.Query {
-	return query.Use(d.UseKey(key...))
+func (d *Dao) UseQueryWithOnceFunc(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
+	db := d.UseKey(key...)
+
+	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
+		f(db)
+	}
+	return query.Use(db)
 }
 
-// UseKey 获取数据库连接
-// 函数名: UseKey
-// 函数使用说明: 根据键名获取对应的数据库连接,如果未指定键名则返回默认数据库连接。
-// 参数说明:
-//   - key ...string: 数据库键名(可选)
-//
-// 返回值说明:
-//   - *gorm.DB: 数据库连接实例
+func (d *Dao) UseQuery(key ...string) *query.Query {
+	db := d.UseKey(key...)
+	return query.Use(db)
+}
+
 func (d *Dao) UseKey(key ...string) *gorm.DB {
 	var db *gorm.DB
 	if len(key) > 0 {
-		db = d.UseDb(key...)
+		db = d.UseDb(key[0])
 	} else {
 		db = d.Db
 	}
 	return db
 }
 
-// UseDb 获取或创建指定键名的数据库连接
-// 函数名: UseDb
-// 函数使用说明: 根据键名获取数据库连接,如果不存在则创建新的数据库连接并缓存。
-// 参数说明:
-//   - k ...string: 数据库键名
-//
-// 返回值说明:
-//   - *gorm.DB: 数据库连接实例
-func (d *Dao) UseDb(k ...string) *gorm.DB {
+func (d *Dao) UserDB(uid int64) *gorm.DB {
+	key := "user_" + strconv.FormatInt(uid, 10)
+	b := d.UseKey(key)
+	return b
+}
 
-	key := k[0]
+func (d *Dao) UseDb(key string) *gorm.DB {
+
 	if db, ok := d.KeyDb[key]; ok {
 		return db
 	}

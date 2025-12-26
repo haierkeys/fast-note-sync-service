@@ -54,9 +54,9 @@ type NoteSet struct {
 //   - *query.Query: 查询对象
 func (d *Dao) note(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(func(g *gorm.DB) {
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Note")
-	}, key)
+	}, key+"#note", key)
 }
 
 // NoteGetByPathHash 根据路径哈希获取笔记

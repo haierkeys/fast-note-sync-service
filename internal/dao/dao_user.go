@@ -5,6 +5,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -27,7 +28,9 @@ type User struct {
 // 返回值说明:
 //   - *query.Query: 查询对象
 func (d *Dao) user() *query.Query {
-	return d.UseQuery()
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
+		model.AutoMigrate(g, "User")
+	}, "user#user", "user")
 }
 
 // GetUserByUID 根据用户ID获取用户信息
