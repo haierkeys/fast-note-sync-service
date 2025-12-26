@@ -107,6 +107,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.UserAuthToken()).POST("/note", noteApiWithWss.CreateOrUpdate)
 		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApiWithWss.Delete)
 		api.Use(middleware.UserAuthToken()).GET("/notes", noteApiWithWss.List)
+
+		api.Use(middleware.UserAuthToken()).GET("/note/history", api_router.NewNoteHistory().Get)
+		api.Use(middleware.UserAuthToken()).GET("/note/histories", api_router.NewNoteHistory().List)
 	}
 
 	if global.Config.App.UploadSavePath != "" {

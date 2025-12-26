@@ -7,30 +7,33 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"gorm.io/gorm"
 )
 
 type NoteHistory struct {
-	ID         int64  `json:"id" form:"id"`
-	NoteID     int64  `json:"noteId" form:"noteId"`
-	VaultID    int64  `json:"vaultId" form:"vaultId"`
-	Path       string `json:"path" form:"path"`
-	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
-	Content    string `json:"content" form:"content"`
-	ClientName string `json:"clientName" form:"clientName"`
-	Version    int64  `json:"version" form:"version"`
-	CreatedAt  string `json:"createdAt" form:"createdAt"`
-	UpdatedAt  string `json:"updatedAt" form:"updatedAt"`
+	ID         int64      `json:"id" form:"id"`
+	NoteID     int64      `json:"noteId" form:"noteId"`
+	VaultID    int64      `json:"vaultId" form:"vaultId"`
+	Path       string     `json:"path" form:"path"`
+	DiffPatch  string     `json:"diffPatch" form:"diffPatch"`
+	Content    string     `json:"content" form:"content"`
+	ClientName string     `json:"clientName" form:"clientName"`
+	Version    int64      `json:"version" form:"version"`
+	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
+	UpdatedAt  timex.Time `json:"updatedAt" form:"updatedAt"`
 }
 
 type NoteHistorySet struct {
-	NoteID     int64  `json:"noteId" form:"noteId"`
-	VaultID    int64  `json:"vaultId" form:"vaultId"`
-	Path       string `json:"path" form:"path"`
-	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
-	Content    string `json:"content" form:"content"`
-	ClientName string `json:"clientName" form:"clientName"`
-	Version    int64  `json:"version" form:"version"`
+	NoteID     int64      `json:"noteId" form:"noteId"`
+	VaultID    int64      `json:"vaultId" form:"vaultId"`
+	Path       string     `json:"path" form:"path"`
+	DiffPatch  string     `json:"diffPatch" form:"diffPatch"`
+	Content    string     `json:"content" form:"content"`
+	ClientName string     `json:"clientName" form:"clientName"`
+	Version    int64      `json:"version" form:"version"`
+	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
+	UpdatedAt  timex.Time `json:"updatedAt" form:"updatedAt"`
 }
 
 func (d *Dao) noteHistory(uid int64) *query.Query {
@@ -61,7 +64,7 @@ func (d *Dao) NoteHistoryGetById(id int64, uid int64) (*NoteHistory, error) {
 
 func (d *Dao) NoteHistoryListByNoteId(noteId int64, page, pageSize int, uid int64) ([]*NoteHistory, int64, error) {
 	u := d.noteHistory(uid).NoteHistory
-	q := u.WithContext(d.ctx).Where(u.NoteID.Eq(noteId))
+	q := u.WithContext(d.ctx).Debug().Where(u.NoteID.Eq(noteId))
 
 	count, err := q.Count()
 	if err != nil {

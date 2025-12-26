@@ -25,6 +25,8 @@ CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
 /*
  动作 create modify delete
  */
+
+ 
 DROP TABLE IF EXISTS "note";
 
 CREATE TABLE "note" (

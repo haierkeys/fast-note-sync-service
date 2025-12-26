@@ -50,7 +50,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	if len(runMode) > 0 {
 		gin.SetMode(runMode)
 	} else {
-		gin.SetMode("release")
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	s := &Server{
@@ -60,7 +60,9 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	// Init logger.
 	initLogger(s)
 
-	initDatabase()
+	if err := initDatabase(); err != nil {
+		return nil, fmt.Errorf("initDatabase: %w", err)
+	}
 
 	// 自动执行迁移任务
 	if err := upgrade.Execute(); err != nil {
@@ -75,7 +77,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	initScheduler(s)
 
 	banner := `
-    ______           __     _   __      __         _____
+    ______           __     _   __      __          _____
    / ____/___ ______/ /_   / | / /___  / /____     / ___/__  ______  _____
   / /_  / __  / ___/ __/  /  |/ / __ \/ __/ _ \    \__ \/ / / / __ \/ ___/
  / __/ / /_/ (__  ) /_   / /|  / /_/ / /_/  __/   ___/ / /_/ / / / / /__

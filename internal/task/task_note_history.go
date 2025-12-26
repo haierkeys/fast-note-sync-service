@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -83,9 +84,11 @@ func (t *NoteHistoryTask) handleNoteHistoryWithDelay(msg service.NoteHistoryMsg,
 		timer.Stop()
 	}
 
-	// 实际延迟为基础延迟 + 30秒固定业务延迟（或者根据需求调整）
-	// 这里我们保持原有的 10 秒逻辑，但在 baseDelay 基础上叠加
-	totalDelay := 10*time.Second + baseDelay
+	randomMs := time.Duration(rand.Intn(100)+10) * 100 * time.Millisecond
+
+	// 正常任务延迟20秒 + (1-10)秒随机延迟
+	// 启动批处理任务 (1-10)秒随机延迟 + (0-5)秒随机延迟
+	totalDelay := randomMs + baseDelay
 
 	// 创建定时器
 	t.timers[key] = time.AfterFunc(totalDelay, func() {
@@ -185,6 +188,16 @@ func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
 		return
 	}
 
+	if len(uids) == 0 {
+		global.Logger.Info("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.Int("resumeNotesCount", 0),
+			zap.String("msg", "success"))
+		return
+	}
+
+	y := 0
 	for _, uid := range uids {
 		notes, err := svc.NoteListNeedSnapshot(uid)
 		if err != nil {
@@ -198,13 +211,20 @@ func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
 		}
 		for i, note := range notes {
 			// 增加微小的错峰延迟，避免瞬间触发大量写事务
-			delay := time.Duration(i%100) * 20 * time.Millisecond
+			delay := time.Duration(i%100) * 50 * time.Millisecond
 			t.handleNoteHistoryWithDelay(service.NoteHistoryMsg{
 				NoteID: note.ID,
 				UID:    uid,
 			}, delay)
+			y++
 		}
+
 	}
+	global.Logger.Info("task log",
+		zap.String("task", t.Name()),
+		zap.Int("resumeNotesCount", y),
+		zap.String("type", "startupRun"),
+		zap.String("msg", "success"))
 }
 
 // NewNoteHistoryTask 创建一个新的笔记历史记录任务实例

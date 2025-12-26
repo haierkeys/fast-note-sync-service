@@ -120,7 +120,7 @@ func init() {
 				}
 			}()
 
-			quit1 := make(chan os.Signal)
+			quit1 := make(chan os.Signal, 1)
 			signal.Notify(quit1, syscall.SIGINT, syscall.SIGTERM)
 			<-quit1
 			s.sc.SendCloseSignal(nil)

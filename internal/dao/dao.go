@@ -20,6 +20,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+
+	"go.uber.org/zap"
 )
 
 type Dao struct {
@@ -84,7 +86,13 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
 	}
 
-	dbNew, _ := NewDBEngine(c)
+	dbNew, err := NewDBEngine(c)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("UseDb failed", zap.String("key", key), zap.Error(err))
+		}
+		return nil
+	}
 
 	d.KeyDb[key] = dbNew
 	return dbNew
@@ -167,7 +175,7 @@ func useDia(c global.Database) gorm.Dialector {
 		if !fileurl.IsExist(c.Path) {
 			fileurl.CreatePath(c.Path, os.ModePerm)
 		}
-		return sqlite.Open(c.Path)
+		return sqlite.Open(c.Path + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL")
 	}
 	return nil
 
@@ -180,6 +188,9 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 		b = d.UseKey(key)
 	} else {
 		b = d.Db
+	}
+	if b == nil {
+		return fmt.Errorf("database connection is nil (uid=%d)", uid)
 	}
 	return model.AutoMigrate(b, modelKey)
 }

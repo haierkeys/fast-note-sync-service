@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -27,9 +30,21 @@ func NoteHistoryDelayPush(noteID int64, uid int64) {
 type NoteHistory struct {
 	ID         int64  `json:"id" form:"id"`
 	NoteID     int64  `json:"noteId" form:"noteId"`
-	VaultId    int64  `json:"vaultId" form:"vaultId"`
+	VaultID    int64  `json:"vaultId" form:"vaultId"`
 	Path       string `json:"path" form:"path"`
+	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
 	Content    string `json:"content" form:"content"`
+	ClientName string `json:"clientName" form:"clientName"`
+	Version    int64  `json:"version" form:"version"`
+	CreatedAt  string `json:"createdAt" form:"createdAt"`
+}
+
+type NoteHistoryNoContent struct {
+	ID         int64  `json:"id" form:"id"`
+	NoteID     int64  `json:"noteId" form:"noteId"`
+	VaultID    int64  `json:"vaultId" form:"vaultId"`
+	Path       string `json:"path" form:"path"`
+	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
 	ClientName string `json:"clientName" form:"clientName"`
 	Version    int64  `json:"version" form:"version"`
 	CreatedAt  string `json:"createdAt" form:"createdAt"`
@@ -37,20 +52,37 @@ type NoteHistory struct {
 
 // NoteHistoryListRequestParams 笔记历史列表请求参数
 type NoteHistoryListRequestParams struct {
-	NoteID int64 `json:"noteId" form:"noteId" binding:"required"`
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
 // NoteHistoryList 获取指定笔记的历史版本列表
-func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestParams, pager *app.Pager) ([]*NoteHistory, int64, error) {
+func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestParams, pager *app.Pager) ([]*NoteHistoryNoContent, int64, error) {
 
-	list, count, err := svc.dao.NoteHistoryListByNoteId(params.NoteID, pager.Page, pager.PageSize, uid)
+	// get note id
+	note, err := svc.NoteGet(uid, &NoteGetRequestParams{
+		Vault:    params.Vault,
+		Path:     params.Path,
+		PathHash: params.PathHash,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var results []*NoteHistory
+	if note == nil {
+		return nil, 0, fmt.Errorf("note not found")
+	}
+
+	list, count, err := svc.dao.NoteHistoryListByNoteId(note.ID, pager.Page, pager.PageSize, uid)
+	if err != nil {
+		return nil, 0, err
+	}
+	global.Dump(list)
+
+	var results []*NoteHistoryNoContent
 	for _, m := range list {
-		results = append(results, convert.StructAssign(m, &NoteHistory{}).(*NoteHistory))
+		results = append(results, convert.StructAssign(m, &NoteHistoryNoContent{}).(*NoteHistoryNoContent))
 	}
 	return results, count, nil
 }
@@ -70,7 +102,7 @@ func (svc *Service) NoteHistoryGet(uid int64, id int64) (*NoteHistory, error) {
 func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	note, err := svc.dao.NoteGetById(noteID, uid)
 	if err != nil {
-		return err
+		return fmt.Errorf("svc.dao.NoteGetById: %w", err)
 	}
 
 	if note.Content == note.ContentLastSnapshot {
@@ -84,7 +116,7 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 
 	latestVersion, err := svc.dao.NoteHistoryGetLatestVersion(note.ID, uid)
 	if err != nil {
-		return err
+		return fmt.Errorf("svc.dao.NoteHistoryGetLatestVersion: %w", err)
 	}
 
 	params := &dao.NoteHistorySet{
@@ -95,11 +127,13 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 		Content:    note.ContentLastSnapshot, // 快照
 		ClientName: note.ClientName,
 		Version:    latestVersion + 1,
+		CreatedAt:  note.UpdatedAt,
+		UpdatedAt:  note.UpdatedAt,
 	}
 
 	_, err = svc.dao.NoteHistoryCreate(params, uid)
 	if err != nil {
-		return err
+		return fmt.Errorf("svc.dao.NoteHistoryCreate: %w", err)
 	}
 
 	// 更新 ContentLastSnapshot
