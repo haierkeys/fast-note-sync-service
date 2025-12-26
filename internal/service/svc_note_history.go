@@ -1,8 +1,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -42,35 +40,8 @@ type NoteHistoryListRequestParams struct {
 	NoteID int64 `json:"noteId" form:"noteId" binding:"required"`
 }
 
-// NoteHistorySave 手动保存笔记历史版本（直接保存全量内容）
-func (svc *Service) NoteHistorySave(uid int64, note *dao.Note, clientName string) error {
-	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
-	})
-
-	latestVersion, err := svc.dao.NoteHistoryGetLatestVersion(note.ID, uid)
-	if err != nil {
-		return err
-	}
-
-	params := &dao.NoteHistorySet{
-		NoteID:     note.ID,
-		VaultID:    note.VaultID,
-		Path:       note.Path,
-		Content:    note.Content,
-		ClientName: note.ClientName,
-		Version:    latestVersion + 1,
-	}
-
-	_, err = svc.dao.NoteHistoryCreate(params, uid)
-	return err
-}
-
 // NoteHistoryList 获取指定笔记的历史版本列表
 func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestParams, pager *app.Pager) ([]*NoteHistory, int64, error) {
-	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
-	})
 
 	list, count, err := svc.dao.NoteHistoryListByNoteId(params.NoteID, pager.Page, pager.PageSize, uid)
 	if err != nil {
@@ -86,9 +57,6 @@ func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestPar
 
 // NoteHistoryGet 获取指定 ID 的笔记历史详情
 func (svc *Service) NoteHistoryGet(uid int64, id int64) (*NoteHistory, error) {
-	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
-	})
 
 	history, err := svc.dao.NoteHistoryGetById(id, uid)
 	if err != nil {
@@ -122,7 +90,8 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	params := &dao.NoteHistorySet{
 		NoteID:     note.ID,
 		VaultID:    note.VaultID,
-		Path:       patchText,                // 存储diff补丁
+		Path:       note.Path, // 存储diff补丁
+		DiffPatch:  patchText,
 		Content:    note.ContentLastSnapshot, // 快照
 		ClientName: note.ClientName,
 		Version:    latestVersion + 1,
@@ -141,8 +110,5 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 func (svc *Service) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {
 
 	// 3. 迁移历史记录
-	svc.SF.Do(fmt.Sprintf("NoteHistory_%d", uid), func() (any, error) {
-		return nil, svc.dao.NoteHistoryAutoMigrate(uid)
-	})
 	return svc.dao.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
 }

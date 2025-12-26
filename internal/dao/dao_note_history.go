@@ -15,6 +15,7 @@ type NoteHistory struct {
 	NoteID     int64  `json:"noteId" form:"noteId"`
 	VaultID    int64  `json:"vaultId" form:"vaultId"`
 	Path       string `json:"path" form:"path"`
+	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
 	Content    string `json:"content" form:"content"`
 	ClientName string `json:"clientName" form:"clientName"`
 	Version    int64  `json:"version" form:"version"`
@@ -26,22 +27,15 @@ type NoteHistorySet struct {
 	NoteID     int64  `json:"noteId" form:"noteId"`
 	VaultID    int64  `json:"vaultId" form:"vaultId"`
 	Path       string `json:"path" form:"path"`
+	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
 	Content    string `json:"content" form:"content"`
 	ClientName string `json:"clientName" form:"clientName"`
 	Version    int64  `json:"version" form:"version"`
 }
 
-func (d *Dao) NoteHistoryAutoMigrate(uid int64) error {
-	key := "user_" + strconv.FormatInt(uid, 10)
-	b := d.UseKey(key)
-	return model.AutoMigrate(b, "NoteHistory")
-}
-
 func (d *Dao) noteHistory(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(func(db *gorm.DB) {
-		model.AutoMigrate(db, "NoteHistory")
-	}, key)
+	return d.UseQuery(key)
 }
 
 func (d *Dao) NoteHistoryCreate(params *NoteHistorySet, uid int64) (*NoteHistory, error) {

@@ -17,9 +17,9 @@ type Note struct {
 	PathHash            string     `gorm:"column:path_hash;index:idx_vault_id_path_hash,priority:2" json:"pathHash" form:"pathHash"`
 	Content             string     `gorm:"column:content" json:"content" form:"content"`
 	ContentHash         string     `gorm:"column:content_hash" json:"contentHash" form:"contentHash"`
-	ContentLastSnapshot string     `gorm:"column:content_last_snapshot" json:"contentLastSnapshot" form:"contentLastSnapshot"`
+	ContentLastSnapshot string     `gorm:"column:content_last_snapshot;not null" json:"contentLastSnapshot" form:"contentLastSnapshot"`
 	Version             int64      `gorm:"column:version;default:1" json:"version" form:"version"`
-	ClientName          string     `gorm:"column:client_name" json:"clientName" form:"clientName"`
+	ClientName          string     `gorm:"column:client_name;not null" json:"clientName" form:"clientName"`
 	Size                int64      `gorm:"column:size;default:0" json:"size" form:"size"`
 	Ctime               int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime               int64      `gorm:"column:mtime;default:0" json:"mtime" form:"mtime"`

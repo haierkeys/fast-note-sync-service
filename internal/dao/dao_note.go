@@ -8,7 +8,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
-	"gorm.io/gorm"
 )
 
 type Note struct {
@@ -44,21 +43,6 @@ type NoteSet struct {
 	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
-// NoteAutoMigrate 自动迁移笔记表
-// 函数名: NoteAutoMigrate
-// 函数使用说明: 为指定用户初始化笔记表,确保表结构存在。
-// 参数说明:
-//   - uid int64: 用户ID
-//
-// 返回值说明:
-//   - error: 出错时返回错误
-
-func (d *Dao) NoteAutoMigrate(uid int64) error {
-	key := "user_" + strconv.FormatInt(uid, 10)
-	b := d.UseKey(key)
-	return model.AutoMigrate(b, "Note")
-}
-
 // note 获取笔记查询对象
 // 函数名: note
 // 函数使用说明: 获取指定用户的笔记表查询对象,内部方法。
@@ -69,11 +53,7 @@ func (d *Dao) NoteAutoMigrate(uid int64) error {
 //   - *query.Query: 查询对象
 func (d *Dao) note(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(
-		func(g *gorm.DB) {
-			model.AutoMigrate(g, "Note")
-		}, key,
-	)
+	return d.UseQuery(key)
 }
 
 // NoteGetByPathHash 根据路径哈希获取笔记

@@ -115,9 +115,6 @@ func (svc *Service) FileGet(uid int64, params *FileGetParams) (*File, error) {
 		return nil, err
 	}
 	vaultID = vID.(int64)
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
 	file, err := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
@@ -149,14 +146,6 @@ func (svc *Service) FileUpdateCheck(uid int64, params *FileUpdateCheckParams) (s
 		return "", nil, err
 	}
 	vaultID = vID.(int64)
-
-	// 检查数据表是否存在
-	_, err, _ = svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
-	if err != nil {
-		return "", nil, err
-	}
 
 	if file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid); file != nil {
 		fileSvc := convert.StructAssign(file, &File{}).(*File)
@@ -219,10 +208,6 @@ func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtim
 		Mtime:       params.Mtime,
 		Ctime:       params.Ctime,
 	}
-
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
 
 	file, _ := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
 	if file != nil {
@@ -289,10 +274,6 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 	}
 	vaultID = vID.(int64)
 
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
-
 	file, err := svc.dao.FileGetByPathHash(params.PathHash, vaultID, uid)
 	if err != nil {
 		return nil, err
@@ -345,10 +326,6 @@ func (svc *Service) FileList(uid int64, params *FileListParams, pager *app.Pager
 	}
 	vaultID = vID.(int64)
 
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
-
 	files, err := svc.dao.FileList(vaultID, pager.Page, pager.PageSize, uid)
 	if err != nil {
 		return nil, 0, err
@@ -387,10 +364,6 @@ func (svc *Service) FileListByLastTime(uid int64, params *FileSyncParams) ([]*Fi
 		return nil, err
 	}
 	vaultID = vID.(int64)
-
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
 
 	files, err := svc.dao.FileListByUpdatedTimestamp(params.LastTime, vaultID, uid)
 
@@ -454,10 +427,6 @@ func (svc *Service) FileCleanup(uid int64) error {
 	// 计算截止时间戳 (当前时间 - 保留时间)
 	// 注意: UpdatedTimestamp 是毫秒级时间戳
 	cutoffTime := time.Now().Add(-retentionDuration).UnixMilli()
-
-	svc.SF.Do(fmt.Sprintf("File_%d", uid), func() (any, error) {
-		return nil, svc.dao.FileAutoMigrate(uid)
-	})
 
 	return svc.dao.FileDeletePhysicalByTime(cutoffTime, uid)
 }

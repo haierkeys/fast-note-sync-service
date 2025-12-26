@@ -16,7 +16,7 @@ type TempFileCleanupTask struct {
 
 // Name 任务名称
 func (t *TempFileCleanupTask) Name() string {
-	return "TempDirStartCleanupTask"
+	return "TempDirStartCleanup"
 }
 
 // LoopInterval 执行间隔 (0 表示不进行周期性执行)
@@ -31,11 +31,7 @@ func (t *TempFileCleanupTask) IsStartupRun() bool {
 
 // Run 执行清理任务
 func (t *TempFileCleanupTask) Run(ctx context.Context) error {
-	status := "scheduled"
-	if t.firstRun {
-		status = "first-run"
-		t.firstRun = false
-	}
+	t.firstRun = false
 
 	tempDir := global.Config.App.UploadSavePath
 	if tempDir == "" {
@@ -44,27 +40,43 @@ func (t *TempFileCleanupTask) Run(ctx context.Context) error {
 
 	var err error
 
-	global.Logger.Info("starting temp file cleanup ["+status+"]", zap.String("path", tempDir))
-
 	// 检查目录是否存在
 	if _, err = os.Stat(tempDir); os.IsNotExist(err) {
-		global.Logger.Error(t.Name()+" failed ["+status+"]: temp directory does not exist, skipping cleanup", zap.String("path", tempDir))
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.String("path", tempDir),
+			zap.String("reason", "temp directory does not exist"),
+			zap.String("msg", "failed"))
 		return err
 	}
 
 	// 删除整个目录
 	if err = os.RemoveAll(tempDir); err != nil {
-		global.Logger.Error(t.Name()+" failed ["+status+"]: failed to remove temp directory", zap.String("path", tempDir), zap.Error(err))
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.String("path", tempDir),
+			zap.String("msg", "failed"),
+			zap.Error(err))
 		return err
 	}
 
 	// 重新创建目录
 	if err = os.MkdirAll(tempDir, 0754); err != nil {
-		global.Logger.Error(t.Name()+" failed ["+status+"]: failed to recreate temp directory", zap.String("path", tempDir), zap.Error(err))
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.String("path", tempDir),
+			zap.String("msg", "failed"),
+			zap.Error(err))
 		return err
 	}
 
-	global.Logger.Info(t.Name() + " completed successfully [" + status + "]")
+	global.Logger.Info("task log",
+		zap.String("task", t.Name()),
+		zap.String("type", "startupRun"),
+		zap.String("msg", "success"))
 
 	return nil
 }

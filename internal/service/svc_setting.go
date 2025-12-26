@@ -80,10 +80,6 @@ func (svc *Service) SettingUpdateCheck(uid int64, params *SettingUpdateCheckRequ
 	}
 	vaultID := vID.(int64)
 
-	svc.SF.Do(fmt.Sprintf("Setting_%d", uid), func() (any, error) {
-		return nil, svc.dao.SettingAutoMigrate(uid)
-	})
-
 	if setting, _ := svc.dao.SettingGetByPathHash(params.PathHash, vaultID, uid); setting != nil {
 		settingSvc := convert.StructAssign(setting, &Setting{}).(*Setting)
 		if setting.ContentHash == params.ContentHash {
@@ -103,9 +99,6 @@ func (svc *Service) SettingUpdateCheck(uid int64, params *SettingUpdateCheckRequ
 
 // SettingModifyOrCreate 创建或修改配置
 func (svc *Service) SettingModifyOrCreate(uid int64, params *SettingModifyOrCreateRequestParams, mtimeCheck bool) (bool, *Setting, error) {
-	svc.SF.Do(fmt.Sprintf("Setting_%d", uid), func() (any, error) {
-		return nil, svc.dao.SettingAutoMigrate(uid)
-	})
 
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
@@ -161,9 +154,6 @@ func (svc *Service) SettingModifyOrCreate(uid int64, params *SettingModifyOrCrea
 
 // SettingDelete 删除配置
 func (svc *Service) SettingDelete(uid int64, params *SettingDeleteRequestParams) (*Setting, error) {
-	svc.SF.Do(fmt.Sprintf("Setting_%d", uid), func() (any, error) {
-		return nil, svc.dao.SettingAutoMigrate(uid)
-	})
 
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)
@@ -195,9 +185,6 @@ func (svc *Service) SettingDelete(uid int64, params *SettingDeleteRequestParams)
 
 // SettingListByLastTime 根据最后更新时间获取配置列表
 func (svc *Service) SettingListByLastTime(uid int64, params *SettingSyncRequestParams) ([]*Setting, error) {
-	svc.SF.Do(fmt.Sprintf("Setting_%d", uid), func() (any, error) {
-		return nil, svc.dao.SettingAutoMigrate(uid)
-	})
 
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
 		return svc.VaultIdGetByName(params.Vault, uid)

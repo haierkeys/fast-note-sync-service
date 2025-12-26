@@ -49,3 +49,39 @@ func (svc *Service) WithSF(sf *singleflight.Group) *Service {
 func (svc *Service) Ctx() *gin.Context {
 	return svc.ctx
 }
+
+// ExposeAutoMigrate 暴露自动迁移接口
+func (svc *Service) ExposeAutoMigrate() error {
+
+	uids, err := svc.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	for _, uid := range uids {
+		err := svc.dao.AutoMigrate(uid, "")
+		if err != nil {
+			break
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ExposeExecuteSQL 暴露执行 SQL 接口
+func (svc *Service) ExposeExecuteSQL(sql string) error {
+	uids, err := svc.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+	for _, uid := range uids {
+		// 忽略单个用户的清理错误，继续清理下一个
+		db := svc.dao.Query(uid)
+		db.Exec(sql)
+	}
+	return nil
+}

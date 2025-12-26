@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 
@@ -51,6 +53,10 @@ func (d *Dao) Use(f func(*gorm.DB), key ...string) *query.Query {
 	db := d.UseKey(key...)
 	f(db)
 	return query.Use(db)
+}
+
+func (d *Dao) UseQuery(key ...string) *query.Query {
+	return query.Use(d.UseKey(key...))
 }
 
 // UseKey 获取数据库连接
@@ -182,4 +188,15 @@ func useDia(c global.Database) gorm.Dialector {
 	}
 	return nil
 
+}
+
+func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
+	var b *gorm.DB
+	if uid > 0 {
+		key := "user_" + strconv.FormatInt(uid, 10)
+		b = d.UseKey(key)
+	} else {
+		b = d.Db
+	}
+	return model.AutoMigrate(b, modelKey)
 }

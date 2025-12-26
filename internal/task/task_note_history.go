@@ -30,7 +30,7 @@ func NewNoteHistoryTask() (Task, error) {
 
 // Name 返回任务名称
 func (t *NoteHistoryTask) Name() string {
-	return "NoteHistoryTask"
+	return "NoteHistory"
 }
 
 // LoopInterval 返回执行间隔，此处为0，因为由 Run 内部循环控制
@@ -45,7 +45,6 @@ func (t *NoteHistoryTask) IsStartupRun() bool {
 
 // Run 启动任务主循环，处理通道中的消息
 func (t *NoteHistoryTask) Run(ctx context.Context) error {
-	global.Logger.Info("NoteHistoryTask started")
 
 	// 恢复中断的任务
 	go t.resumeInterruptedTasks(ctx)
@@ -58,7 +57,11 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 			t.processMigrate(msg.OldNoteID, msg.NewNoteID, msg.UID)
 		case <-ctx.Done():
 			t.cleanup()
-			global.Logger.Info("NoteHistoryTask stopped")
+			global.Logger.Info("task log",
+				zap.String("task", t.Name()),
+				zap.String("type", "startupRun"),
+				zap.String("event", "stopped"),
+				zap.String("msg", "success"))
 			return nil
 		}
 	}
@@ -69,14 +72,24 @@ func (t *NoteHistoryTask) resumeInterruptedTasks(ctx context.Context) {
 	svc := service.NewBackground(ctx)
 	uids, err := svc.GetAllUserUIDs()
 	if err != nil {
-		global.Logger.Error("NoteHistoryTask resume failed to get uids", zap.Error(err))
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.String("reason", "failed to get uids"),
+			zap.String("msg", "failed"),
+			zap.Error(err))
 		return
 	}
 
 	for _, uid := range uids {
 		notes, err := svc.NoteListNeedSnapshot(uid)
 		if err != nil {
-			global.Logger.Error("NoteHistoryTask resume failed to get notes", zap.Int64("uid", uid), zap.Error(err))
+			global.Logger.Error("task log",
+				zap.String("task", t.Name()),
+				zap.String("type", "startupRun"),
+				zap.String("msg", "failed"),
+				zap.Int64("uid", uid),
+				zap.Error(err))
 			continue
 		}
 		for _, note := range notes {
@@ -116,14 +129,21 @@ func (t *NoteHistoryTask) process(noteID, uid int64, key string) {
 	svc := service.NewBackground(context.Background())
 	err := svc.NoteHistoryProcessDelay(noteID, uid)
 	if err != nil {
-		global.Logger.Error("NoteHistoryTask process failed",
+		global.Logger.Error("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("noteID", noteID),
 			zap.Int64("uid", uid),
+			zap.String("reason", "process failed"),
+			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Debug("NoteHistoryTask process success",
+		global.Logger.Debug("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("noteID", noteID),
-			zap.Int64("uid", uid))
+			zap.Int64("uid", uid),
+			zap.String("msg", "success"))
 	}
 }
 
@@ -144,29 +164,45 @@ func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
 
 	err := svc.NoteMigrate(oldNoteID, newNoteID, uid)
 	if err != nil {
-		global.Logger.Error("NoteHistoryTask NoteMigrate failed",
+		global.Logger.Error("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
 			zap.Int64("newNoteID", newNoteID),
 			zap.Int64("uid", uid),
+			zap.String("reason", "NoteMigrate failed"),
+			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Debug("NoteHistoryTask HistoryMigrate success",
+		global.Logger.Debug("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
 			zap.Int64("newNoteID", newNoteID),
-			zap.Int64("uid", uid))
+			zap.Int64("uid", uid),
+			zap.String("event", "HistoryMigrate success"),
+			zap.String("msg", "success"))
 	}
 
 	err = svc.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
 	if err != nil {
-		global.Logger.Error("NoteHistoryTask processMigrate failed",
+		global.Logger.Error("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
 			zap.Int64("newNoteID", newNoteID),
 			zap.Int64("uid", uid),
+			zap.String("reason", "processMigrate failed"),
+			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Debug("NoteHistoryTask processMigrate success",
+		global.Logger.Debug("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
 			zap.Int64("newNoteID", newNoteID),
-			zap.Int64("uid", uid))
+			zap.Int64("uid", uid),
+			zap.String("event", "processMigrate success"),
+			zap.String("msg", "success"))
 	}
 }

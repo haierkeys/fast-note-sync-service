@@ -45,25 +45,25 @@ func NewDbNoteCleanupTask() (Task, error) {
 
 // Name 返回任务名称
 func (t *CleanupTask) Name() string {
-	return "DbNoteCleanupTask"
+	return "DbNoteCleanup"
 }
 
 // Run 执行清理任务
 func (t *CleanupTask) Run(ctx context.Context) error {
 	svc := service.NewBackground(ctx)
-
-	status := "scheduled"
-	if t.firstRun {
-		status = "first-run"
-		t.firstRun = false
-	}
-
 	err := svc.NoteCleanupAll()
 
 	if err != nil {
-		global.Logger.Error(t.Name()+" failed ["+status+"]: ", zap.Error(err))
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "loopRun"),
+			zap.String("msg", "failed"),
+			zap.Error(err))
 	} else {
-		global.Logger.Info(t.Name() + " completed successfully [" + status + "]")
+		global.Logger.Info("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "loopRun"),
+			zap.String("msg", "success"))
 	}
 
 	return err

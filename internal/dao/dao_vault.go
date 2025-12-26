@@ -36,17 +36,7 @@ type VaultSet struct {
 //   - *query.Query: 查询对象
 func (d *Dao) vault(uid int64) *query.Query {
 	key := "user_" + strconv.FormatInt(uid, 10)
-	return d.Use(
-		func(g *gorm.DB) {
-			model.AutoMigrate(g, "Vault")
-		}, key,
-	)
-}
-
-func (d *Dao) VaultAutoMigrate(uid int64) error {
-	key := "user_" + strconv.FormatInt(uid, 10)
-	b := d.UseKey(key)
-	return model.AutoMigrate(b, "Vault")
+	return d.UseQuery(key)
 }
 
 func (d *Dao) Query(uid int64) *gorm.DB {

@@ -44,7 +44,7 @@ func (s *Scheduler) Start() {
 		return
 	}
 
-	s.logger.Info("scheduler starting", zap.Int("task_count", len(s.tasks)))
+	s.logger.Info("tasks starting ", zap.Int("count", len(s.tasks)))
 
 	for _, task := range s.tasks {
 		s.startTask(task)
@@ -53,24 +53,24 @@ func (s *Scheduler) Start() {
 
 // startTask 启动单个任务
 func (s *Scheduler) startTask(task Task) {
-	s.logger.Info("starting task", zap.String("task_name", task.Name()), zap.Duration("interval", task.LoopInterval()))
 
 	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
 
 		// 如果任务需要立即执行
 		if task.IsStartupRun() {
+			s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("startupRun", true))
 			go func() {
 				if err := task.Run(context.Background()); err != nil {
-					s.logger.Error("task execution error",
-						zap.String("task_name", task.Name()),
+					s.logger.Error("task running error",
+						zap.String("name", task.Name()),
+						zap.Bool("startupRun", true),
 						zap.Error(err))
 				}
 			}()
 		}
 
 		if task.LoopInterval() <= 0 {
-			s.logger.Info("task scheduled only for immediate execution (interval <= 0)", zap.String("task_name", task.Name()))
 			return
 		}
 
@@ -81,13 +81,15 @@ func (s *Scheduler) startTask(task Task) {
 		for {
 			select {
 			case <-ticker.C:
+				s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("loopRun", true))
 				if err := task.Run(context.Background()); err != nil {
-					s.logger.Error("task execution error",
-						zap.String("task_name", task.Name()),
+					s.logger.Error("task running error",
+						zap.String("name", task.Name()),
+						zap.Bool("loopRun", true),
 						zap.Error(err))
 				}
 			case <-closeSignal:
-				s.logger.Info("task stopped", zap.String("task_name", task.Name()))
+				s.logger.Info("task stopped", zap.String("name", task.Name()), zap.Bool("loopRun", true))
 				return
 			}
 		}

@@ -29,7 +29,7 @@ func (m *Manager) RegisterTasks() error {
 		return nil
 	}
 
-	m.logger.Info("registering tasks from registry", zap.Int("factory_count", len(factories)))
+	m.logger.Info("tasks", zap.Int("count", len(factories)))
 
 	for _, factory := range factories {
 		task, err := factory()
@@ -38,9 +38,22 @@ func (m *Manager) RegisterTasks() error {
 			continue
 		}
 
+		loopInterval := task.LoopInterval()
+		isStartupRun := task.IsStartupRun()
+
+		if isStartupRun && loopInterval <= 0 {
+			m.logger.Info("task registered", zap.String("name", task.Name()), zap.Bool("once", true))
+		} else if isStartupRun && loopInterval > 0 {
+			m.logger.Info("task registered", zap.String("name", task.Name()), zap.Bool("once", true), zap.Duration("loop", loopInterval))
+		} else if !isStartupRun && loopInterval > 0 {
+			m.logger.Info("task registered", zap.String("name", task.Name()), zap.Bool("once", false), zap.Duration("loop", loopInterval))
+		} else {
+			m.logger.Info("task skipped", zap.String("name", task.Name()))
+			continue
+		}
+
 		if task != nil {
 			m.scheduler.AddTask(task)
-			m.logger.Info("task registered successfully", zap.String("task_name", task.Name()))
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 	"gorm.io/gorm"
@@ -53,7 +54,16 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
 }
 
 // Run 执行升级
-func (m *MigrationManager) Run() error {
+func (m *MigrationManager) Run(ctx context.Context) error {
+	m.logger.Info("Migration started")
+	global.Dump(111)
+	svc := service.NewBackground(ctx)
+	err := svc.ExposeAutoMigrate()
+	global.Dump(err)
+	if err != nil {
+		return fmt.Errorf("failed to dao db auto migrate: %w", err)
+	}
+
 	// 确保 schema_version 表存在
 	if err := m.db.AutoMigrate(&SchemaVersion{}); err != nil {
 		return fmt.Errorf("failed to create schema_version table: %w", err)
@@ -224,6 +234,8 @@ func Execute() error {
 		return fmt.Errorf("logger not initialized")
 	}
 
+	ctx := context.Background()
+
 	manager := NewMigrationManager(global.DBEngine, global.Logger)
-	return manager.Run()
+	return manager.Run(ctx)
 }

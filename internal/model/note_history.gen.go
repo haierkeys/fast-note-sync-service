@@ -15,6 +15,7 @@ type NoteHistory struct {
 	VaultID    int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
 	Path       string     `gorm:"column:path" json:"path" form:"path"`
 	Content    string     `gorm:"column:content" json:"content" form:"content"`
+	DiffPatch  string     `gorm:"column:diff_patch" json:"diffPatch" form:"diffPatch"`
 	ClientName string     `gorm:"column:client_name" json:"clientName" form:"clientName"`
 	Version    int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:1" json:"version" form:"version"`
 	CreatedAt  timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`

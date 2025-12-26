@@ -78,7 +78,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 			updated_at DATETIME DEFAULT NULL
 		)
 	`
-	if err := svc.VaultMigrateQuery(createNewTable, true); err != nil {
+	if err := svc.ExposeExecuteSQL(createNewTable); err != nil {
 		global.Logger.Error("Step 1 failed", zap.Error(err))
 		return err
 	}
@@ -91,7 +91,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 		SELECT id, vault, note_count, size as note_size, file_count, file_size, created_at, updated_at
 		FROM vault
 	`
-	if err := svc.VaultMigrateQuery(copyData); err != nil {
+	if err := svc.ExposeExecuteSQL(copyData); err != nil {
 		global.Logger.Error("Step 2 failed", zap.Error(err))
 		return err
 	}
@@ -99,7 +99,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 
 	// 3. 删除旧表
 	global.Logger.Info("Step 3: Dropping old vault table")
-	if err := svc.VaultMigrateQuery("DROP TABLE vault"); err != nil {
+	if err := svc.ExposeExecuteSQL("DROP TABLE vault"); err != nil {
 		global.Logger.Error("Step 3 failed", zap.Error(err))
 		return err
 	}
@@ -108,7 +108,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 
 	// 4. 重命名新表
 	global.Logger.Info("Step 4: Renaming vault_new to vault")
-	if err := svc.VaultMigrateQuery("ALTER TABLE vault_new RENAME TO vault"); err != nil {
+	if err := svc.ExposeExecuteSQL("ALTER TABLE vault_new RENAME TO vault"); err != nil {
 		global.Logger.Error("Step 4 failed", zap.Error(err))
 		return err
 	}
@@ -117,7 +117,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 	// 5. 重建索引
 	global.Logger.Info("Step 5: Recreating index idx_vault_uid")
 	createIndex := `CREATE INDEX idx_vault_uid ON vault (vault ASC)`
-	if err := svc.VaultMigrateQuery(createIndex); err != nil {
+	if err := svc.ExposeExecuteSQL(createIndex); err != nil {
 		global.Logger.Error("Step 5 failed", zap.Error(err))
 		return err
 	}

@@ -33,6 +33,7 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 	_noteHistory.VaultID = field.NewInt64(tableName, "vault_id")
 	_noteHistory.Path = field.NewString(tableName, "path")
 	_noteHistory.Content = field.NewString(tableName, "content")
+	_noteHistory.DiffPatch = field.NewString(tableName, "diff_patch")
 	_noteHistory.ClientName = field.NewString(tableName, "client_name")
 	_noteHistory.Version = field.NewInt64(tableName, "version")
 	_noteHistory.CreatedAt = field.NewField(tableName, "created_at")
@@ -52,6 +53,7 @@ type noteHistory struct {
 	VaultID    field.Int64
 	Path       field.String
 	Content    field.String
+	DiffPatch  field.String
 	ClientName field.String
 	Version    field.Int64
 	CreatedAt  field.Field
@@ -77,6 +79,7 @@ func (n *noteHistory) updateTableName(table string) *noteHistory {
 	n.VaultID = field.NewInt64(table, "vault_id")
 	n.Path = field.NewString(table, "path")
 	n.Content = field.NewString(table, "content")
+	n.DiffPatch = field.NewString(table, "diff_patch")
 	n.ClientName = field.NewString(table, "client_name")
 	n.Version = field.NewInt64(table, "version")
 	n.CreatedAt = field.NewField(table, "created_at")
@@ -107,12 +110,13 @@ func (n *noteHistory) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *noteHistory) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 9)
+	n.fieldMap = make(map[string]field.Expr, 10)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["note_id"] = n.NoteID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["content"] = n.Content
+	n.fieldMap["diff_patch"] = n.DiffPatch
 	n.fieldMap["client_name"] = n.ClientName
 	n.fieldMap["version"] = n.Version
 	n.fieldMap["created_at"] = n.CreatedAt
