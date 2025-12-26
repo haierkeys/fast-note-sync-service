@@ -9,28 +9,28 @@ import (
 	"go.uber.org/zap"
 )
 
-// TempFileCleanupTask 临时文件清理任务
-type TempFileCleanupTask struct {
+// FileSessionTempCleanTask 临时文件清理任务
+type FileSessionTempCleanTask struct {
 	firstRun bool
 }
 
 // Name 任务名称
-func (t *TempFileCleanupTask) Name() string {
-	return "TempDirStartCleanup"
+func (t *FileSessionTempCleanTask) Name() string {
+	return "FileSessionTempClean"
 }
 
 // LoopInterval 执行间隔 (0 表示不进行周期性执行)
-func (t *TempFileCleanupTask) LoopInterval() time.Duration {
+func (t *FileSessionTempCleanTask) LoopInterval() time.Duration {
 	return 0
 }
 
 // IsStartupRun 是否立即执行一次
-func (t *TempFileCleanupTask) IsStartupRun() bool {
+func (t *FileSessionTempCleanTask) IsStartupRun() bool {
 	return true
 }
 
 // Run 执行清理任务
-func (t *TempFileCleanupTask) Run(ctx context.Context) error {
+func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 	t.firstRun = false
 
 	tempDir := global.Config.App.TempPath
@@ -81,13 +81,13 @@ func (t *TempFileCleanupTask) Run(ctx context.Context) error {
 	return nil
 }
 
-// NewTempFileCleanupTask 创建临时文件清理任务
-func NewTempFileCleanupTask() (Task, error) {
-	return &TempFileCleanupTask{
+// NewFileSessionTempCleanTask 创建临时文件清理任务
+func NewFileSessionTempCleanTask() (Task, error) {
+	return &FileSessionTempCleanTask{
 		firstRun: true,
 	}, nil
 }
 
 func init() {
-	Register(NewTempFileCleanupTask)
+	Register(NewFileSessionTempCleanTask)
 }
