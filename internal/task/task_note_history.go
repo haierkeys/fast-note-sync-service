@@ -69,7 +69,7 @@ func (t *NoteHistoryTask) cleanup() {
 
 // handleNoteHistory 处理笔记历史记录
 func (t *NoteHistoryTask) handleNoteHistory(msg service.NoteHistoryMsg) {
-	t.handleNoteHistoryWithDelay(msg, 20*time.Second)
+	t.handleNoteHistoryWithDelay(msg, 1*time.Second)
 }
 
 // handleNoteHistoryWithDelay 处理笔记历史记录并设置自定义定时器延迟
@@ -84,7 +84,7 @@ func (t *NoteHistoryTask) handleNoteHistoryWithDelay(msg service.NoteHistoryMsg,
 		timer.Stop()
 	}
 
-	randomMs := time.Duration(rand.Intn(100)+10) * 100 * time.Millisecond
+	randomMs := time.Duration(rand.Intn(100)+10) * 10 * time.Millisecond
 
 	// 正常任务延迟20秒 + (1-10)秒随机延迟
 	// 启动批处理任务 (1-10)秒随机延迟 + (0-5)秒随机延迟

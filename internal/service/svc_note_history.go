@@ -3,10 +3,10 @@ package service
 import (
 	"fmt"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -28,26 +28,25 @@ func NoteHistoryDelayPush(noteID int64, uid int64) {
 
 // NoteHistory 笔记历史记录展示结构体
 type NoteHistory struct {
-	ID         int64  `json:"id" form:"id"`
-	NoteID     int64  `json:"noteId" form:"noteId"`
-	VaultID    int64  `json:"vaultId" form:"vaultId"`
-	Path       string `json:"path" form:"path"`
-	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
-	Content    string `json:"content" form:"content"`
-	ClientName string `json:"clientName" form:"clientName"`
-	Version    int64  `json:"version" form:"version"`
-	CreatedAt  string `json:"createdAt" form:"createdAt"`
+	ID         int64                 `json:"id" form:"id"`
+	NoteID     int64                 `json:"noteId" form:"noteId"`
+	VaultID    int64                 `json:"vaultId" form:"vaultId"`
+	Path       string                `json:"path" form:"path"`
+	Diffs      []diffmatchpatch.Diff `json:"diffs"`
+	Content    string                `json:"content" form:"content"`
+	ClientName string                `json:"clientName" form:"clientName"`
+	Version    int64                 `json:"version" form:"version"`
+	CreatedAt  timex.Time            `json:"createdAt" form:"createdAt"`
 }
 
 type NoteHistoryNoContent struct {
-	ID         int64  `json:"id" form:"id"`
-	NoteID     int64  `json:"noteId" form:"noteId"`
-	VaultID    int64  `json:"vaultId" form:"vaultId"`
-	Path       string `json:"path" form:"path"`
-	DiffPatch  string `json:"diffPatch" form:"diffPatch"`
-	ClientName string `json:"clientName" form:"clientName"`
-	Version    int64  `json:"version" form:"version"`
-	CreatedAt  string `json:"createdAt" form:"createdAt"`
+	ID         int64      `json:"id" form:"id"`
+	NoteID     int64      `json:"noteId" form:"noteId"`
+	VaultID    int64      `json:"vaultId" form:"vaultId"`
+	Path       string     `json:"path" form:"path"`
+	ClientName string     `json:"clientName" form:"clientName"`
+	Version    int64      `json:"version" form:"version"`
+	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
 }
 
 // NoteHistoryListRequestParams 笔记历史列表请求参数
@@ -78,7 +77,6 @@ func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestPar
 	if err != nil {
 		return nil, 0, err
 	}
-	global.Dump(list)
 
 	var results []*NoteHistoryNoContent
 	for _, m := range list {
@@ -94,7 +92,27 @@ func (svc *Service) NoteHistoryGet(uid int64, id int64) (*NoteHistory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(history, &NoteHistory{}).(*NoteHistory), nil
+
+	dmp := diffmatchpatch.New()
+
+	parsedPatches, _ := dmp.PatchFromText(history.DiffPatch)
+	restoredNewVersion, _ := dmp.PatchApply(parsedPatches, history.Content)
+
+	diffResults := dmp.DiffMain(history.Content, restoredNewVersion, false)
+
+	historySvc := &NoteHistory{
+		ID:         history.ID,
+		NoteID:     history.NoteID,
+		VaultID:    history.VaultID,
+		Path:       history.Path,
+		Diffs:      diffResults,
+		Content:    history.Content,
+		ClientName: history.ClientName,
+		Version:    history.Version,
+		CreatedAt:  history.CreatedAt,
+	}
+
+	return historySvc, nil
 }
 
 // NoteHistoryProcessDelay 延时处理笔记历史（计算 diff 并保存补丁版本）
@@ -128,7 +146,6 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 		ClientName: note.ClientName,
 		Version:    latestVersion + 1,
 		CreatedAt:  note.UpdatedAt,
-		UpdatedAt:  note.UpdatedAt,
 	}
 
 	_, err = svc.dao.NoteHistoryCreate(params, uid)

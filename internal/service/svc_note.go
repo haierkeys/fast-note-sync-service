@@ -130,7 +130,8 @@ type NoteGetRequestParams struct {
 
 // NoteListRequestParams 获取笔记列表的分页参数。
 type NoteListRequestParams struct {
-	Vault string `json:"vault" form:"vault" binding:"required"` // 仓库标识
+	Vault   string `json:"vault" form:"vault" binding:"required"` // 仓库标识
+	Keyword string `json:"keyword" form:"keyword"`                // 搜索关键字
 }
 
 // NoteMigratePush 提交笔记迁移任务
@@ -373,12 +374,12 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 	}
 	vaultID := vID.(int64)
 
-	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid)
+	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid, params.Keyword)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	count, err := svc.dao.NoteListCount(vaultID, uid)
+	count, err := svc.dao.NoteListCount(vaultID, uid, params.Keyword)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -225,17 +225,27 @@ func (d *Dao) NoteUpdateSnapshot(snapshot string, version int64, id int64, uid i
 // 参数说明:
 //   - vaultID int64: 保险库ID
 //   - uid int64: 用户ID
+//   - keyword string: 搜索关键字
 //
 // 返回值说明:
 //   - int64: 笔记数量
 //   - error: 出错时返回错误
-func (d *Dao) NoteListCount(vaultID int64, uid int64) (int64, error) {
+func (d *Dao) NoteListCount(vaultID int64, uid int64, keyword string) (int64, error) {
 	u := d.note(uid).Note
-	count, err := u.WithContext(d.ctx).Where(
+	q := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
 		u.Action.Neq("delete"),
-	).Order(u.CreatedAt).
-		Count()
+	)
+
+	var count int64
+	var err error
+
+	if keyword != "" {
+		key := "%" + keyword + "%"
+		err = q.UnderlyingDB().Where("path LIKE ? OR content LIKE ?", key, key).Count(&count).Error
+	} else {
+		count, err = q.Order(u.CreatedAt).Count()
+	}
 
 	if err != nil {
 		return 0, err
@@ -252,19 +262,34 @@ func (d *Dao) NoteListCount(vaultID int64, uid int64) (int64, error) {
 //   - page int: 页码
 //   - pageSize int: 每页数量
 //   - uid int64: 用户ID
+//   - keyword string: 搜索关键字
 //
 // 返回值说明:
 //   - []*Note: 笔记列表
 //   - error: 出错时返回错误
-func (d *Dao) NoteList(vaultID int64, page int, pageSize int, uid int64) ([]*Note, error) {
+func (d *Dao) NoteList(vaultID int64, page int, pageSize int, uid int64, keyword string) ([]*Note, error) {
 	u := d.note(uid).Note
-	modelList, err := u.WithContext(d.ctx).Where(
+	q := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
 		u.Action.Neq("delete"),
-	).Order(u.Path.Desc(), u.CreatedAt.Desc()).
-		Limit(pageSize).
-		Offset(app.GetPageOffset(page, pageSize)).
-		Find()
+	)
+
+	var modelList []*model.Note
+	var err error
+
+	if keyword != "" {
+		key := "%" + keyword + "%"
+		err = q.UnderlyingDB().Debug().Where("path LIKE ? ", key).
+			Order("path DESC, created_at DESC").
+			Limit(pageSize).
+			Offset(app.GetPageOffset(page, pageSize)).
+			Find(&modelList).Error
+	} else {
+		modelList, err = q.Order(u.Path.Desc(), u.CreatedAt.Desc()).
+			Limit(pageSize).
+			Offset(app.GetPageOffset(page, pageSize)).
+			Find()
+	}
 
 	if err != nil {
 		return nil, err

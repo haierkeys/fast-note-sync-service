@@ -64,7 +64,7 @@ func (d *Dao) NoteHistoryGetById(id int64, uid int64) (*NoteHistory, error) {
 
 func (d *Dao) NoteHistoryListByNoteId(noteId int64, page, pageSize int, uid int64) ([]*NoteHistory, int64, error) {
 	u := d.noteHistory(uid).NoteHistory
-	q := u.WithContext(d.ctx).Debug().Where(u.NoteID.Eq(noteId))
+	q := u.WithContext(d.ctx).Where(u.NoteID.Eq(noteId))
 
 	count, err := q.Count()
 	if err != nil {
