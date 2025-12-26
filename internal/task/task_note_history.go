@@ -36,7 +36,7 @@ func (t *NoteHistoryTask) IsStartupRun() bool {
 func (t *NoteHistoryTask) Run(ctx context.Context) error {
 
 	// 恢复中断的任务
-	go t.resumeInterruptedTasks(ctx)
+	go t.resumeTasks(ctx)
 
 	for {
 		select {
@@ -54,6 +54,16 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+// cleanup 在任务停止时清理所有定时器
+func (t *NoteHistoryTask) cleanup() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, timer := range t.timers {
+		timer.Stop()
+	}
+	t.timers = make(map[string]*time.Timer)
 }
 
 // handleNoteHistory 处理笔记历史记录
@@ -111,52 +121,6 @@ func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string
 	}
 }
 
-// resumeInterruptedTasks 扫描并恢复中断的任务
-func (t *NoteHistoryTask) resumeInterruptedTasks(ctx context.Context) {
-	svc := service.NewBackground(ctx)
-	uids, err := svc.GetAllUserUIDs()
-	if err != nil {
-		global.Logger.Error("task log",
-			zap.String("task", t.Name()),
-			zap.String("type", "startupRun"),
-			zap.String("reason", "failed to get uids"),
-			zap.String("msg", "failed"),
-			zap.Error(err))
-		return
-	}
-
-	for _, uid := range uids {
-		notes, err := svc.NoteListNeedSnapshot(uid)
-		if err != nil {
-			global.Logger.Error("task log",
-				zap.String("task", t.Name()),
-				zap.String("type", "startupRun"),
-				zap.String("msg", "failed"),
-				zap.Int64("uid", uid),
-				zap.Error(err))
-			continue
-		}
-		for i, note := range notes {
-			// 增加微小的错峰延迟，避免瞬间触发大量写事务
-			delay := time.Duration(i%100) * 20 * time.Millisecond
-			t.handleNoteHistoryWithDelay(service.NoteHistoryMsg{
-				NoteID: note.ID,
-				UID:    uid,
-			}, delay)
-		}
-	}
-}
-
-// cleanup 在任务停止时清理所有定时器
-func (t *NoteHistoryTask) cleanup() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	for _, timer := range t.timers {
-		timer.Stop()
-	}
-	t.timers = make(map[string]*time.Timer)
-}
-
 // handleNoteRenameMigrate 处理笔记重命名迁移
 func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int64) {
 
@@ -204,6 +168,42 @@ func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int6
 			zap.Int64("uid", uid),
 			zap.String("event", "processMigrate success"),
 			zap.String("msg", "success"))
+	}
+}
+
+// resumeTasks 扫描并恢复中断的任务
+func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
+	svc := service.NewBackground(ctx)
+	uids, err := svc.GetAllUserUIDs()
+	if err != nil {
+		global.Logger.Error("task log",
+			zap.String("task", t.Name()),
+			zap.String("type", "startupRun"),
+			zap.String("reason", "svc.GetAllUserUIDs"),
+			zap.String("msg", "failed"),
+			zap.Error(err))
+		return
+	}
+
+	for _, uid := range uids {
+		notes, err := svc.NoteListNeedSnapshot(uid)
+		if err != nil {
+			global.Logger.Error("task log",
+				zap.String("task", t.Name()),
+				zap.String("type", "startupRun"),
+				zap.String("msg", "failed"),
+				zap.Int64("uid", uid),
+				zap.Error(err))
+			continue
+		}
+		for i, note := range notes {
+			// 增加微小的错峰延迟，避免瞬间触发大量写事务
+			delay := time.Duration(i%100) * 20 * time.Millisecond
+			t.handleNoteHistoryWithDelay(service.NoteHistoryMsg{
+				NoteID: note.ID,
+				UID:    uid,
+			}, delay)
+		}
 	}
 }
 
