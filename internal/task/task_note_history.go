@@ -41,9 +41,9 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 	for {
 		select {
 		case msg := <-service.NoteHistoryChannel:
-			t.handleMsg(msg)
+			t.handleNoteHistory(msg)
 		case msg := <-service.NoteMigrateChannel:
-			t.processMigrate(msg.OldNoteID, msg.NewNoteID, msg.UID)
+			t.handleNoteRenameMigrate(msg.OldNoteID, msg.NewNoteID, msg.UID)
 		case <-ctx.Done():
 			t.cleanup()
 			global.Logger.Info("task log",
@@ -53,6 +53,61 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 				zap.String("msg", "success"))
 			return nil
 		}
+	}
+}
+
+// handleNoteHistory 处理笔记历史记录
+func (t *NoteHistoryTask) handleNoteHistory(msg service.NoteHistoryMsg) {
+	t.handleNoteHistoryWithDelay(msg, 20*time.Second)
+}
+
+// handleNoteHistoryWithDelay 处理笔记历史记录并设置自定义定时器延迟
+func (t *NoteHistoryTask) handleNoteHistoryWithDelay(msg service.NoteHistoryMsg, baseDelay time.Duration) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	key := fmt.Sprintf("%d_%d", msg.UID, msg.NoteID)
+
+	// 如果已存在定时器，先停止它（重置倒计时）
+	if timer, ok := t.timers[key]; ok {
+		timer.Stop()
+	}
+
+	// 实际延迟为基础延迟 + 30秒固定业务延迟（或者根据需求调整）
+	// 这里我们保持原有的 10 秒逻辑，但在 baseDelay 基础上叠加
+	totalDelay := 10*time.Second + baseDelay
+
+	// 创建定时器
+	t.timers[key] = time.AfterFunc(totalDelay, func() {
+		t.handleNoteHistoryProcess(msg.NoteID, msg.UID, key)
+	})
+}
+
+// handleNoteHistoryProcess 执行实际的历史记录保存逻辑
+func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string) {
+	t.mu.Lock()
+	delete(t.timers, key)
+	t.mu.Unlock()
+
+	// 使用背景上下文创建服务
+	svc := service.NewBackground(context.Background())
+	err := svc.NoteHistoryProcessDelay(noteID, uid)
+	if err != nil {
+		global.Logger.Error("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
+			zap.Int64("noteID", noteID),
+			zap.Int64("uid", uid),
+			zap.String("reason", "process failed"),
+			zap.String("msg", "failed"),
+			zap.Error(err))
+	} else {
+		global.Logger.Info("task log",
+			zap.String("task", "NoteHistory"),
+			zap.String("type", "startupRun"),
+			zap.Int64("noteID", noteID),
+			zap.Int64("uid", uid),
+			zap.String("msg", "success"))
 	}
 }
 
@@ -83,67 +138,12 @@ func (t *NoteHistoryTask) resumeInterruptedTasks(ctx context.Context) {
 		}
 		for i, note := range notes {
 			// 增加微小的错峰延迟，避免瞬间触发大量写事务
-			delay := time.Duration(i%100) * 10 * time.Millisecond
-			t.handleMsgWithDelay(service.NoteHistoryMsg{
+			delay := time.Duration(i%100) * 20 * time.Millisecond
+			t.handleNoteHistoryWithDelay(service.NoteHistoryMsg{
 				NoteID: note.ID,
 				UID:    uid,
 			}, delay)
 		}
-	}
-}
-
-// handleMsg 处理单条消息并管理定时器
-func (t *NoteHistoryTask) handleMsg(msg service.NoteHistoryMsg) {
-	t.handleMsgWithDelay(msg, 10*time.Second)
-}
-
-// handleMsgWithDelay 处理单条消息并设置自定义定时器延迟
-func (t *NoteHistoryTask) handleMsgWithDelay(msg service.NoteHistoryMsg, baseDelay time.Duration) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	key := fmt.Sprintf("%d_%d", msg.UID, msg.NoteID)
-
-	// 如果已存在定时器，先停止它（重置倒计时）
-	if timer, ok := t.timers[key]; ok {
-		timer.Stop()
-	}
-
-	// 实际延迟为基础延迟 + 30秒固定业务延迟（或者根据需求调整）
-	// 这里我们保持原有的 10 秒逻辑，但在 baseDelay 基础上叠加
-	totalDelay := 10*time.Second + baseDelay
-
-	// 创建定时器
-	t.timers[key] = time.AfterFunc(totalDelay, func() {
-		t.process(msg.NoteID, msg.UID, key)
-	})
-}
-
-// process 执行实际的历史记录保存逻辑
-func (t *NoteHistoryTask) process(noteID, uid int64, key string) {
-	t.mu.Lock()
-	delete(t.timers, key)
-	t.mu.Unlock()
-
-	// 使用背景上下文创建服务
-	svc := service.NewBackground(context.Background())
-	err := svc.NoteHistoryProcessDelay(noteID, uid)
-	if err != nil {
-		global.Logger.Error("task log",
-			zap.String("task", "NoteHistory"),
-			zap.String("type", "startupRun"),
-			zap.Int64("noteID", noteID),
-			zap.Int64("uid", uid),
-			zap.String("reason", "process failed"),
-			zap.String("msg", "failed"),
-			zap.Error(err))
-	} else {
-		global.Logger.Debug("task log",
-			zap.String("task", "NoteHistory"),
-			zap.String("type", "startupRun"),
-			zap.Int64("noteID", noteID),
-			zap.Int64("uid", uid),
-			zap.String("msg", "success"))
 	}
 }
 
@@ -157,8 +157,8 @@ func (t *NoteHistoryTask) cleanup() {
 	t.timers = make(map[string]*time.Timer)
 }
 
-// processMigrate 执行历史记录迁移
-func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
+// handleNoteRenameMigrate 处理笔记重命名迁移
+func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int64) {
 
 	svc := service.NewBackground(context.Background())
 
@@ -174,7 +174,7 @@ func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
 			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Debug("task log",
+		global.Logger.Info("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
@@ -196,7 +196,7 @@ func (t *NoteHistoryTask) processMigrate(oldNoteID, newNoteID, uid int64) {
 			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Debug("task log",
+		global.Logger.Info("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
