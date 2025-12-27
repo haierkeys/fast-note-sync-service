@@ -46,6 +46,11 @@ type WebSocketMessage struct {
 	Data []byte `json:"data"` // 文件数据（仅在上传和更新时使用）
 }
 
+type ClientInfoMessage struct {
+	Name    string `json:"name"`    // 客户端名称
+	Version string `json:"version"` // 客户端版本
+}
+
 type WSConfig struct {
 	GWSOption    gws.ServerOption
 	PingInterval time.Duration
@@ -62,6 +67,8 @@ type WebsocketClient struct {
 	SF                  *singleflight.Group // 并发控制：相同 key 的请求只执行一次，其余等待结果
 	BinaryMu            sync.Mutex          // 二进制分块会话的互斥锁，防止并发冲突
 	BinaryChunkSessions map[string]any      // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
+	ClientName          string              // 客户端名称 (例如 "Mac", "Windows", "iPhone")
+	ClientVersion       string              // 客户端版本号 (例如 "1.2.4")
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
@@ -361,6 +368,27 @@ func (w *WS) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
 	}
 }
 
+func (w *WS) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
+	var info ClientInfoMessage
+	if err := sonic.Unmarshal(msg.Data, &info); err != nil {
+		log(LogError, "WS ClientInfo Unmarshal FAILD", zap.Error(err))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+		return
+	}
+
+	c.ClientName = info.Name
+	c.ClientVersion = info.Version
+
+	log(LogInfo, "WS ClientInfo", zap.String("uid", func() string {
+		if c.User != nil {
+			return c.User.ID
+		}
+		return "Guest"
+	}()), zap.String("name", c.ClientName), zap.String("version", c.ClientVersion))
+
+	c.ToResponse(code.Success, "ClientInfo")
+}
+
 func (w *WS) GetClient(conn *gws.Conn) *WebsocketClient {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -491,6 +519,11 @@ func (w *WS) OnMessage(conn *gws.Conn, message *gws.Message) {
 
 	if msg.Type == "Authorization" {
 		w.Authorization(c, &msg)
+		return
+	}
+
+	if msg.Type == "ClientInfo" {
+		w.ClientInfo(c, &msg)
 		return
 	}
 

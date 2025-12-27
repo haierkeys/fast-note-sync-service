@@ -84,7 +84,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx).WithSF(c.SF)
+	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -155,7 +155,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx).WithSF(c.SF)
+	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -209,7 +209,7 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx).WithSF(c.SF)
+	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -244,7 +244,7 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx).WithSF(c.SF)
+	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	// 检查并创建仓库
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -278,7 +278,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
-	svc := service.New(c.Ctx).WithSF(c.SF)
+	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)

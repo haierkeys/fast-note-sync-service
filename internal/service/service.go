@@ -11,10 +11,11 @@ import (
 )
 
 type Service struct {
-	ctx        *gin.Context
-	dao        *dao.Dao
-	SF         *singleflight.Group
-	ClientName string
+	ctx           *gin.Context
+	dao           *dao.Dao
+	SF            *singleflight.Group
+	ClientName    string
+	ClientVersion string
 }
 
 func New(ctx *gin.Context) *Service {
@@ -38,6 +39,11 @@ func NewBackground(ctx context.Context) *Service {
 
 func (svc *Service) WithClientName(clientName string) *Service {
 	svc.ClientName = clientName
+	return svc
+}
+
+func (svc *Service) WithClientVersion(clientVersion string) *Service {
+	svc.ClientVersion = clientVersion
 	return svc
 }
 
