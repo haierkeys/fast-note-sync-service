@@ -69,6 +69,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	//附件上传分块
 	wss.UseBinary(websocket_router.VaultFileSync, websocket_router.FileUploadChunkBinary)
 
+	// WebGUI 配置
+	wss.Use("WebGUIConfigGet", websocket_router.WebGUIConfigGet)
+
 	wss.UseUserVerify(websocket_router.UserInfo)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
@@ -99,6 +102,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 		// 添加服务端版本号接口（无需认证）
 		api.GET("/version", api_router.NewVersion().ServerVersion)
+		api.GET("/webgui/config", api_router.NewWebGUI().Config)
 
 		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
 		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)

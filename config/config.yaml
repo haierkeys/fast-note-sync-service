@@ -45,6 +45,12 @@ app:
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
 
+# webgui
+# WebGUI 设置
+webgui:
+  # 字体设置 当留空不设置字体; 设置为 local 时使用本地字体; 设置为 字体链接 则可以让字体从网络加载
+  # Font Settings When left blank, no font is set; when set to local, use local font; when set to font link, the font can be loaded from the network
+  font-set: "local"
 
 user:
   # 是否开启注册功能
@@ -80,3 +86,5 @@ database:
   path: storage/database/db.sqlite3
   table-prefix:
   auto-migrate: true
+
+

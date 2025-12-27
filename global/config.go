@@ -23,6 +23,7 @@ type config struct {
 	User     user            `yaml:"user"`
 	Security security        `yaml:"security"`
 	LocalFS  local_fs.Config `yaml:"local-fs"`
+	WebGUI   webGUI          `yaml:"webgui"`
 }
 
 type LogConfig struct {
@@ -130,6 +131,10 @@ type email struct {
 	IsSSL             bool     `yaml:"is-ssl"`
 	From              string   `yaml:"from"`
 	To                []string `yaml:"to"`
+}
+
+type webGUI struct {
+	FontSet string `yaml:"font-set" json:"fontSet"`
 }
 
 // ConfigLoad 初始化
