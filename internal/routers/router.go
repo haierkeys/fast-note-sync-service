@@ -70,6 +70,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.UseUserVerify(websocket_router.UserInfo)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
+	frontendFonts, _ := fs.Sub(frontendFiles, "frontend/fonts")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
 
 	r := gin.New()
@@ -77,6 +78,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendIndexContent)
 	})
 	r.StaticFS("/assets", http.FS(frontendAssets))
+	r.StaticFS("/fonts", http.FS(frontendFonts))
 
 	api := r.Group("/api")
 	{
