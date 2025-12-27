@@ -1,4 +1,5 @@
-[中文文档](/docs/README.zh-CN.md) / [English Document](/README.md)
+[简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -32,9 +33,13 @@
     * Supports note management (Add, Delete, Modify, Search), with millisecond-level real-time distribution of changes to all online devices.
 * **🖼️ Attachment Sync Support**:
     * Perfect support for syncing non-note files such as images.
-    * *(Note: Requires server v0.9+ and [Obsidian plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases); Obsidian setting files are not supported)*.
+    * *(Note: Requires server v0.9+ and [Obsidian plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases); Obsidian setting files are not supported)*
+* **📝 Note History**:
+    * Supports viewing historical versions of each note on the Web page and plugin side.
+    * (Requires server v1.2+)
 * **⚙️ Configuration Sync**:
     * Supports synchronization of `.obsidian` configuration files.
+
 
 ## 🗺️ Roadmap
 

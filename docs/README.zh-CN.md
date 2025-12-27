@@ -1,4 +1,5 @@
-[中文文档](/docs/README.zh-CN.md) / [English Document](/README.md)
+[简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -33,8 +34,12 @@
 * **🖼️ 附件同步支持**：
     * 完美支持图片等非笔记文件同步。
     * *(注：需服务端 v0.9+ 及 [Obsidian 插件端 v1.0+ ](https://github.com/haierkeys/obsidian-fast-note-sync/releases), 不支持 Obsidian 设置文件)*
+* **📝 笔记历史**：
+    * 可以在 Web 页面，插件端查看每一个笔记的 历史修改版本。
+    * (需服务端 v1.2+ )
 * **⚙️ 配置同步**：
     * 支持 `.obsidian` 配置文件的同步。
+
 
 ## 🗺️ 路线图 (Roadmap)
 
