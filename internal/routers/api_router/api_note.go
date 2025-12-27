@@ -17,18 +17,18 @@ import (
 // 结构体名: Note
 // 说明: 处理笔记相关的 HTTP 请求，并持有 WebSocket 服务引用以进行实时广播。
 type Note struct {
-	wss *app.WebsocketServer
+	wss *app.WS
 }
 
 // NewNote 创建 Note 路由处理器实例
 // 函数名: NewNote
 // 函数使用说明: 初始化并返回一个新的 Note 结构体实例。
 // 参数说明:
-//   - wss *app.WebsocketServer: WebSocket 服务实例，用于消息广播
+//   - wss *app.WS: WebSocket 服务实例，用于消息广播
 //
 // 返回值说明:
 //   - *Note: 初始化后的 Note 实例
-func NewNote(wss *app.WebsocketServer) *Note {
+func NewNote(wss *app.WS) *Note {
 	return &Note{wss: wss}
 }
 
@@ -214,7 +214,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	n.wss.BroadcastToUser(uid, code.Success.WithData(noteNew), "NoteSyncModify")
 
 	if params.SrcPath != "" && params.SrcPath != params.Path {
-		service.NoteMigratePush(noteOld.ID, noteNew.ID, uid)
+		svc.NoteMigratePush(noteOld.ID, noteNew.ID, uid)
 	}
 
 }

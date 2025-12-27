@@ -43,6 +43,12 @@ type NoteDeleteMessage struct {
 	Path string `json:"path" form:"path"` // 路径信息（文件路径）
 }
 
+type NoteRenameMessage struct {
+	Vault   string `json:"vault" form:"vault" binding:"required"`     // 仓库标识
+	Path    string `json:"path" form:"path" binding:"required"`       // 新路径
+	OldPath string `json:"oldPath" form:"oldPath" binding:"required"` // 旧路径
+}
+
 // NoteModify 处理文件修改的 WebSocket 消息
 // 函数名: NoteModify
 // 函数使用说明: 处理客户端发送的笔记修改或创建消息，进行参数校验、更新检查并在需要时写回数据库或通知其他客户端。
@@ -217,6 +223,40 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	c.ToResponse(code.Success)
 	c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
+}
+
+// NoteRename 处理文件重命名的 WebSocket 消息
+// 函数名: NoteRename
+// 函数使用说明: 接收客户端的笔记重命名请求，执行重命名操作，并通知所有客户端同步删除旧路径和创建新路径。
+// 参数说明:
+//   - c *app.WebsocketClient: 当前 WebSocket 客户端连接。
+//   - msg *app.WebSocketMessage: 接收到的重命名请求消息。
+//
+// 返回值说明:
+//   - 无
+func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+	params := &service.NoteRenameRequestParams{}
+
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		global.Logger.Error("websocket_router.note.NoteRename.BindAndValid errs: %v", zap.Error(errs))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	// 检查并创建仓库
+	svc.VaultGetOrCreate(params.Vault, c.User.UID)
+
+	err := svc.NoteRename(c.User.UID, params)
+
+	if err != nil {
+		c.ToResponse(code.ErrorNoteRenameFailed.WithDetails(err.Error()))
+		return
+	}
+	// 相应成功
+	c.ToResponse(code.Success.Reset())
 }
 
 // NoteSync 处理全量或增量笔记同步

@@ -128,6 +128,13 @@ type NoteGetRequestParams struct {
 	PathHash string `json:"pathHash" form:"pathHash"`              // 路径哈希（可选）
 }
 
+// NoteRenameRequestParams 重命名笔记所需参数
+type NoteRenameRequestParams struct {
+	Vault   string `json:"vault" form:"vault" binding:"required"`     // 仓库标识
+	Path    string `json:"path" form:"path" binding:"required"`       // 新路径
+	OldPath string `json:"oldPath" form:"oldPath" binding:"required"` // 旧路径
+}
+
 // NoteListRequestParams 获取笔记列表的分页参数。
 type NoteListRequestParams struct {
 	Vault   string `json:"vault" form:"vault" binding:"required"` // 仓库标识
@@ -135,7 +142,7 @@ type NoteListRequestParams struct {
 }
 
 // NoteMigratePush 提交笔记迁移任务
-func NoteMigratePush(oldNoteID, newNoteID int64, uid int64) {
+func (svc *Service) NoteMigratePush(oldNoteID, newNoteID int64, uid int64) {
 	NoteMigrateChannel <- NoteMigrateMsg{
 		OldNoteID: oldNoteID,
 		NewNoteID: newNoteID,
@@ -352,6 +359,51 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 	rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 
 	return rNote, nil
+}
+
+// NoteRename 重命名笔记
+// 函数名: NoteRename
+// 函数使用说明: 处理笔记重命名。先删除旧路径记录，创建新路径记录，并触发历史记录迁移。
+// 参数说明:
+//   - uid int64: 用户ID
+//   - params *NoteRenameRequestParams: 包含 vault、path(新)、oldPath(旧)
+//
+// 返回值说明:
+//   - error: 出错时返回错误
+func (svc *Service) NoteRename(uid int64, params *NoteRenameRequestParams) error {
+	// 0. 获取 VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
+		return svc.VaultIdGetByName(params.Vault, uid)
+	})
+	if err != nil {
+		return err
+	}
+	vaultID := vID.(int64)
+
+	// 1. 获取旧笔记
+	oldPathHash := util.EncodeHash32(params.OldPath)
+	daoOld, err := svc.dao.NoteGetByPathHash(oldPathHash, vaultID, uid)
+	if err != nil {
+		return err
+	}
+	if daoOld == nil {
+		return fmt.Errorf("old note not found")
+	}
+
+	// 2. 获取新笔记
+	newPathHash := util.EncodeHash32(params.Path)
+	daoNew, err := svc.dao.NoteGetByPathHash(newPathHash, vaultID, uid)
+	if err != nil {
+		return err
+	}
+	if daoNew == nil {
+		return fmt.Errorf("new note not found")
+	}
+
+	// 3. 触发历史记录迁移 (异步队列执行逻辑迁移和旧记录物理删除)
+	svc.NoteMigratePush(daoOld.ID, daoNew.ID, uid)
+
+	return nil
 }
 
 // NoteList 获取笔记列表（不包含 content）

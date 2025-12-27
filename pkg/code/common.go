@@ -72,6 +72,7 @@ var (
 	ErrorNoteSyncFailed           = NewError(incr(400), lang{zh: "同步笔记失败", en: "Sync note failed"})
 	ErrorNoteUpdateCheckFailed    = NewError(incr(400), lang{zh: "笔记更新检查失败", en: "Note update check failed"})
 	ErrorNoteListFailed           = NewError(incr(400), lang{zh: "笔记列表获取失败", en: "Note list get failed"})
+	ErrorNoteRenameFailed         = NewError(incr(400), lang{zh: "笔记重命名失败", en: "Note rename failed"})
 
 	// --------- 配置操作错误
 

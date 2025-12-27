@@ -29,7 +29,7 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 
 func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
-	var wss = app.NewWebsocketServer(app.WebsocketServerConfig{
+	var wss = app.NewWS(app.WSConfig{
 		GWSOption: gws.ServerOption{
 			CheckUtf8Enabled:  true,
 			ParallelEnabled:   true,                                 // 开启并行消息处理
@@ -44,6 +44,8 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	wss.Use("NoteModify", websocket_router.NoteModify)
 	//删除
 	wss.Use("NoteDelete", websocket_router.NoteDelete)
+	//重命名
+	wss.Use("NoteRename", websocket_router.NoteRename)
 	// 笔记检查
 	wss.Use("NoteCheck", websocket_router.NoteModifyCheck)
 	// 基于mtime的更新通知
