@@ -30,7 +30,7 @@ type User struct {
 func (d *Dao) user() *query.Query {
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "User")
-	}, "user#user", "user")
+	}, "user#user")
 }
 
 // GetUserByUID 根据用户ID获取用户信息
