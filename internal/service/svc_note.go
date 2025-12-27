@@ -80,6 +80,8 @@ type NoteModifyOrCreateRequestParams struct {
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""` // 内容哈希（可选）
 	Ctime       int64  `json:"ctime" form:"ctime" `                        // 创建时间戳
 	Mtime       int64  `json:"mtime" form:"mtime" `                        // 修改时间戳
+	OldPath     string `json:"oldPath" form:"oldPath"`                     // 旧路径用于重命名
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`             // 旧路径哈希用于重命名
 }
 
 // ContentModifyRequestParams 专用于只修改内容的请求参数（必填 content）。

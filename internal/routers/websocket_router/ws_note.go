@@ -146,6 +146,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 // 返回值说明:
 //   - 无
 func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
+
 	params := &service.NoteUpdateCheckRequestParams{}
 
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -208,6 +209,10 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
+	handleNoteDelete(c, params)
+}
+
+func handleNoteDelete(c *app.WebsocketClient, params *service.NoteDeleteRequestParams) {
 
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
@@ -235,8 +240,12 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 // 返回值说明:
 //   - 无
 func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
-	params := &service.NoteRenameRequestParams{}
 
+	//先创建
+	NoteModify(c, msg)
+
+	//从 修改 里的可选参数里拿出 rename 参数
+	params := &service.NoteModifyOrCreateRequestParams{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteRename.BindAndValid errs: %v", zap.Error(errs))
@@ -244,12 +253,19 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		return
 	}
 
+	handleNoteDelete(c, &service.NoteDeleteRequestParams{
+		Vault:    params.Vault,
+		Path:     params.OldPath,
+		PathHash: params.OldPathHash,
+	})
+
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
-	// 检查并创建仓库
-	svc.VaultGetOrCreate(params.Vault, c.User.UID)
-
-	err := svc.NoteRename(c.User.UID, params)
+	err := svc.NoteRename(c.User.UID, &service.NoteRenameRequestParams{
+		Vault:   params.Vault,
+		Path:    params.Path,
+		OldPath: params.OldPath,
+	})
 
 	if err != nil {
 		c.ToResponse(code.ErrorNoteRenameFailed.WithDetails(err.Error()))
@@ -257,6 +273,7 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 	// 相应成功
 	c.ToResponse(code.Success.Reset())
+
 }
 
 // NoteSync 处理全量或增量笔记同步
