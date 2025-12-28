@@ -180,20 +180,41 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
-		c.send(actionType, ResDetailsResult{
-			Code:    code.Code(),
-			Status:  code.Status(),
-			Msg:     code.Lang.GetMessage(),
-			Data:    code.Data(),
-			Details: details,
-		}, true, options[0].(bool))
+		if code.HaveVault() {
+			c.send(actionType, ResVaultDetailsResult{
+				Code:    code.Code(),
+				Status:  code.Status(),
+				Msg:     code.Lang.GetMessage(),
+				Data:    code.Data(),
+				Details: details,
+				Vault:   code.Vault(),
+			}, true, options[0].(bool))
+		} else {
+			c.send(actionType, ResDetailsResult{
+				Code:    code.Code(),
+				Status:  code.Status(),
+				Msg:     code.Lang.GetMessage(),
+				Data:    code.Data(),
+				Details: details,
+			}, true, options[0].(bool))
+		}
 	} else {
-		c.send(actionType, ResResult{
-			Code:   code.Code(),
-			Status: code.Status(),
-			Msg:    code.Lang.GetMessage(),
-			Data:   code.Data(),
-		}, true, options[0].(bool))
+		if code.HaveVault() {
+			c.send(actionType, ResVaultResult{
+				Code:   code.Code(),
+				Status: code.Status(),
+				Msg:    code.Lang.GetMessage(),
+				Data:   code.Data(),
+				Vault:  code.Vault(),
+			}, true, options[0].(bool))
+		} else {
+			c.send(actionType, ResResult{
+				Code:   code.Code(),
+				Status: code.Status(),
+				Msg:    code.Lang.GetMessage(),
+				Data:   code.Data(),
+			}, true, options[0].(bool))
+		}
 	}
 
 	code.Reset()
@@ -558,22 +579,46 @@ func (w *WS) BroadcastToUser(uid int64, code *code.Code, action string) {
 	var responseBytes []byte
 	if code.HaveDetails() {
 		details := strings.Join(code.Details(), ",")
-		content := ResDetailsResult{
-			Code:    code.Code(),
-			Status:  code.Status(),
-			Msg:     code.Lang.GetMessage(),
-			Data:    code.Data(),
-			Details: details,
+		if code.HaveVault() {
+			content := ResVaultDetailsResult{
+				Code:    code.Code(),
+				Status:  code.Status(),
+				Msg:     code.Lang.GetMessage(),
+				Data:    code.Data(),
+				Details: details,
+				Vault:   code.Vault(),
+			}
+			responseBytes, _ = sonic.Marshal(content)
+		} else {
+			content := ResDetailsResult{
+				Code:    code.Code(),
+				Status:  code.Status(),
+				Msg:     code.Lang.GetMessage(),
+				Data:    code.Data(),
+				Details: details,
+			}
+			responseBytes, _ = sonic.Marshal(content)
 		}
-		responseBytes, _ = sonic.Marshal(content)
+
 	} else {
-		content := ResResult{
-			Code:   code.Code(),
-			Status: code.Status(),
-			Msg:    code.Lang.GetMessage(),
-			Data:   code.Data(),
+		if code.HaveVault() {
+			content := ResVaultResult{
+				Code:   code.Code(),
+				Status: code.Status(),
+				Msg:    code.Lang.GetMessage(),
+				Data:   code.Data(),
+				Vault:  code.Vault(),
+			}
+			responseBytes, _ = sonic.Marshal(content)
+		} else {
+			content := ResResult{
+				Code:   code.Code(),
+				Status: code.Status(),
+				Msg:    code.Lang.GetMessage(),
+				Data:   code.Data(),
+			}
+			responseBytes, _ = sonic.Marshal(content)
 		}
-		responseBytes, _ = sonic.Marshal(content)
 	}
 
 	if action != "" {

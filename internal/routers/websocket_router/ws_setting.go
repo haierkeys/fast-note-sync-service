@@ -12,6 +12,7 @@ import (
 )
 
 type SettingMessage struct {
+	Vault            string `json:"vault" form:"vault"`
 	Path             string `json:"path" form:"path"`
 	PathHash         string `json:"pathHash" form:"pathHash"`
 	Content          string `json:"content" form:"content"`
@@ -78,7 +79,7 @@ func SettingModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			UpdatedTimestamp: setting.UpdatedTimestamp,
 		}
 		c.ToResponse(code.Success.Reset())
-		c.BroadcastResponse(code.Success.Reset().WithData(settingMessage), true, "SettingSyncModify")
+		c.BroadcastResponse(code.Success.Reset().WithData(settingMessage).WithVault(params.Vault), true, "SettingSyncModify")
 		return
 
 	case "UpdateMtime":
@@ -155,7 +156,7 @@ func SettingDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(setting), true, "SettingSyncDelete")
+	c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, "SettingSyncDelete")
 }
 
 // SettingSync 处理配置同步消息

@@ -52,6 +52,32 @@ type ResDetailsResult struct {
 	Details interface{} `json:"details"`
 }
 
+type ResVaultResult struct {
+	// 业务状态码
+	Code int `json:"code"`
+	// 状态
+	Status bool `json:"status"`
+	// 失败&&成功消息
+	Msg interface{} `json:"message"`
+	// 数据集合
+	Data  interface{} `json:"data"`
+	Vault string      `json:"vault"`
+}
+
+type ResVaultDetailsResult struct {
+	// 业务状态码
+	Code int `json:"code"`
+	// 状态
+	Status bool `json:"status"`
+	// 失败&&成功消息
+	Msg interface{} `json:"message"`
+	// 错误格式数据
+	Data interface{} `json:"data"`
+	// 错误支付
+	Details interface{} `json:"details"`
+	Vault   string      `json:"vault"`
+}
+
 type ResListResult struct {
 	// 业务状态码
 	Code int `json:"code"`

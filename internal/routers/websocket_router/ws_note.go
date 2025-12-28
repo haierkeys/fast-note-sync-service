@@ -118,7 +118,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 
 		c.ToResponse(code.Success.Reset())
-		c.BroadcastResponse(code.Success.Reset().WithData(noteMessage), true, "NoteSyncModify")
+		c.BroadcastResponse(code.Success.Reset().WithData(noteMessage).WithVault(params.Vault), true, "NoteSyncModify")
 		return
 
 	case "UpdateMtime":
@@ -227,7 +227,7 @@ func handleNoteDelete(c *app.WebsocketClient, params *service.NoteDeleteRequestP
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(note), true, "NoteSyncDelete")
+	c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
 }
 
 // NoteRename 处理文件重命名的 WebSocket 消息

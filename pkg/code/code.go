@@ -15,7 +15,10 @@ type Code struct {
 	// 错误消息
 	msg string
 	// 数据
-	data interface{}
+	data  interface{}
+	vault string
+	// 是否含有Vault
+	haveVault bool
 	// 是否含有Data
 	haveData bool
 	// 错误详细信息
@@ -68,6 +71,8 @@ func (e *Code) Reset() *Code {
 	e.haveDetails = false
 	e.haveData = false
 	e.details = []string{}
+	e.haveVault = false
+	e.vault = ""
 	return e
 }
 
@@ -99,6 +104,10 @@ func (e *Code) Data() interface{} {
 	return e.data
 }
 
+func (e *Code) Vault() string {
+	return e.vault
+}
+
 func (e *Code) HaveDetails() bool {
 	return e.haveDetails
 }
@@ -107,9 +116,19 @@ func (e *Code) HaveData() bool {
 	return e.haveData
 }
 
+func (e *Code) HaveVault() bool {
+	return e.haveVault
+}
+
 func (e *Code) WithData(data interface{}) *Code {
 	e.haveData = true
 	e.data = data
+	return e
+}
+
+func (e *Code) WithVault(vault string) *Code {
+	e.haveVault = true
+	e.vault = vault
 	return e
 }
 

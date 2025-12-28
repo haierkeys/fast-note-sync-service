@@ -200,7 +200,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 			response.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
 			return
 		}
-		n.wss.BroadcastToUser(uid, code.Success.WithData(noteOld), "NoteSyncDelete")
+		n.wss.BroadcastToUser(uid, code.Success.Reset().WithData(noteOld).WithVault(params.Vault), "NoteSyncDelete")
 	}
 
 	_, noteNew, err = svc.NoteModifyOrCreate(uid, params, false)
@@ -211,7 +211,7 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(noteNew))
-	n.wss.BroadcastToUser(uid, code.Success.WithData(noteNew), "NoteSyncModify")
+	n.wss.BroadcastToUser(uid, code.Success.Reset().WithData(noteNew).WithVault(params.Vault), "NoteSyncModify")
 
 	if params.SrcPath != "" && params.SrcPath != params.Path {
 		svc.NoteMigratePush(noteOld.ID, noteNew.ID, uid)
@@ -268,5 +268,5 @@ func (n *Note) Delete(c *gin.Context) {
 		return
 	}
 	response.ToResponse(code.Success.WithData(note))
-	n.wss.BroadcastToUser(uid, code.Success.WithData(note), "NoteSyncDelete")
+	n.wss.BroadcastToUser(uid, code.Success.Reset().WithData(note).WithVault(params.Vault), "NoteSyncDelete")
 }

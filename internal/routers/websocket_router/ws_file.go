@@ -344,7 +344,7 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 
 		c.ToResponse(code.Success.Reset())
 		// 广播文件更新消息
-		c.BroadcastResponse(code.Success.Reset().WithData(fileMsg), true, "FileSyncUpdate")
+		c.BroadcastResponse(code.Success.Reset().WithData(fileMsg).WithVault(session.Vault), true, "FileSyncUpdate")
 	}
 }
 
@@ -376,7 +376,7 @@ func FileDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
 	// 广播文件删除消息
-	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage), true, "FileSyncDelete")
+	c.BroadcastResponse(code.Success.Reset().WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
 }
 
 // FileChunkDownload 处理文件分片下载请求。
