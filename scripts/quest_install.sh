@@ -388,7 +388,7 @@ start_service() {
     fi
     step "$L_STARTING"
     # 保持 bash -c 包装以解决重定向权限问题
-    $SUDO bash -c "cd $INSTALL_DIR && nohup $BIN_PATH run >> $LOG_FILE 2>&1 &"
+    $SUDO bash -c "set -m; cd $INSTALL_DIR && nohup $BIN_PATH run >> $LOG_FILE 2>&1 &"
 
     sleep 2
     if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
