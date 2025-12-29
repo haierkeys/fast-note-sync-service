@@ -401,6 +401,9 @@ start_service() {
 
 stop_service() {
     ensure_root
+    if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
+        return 0
+    fi
     step "$L_STOPPING"
     $SUDO pkill -f "$BIN_PATH" || true
     success "$L_STOP_SUCCESS"
@@ -523,6 +526,9 @@ install_cmd() {
     local os arch tarball
     os="$(detect_os)"
     arch="$(_arch_map)"
+
+    stop_service
+
     step "$L_PRE_DL ${_BOLD}$ver${_RESET} ($os/$arch)..."
     if [ "$ver" = "latest" ]; then
         ver="$(get_latest_tag || echo latest)"
@@ -533,6 +539,8 @@ install_cmd() {
     install_self >/dev/null 2>&1 || true
     success "$L_INST_ALL_DONE"
     info "$L_INST_TIP"
+
+    start_service
 }
 
 # main dispatcher
@@ -556,7 +564,6 @@ case "$cmd" in
     ;;
     update)
         ensure_root
-        stop_service
         install_cmd "latest"
     ;;
     install-self)
