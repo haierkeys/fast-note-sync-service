@@ -193,6 +193,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		if s.Action == "delete" {
 
 			if _, ok := cSettings[s.PathHash]; ok {
+				delete(cSettingsKeys, s.PathHash)
 				c.ToResponse(code.Success.WithData(&SettingDeleteMessage{Path: s.Path}), "SettingSyncDelete")
 			}
 		} else {

@@ -324,8 +324,9 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			lastTime = note.UpdatedTimestamp
 		}
 		if note.Action == "delete" {
-			// 客户端有,服务端没有, 通知客户端删除
+			// 客户端有,服务端已经删除, 通知客户端删除
 			if _, ok := cNotes[note.PathHash]; ok {
+				delete(cNotesKeys, note.PathHash)
 				noteDeleteMessage := &NoteDeleteMessage{
 					Path: note.Path,
 				}

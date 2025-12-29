@@ -592,6 +592,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		if file.Action == "delete" {
 			// 服务端已删除，通知客户端删除
 			if _, ok := cFiles[file.PathHash]; ok {
+				delete(cFilesKeys, file.PathHash)
 				c.ToResponse(code.Success.WithData(file), "FileSyncDelete")
 			}
 
