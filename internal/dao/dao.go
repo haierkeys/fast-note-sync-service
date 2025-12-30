@@ -37,15 +37,18 @@ func New(db *gorm.DB, ctx context.Context) *Dao {
 
 func (d *Dao) UseQueryWithFunc(f func(*gorm.DB), key ...string) *query.Query {
 	db := d.UseKey(key...)
-	f(db)
+	if db != nil {
+		f(db)
+	}
 	return query.Use(db)
 }
 
 func (d *Dao) UseQueryWithOnceFunc(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
 	db := d.UseKey(key...)
-
-	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
-		f(db)
+	if db != nil {
+		if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
+			f(db)
+		}
 	}
 	return query.Use(db)
 }

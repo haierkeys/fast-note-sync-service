@@ -70,7 +70,7 @@ func (svc *Service) ExposeAutoMigrate() error {
 	}
 
 	for _, uid := range uids {
-		err := svc.dao.AutoMigrate(uid, "")
+		err = svc.dao.AutoMigrate(uid, "")
 		if err != nil {
 			break
 		}
@@ -86,7 +86,9 @@ func (svc *Service) ExposeAutoMigrate() error {
 // ExecuteSQL 执行 SQL 接口
 func (svc *Service) ExecuteSQL(sql string) error {
 	db := svc.dao.UseKey()
-	db.Exec(sql)
+	if db != nil {
+		db.Exec(sql)
+	}
 	return nil
 }
 
@@ -99,7 +101,9 @@ func (svc *Service) UserExecuteSQL(sql string) error {
 	for _, uid := range uids {
 		// 忽略单个用户的清理错误，继续清理下一个
 		db := svc.dao.UserDB(uid)
-		db.Exec(sql)
+		if db != nil {
+			db.Exec(sql)
+		}
 	}
 	return nil
 }

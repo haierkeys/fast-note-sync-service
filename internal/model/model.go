@@ -5,6 +5,9 @@ import (
 )
 
 func AutoMigrate(db *gorm.DB, key string) error {
+	if db == nil {
+		return nil
+	}
 	switch key {
 
 	case "File":

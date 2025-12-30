@@ -31,6 +31,9 @@ const (
 
 func log(t LogType, msg string, fields ...zap.Field) {
 
+	if global.Logger == nil {
+		return
+	}
 	if t == "error" {
 		global.Logger.Error(msg, fields...)
 	} else if t == "warn" {
@@ -86,6 +89,9 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 	}
 
 	// Step 2: 参数验证
+	if global.Validator == nil {
+		return true, nil
+	}
 	if err := global.Validator.Validate.Struct(obj); err != nil {
 
 		// 如果验证失败，检查错误类型
