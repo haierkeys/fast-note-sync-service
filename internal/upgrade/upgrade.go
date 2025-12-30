@@ -224,6 +224,17 @@ func (m *MigrationManager) saveReferenceVersion(version string) error {
 
 // Execute 执行升级(便捷方法)
 func Execute() error {
+	defer func() {
+		if r := recover(); r != nil {
+			if global.Logger != nil {
+				global.Logger.Error("upgrade Execute panic",
+					zap.Any("panic", r),
+					zap.Stack("stack"))
+			} else {
+				fmt.Printf("upgrade Execute panic: %v\n", r)
+			}
+		}
+	}()
 	if global.DBEngine == nil {
 		return fmt.Errorf("database not initialized")
 	}

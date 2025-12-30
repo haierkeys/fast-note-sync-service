@@ -61,6 +61,14 @@ func (s *Scheduler) startTask(task Task) {
 		if task.IsStartupRun() {
 			s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("startupRun", true))
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						s.logger.Error("task startupRun panic",
+							zap.String("name", task.Name()),
+							zap.Any("panic", r),
+							zap.Stack("stack"))
+					}
+				}()
 				if err := task.Run(context.Background()); err != nil {
 					s.logger.Error("task running error",
 						zap.String("name", task.Name()),
@@ -81,13 +89,23 @@ func (s *Scheduler) startTask(task Task) {
 		for {
 			select {
 			case <-ticker.C:
-				s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("loopRun", true))
-				if err := task.Run(context.Background()); err != nil {
-					s.logger.Error("task running error",
-						zap.String("name", task.Name()),
-						zap.Bool("loopRun", true),
-						zap.Error(err))
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							s.logger.Error("task loopRun panic",
+								zap.String("name", task.Name()),
+								zap.Any("panic", r),
+								zap.Stack("stack"))
+						}
+					}()
+					s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("loopRun", true))
+					if err := task.Run(context.Background()); err != nil {
+						s.logger.Error("task running error",
+							zap.String("name", task.Name()),
+							zap.Bool("loopRun", true),
+							zap.Error(err))
+					}
+				}()
 			case <-closeSignal:
 				s.logger.Info("task stopped", zap.String("name", task.Name()), zap.Bool("loopRun", true))
 				return
