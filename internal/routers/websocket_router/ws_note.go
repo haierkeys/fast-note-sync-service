@@ -343,21 +343,45 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					continue
 				} else if note.ContentHash != cNote.ContentHash {
 					// 内容不一致
-					if note.Mtime > cNote.Mtime {
-						// 服务端修改时间比客户端新, 通知客户端更新笔记
-						noteMessage := &NoteMessage{
-							Path:             note.Path,
-							PathHash:         note.PathHash,
-							Content:          note.Content,
-							ContentHash:      note.ContentHash,
-							Ctime:            note.Ctime,
-							Mtime:            note.Mtime,
-							UpdatedTimestamp: note.UpdatedTimestamp,
+					if cNote.Mtime < note.Mtime {
+
+						switch c.OfflineSyncStrategy {
+						//当忽略时间并合并时,登记需要合并的, 通知客户端上传笔记
+						case "ignoreTimeMerge":
+
+							c.DiffMergePathsMu.Lock()
+							c.DiffMergePaths[note.Path] = note.Path
+							c.DiffMergePathsMu.Unlock()
+
+							noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
+								Path: note.Path,
+							}
+							c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+						// 当设置新笔记才进行合并, 因为本地笔记比较老, 服务器通知客户端使用云端笔记覆盖本地
+						// 不设置 默认也一样覆盖
+						case "newTimeMerge", "":
+							noteMessage := &NoteMessage{
+								Path:             note.Path,
+								PathHash:         note.PathHash,
+								Content:          note.Content,
+								ContentHash:      note.ContentHash,
+								Ctime:            note.Ctime,
+								Mtime:            note.Mtime,
+								UpdatedTimestamp: note.UpdatedTimestamp,
+							}
+
+							c.ToResponse(code.Success.Reset().WithData(noteMessage), "NoteSyncModify")
 						}
-						c.ToResponse(code.Success.Reset().WithData(noteMessage), "NoteSyncModify")
+						// 服务端修改时间比客户端新, 通知客户端更新笔记
 
 					} else {
-						// 服务端修改时间比客户端旧, 通知客户端上传笔记
+						// 客户端笔记 比服务端笔记新, 通知客户端上传笔记
+						if c.OfflineSyncStrategy == "ignoreTimeMerge" || c.OfflineSyncStrategy == "newTimeMerge" {
+							c.DiffMergePathsMu.Lock()
+							c.DiffMergePaths[note.Path] = note.Path
+							c.DiffMergePathsMu.Unlock()
+						}
+
 						noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
 							Path: note.Path,
 						}
@@ -398,6 +422,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
 		}
 	}
+
+	c.IsFirstSync = true
 
 	message := &NoteSyncEndMessage{
 		Vault:    params.Vault,

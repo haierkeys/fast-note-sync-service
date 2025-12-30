@@ -72,6 +72,10 @@ type WebsocketClient struct {
 	BinaryChunkSessions map[string]any      // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
 	ClientName          string              // 客户端名称 (例如 "Mac", "Windows", "iPhone")
 	ClientVersion       string              // 客户端版本号 (例如 "1.2.4")
+	IsFirstSync         bool                // 是否是第一次同步过
+	DiffMergePaths      map[string]any      // 需要合并的文件路径
+	DiffMergePathsMu    sync.RWMutex        // 互斥锁，防止并发冲突
+	OfflineSyncStrategy string              // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
