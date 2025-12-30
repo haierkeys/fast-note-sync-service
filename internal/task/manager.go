@@ -38,6 +38,10 @@ func (m *Manager) RegisterTasks() error {
 			continue
 		}
 
+		if task == nil {
+			continue
+		}
+
 		loopInterval := task.LoopInterval()
 		isStartupRun := task.IsStartupRun()
 
@@ -52,9 +56,7 @@ func (m *Manager) RegisterTasks() error {
 			continue
 		}
 
-		if task != nil {
-			m.scheduler.AddTask(task)
-		}
+		m.scheduler.AddTask(task)
 	}
 
 	return nil
