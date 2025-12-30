@@ -25,15 +25,16 @@ type NoteHistory struct {
 }
 
 type NoteHistorySet struct {
-	NoteID     int64      `json:"noteId" form:"noteId"`
-	VaultID    int64      `json:"vaultId" form:"vaultId"`
-	Path       string     `json:"path" form:"path"`
-	DiffPatch  string     `json:"diffPatch" form:"diffPatch"`
-	Content    string     `json:"content" form:"content"`
-	ClientName string     `json:"clientName" form:"clientName"`
-	Version    int64      `json:"version" form:"version"`
-	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
-	UpdatedAt  timex.Time `json:"updatedAt" form:"updatedAt"`
+	NoteID      int64      `json:"noteId" form:"noteId"`
+	VaultID     int64      `json:"vaultId" form:"vaultId"`
+	Path        string     `json:"path" form:"path"`
+	DiffPatch   string     `json:"diffPatch" form:"diffPatch"`
+	Content     string     `json:"content" form:"content"`
+	ContentHash string     `json:"contentHash" form:"contentHash"`
+	ClientName  string     `json:"clientName" form:"clientName"`
+	Version     int64      `json:"version" form:"version"`
+	CreatedAt   timex.Time `json:"createdAt" form:"createdAt"`
+	UpdatedAt   timex.Time `json:"updatedAt" form:"updatedAt"`
 }
 
 func (d *Dao) noteHistory(uid int64) *query.Query {

@@ -12,22 +12,23 @@ import (
 )
 
 type Note struct {
-	ID                  int64      `json:"id" form:"id"`                   // ID
-	VaultID             int64      `json:"vaultId" form:"vaultId"`         // 保险库ID
-	Action              string     `json:"action" form:"action"`           // 操作
-	Path                string     `json:"path" form:"path"`               // 路径
-	PathHash            string     `json:"pathHash" form:"pathHash"`       // 路径哈希
-	Content             string     `json:"content" form:"content"`         // 内容
-	ContentHash         string     `json:"contentHash" form:"contentHash"` // 内容哈希
-	ContentLastSnapshot string     `json:"contentLastSnapshot" form:"contentLastSnapshot"`
-	ClientName          string     `json:"clientName" form:"clientName"`             // 客户端名称
-	Version             int64      `json:"version" form:"version"`                   // 版本
-	Size                int64      `json:"size" form:"size"`                         // 大小
-	Ctime               int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
-	Mtime               int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
-	UpdatedTimestamp    int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
-	CreatedAt           timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间
-	UpdatedAt           timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间
+	ID                      int64      `json:"id" form:"id"`                   // ID
+	VaultID                 int64      `json:"vaultId" form:"vaultId"`         // 保险库ID
+	Action                  string     `json:"action" form:"action"`           // 操作
+	Path                    string     `json:"path" form:"path"`               // 路径
+	PathHash                string     `json:"pathHash" form:"pathHash"`       // 路径哈希
+	Content                 string     `json:"content" form:"content"`         // 内容
+	ContentHash             string     `json:"contentHash" form:"contentHash"` // 内容哈希
+	ContentLastSnapshot     string     `json:"contentLastSnapshot" form:"contentLastSnapshot"`
+	ContentLastSnapshotHash string     `json:"contentLastSnapshotHash" form:"contentLastSnapshotHash"`
+	ClientName              string     `json:"clientName" form:"clientName"`             // 客户端名称
+	Version                 int64      `json:"version" form:"version"`                   // 版本
+	Size                    int64      `json:"size" form:"size"`                         // 大小
+	Ctime                   int64      `json:"ctime" form:"ctime"`                       // 创建时间戳
+	Mtime                   int64      `json:"mtime" form:"mtime"`                       // 修改时间戳
+	UpdatedTimestamp        int64      `json:"updatedTimestamp" form:"updatedTimestamp"` // 更新时间戳
+	CreatedAt               timex.Time `json:"createdAt" form:"createdAt"`               // 创建时间
+	UpdatedAt               timex.Time `json:"updatedAt" form:"updatedAt"`               // 更新时间
 
 }
 
@@ -209,11 +210,12 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 }
 
 // NoteUpdateSnapshot 更新笔记的快照内容
-func (d *Dao) NoteUpdateSnapshot(snapshot string, version int64, id int64, uid int64) error {
+func (d *Dao) NoteUpdateSnapshot(snapshot string, snapshotHash string, version int64, id int64, uid int64) error {
 	u := d.note(uid).Note
 	// 使用 UpdateSimple 更新多个字段
 	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).UpdateSimple(
 		u.ContentLastSnapshot.Value(snapshot),
+		u.ContentLastSnapshotHash.Value(snapshotHash),
 		u.Version.Value(version),
 	)
 	return err

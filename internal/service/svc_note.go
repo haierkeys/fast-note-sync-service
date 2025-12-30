@@ -609,7 +609,7 @@ func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
 	}
 
 	// 2. 将旧笔记的 ContentLastSnapshot 和 Version 迁移到新笔记
-	err = svc.dao.NoteUpdateSnapshot(oldNote.ContentLastSnapshot, oldNote.Version, newNoteID, uid)
+	err = svc.dao.NoteUpdateSnapshot(oldNote.ContentLastSnapshot, oldNote.ContentLastSnapshotHash, oldNote.Version, newNoteID, uid)
 	if err != nil {
 		return err
 	}

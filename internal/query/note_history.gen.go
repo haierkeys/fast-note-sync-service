@@ -33,6 +33,7 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 	_noteHistory.VaultID = field.NewInt64(tableName, "vault_id")
 	_noteHistory.Path = field.NewString(tableName, "path")
 	_noteHistory.Content = field.NewString(tableName, "content")
+	_noteHistory.ContentHash = field.NewString(tableName, "content_hash")
 	_noteHistory.DiffPatch = field.NewString(tableName, "diff_patch")
 	_noteHistory.ClientName = field.NewString(tableName, "client_name")
 	_noteHistory.Version = field.NewInt64(tableName, "version")
@@ -47,17 +48,18 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 type noteHistory struct {
 	noteHistoryDo noteHistoryDo
 
-	ALL        field.Asterisk
-	ID         field.Int64
-	NoteID     field.Int64
-	VaultID    field.Int64
-	Path       field.String
-	Content    field.String
-	DiffPatch  field.String
-	ClientName field.String
-	Version    field.Int64
-	CreatedAt  field.Field
-	UpdatedAt  field.Field
+	ALL         field.Asterisk
+	ID          field.Int64
+	NoteID      field.Int64
+	VaultID     field.Int64
+	Path        field.String
+	Content     field.String
+	ContentHash field.String
+	DiffPatch   field.String
+	ClientName  field.String
+	Version     field.Int64
+	CreatedAt   field.Field
+	UpdatedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -79,6 +81,7 @@ func (n *noteHistory) updateTableName(table string) *noteHistory {
 	n.VaultID = field.NewInt64(table, "vault_id")
 	n.Path = field.NewString(table, "path")
 	n.Content = field.NewString(table, "content")
+	n.ContentHash = field.NewString(table, "content_hash")
 	n.DiffPatch = field.NewString(table, "diff_patch")
 	n.ClientName = field.NewString(table, "client_name")
 	n.Version = field.NewInt64(table, "version")
@@ -110,12 +113,13 @@ func (n *noteHistory) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *noteHistory) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 10)
+	n.fieldMap = make(map[string]field.Expr, 11)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["note_id"] = n.NoteID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["content"] = n.Content
+	n.fieldMap["content_hash"] = n.ContentHash
 	n.fieldMap["diff_patch"] = n.DiffPatch
 	n.fieldMap["client_name"] = n.ClientName
 	n.fieldMap["version"] = n.Version

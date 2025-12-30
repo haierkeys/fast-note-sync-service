@@ -36,6 +36,7 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.Content = field.NewString(tableName, "content")
 	_note.ContentHash = field.NewString(tableName, "content_hash")
 	_note.ContentLastSnapshot = field.NewString(tableName, "content_last_snapshot")
+	_note.ContentLastSnapshotHash = field.NewString(tableName, "content_last_snapshot_hash")
 	_note.Version = field.NewInt64(tableName, "version")
 	_note.ClientName = field.NewString(tableName, "client_name")
 	_note.Size = field.NewInt64(tableName, "size")
@@ -53,23 +54,24 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 type note struct {
 	noteDo noteDo
 
-	ALL                 field.Asterisk
-	ID                  field.Int64
-	VaultID             field.Int64
-	Action              field.String
-	Path                field.String
-	PathHash            field.String
-	Content             field.String
-	ContentHash         field.String
-	ContentLastSnapshot field.String
-	Version             field.Int64
-	ClientName          field.String
-	Size                field.Int64
-	Ctime               field.Int64
-	Mtime               field.Int64
-	UpdatedTimestamp    field.Int64
-	CreatedAt           field.Field
-	UpdatedAt           field.Field
+	ALL                     field.Asterisk
+	ID                      field.Int64
+	VaultID                 field.Int64
+	Action                  field.String
+	Path                    field.String
+	PathHash                field.String
+	Content                 field.String
+	ContentHash             field.String
+	ContentLastSnapshot     field.String
+	ContentLastSnapshotHash field.String
+	Version                 field.Int64
+	ClientName              field.String
+	Size                    field.Int64
+	Ctime                   field.Int64
+	Mtime                   field.Int64
+	UpdatedTimestamp        field.Int64
+	CreatedAt               field.Field
+	UpdatedAt               field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -94,6 +96,7 @@ func (n *note) updateTableName(table string) *note {
 	n.Content = field.NewString(table, "content")
 	n.ContentHash = field.NewString(table, "content_hash")
 	n.ContentLastSnapshot = field.NewString(table, "content_last_snapshot")
+	n.ContentLastSnapshotHash = field.NewString(table, "content_last_snapshot_hash")
 	n.Version = field.NewInt64(table, "version")
 	n.ClientName = field.NewString(table, "client_name")
 	n.Size = field.NewInt64(table, "size")
@@ -126,7 +129,7 @@ func (n *note) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *note) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 16)
+	n.fieldMap = make(map[string]field.Expr, 17)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["action"] = n.Action
@@ -135,6 +138,7 @@ func (n *note) fillFieldMap() {
 	n.fieldMap["content"] = n.Content
 	n.fieldMap["content_hash"] = n.ContentHash
 	n.fieldMap["content_last_snapshot"] = n.ContentLastSnapshot
+	n.fieldMap["content_last_snapshot_hash"] = n.ContentLastSnapshotHash
 	n.fieldMap["version"] = n.Version
 	n.fieldMap["client_name"] = n.ClientName
 	n.fieldMap["size"] = n.Size

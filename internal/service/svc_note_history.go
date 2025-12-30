@@ -138,14 +138,15 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	}
 
 	params := &dao.NoteHistorySet{
-		NoteID:     note.ID,
-		VaultID:    note.VaultID,
-		Path:       note.Path, // 存储diff补丁
-		DiffPatch:  patchText,
-		Content:    note.ContentLastSnapshot, // 快照
-		ClientName: note.ClientName,
-		Version:    latestVersion + 1,
-		CreatedAt:  note.UpdatedAt,
+		NoteID:      note.ID,
+		VaultID:     note.VaultID,
+		Path:        note.Path, // 存储diff补丁
+		DiffPatch:   patchText,
+		Content:     note.ContentLastSnapshot,     // 快照
+		ContentHash: note.ContentLastSnapshotHash, // 快照哈希
+		ClientName:  note.ClientName,
+		Version:     latestVersion + 1,
+		CreatedAt:   note.UpdatedAt,
 	}
 
 	_, err = svc.dao.NoteHistoryCreate(params, uid)
@@ -154,7 +155,7 @@ func (svc *Service) NoteHistoryProcessDelay(noteID int64, uid int64) error {
 	}
 
 	// 更新 ContentLastSnapshot
-	return svc.dao.NoteUpdateSnapshot(note.Content, latestVersion+1, note.ID, uid)
+	return svc.dao.NoteUpdateSnapshot(note.Content, note.ContentHash, latestVersion+1, note.ID, uid)
 }
 
 // NoteHistoryMigrate 处理笔记历史迁移

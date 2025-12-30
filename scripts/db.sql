@@ -26,7 +26,7 @@ CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
  动作 create modify delete
  */
 
- 
+
 DROP TABLE IF EXISTS "note";
 
 CREATE TABLE "note" (
@@ -38,6 +38,7 @@ CREATE TABLE "note" (
     "content" text DEFAULT '',
     "content_hash" text DEFAULT '',
     "content_last_snapshot" text NOT NULL DEFAULT '',
+    "content_last_snapshot_hash" text NOT NULL DEFAULT '',
     "version" integer DEFAULT 0,
     "client_name" text NOT NULL DEFAULT '',
     "size" integer DEFAULT 0,
@@ -64,6 +65,7 @@ CREATE TABLE "note_history" (
     "vault_id" integer NOT NULL DEFAULT 0,
     "path" text DEFAULT '',
     "content" text DEFAULT '',
+    "content_hash" text NOT NULL DEFAULT '',
     "diff_patch" text DEFAULT '',
     "client_name" text DEFAULT '',
     "version" integer DEFAULT 0,
@@ -74,6 +76,8 @@ CREATE TABLE "note_history" (
 CREATE INDEX "idx_note_history_note_id" ON "note_history" ("note_id");
 
 CREATE INDEX "idx_note_history_version" ON "note_history" ("note_id", "version");
+
+CREATE INDEX "idx_note_history_content_hash" ON "note_history" ("note_id", "content_hash");
 
 DROP TABLE IF EXISTS "vault";
 
