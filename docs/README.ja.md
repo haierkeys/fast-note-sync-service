@@ -42,7 +42,7 @@
 
 ## ⏱️ 更新履歴
 
-- ♨️ [更新履歴を確認する](docs/CHANGELOG.ja.md)
+- ♨️ [更新履歴を確認する](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.ja.md)
 
 ## 🗺️ ロードマップ (Roadmap)
 

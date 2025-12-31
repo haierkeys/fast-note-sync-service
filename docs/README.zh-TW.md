@@ -42,7 +42,7 @@
 
 ## ⏱️ 更新日誌
 
-- ♨️ [訪問查看更新日誌](docs/CHANGELOG.zh-TW.md)
+- ♨️ [訪問查看更新日誌](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.zh-TW.md)
 
 ## 🗺️ 路線圖 (Roadmap)
 

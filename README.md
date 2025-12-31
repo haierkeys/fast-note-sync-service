@@ -42,7 +42,7 @@
 
 ## ⏱️ Changelog
 
-- ♨️ [Visit to view the changelog](docs/CHANGELOG.en.md)
+- ♨️ [Visit to view the changelog](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.en.md)
 
 ## 🗺️ Roadmap
 

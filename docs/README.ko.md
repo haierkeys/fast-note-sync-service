@@ -42,7 +42,7 @@
 
 ## ⏱️ 업데이트 로그
 
-- ♨️ [업데이트 로그 확인하기](docs/CHANGELOG.ko.md)
+- ♨️ [업데이트 로그 확인하기](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.ko.md)
 
 ## 🗺️ 로드맵 (Roadmap)
 
