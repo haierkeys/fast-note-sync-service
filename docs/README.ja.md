@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  クライアント側のプラグインが必要です：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  クライアントプラグインと併用する必要があります：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
@@ -25,39 +25,42 @@
 
 ---
 
-## ✨ コア機能
+## ✨ 主な機能
 
-* **💻 Web管理パネル**：ユーザーの作成、プラグイン設定の生成、リポジトリやノートコンテンツの管理を簡単に行えるモダンな管理インターフェースを内蔵。
-* **🔄 マルチデバイスノート同期**：
-    * **Vault（倉庫）**の自動作成をサポート。
-    * ノート管理（追加、削除、変更、検索）をサポートし、変更をミリ秒単位ですべてのオンラインデバイスにリアルタイム配信。
-* **🖼️ 添付ファイル同期サポート**：
+* **💻 Web管理パネル**：モダンな管理インターフェースを内蔵し、ユーザー作成、プラグイン設定の生成、リポジトリおよびノートの管理を簡単に行えます。
+* **🔄 マルチデバイス同期**：
+    * **Vault (リポジトリ)** の自動作成をサポート。
+    * ノート管理（追加、削除、変更、検索）をサポートし、変更はミリ秒単位でリアルタイムにすべてのオンラインデバイスに配信されます。
+* **🖼️ 添付ファイルの同期サポート**：
     * 画像などの非ノートファイルの同期を完全にサポート。
-    * *(注：サーバー v0.9+ および [Obsidian プラグイン v1.0以上](https://github.com/haierkeys/obsidian-fast-note-sync/releases) が必要です。Obsidianの設定ファイルには対応していません)*
+    * *(注：サーバー v0.9+ および [Obsidian プラグイン v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases) が必要です。Obsidian の設定ファイルはサポートしていません)*
 * **📝 ノート履歴**：
-    * Webページやプラグイン側で、各ノートの変更履歴バージョンを表示できます。
+    * Webページまたはプラグイン側で、各ノートの過去の修正バージョンを確認できます。
     * (サーバー v1.2+ が必要)
-* **⚙️ 設定同期**：
+* **⚙️ 設定の同期**：
     * `.obsidian` 設定ファイルの同期をサポート。
 
+## ⏱️ 更新履歴
+
+- ♨️ [更新履歴を確認する](docs/CHANGELOG.ja.md)
 
 ## 🗺️ ロードマップ (Roadmap)
 
-私たちは継続的に改善を行っています。今後の開発計画は以下の通りです：
+継続的に改善を行っており、以下の開発計画を予定しています：
 
-- [ ] **Gitバージョン管理の統合**：ノートのより安全なバージョンバックトラックを提供。
+- [ ] **Git バージョン管理の統合**：ノートのより安全なバージョン履歴を提供。
 - [ ] **同期アルゴリズムの最適化**：`google-diff-match-patch` を統合し、より効率的な増分同期を実現。
 - [ ] **クラウドストレージとバックアップ戦略**：
-    * [ ] カスタムバックアップ戦略設定。
-    * [ ] マルチプロトコル対応：S3 / Minio / Cloudflare R2 / Aliyun OSS / WebDAV。
+    - [ ] カスタムバックアップ戦略の設定。
+    - [ ] マルチプロトコル対応：S3 / Minio / Cloudflare R2 / Alibaba Cloud OSS / WebDAV。
 
-> **改善の提案や新しいアイデアがある場合は、Issueを提出して共有してください。私たちは慎重に評価し、適切な提案を採用します。**
+> **改善の提案や新しいアイデアがございましたら、issue を通じてお気軽にお知らせください。適切な提案は慎重に検討し、採用させていただきます。**
 
-## 🚀 迅速なデプロイ
+## 🚀 クイックデプロイ
 
-複数のインストール方法を提供していますが、**ワンクリックスクリプト** または **Docker** の使用を推奨します。
+複数のインストール方法を提供していますが、**一クリックスクリプト** または **Docker** の使用を推奨します。
 
-### 方法1：ワンクリックスクリプト（推奨）
+### 方法1：一クリックスクリプト（推奨）
 
 システム環境を自動的に検出し、インストールとサービス登録を完了します。
 
@@ -67,9 +70,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 
 **スクリプトの主な動作：**
 
-  * 現在のシステムに適したReleaseバイナリフォルダを自動的にダウンロード。
+  * 現在のシステムに適した Release バイナリファイルを自動的にダウンロード。
   * デフォルトで `/opt/fast-note` にインストールし、`/usr/local/bin/fast-note` にショートカットコマンドを作成。
-  * 起動時に自動開始するように Systemd サービス (`fast-note.service`) を設定して開始。
+  * Systemd サービス (`fast-note.service`) を設定・起動し、OS 起動時の自動実行を実現。
   * **管理コマンド**：`fast-note [install|uninstall|start|stop|status|update|menu]`
 
 -----
@@ -79,10 +82,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 #### Docker Run
 
 ```bash
-# 1. イメージをプル
+# 1. イメージのプル
 docker pull haierkeys/fast-note-sync-service:latest
 
-# 2. コンテナを起動
+# 2. コンテナの起動
 docker run -tid --name fast-note-sync-service \
     -p 9000:9000 -p 9001:9001 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
@@ -109,7 +112,7 @@ services:
       - ./config:/fast-note-sync/config    # 設定ファイル
 ```
 
-サービスを起動：
+サービスの起動：
 
 ```bash
 docker compose up -d
@@ -119,7 +122,7 @@ docker compose up -d
 
 ### 方法3：手動バイナリインストール
 
-[Releases](https://github.com/haierkeys/fast-note-sync-service/releases) からお使いのシステムに対応した最新バージョンをダウンロードし、解凍して実行してください：
+[Releases](https://github.com/haierkeys/fast-note-sync-service/releases) から対応するシステムの最新バージョンをダウンロードし、解凍して実行してください：
 
 ```bash
 ./fast-note-sync-service run -c config/config.yaml
@@ -130,25 +133,25 @@ docker compose up -d
 1.  **管理パネルへのアクセス**：
     ブラウザで `http://{サーバーIP}:9000` を開きます。
 2.  **初期設定**：
-    初回アクセス時にはアカウント登録が必要です。*(登録機能を無効にする場合は、設定ファイルで `user.register-is-enable: false` に設定してください)*
+    初回アクセス時にアカウント登録が必要です。*(登録機能をオフにする場合は、設定ファイルで `user.register-is-enable: false` を設定してください)*
 3.  **クライアントの設定**：
-    管理パネルにログインし、**「API設定をコピー」** をクリックします。
-4.  **Obsidian の接続**：
-    Obsidian プラグインの設定ページを開き、コピーした設定情報を貼り付けます。
+    管理パネルにログインし、**「API 設定をコピー」**をクリックします。
+4.  **Obsidian との接続**：
+    Obsidian のプラグイン設定画面を開き、コピーした設定情報を貼り付けてください。
 
-## ⚙️ 設定説明
+## ⚙️ 設定について
 
-デフォルトの設定ファイルは `config.yaml` です。プログラムは **ルートディレクトリ** または **config/** ディレクトリ内を自動的に検索します。
+デフォルトの設定ファイルは `config.yaml` です。プログラムは自動的に **ルートディレクトリ** または **config/** ディレクトリ内を検索します。
 
-完全な設定例を表示：[config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+完全な設定例を確認する：[config/config.yaml](https://www.google.com/search?q=config/config.yaml)
 
 ## 📅 更新履歴
 
-完全なバージョン履歴を確認するには、[Releases ページ](https://github.com/haierkeys/fast-note-sync-service/releases) にアクセスしてください。
+完全なバージョン更新記録については、[Releases ページ](https://github.com/haierkeys/fast-note-sync-service/releases) をご覧ください。
 
-## ☕ 支援とサポート
+## ☕ 支援とスポンサー
 
-このプロジェクトは完全にオープンソースで無料です。もしお役に立った場合は、このプロジェクトに **Star** を付けるか、作者にコーヒーを一杯ご馳走していただけると、継続的なメンテナンスの励みになります。ありがとうございます！
+このプロジェクトは完全にオープンソースで無料です。もしお役に立てましたら、プロジェクトへの **Star** や著者へのコーヒー一杯の支援をお願いいたします。継続的なメンテナンスの励みになります。ありがとうございます！
 
 [<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
 
