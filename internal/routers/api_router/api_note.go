@@ -1,6 +1,7 @@
 package api_router
 
 import (
+	"bytes"
 	"net/http"
 	"time"
 
@@ -311,7 +312,7 @@ func (n *Note) GetFileContent(c *gin.Context) {
 	params.PathHash = util.EncodeHash32(params.Path)
 
 	svc := service.New(c).WithClientName(global.WebClientName)
-	content, contentType, err := svc.NoteGetFileContent(uid, params)
+	content, contentType, mtime, etag, err := svc.NoteGetFileContent(uid, params)
 	if err != nil {
 		global.Logger.Error("apiRouter.Note.GetFileContent err", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
@@ -324,6 +325,24 @@ func (n *Note) GetFileContent(c *gin.Context) {
 		return
 	}
 
-	// 返回内容，设置从 Service 层识别出的 Content-Type
-	c.Data(http.StatusOK, contentType, content)
+	// 1. 设置 Content-Type
+	// http.ServeContent 虽然会尝试 sniff, 但如果我们已经有确定的 contentType, 最好显式设置.
+	// 尤其是 text/markdown 或其他特殊类型.
+	if contentType != "" {
+		c.Header("Content-Type", contentType)
+	}
+
+	// 2. 设置 Cache-Control
+	// public: 允许被中间代理缓存
+	// max-age=31536000: 缓存一年 (365天), 在此期间浏览器不再向服务器发起请求
+	c.Header("Cache-Control", "public, s-maxage=31536000, max-age=31536000, must-revalidate")
+
+	// 3. 设置 ETag
+	if etag != "" {
+		c.Header("ETag", etag)
+	}
+
+	// 4. 使用 http.ServeContent 处理
+	// 它会自动处理 Range 请求, HEAD 请求, 以及 Last-Modified / If-Modified-Since 的协商
+	http.ServeContent(c.Writer, c.Request, params.Path, time.UnixMilli(mtime), bytes.NewReader(content))
 }

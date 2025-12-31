@@ -20,12 +20,14 @@ import (
 // 返回值说明:
 //   - []byte: 文件原始数据
 //   - string: MIME 类型 (Content-Type)
+//   - int64: mtime (Last-Modified)
+//   - string: etag (Content-Hash)
 //   - error: 出错时返回错误
-func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) ([]byte, string, error) {
+func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) ([]byte, string, int64, string, error) {
 	// 1. 获取仓库 ID
 	vaultID, err := svc.VaultIdGetByName(params.Vault, uid)
 	if err != nil {
-		return nil, "", fmt.Errorf("获取仓库失败: %w", err)
+		return nil, "", 0, "", fmt.Errorf("获取仓库失败: %w", err)
 	}
 
 	// 2. 确认路径哈希
@@ -37,7 +39,7 @@ func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) 
 	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
 	if err == nil && note != nil && note.Action != "delete" {
 		// 笔记内容固定识别为 markdown
-		return []byte(note.Content), "text/markdown; charset=utf-8", nil
+		return []byte(note.Content), "text/markdown; charset=utf-8", note.Mtime, note.ContentHash, nil
 	}
 
 	// 4. 尝试从 File 表获取 (附件/二进制文件)
@@ -46,7 +48,7 @@ func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) 
 		// 读取物理文件内容
 		content, err := os.ReadFile(file.SavePath)
 		if err != nil {
-			return nil, "", fmt.Errorf("读取物理文件失败: %w", err)
+			return nil, "", 0, "", fmt.Errorf("读取物理文件失败: %w", err)
 		}
 
 		// 识别文件 MIME 类型
@@ -57,8 +59,11 @@ func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) 
 			contentType = http.DetectContentType(content)
 		}
 
-		return content, contentType, nil
+		// File 表没有 ContentHash 或不确定, 实时计算
+		etag := util.EncodeHash32(string(content))
+
+		return content, contentType, file.Mtime, etag, nil
 	}
 
-	return nil, "", nil
+	return nil, "", 0, "", nil
 }
