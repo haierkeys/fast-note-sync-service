@@ -12,6 +12,9 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+
+	"regexp"
+	"strings"
 )
 
 var (
@@ -484,4 +487,62 @@ func (svc *Service) FileCleanupAll() error {
 
 	lastFileCleanupTime = time.Now()
 	return nil
+}
+
+// FileResolveEmbedLinks 解析内容中的 ![[ ]] 标签并返回路径对照 map
+// 函数名: FileResolveEmbedLinks
+// 函数使用说明: 传入内容字符串,解析其中所有的 ![[path]] 嵌入标签,根据 path 后缀匹配 file 表返回完整路径对照 Map。
+// 参数说明:
+//   - uid int64: 用户ID
+//   - vaultName string: 保险库名称
+//   - content string: 包含待解析标签的内容
+//
+// 返回值说明:
+//   - map[string]string: 标签内部内容与库内完整路径的映射 Map
+//   - error: 出错时返回错误
+func (svc *Service) FileResolveEmbedLinks(uid int64, vaultName string, content string) (map[string]string, error) {
+	// 单例模式获取VaultID
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
+		return svc.VaultIdGetByName(vaultName, uid)
+	})
+	if err != nil {
+		return nil, err
+	}
+	vaultID := vID.(int64)
+
+	// 正则匹配 ![[path|options]] 或 ![[path#anchor]]
+	re := regexp.MustCompile(`!\[\[(.*?)\]\]`)
+	matches := re.FindAllStringSubmatch(content, -1)
+
+	resultMap := make(map[string]string)
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		inner := match[1] // 标签内部内容,如 mm.jpg|100
+
+		// 提取资源路径（移除尺寸 | 和锚点 # 之后的部分）
+		resourcePath := inner
+		if idx := strings.IndexAny(inner, "|#"); idx != -1 {
+			resourcePath = inner[:idx]
+		}
+		resourcePath = strings.TrimSpace(resourcePath)
+
+		if resourcePath == "" {
+			continue
+		}
+
+		// 如果已经处理过这个路径, 跳过
+		if _, ok := resultMap[resourcePath]; ok {
+			continue
+		}
+
+		// 搜索文件 (LIKE 右匹配)
+		file, err := svc.dao.FileGetByPathLike(resourcePath, vaultID, uid)
+		if err == nil && file != nil {
+			resultMap[resourcePath] = file.Path
+		}
+	}
+
+	return resultMap, nil
 }

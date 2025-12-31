@@ -67,7 +67,18 @@ func (n *Note) Get(c *gin.Context) {
 		return
 	}
 
-	response.ToResponse(code.Success.WithData(note))
+	// 解析内容中的 ![[ ]] 标签
+	fileLinks, err := svc.FileResolveEmbedLinks(uid, params.Vault, note.Content)
+	if err != nil {
+		global.Logger.Error("apiRouter.Note.Get svc FileResolveEmbedLinks err: %v", zap.Error(err))
+	}
+
+	noteWithLinks := &service.NoteWithFileLinks{
+		FileLinks: fileLinks,
+	}
+	convert.StructAssign(note, noteWithLinks)
+
+	response.ToResponse(code.Success.WithData(noteWithLinks))
 }
 
 // List 获取笔记列表

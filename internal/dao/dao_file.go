@@ -100,6 +100,30 @@ func (d *Dao) FileGetByPath(path string, vaultID int64, uid int64) (*File, error
 	return convert.StructAssign(m, &File{}).(*File), nil
 }
 
+// FileGetByPathLike 根据路径后缀获取文件
+// 函数名: FileGetByPathLike
+// 函数使用说明: 根据文件路径后缀(LIKE右匹配)和保险库ID查询第一条文件记录。
+// 参数说明:
+//   - path string: 文件路径后缀
+//   - vaultID int64: 保险库ID
+//   - uid int64: 用户ID
+//
+// 返回值说明:
+//   - *File: 文件数据
+//   - error: 出错时返回错误
+func (d *Dao) FileGetByPathLike(path string, vaultID int64, uid int64) (*File, error) {
+	u := d.file(uid).File
+	m, err := u.WithContext(d.ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.Path.Like("%"+path),
+		u.Action.Neq("delete"),
+	).First()
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &File{}).(*File), nil
+}
+
 // FileCreate 创建文件记录
 // 函数名: FileCreate
 // 函数使用说明: 在数据库中创建新的文件记录,自动设置创建时间和更新时间。
