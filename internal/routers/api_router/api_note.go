@@ -1,6 +1,7 @@
 package api_router
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -65,7 +66,19 @@ func (n *Note) Get(c *gin.Context) {
 		response.ToResponse(code.ErrorNoteGetFailed.WithDetails(err.Error()))
 		return
 	}
-	response.ToResponse(code.Success.WithData(note))
+
+	// 1. 生成 HTML 内容
+	htmlContent, err := svc.NoteGenerateHTML(uid, params)
+	if err != nil {
+		global.Logger.Error("apiRouter.Note.Get svc NoteGenerateHTML err: %v", zap.Error(err))
+		// 这里如果不生成 HTML 也不应该导致整个接口报错，可以考虑只记录日志或返回空
+	}
+
+	// 2. 转换结构并填充 HTML
+	noteHtml := convert.StructAssign(note, &service.NoteWithHtmlContent{}).(*service.NoteWithHtmlContent)
+	noteHtml.HtmlContent = htmlContent
+
+	response.ToResponse(code.Success.WithData(noteHtml))
 }
 
 // List 获取笔记列表
@@ -269,4 +282,48 @@ func (n *Note) Delete(c *gin.Context) {
 	}
 	response.ToResponse(code.Success.WithData(note))
 	n.wss.BroadcastToUser(uid, code.Success.Reset().WithData(note).WithVault(params.Vault), "NoteSyncDelete")
+}
+
+// GetFileContent 获取文件或笔记的原始内容
+// 函数名: GetFileContent
+// 函数使用说明: 处理通过仓库名和路径获取内容的 HTTP 请求。
+// 参数说明:
+//   - c *gin.Context: Gin 上下文,包含查询参数 vault 和 path
+//
+// 返回值说明:
+//   - 二进制流: 文件的原始内容
+func (n *Note) GetFileContent(c *gin.Context) {
+	params := &service.NoteGetRequestParams{}
+	response := app.NewResponse(c)
+	valid, errs := app.BindAndValid(c, params)
+	if !valid {
+		global.Logger.Error("apiRouter.Note.Get.BindAndValid err: %v", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+	uid := app.GetUID(c)
+	if uid == 0 {
+		global.Logger.Error("apiRouter.Note.Get err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	params.PathHash = util.EncodeHash32(params.Path)
+
+	svc := service.New(c).WithClientName(global.WebClientName)
+	content, contentType, err := svc.NoteGetFileContent(uid, params)
+	if err != nil {
+		global.Logger.Error("apiRouter.Note.GetFileContent err", zap.Error(err))
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+
+	// 如果内容为 nil, 表示资源未找到或已删除, 返回 404
+	if content == nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	// 返回内容，设置从 Service 层识别出的 Content-Type
+	c.Data(http.StatusOK, contentType, content)
 }

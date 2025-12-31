@@ -111,7 +111,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.UserAuthToken()).DELETE("/vault", api_router.NewVault().Delete)
 
 		noteApiWithWss := api_router.NewNote(wss)
+
 		api.Use(middleware.UserAuthToken()).GET("/note", noteApiWithWss.Get)
+		api.Use(middleware.UserAuthToken()).GET("/note/file", noteApiWithWss.GetFileContent)
 		api.Use(middleware.UserAuthToken()).POST("/note", noteApiWithWss.CreateOrUpdate)
 		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApiWithWss.Delete)
 		api.Use(middleware.UserAuthToken()).GET("/notes", noteApiWithWss.List)
