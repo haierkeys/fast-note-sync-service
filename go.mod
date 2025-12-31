@@ -33,7 +33,6 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/w3liu/go-common v0.0.0-20210108072342-826b2f3582be
-	github.com/yuin/goldmark v1.7.13
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.45.0
 	golang.org/x/mod v0.30.0

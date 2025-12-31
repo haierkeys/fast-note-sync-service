@@ -67,18 +67,7 @@ func (n *Note) Get(c *gin.Context) {
 		return
 	}
 
-	// 1. 生成 HTML 内容
-	htmlContent, err := svc.NoteGenerateHTML(uid, params)
-	if err != nil {
-		global.Logger.Error("apiRouter.Note.Get svc NoteGenerateHTML err: %v", zap.Error(err))
-		// 这里如果不生成 HTML 也不应该导致整个接口报错，可以考虑只记录日志或返回空
-	}
-
-	// 2. 转换结构并填充 HTML
-	noteHtml := convert.StructAssign(note, &service.NoteWithHtmlContent{}).(*service.NoteWithHtmlContent)
-	noteHtml.HtmlContent = htmlContent
-
-	response.ToResponse(code.Success.WithData(noteHtml))
+	response.ToResponse(code.Success.WithData(note))
 }
 
 // List 获取笔记列表
