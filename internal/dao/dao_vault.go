@@ -53,7 +53,7 @@ func (d *Dao) vault(uid int64) *query.Query {
 //   - error: 出错时返回错误
 func (d *Dao) VaultGet(id int64, uid int64) (*Vault, error) {
 	u := d.vault(uid).Vault
-	m, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).First()
+	m, err := u.WithContext(d.ctx).Where(u.ID.Eq(id), u.IsDeleted.Eq(0)).First()
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (d *Dao) VaultGet(id int64, uid int64) (*Vault, error) {
 //   - error: 出错时返回错误
 func (d *Dao) VaultGetByName(name string, uid int64) (*Vault, error) {
 	u := d.vault(uid).Vault
-	m, err := u.WithContext(d.ctx).Where(u.Vault.Eq(name)).First()
+	m, err := u.WithContext(d.ctx).Where(u.Vault.Eq(name), u.IsDeleted.Eq(0)).First()
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +146,7 @@ func (d *Dao) VaultList(uid int64) ([]*Vault, error) {
 	u := d.vault(uid).Vault
 
 	modelList, err := u.WithContext(d.ctx).
+		Where(u.IsDeleted.Eq(0)).
 		Order(u.CreatedAt).
 		Limit(100).
 		Order(u.UpdatedAt).
@@ -178,7 +179,9 @@ func (d *Dao) VaultDelete(id int64, uid int64) error {
 
 	_, err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
-	).Delete()
+	).UpdateSimple(
+		u.IsDeleted.Value(1),
+	)
 	return err
 }
 

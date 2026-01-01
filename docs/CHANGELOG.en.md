@@ -1,8 +1,24 @@
-# CHANGELOG
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/) standards.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/0.3.0/).
+
+---
+
+## v1.4.2
+> *2026/01/01*
+
+### ✨ Added
+- **WebGui**: Added a red double-confirmation dialog for note deletion to prevent accidental deletion.
+
+---
+
+## v1.4.1
+> *2025/12/31*
+
+### 🚀 Optimized
+- **API**: Added ETag browser caching mechanism for note resource (images, etc.) download interface to improve loading speed.
 
 ---
 
@@ -10,9 +26,9 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/31*
 
 ### ✨ Added
-- **WebGui**: Added maximum button to enhance full-screen editing experience.
-- **WebGui**: Added support for displaying Obsidian embedded images, PDFs, and other attachments in the note view page.
-- **API**: Added resource download interface.
+- **WebGui**: Added a maximize button to enhance the full-screen editing experience.
+- **WebGui**: Added support for normal display of Obsidian embedded images, PDFs, and other attachments in the note view page.
+- **API**: Added a resource download interface.
 
 ---
 
@@ -20,7 +36,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/31*
 
 ### 🚀 Optimized
-- **Server**: Established a content hash versioning library for notes to facilitate future traceability, comparison, and merging operations.
+- **Server**: Established a content hash repository for notes to facilitate subsequent tracing, comparison, and merging operations.
 
 ---
 
@@ -28,8 +44,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/30*
 
 ### 🛠️ Fixed
-- **Stability**: Added crash recovery mechanism for tasks and upgrade scripts to prevent a single task error from crashing the entire service.
-- **Stability**: Fixed panic issues caused by nil pointers at various levels.
+- **Stability**: Added a crash recovery mechanism for tasks and upgrade scripts to prevent a single task error from causing the entire service to crash.
+- **Stability**: Fixed Panic issues caused by nil pointers occurring at various levels.
 
 ---
 
@@ -37,7 +53,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/30*
 
 ### 🛠️ Fixed
-- **Task Management**: Fixed reporting issues in the task manager.
+- **Task Management**: Fixed error issues in the task manager.
 
 ---
 
@@ -45,8 +61,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/30*
 
 ### 🚀 Optimized
-- **WebGui**: Optimized the display of the note view page.
-- **Scripts**: Optimized the one-click installation/management script.
+- **WebGui**: Optimized the display effect of the note view page.
+- **Script**: Optimized the one-click installation/management script.
 
 ---
 
@@ -54,8 +70,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/30*
 
 ### 🛠️ Fixed
-- **Sync**: Fixed an issue where sync command processing errors caused files to be incorrectly synchronization-created to all clients.
-- **Scripts**: Fixed an issue where `Ctrl+C` in the one-click script would also close the started services.
+- **Sync**: Fixed an issue where sync command processing errors caused files to be incorrectly synced and created on all clients.
+- **Script**: Fixed an issue where the one-click script caused started services to be closed simultaneously upon `Ctrl+C`.
 
 ---
 
@@ -63,7 +79,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/29*
 
 ### 🛠️ Fixed
-- **Sync**: Resolved potential update confusion issues when using multiple note repositories for a single user.
+- **Sync**: Resolved update confusion issues that might occur with multiple note repositories for a single user.
 
 ---
 
@@ -74,7 +90,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 - **Multi-language**: Added support for multi-language environments.
 
 ### 🚀 Optimized
-- **WebGui**: Optimized the display of note history difference comparisons.
+- **WebGui**: Optimized the display effect of note history difference comparison.
 
 ---
 
@@ -82,7 +98,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/28*
 
 ### 🚀 Optimized
-- **Logic**: Optimized the logic processing flow when modifying note titles.
+- **Logic Processing**: Optimized the logic processing flow when changing note titles.
 
 ---
 
@@ -98,7 +114,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/27*
 
 ### 🚀 Optimized
-- **WebGui**: Optimized font loading logic to avoid interface lagging caused by font loading.
+- **WebGui**: Optimized font loading logic to avoid interface lag caused by font loading.
 
 ---
 
@@ -109,7 +125,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 - **Client**: Added support for recording client names.
 
 ### 🚀 Optimized
-- **Cleanup**: Added sync cleanup logic after note renaming.
+- **Cleanup Logic**: Added sync cleanup logic after note renaming.
 
 ---
 
@@ -117,7 +133,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/27*
 
 ### 🛠️ Fixed
-- **WebGui**: Fixed a display bug caused by empty historical version content.
+- **WebGui**: Fixed a display bug caused when history version content is empty.
 
 ---
 
@@ -125,14 +141,14 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/27*
 
 ### ✨ Added
-- **API**: Added note history related interfaces and functions.
+- **API**: Added note history-related interfaces and functions.
 
 ### 🚀 Optimized
 - **Database**: Optimized database query efficiency.
 - **WebGui**: Modified WebGui display fonts and fixed various display bugs.
 
 ### 🛠️ Fixed
-- **Stability**: Fixed issues occurring during high concurrency access.
+- **Stability**: Fixed issues occurring during high-concurrency access.
 
 ---
 
@@ -140,7 +156,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/27*
 
 ### 🛠️ Fixed
-- **WebGui**: Fixed a blank page issue caused by empty note history.
+- **WebGui**: Fixed the problem of blank pages when note history is empty.
 
 ---
 
@@ -148,11 +164,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/27*
 
 ### ✨ Added
-- **API**: Added note history related interfaces and functions.
+- **API**: Added note history-related interfaces and functions.
 
 ### 🚀 Optimized
 - **Database**: Optimized database query efficiency.
-- **Stability**: Resolved stability issues during high concurrency access.
+- **Stability**: Resolved stability issues during large-scale concurrent access.
 
 ---
 
@@ -160,7 +176,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/26*
 
 ### 🛠️ Fixed
-- **WebGui**: Fixed a blank display issue caused by build exceptions in the WebGui page.
+- **WebGui**: Fixed the problem of blank display caused by WebGui page build exceptions.
 
 ---
 
@@ -179,7 +195,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 - **Attachments**: Optimized attachment upload logic, significantly reducing upload time.
 
 ### 🛠️ Fixed
-- **CI/CD**: Fixed update restriction issues in GitHub Actions.
+- **CI/CD**: Fixed GitHub Action update limitation issues.
 
 ---
 
@@ -187,7 +203,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/23*
 
 ### 🛠️ Fixed
-- **Permissions**: Fixed permission issues during upload on some systems.
+- **Permissions**: Fixed issues on some systems during upload due to insufficient permissions.
 
 ---
 
@@ -198,10 +214,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 - **Sync**: Added configuration file synchronization related functions and interfaces.
 
 ### 🚀 Optimized
-- **Scripts**: Optimized script output display.
+- **Script**: Optimized the output of the display script.
 
 ### 🛠️ Fixed
-- **Scripts**: Fixed script management execution failures.
+- **Script**: Fixed script control execution failure issues.
 
 ---
 
@@ -209,7 +225,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/19*
 
 ### 🛠️ Fixed
-- **Docker**: Fixed the issue where Docker images could not be executed.
+- **Docker**: Fixed the issue where Docker images cannot be executed.
 
 ---
 
@@ -217,7 +233,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/18*
 
 ### ✨ Added
-- **Auth**: Added version information downlink functionality in the verification authorization interface.
+- **Authentication**: Added the function of issuing version information in the authentication interface.
 
 ---
 
@@ -225,10 +241,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/16*
 
 ### ✨ Added
-- **Cleanup**: Added automatic cleanup tasks at startup and Session automatic cleanup logic.
+- **Cleanup**: Added automatic cleanup tasks upon program startup and Session automatic cleanup logic.
 
 ### 🛠️ Fixed
-- **Stability**: Fixed abnormal exit issues due to closed connections under high concurrency.
+- **Stability**: Fixed abnormal exit issues due to connection closure under high concurrency.
 
 ---
 
@@ -236,7 +252,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/15*
 
 ### 🛠️ Fixed
-- **Stability**: Fixed abnormal program exit due to closed connections under concurrency.
+- **Stability**: Fixed program abnormal exit due to connection closure under concurrency.
 
 ---
 
@@ -244,7 +260,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/14*
 
 ### ✨ Added
-- **Architecture**: Added prefixes to messages for future business expansion.
+- **Architecture**: Added prefixes to messages to facilitate subsequent business function expansion.
 
 ---
 
@@ -252,7 +268,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/12*
 
 ### ✨ Added
-- **Settings**: Added upload and download chunk size settings (default 512KB).
+- **Settings**: Added upload/download chunk settings (default 512KB).
 
 ---
 
@@ -260,8 +276,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 > *2025/12/12*
 
 ### ✨ Added
-- **Features**: Added binary file download functionality.
-- **Features**: Added WebSocket chunked download functionality.
+- **Features**: Added binary file download function.
+- **Features**: Added WebSocket chunked download function.
 - **Features**: Added version control management.
 
 ---
@@ -269,4 +285,4 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/)
 ## v0.9.6
 > *2025/12/11*
 
-- Initial version (records started).
+- Initial version (recording starts).

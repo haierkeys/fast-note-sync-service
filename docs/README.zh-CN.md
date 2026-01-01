@@ -40,6 +40,14 @@
 * **⚙️ 配置同步**：
     * 支持 `.obsidian` 配置文件的同步。
 
+## ☕ 赞助与支持
+
+- 如果觉得这个插件很有用，并且想要它继续开发，请在以下方式支持我:
+
+  | Ko-fi *非中国地区*  |  | 微信扫码打赏 *中国地区* |
+  | --- | ---| --- |
+  | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+
 ## ⏱️ 更新日志
 
 - ♨️ [访问查看更新日志](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.zh-CN.md)
@@ -145,15 +153,6 @@ docker compose up -d
 
 查看完整配置示例：[config/config.yaml](https://www.google.com/search?q=config/config.yaml)
 
-## 📅 更新日志
-
-查看完整的版本迭代记录，请访问 [Releases 页面](https://github.com/haierkeys/fast-note-sync-service/releases)。
-
-## ☕ 赞助与支持
-
-本项目完全开源免费。如果您觉得它对您有帮助，欢迎 **Star** 本项目，或请作者喝一杯咖啡，这将成为我持续维护的动力，感谢！
-
-[<img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="BuyMeACoffee" width="100">](https://ko-fi.com/haierkeys)
 
 ## 🔗 相关资源
 

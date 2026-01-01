@@ -34,6 +34,7 @@ func newVault(db *gorm.DB, opts ...gen.DOOption) vault {
 	_vault.NoteSize = field.NewInt64(tableName, "note_size")
 	_vault.FileCount = field.NewInt64(tableName, "file_count")
 	_vault.FileSize = field.NewInt64(tableName, "file_size")
+	_vault.IsDeleted = field.NewInt64(tableName, "is_deleted")
 	_vault.CreatedAt = field.NewField(tableName, "created_at")
 	_vault.UpdatedAt = field.NewField(tableName, "updated_at")
 
@@ -52,6 +53,7 @@ type vault struct {
 	NoteSize  field.Int64
 	FileCount field.Int64
 	FileSize  field.Int64
+	IsDeleted field.Int64
 	CreatedAt field.Field
 	UpdatedAt field.Field
 
@@ -76,6 +78,7 @@ func (v *vault) updateTableName(table string) *vault {
 	v.NoteSize = field.NewInt64(table, "note_size")
 	v.FileCount = field.NewInt64(table, "file_count")
 	v.FileSize = field.NewInt64(table, "file_size")
+	v.IsDeleted = field.NewInt64(table, "is_deleted")
 	v.CreatedAt = field.NewField(table, "created_at")
 	v.UpdatedAt = field.NewField(table, "updated_at")
 
@@ -102,13 +105,14 @@ func (v *vault) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *vault) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 9)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["vault"] = v.Vault
 	v.fieldMap["note_count"] = v.NoteCount
 	v.fieldMap["note_size"] = v.NoteSize
 	v.fieldMap["file_count"] = v.FileCount
 	v.fieldMap["file_size"] = v.FileSize
+	v.fieldMap["is_deleted"] = v.IsDeleted
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 }

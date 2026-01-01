@@ -88,6 +88,7 @@ CREATE TABLE "vault" (
     "note_size" integer DEFAULT 0,
     "file_count" integer DEFAULT 0,
     "file_size" integer DEFAULT 0,
+    "is_deleted" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
