@@ -58,7 +58,9 @@ func (n *Note) Get(c *gin.Context) {
 		return
 	}
 
-	params.PathHash = util.EncodeHash32(params.Path)
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
 
 	svc := service.New(c).WithClientName(global.WebClientName)
 	note, err := svc.NoteGet(uid, params)
@@ -150,7 +152,11 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	}
 
 	params.SrcPathHash = util.EncodeHash32(params.SrcPath)
-	params.PathHash = util.EncodeHash32(params.Path)
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
 	params.ContentHash = util.EncodeHash32(params.Content)
 
 	if params.Mtime == 0 {
@@ -256,7 +262,9 @@ func (n *Note) Delete(c *gin.Context) {
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
-	params.PathHash = util.EncodeHash32(params.Path)
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
 	svc := service.New(c).WithClientName(global.WebClientName)
 
 	noteSrc, err := svc.NoteGet(uid, &service.NoteGetRequestParams{

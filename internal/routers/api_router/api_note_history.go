@@ -80,7 +80,10 @@ func (n *NoteHistory) List(c *gin.Context) {
 	}
 
 	svc := service.New(c).WithClientName(global.WebClientName)
-	params.PathHash = util.EncodeHash32(params.Path)
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
 
 	pager := &app.Pager{Page: app.GetPage(c), PageSize: app.GetPageSize(c)}
 
