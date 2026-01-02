@@ -622,7 +622,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, cFile.ContentHash, file.Size, file.Ctime, cFile.Mtime)
+						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
 						if ferr != nil {
 							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 							continue
@@ -663,7 +663,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
 			// 创建上传会话并返回 FileUpload 消息
-			fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, file.ContentHash, 0, 0, file.Mtime)
+			fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, 0, file.Mtime)
 			if ferr != nil {
 				global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 				continue

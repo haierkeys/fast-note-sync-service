@@ -23,7 +23,7 @@ type LogType string
 
 const (
 	WSPingInterval         = 25
-	WSPingWait             = 40
+	WSPingWait             = 60
 	LogInfo        LogType = "info"
 	LogError       LogType = "error"
 	LogWarn        LogType = "warn"

@@ -73,6 +73,7 @@ type FileSyncCheckRequestParams struct {
 	PathHash    string `json:"pathHash" form:"pathHash"  binding:"required"` // 路径哈希
 	ContentHash string `json:"contentHash" form:"contentHash"  binding:""`   // 内容哈希（可选）
 	Mtime       int64  `json:"mtime" form:"mtime"  binding:"required"`       // 修改时间戳
+	Size        int64  `json:"size" form:"size"`                             // 文件大小
 }
 
 // FileSyncRequestParams 同步请求主体，包含 vault、上次同步时间和要检查的文件列表。
