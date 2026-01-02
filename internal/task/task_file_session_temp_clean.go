@@ -40,15 +40,16 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 
 	var err error
 
-	// 检查目录是否存在
+	// 检查目录是否存在，不存在则创建并直接返回成功
 	if _, err = os.Stat(tempDir); os.IsNotExist(err) {
-		global.Logger.Error("task log",
-			zap.String("task", t.Name()),
-			zap.String("type", "startupRun"),
-			zap.String("path", tempDir),
-			zap.String("reason", "temp directory does not exist"),
-			zap.String("msg", "failed"))
-		return err
+		if err = os.MkdirAll(tempDir, 0754); err != nil {
+			global.Logger.Error("task log",
+				zap.String("task", t.Name()),
+				zap.String("path", tempDir),
+				zap.Error(err))
+			return err
+		}
+		return nil
 	}
 
 	// 删除整个目录

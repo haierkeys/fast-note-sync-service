@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -59,6 +61,11 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	// Init logger.
 	initLogger(s)
+
+	// 初始化存储目录
+	if err := initStorage(); err != nil {
+		return nil, fmt.Errorf("initStorage: %w", err)
+	}
 
 	if err := initDatabase(); err != nil {
 		return nil, fmt.Errorf("initDatabase: %w", err)
@@ -230,6 +237,26 @@ func initDatabase() error {
 	global.DBEngine, err = dao.NewDBEngine(global.Config.Database)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+// initStorage 初始化存储目录，确保所有必需的目录都已存在。
+func initStorage() error {
+	dirs := []string{
+		filepath.Dir(global.Config.Log.File),
+		global.Config.App.TempPath,
+		global.Config.App.UploadSavePath,
+		filepath.Dir(global.Config.Database.Path),
+	}
+
+	for _, dir := range dirs {
+		if dir == "" {
+			continue
+		}
+		if err := os.MkdirAll(dir, 0754); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
 	}
 	return nil
 }
