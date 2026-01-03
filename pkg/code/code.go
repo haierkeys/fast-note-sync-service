@@ -30,7 +30,11 @@ type Code struct {
 var codes = map[int]string{}
 var maxcode = 0
 
-func NewError(code int, l lang) *Code {
+func CodeReset() {
+
+}
+
+func NewError(code int, l lang, reset ...bool) *Code {
 	if _, ok := codes[code]; ok {
 		panic(fmt.Sprintf("错误码 %d 已经存在，请更换一个", code))
 	}
@@ -39,6 +43,10 @@ func NewError(code int, l lang) *Code {
 
 	if code > maxcode {
 		maxcode = code
+	}
+
+	if len(reset) > 0 && reset[0] {
+		maxcode = 0
 	}
 
 	return &Code{code: code, status: false, Lang: l}

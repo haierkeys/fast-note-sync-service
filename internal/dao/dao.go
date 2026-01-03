@@ -142,6 +142,7 @@ func NewDBEngine(c global.Database) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(c.MaxIdleConns)
 
 	// SetMaxOpenConns 设置打开数据库连接的最大数量。
+	//sqlDB.SetMaxOpenConns(1)
 	sqlDB.SetMaxOpenConns(c.MaxOpenConns)
 
 	// SetConnMaxLifetime 设置了连接可复用的最大时间。
@@ -178,7 +179,10 @@ func useDia(c global.Database) gorm.Dialector {
 		if !fileurl.IsExist(c.Path) {
 			fileurl.CreatePath(c.Path, os.ModePerm)
 		}
-		return sqlite.Open(c.Path + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL")
+
+		connStr := c.Path + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)"
+
+		return sqlite.Open(connStr)
 	}
 	return nil
 

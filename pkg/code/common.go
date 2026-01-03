@@ -9,10 +9,12 @@ var (
 	SuccessPasswordUpdate = NewSuss(incr(1), lang{zh: "密码修改成功", en: "Password Update Success"})
 	SuccessNoUpdate       = NewSuss(incr(1), lang{zh: "无更新", en: "No Update"})
 
-	ErrorServerInternal           = NewError(incr(500), lang{zh: "服务器内部错误", en: "Server Internal Error"})
-	ErrorNotFoundAPI              = NewError(incr(400), lang{zh: "找不到API", en: "Not Found API"})
+	ErrorServerInternal  = NewError(500, lang{zh: "服务器内部错误", en: "Server Internal Error"}, true)
+	ErrorDBQuery         = NewError(501, lang{zh: "数据库查询失败", en: "Database query failed"}, true)
+	ErrorTooManyRequests = NewError(503, lang{zh: "请求过多", en: "Too Many Requests"}, true)
+	ErrorNotFoundAPI     = NewError(504, lang{zh: "找不到API", en: "Not Found API"}, true)
+
 	ErrorInvalidParams            = NewError(incr(400), lang{zh: "参数验证失败", en: "Invalid Params"})
-	ErrorTooManyRequests          = NewError(incr(400), lang{zh: "请求过多", en: "Too Many Requests"})
 	ErrorInvalidAuthToken         = NewError(incr(400), lang{zh: "访问令牌效验失败", en: "Invalid Auth Token"})
 	ErrorNotUserAuthToken         = NewError(incr(400), lang{zh: "尚未登录,请先登录", en: "Not logged in. Please log in first."})
 	ErrorInvalidUserAuthToken     = NewError(incr(400), lang{zh: "登录状态失效,请重新登录", en: "Session expired, please log in again."})
@@ -30,7 +32,6 @@ var (
 	ErrorUserEmailAlreadyExists   = NewError(incr(400), lang{zh: "用户邮箱已存在", en: "User email already exists"})
 	ErrorUserUsernameNotValid     = NewError(incr(400), lang{zh: "用户名不符合规则,用户名长度为3-15位,只能包含字母、数字或下划线", en: "The username does not meet the rules, the username length is 3-15 digits, and can only contain letters, numbers or underscores"})
 	ErrorUserPasswordNotMatch     = NewError(incr(400), lang{zh: "两次输入的密码不一致", en: "The two passwords entered are inconsistent"})
-	ErrorDBQuery                  = NewError(incr(400), lang{zh: "数据库查询失败", en: "Database query failed"})
 
 	ErrorInvalidCloudStorageType            = NewError(incr(400), lang{zh: "云存储类型无效", en: "Invalid cloud storage type"})
 	ErrorInvalidStorageType                 = NewError(incr(400), lang{zh: "存储类型无效", en: "Invalid storage type"})
