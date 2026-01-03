@@ -457,21 +457,22 @@ full_uninstall() {
 
 install_self() {
     ensure_root
-    local src_url_hint
-    src_url_hint="${1:-}"
-    if [ -n "$src_url_hint" ]; then
+    local src_url="${1:-}"
+
+    # 如果没有指定 URL 且当前不是通过本地文件运行（如 curl|bash 或 stdin）
+    if [ -z "$src_url" ] && [ ! -f "$0" ]; then
+        warn "$L_ST_DL_SCRIPT"
+        src_url="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh"
+    fi
+
+    if [ -n "$src_url" ]; then
         step "$L_DL_SCRIPT"
         $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
-        $SUDO curl -fsSL "$src_url_hint" -o "$INSTALLER_SELF_PATH" || { error "$L_ERR_DL_SCRIPT"; return 1; }
+        $SUDO curl -fsSL "$src_url" -o "$INSTALLER_SELF_PATH" || { error "$L_ERR_DL_SCRIPT"; return 1; }
     else
-        if [ -f "$0" ]; then
-            step "$L_CP_SCRIPT"
-            $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
-            $SUDO cp -f "$0" "$INSTALLER_SELF_PATH"
-        else
-            warn "$L_ST_DL_SCRIPT"
-            return 2
-        fi
+        step "$L_CP_SCRIPT"
+        $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
+        $SUDO cp -f "$0" "$INSTALLER_SELF_PATH"
     fi
 
     $SUDO chmod +x "$INSTALLER_SELF_PATH"
