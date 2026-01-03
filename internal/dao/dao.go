@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -180,7 +181,16 @@ func useDia(c global.Database) gorm.Dialector {
 			fileurl.CreatePath(c.Path, os.ModePerm)
 		}
 
-		connStr := c.Path + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)"
+		absDb, err := filepath.Abs(c.Path)
+		if err != nil {
+			panic(err)
+		}
+		dbSlash := "/" + strings.TrimPrefix(filepath.ToSlash(absDb), "/")
+		connStr := "file://" + dbSlash + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)"
+		// connStr = "file:///" + dbSlash + "?_foreign_keys=1&_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=10000&_mutex=no"
+		fmt.Printf("connecting to %s\n", connStr)
+
+		//connStr := c.Path + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)"
 
 		return sqlite.Open(connStr)
 	}
