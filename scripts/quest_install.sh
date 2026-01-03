@@ -10,8 +10,8 @@ REPO="haierkeys/fast-note-sync-service"
 BIN_BASE="fast-note-sync-service"
 INSTALL_DIR="/opt/fast-note"
 BIN_PATH="$INSTALL_DIR/$BIN_BASE"
-LINK_BIN="/usr/local/bin/fast-note"
-INSTALLER_LINK="/usr/local/bin/fast-note-installer"
+LINK_BIN="/usr/local/bin/fns-bin"
+INSTALLER_LINK="/usr/local/bin/fns"
 INSTALLER_SELF_PATH="/opt/fast-note/fast-note-installer.sh"
 SERVICE_NAME="fast-note.service"
 LOG_FILE="/var/log/fast-note.log"
@@ -101,13 +101,15 @@ load_lang() {
         L_MENU_5="全部卸载"
         L_MENU_5_D="彻底移除程序、配置及所有日志文件"
         L_MENU_6="安装脚本到系统"
-        L_MENU_6_D="将管理工具添加到全局快捷命令 fast-note-installer"
+        L_MENU_6_D="将管理工具添加到全局快捷命令 fns"
         L_MENU_0="退出"
         L_MENU_L="Switch to English (切换至英文)"
         L_SELECT="请选择"
         L_INPUT_VER="输入版本 (留空使用 latest)"
         L_INPUT_URL="输入脚本 URL (留空复制本地"
         L_ENTER_URL="输入脚本 URL [默认:"
+        L_PATH_WARN="警告: 安装目录 %s 不在您的 PATH 环境变量中。"
+        L_PATH_FIX="请手动添加以在任何地方使用快捷命令: export PATH=\$PATH:%s"
 
         L_ERR_ROOT="需要 root 权限或安装 sudo 后重试"
         L_TRY_DL="尝试下载"
@@ -147,7 +149,7 @@ load_lang() {
 
         L_PRE_DL="准备下载 fast-note"
         L_INST_ALL_DONE="安装/升级流程已完成"
-        L_INST_TIP="提示: 输入 fast-note-installer 或选择菜单启动服务。"
+        L_INST_TIP="提示: 输入 fns 或选择菜单启动服务。"
         L_INVALID="无效选项，请重新选择"
         L_USAGE="用法"
         L_CUR_VER="当前版本"
@@ -164,13 +166,15 @@ load_lang() {
         L_MENU_5="Uninstall All"
         L_MENU_5_D="Remove program, config, and all logs"
         L_MENU_6="Install Self to System"
-        L_MENU_6_D="Add this tool to global commands (fast-note-installer)"
+        L_MENU_6_D="Add this tool to global commands (fns)"
         L_MENU_0="Quit"
         L_MENU_L="切换至中文 (Switch to Chinese)"
         L_SELECT="Please select"
         L_INPUT_VER="Enter version (leave blank for latest)"
         L_INPUT_URL="Enter script URL (leave blank to copy local"
         L_ENTER_URL="Enter script URL [Default:"
+        L_PATH_WARN="WARNING: Install directory %s is not in your PATH."
+        L_PATH_FIX="Add it manually to use commands everywhere: export PATH=\$PATH:%s"
 
         L_ERR_ROOT="Root privileges or sudo required"
         L_TRY_DL="Trying to download"
@@ -210,7 +214,7 @@ load_lang() {
 
         L_PRE_DL="Preparing to download fast-note"
         L_INST_ALL_DONE="Install/Update process completed"
-        L_INST_TIP="Tip: Type fast-note-installer or use menu to start service."
+        L_INST_TIP="Tip: Type fns or use menu to start service."
         L_INVALID="Invalid option, please try again"
         L_USAGE="Usage"
         L_CUR_VER="Installed Version"
@@ -355,7 +359,8 @@ download_release_asset() {
 install_binary_from_tar() {
     local tarball="$1"
     ensure_root
-    mkdir -p "$INSTALL_DIR"
+    $SUDO mkdir -p "$INSTALL_DIR"
+    $SUDO mkdir -p "$(dirname "$LINK_BIN")"
     step "$L_EXTRACTING $INSTALL_DIR ..."
     $SUDO tar -xzf "$tarball" -C "$INSTALL_DIR" || { error "$L_ERR_EXTRACT"; return 1; }
 
@@ -374,7 +379,7 @@ install_binary_from_tar() {
         fi
     fi
 
-    $SUDO ln -sf "$BIN_PATH" "$LINK_BIN" || true
+    $SUDO ln -sf "$BIN_PATH" "$LINK_BIN"
     success "$L_LINK_CREATED: ${_BOLD}$LINK_BIN${_RESET}"
 }
 
@@ -442,6 +447,9 @@ full_uninstall() {
     $SUDO rm -f "$LINK_BIN" || true
     $SUDO rm -f "$INSTALLER_SELF_PATH" || true
     $SUDO rm -f "$INSTALLER_LINK" || true
+    # 清理旧命令 (兼容性)
+    $SUDO rm -f "/usr/local/bin/fast-note" || true
+    $SUDO rm -f "/usr/local/bin/fast-note-installer" || true
     $SUDO rm -f "$LOG_FILE" || true
 
     success "$L_UN_DONE"
@@ -467,8 +475,19 @@ install_self() {
     fi
 
     $SUDO chmod +x "$INSTALLER_SELF_PATH"
+    $SUDO mkdir -p "$(dirname "$INSTALLER_LINK")"
     $SUDO ln -sf "$INSTALLER_SELF_PATH" "$INSTALLER_LINK"
     success "$L_INST_DONE: ${_BOLD}$INSTALLER_LINK${_RESET}"
+}
+
+check_path() {
+    local target_dir
+    target_dir="$(dirname "$1")"
+    if [[ ":$PATH:" != *":$target_dir:"* ]]; then
+        echo -e "\n"
+        warn "$(printf "$L_PATH_WARN" "$target_dir")"
+        info "$(printf "$L_PATH_FIX" "$target_dir")"
+    fi
 }
 
 show_menu() {
@@ -536,9 +555,11 @@ install_cmd() {
     tarball="$(download_release_asset "$ver" "$os" "$arch")" || { error "$L_ERR_NO_REL"; return 1; }
     install_binary_from_tar "$tarball"
     save_version "$ver"
-    install_self >/dev/null 2>&1 || true
+    install_self >&2
     success "$L_INST_ALL_DONE"
     info "$L_INST_TIP"
+    check_path "$LINK_BIN"
+    check_path "$INSTALLER_LINK"
 
     start_service
 }
