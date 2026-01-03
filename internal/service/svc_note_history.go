@@ -7,6 +7,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -51,20 +52,30 @@ type NoteHistoryNoContent struct {
 
 // NoteHistoryListRequestParams 笔记历史列表请求参数
 type NoteHistoryListRequestParams struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"`
-	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash"`
+	Vault     string `json:"vault" form:"vault" binding:"required"`
+	Path      string `json:"path" form:"path" binding:"required"`
+	PathHash  string `json:"pathHash" form:"pathHash"`
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"` // 是否查询回收站
 }
 
 // NoteHistoryList 获取指定笔记的历史版本列表
 func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestParams, pager *app.Pager) ([]*NoteHistoryNoContent, int64, error) {
 
-	// get note id
-	note, err := svc.NoteGet(uid, &NoteGetRequestParams{
-		Vault:    params.Vault,
-		Path:     params.Path,
-		PathHash: params.PathHash,
+	// get vault id
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
+		return svc.VaultIdGetByName(params.Vault, uid)
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	vaultID := vID.(int64)
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// get note id
+	note, err := svc.dao.NoteGetRecycleByPathHash(params.PathHash, vaultID, uid, params.IsRecycle)
 	if err != nil {
 		return nil, 0, err
 	}

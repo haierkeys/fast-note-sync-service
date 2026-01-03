@@ -36,8 +36,8 @@ func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) 
 	}
 
 	// 3. 优先尝试从 Note 表获取 (笔记/文本内容)
-	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
-	if err == nil && note != nil && note.Action != "delete" {
+	note, err := svc.dao.NoteGetAllByPathHash(params.PathHash, vaultID, uid)
+	if err == nil && note != nil {
 		// 笔记内容固定识别为 markdown
 		return []byte(note.Content), "text/markdown; charset=utf-8", note.Mtime, note.ContentHash, nil
 	}

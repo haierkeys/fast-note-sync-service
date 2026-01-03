@@ -70,6 +70,7 @@ var (
 	ErrorNoteGetFailed            = NewError(incr(400), lang{zh: "获取笔记失败", en: "Get note failed"})
 	ErrorNoteNotFound             = NewError(incr(400), lang{zh: "笔记不存在", en: "Note does not exist"})
 	ErrorNoteExist                = NewError(incr(400), lang{zh: "笔记已经存在", en: "Note already exists"})
+	ErrorRenameNoteTargetExist    = NewError(incr(400), lang{zh: "笔记重命名目标笔记已经存在", en: "Note rename target note already exists"})
 	ErrorNoteSyncFailed           = NewError(incr(400), lang{zh: "同步笔记失败", en: "Sync note failed"})
 	ErrorNoteUpdateCheckFailed    = NewError(incr(400), lang{zh: "笔记更新检查失败", en: "Note update check failed"})
 	ErrorNoteListFailed           = NewError(incr(400), lang{zh: "笔记列表获取失败", en: "Note list get failed"})

@@ -4,7 +4,7 @@ tmp_dir = "build"
 
 
 [build]
-cmd = "go build -o ./build/api ./main.go"
+cmd = "mkdir -p build && go build -o ./build/api ./main.go"
 post_cmd = [ ]
 bin = "./build/api run"
 full_bin = ""

@@ -13,7 +13,16 @@ func NewWebGUI() *WebGUI {
 	return &WebGUI{}
 }
 
+type webGUI struct {
+	FontSet          string `json:"fontSet"`
+	RegisterIsEnable bool   `json:"registerIsEnable"`
+}
+
 func (w *WebGUI) Config(c *gin.Context) {
 	response := app.NewResponse(c)
-	response.ToResponse(code.Success.WithData(global.Config.WebGUI))
+	data := webGUI{
+		FontSet:          global.Config.WebGUI.FontSet,
+		RegisterIsEnable: global.Config.User.RegisterIsEnable,
+	}
+	response.ToResponse(code.Success.WithData(data))
 }

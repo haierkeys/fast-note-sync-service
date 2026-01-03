@@ -151,13 +151,17 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
-	params.SrcPathHash = util.EncodeHash32(params.SrcPath)
+	if params.SrcPathHash == "" {
+		params.SrcPathHash = util.EncodeHash32(params.SrcPath)
+	}
 
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
-	params.ContentHash = util.EncodeHash32(params.Content)
+	if params.ContentHash == "" {
+		params.ContentHash = util.EncodeHash32(params.Content)
+	}
 
 	if params.Mtime == 0 {
 		params.Mtime = time.Now().UnixMilli()
@@ -195,8 +199,13 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 	}
 
 	if noteSelect != nil {
-		if noteSelect.Action == "delete" {
-			response.ToResponse(code.ErrorNoteNotFound)
+
+		global.Dump(noteSelect, params, params.SrcPath != "", params.SrcPathHash != params.PathHash)
+
+		if noteSelect.Action != "delete" && params.SrcPath != "" && params.SrcPathHash != params.PathHash {
+
+			global.Dump(params.SrcPathHash != params.PathHash)
+			response.ToResponse(code.ErrorRenameNoteTargetExist)
 			return
 		}
 

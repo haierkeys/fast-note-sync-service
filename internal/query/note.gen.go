@@ -31,6 +31,7 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.ID = field.NewInt64(tableName, "id")
 	_note.VaultID = field.NewInt64(tableName, "vault_id")
 	_note.Action = field.NewString(tableName, "action")
+	_note.Rename = field.NewInt64(tableName, "rename")
 	_note.Path = field.NewString(tableName, "path")
 	_note.PathHash = field.NewString(tableName, "path_hash")
 	_note.Content = field.NewString(tableName, "content")
@@ -58,6 +59,7 @@ type note struct {
 	ID                      field.Int64
 	VaultID                 field.Int64
 	Action                  field.String
+	Rename                  field.Int64
 	Path                    field.String
 	PathHash                field.String
 	Content                 field.String
@@ -91,6 +93,7 @@ func (n *note) updateTableName(table string) *note {
 	n.ID = field.NewInt64(table, "id")
 	n.VaultID = field.NewInt64(table, "vault_id")
 	n.Action = field.NewString(table, "action")
+	n.Rename = field.NewInt64(table, "rename")
 	n.Path = field.NewString(table, "path")
 	n.PathHash = field.NewString(table, "path_hash")
 	n.Content = field.NewString(table, "content")
@@ -129,10 +132,11 @@ func (n *note) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *note) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 17)
+	n.fieldMap = make(map[string]field.Expr, 18)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["action"] = n.Action
+	n.fieldMap["rename"] = n.Rename
 	n.fieldMap["path"] = n.Path
 	n.fieldMap["path_hash"] = n.PathHash
 	n.fieldMap["content"] = n.Content

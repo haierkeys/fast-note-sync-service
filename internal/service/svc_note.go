@@ -139,22 +139,26 @@ type ModifyMtimeFilesRequestParams struct {
 
 // NoteGetRequestParams 用于获取单条笔记的请求参数。
 type NoteGetRequestParams struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"` // 仓库标识
-	Path     string `json:"path" form:"path" binding:"required"`   // 路径
-	PathHash string `json:"pathHash" form:"pathHash"`              // 路径哈希（可选）
+	Vault     string `json:"vault" form:"vault" binding:"required"` // 仓库标识
+	Path      string `json:"path" form:"path" binding:"required"`   // 路径
+	PathHash  string `json:"pathHash" form:"pathHash"`              // 路径哈希（可选）
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`            // 是否查询回收站
 }
 
 // NoteRenameRequestParams 重命名笔记所需参数
 type NoteRenameRequestParams struct {
-	Vault   string `json:"vault" form:"vault" binding:"required"`     // 仓库标识
-	Path    string `json:"path" form:"path" binding:"required"`       // 新路径
-	OldPath string `json:"oldPath" form:"oldPath" binding:"required"` // 旧路径
+	Vault       string `json:"vault" form:"vault" binding:"required"`             // 仓库标识
+	Path        string `json:"path" form:"path" binding:"required"`               // 新路径
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`       // 新路径哈希
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required"`         // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"` // 旧路径哈希
 }
 
 // NoteListRequestParams 获取笔记列表的分页参数。
 type NoteListRequestParams struct {
-	Vault   string `json:"vault" form:"vault" binding:"required"` // 仓库标识
-	Keyword string `json:"keyword" form:"keyword"`                // 搜索关键字
+	Vault     string `json:"vault" form:"vault" binding:"required"` // 仓库标识
+	Keyword   string `json:"keyword" form:"keyword"`                // 搜索关键字
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`            // 是否查询回收站
 }
 
 // NoteMigratePush 提交笔记迁移任务
@@ -187,7 +191,7 @@ func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, err
 	}
 	vaultID := vID.(int64)
 
-	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	note, err := svc.dao.NoteGetRecycleByPathHash(params.PathHash, vaultID, uid, params.IsRecycle)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +223,7 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 	}
 	vaultID = vID.(int64)
 
-	if note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid); note != nil {
+	if note, _ := svc.dao.NoteGetAllByPathHash(params.PathHash, vaultID, uid); note != nil {
 		noteSvc := convert.StructAssign(note, &Note{}).(*Note)
 		// 检查内容是否一致
 		if note.ContentHash == params.ContentHash {
@@ -282,7 +286,7 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		Ctime:       params.Ctime,
 	}
 
-	note, _ := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	note, _ := svc.dao.NoteGetAllByPathHash(params.PathHash, vaultID, uid)
 	if note != nil {
 		isNew = false
 		// 检查内容是否一致1
@@ -350,21 +354,17 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 	}
 	vaultID := vID.(int64)
 
-	note, err := svc.dao.NoteGetByPathHash(params.PathHash, vaultID, uid)
+	note, err := svc.dao.NoteGetRecycleByPathHash(params.PathHash, vaultID, uid, false)
 	if err != nil {
 		return nil, err
 	}
 	noteSet := &dao.NoteSet{
-		VaultID:     vaultID,
-		Action:      "delete",
-		Path:        note.Path,
-		PathHash:    note.PathHash,
-		Content:     "",
-		ContentHash: "",
-		ClientName:  svc.ClientName,
-		Size:        0,
+		VaultID:    vaultID,
+		Action:     "delete",
+		ClientName: svc.ClientName,
+		Rename:     0,
 	}
-	noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
+	noteDao, err := svc.dao.NoteUpdateDelete(noteSet, note.ID, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -396,9 +396,15 @@ func (svc *Service) NoteRename(uid int64, params *NoteRenameRequestParams) error
 	}
 	vaultID := vID.(int64)
 
-	// 1. 获取旧笔记
-	oldPathHash := util.EncodeHash32(params.OldPath)
-	daoOld, err := svc.dao.NoteGetByPathHash(oldPathHash, vaultID, uid)
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	if params.OldPathHash == "" {
+		params.OldPathHash = util.EncodeHash32(params.OldPath)
+	}
+
+	daoOld, err := svc.dao.NoteGetRecycleByPathHash(params.OldPathHash, vaultID, uid, true)
 	if err != nil {
 		return err
 	}
@@ -407,8 +413,8 @@ func (svc *Service) NoteRename(uid int64, params *NoteRenameRequestParams) error
 	}
 
 	// 2. 获取新笔记
-	newPathHash := util.EncodeHash32(params.Path)
-	daoNew, err := svc.dao.NoteGetByPathHash(newPathHash, vaultID, uid)
+
+	daoNew, err := svc.dao.NoteGetRecycleByPathHash(params.PathHash, vaultID, uid, false)
 	if err != nil {
 		return err
 	}
@@ -442,12 +448,12 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 	}
 	vaultID := vID.(int64)
 
-	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid, params.Keyword)
+	notes, err := svc.dao.NoteList(vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	count, err := svc.dao.NoteListCount(vaultID, uid, params.Keyword)
+	count, err := svc.dao.NoteListCount(vaultID, uid, params.Keyword, params.IsRecycle)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -628,10 +634,17 @@ func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
 		return err
 	}
 
-	// 3. 删除旧笔记
-	err = svc.dao.NoteDelete(oldNoteID, uid)
+	// 3. 标题删除久的笔记.. 并标记是rename 删除的笔记
+	noteSet := &dao.NoteSet{
+		VaultID:    oldNote.VaultID,
+		Action:     "delete",
+		ClientName: oldNote.ClientName,
+		Rename:     1,
+	}
+	_, err = svc.dao.NoteUpdateDelete(noteSet, oldNote.ID, uid)
 	if err != nil {
 		return err
 	}
+	svc.NoteCountSizeSum(oldNote.VaultID, uid)
 	return nil
 }

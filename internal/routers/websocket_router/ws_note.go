@@ -262,9 +262,11 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
 	err := svc.NoteRename(c.User.UID, &service.NoteRenameRequestParams{
-		Vault:   params.Vault,
-		Path:    params.Path,
-		OldPath: params.OldPath,
+		Vault:       params.Vault,
+		Path:        params.Path,
+		PathHash:    params.PathHash,
+		OldPath:     params.OldPath,
+		OldPathHash: params.OldPathHash,
 	})
 
 	if err != nil {

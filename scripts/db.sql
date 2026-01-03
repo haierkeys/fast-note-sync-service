@@ -33,6 +33,7 @@ CREATE TABLE "note" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault_id" integer NOT NULL DEFAULT 0,
     "action" text DEFAULT '',
+    "rename" integer DEFAULT 0,
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',
@@ -49,7 +50,9 @@ CREATE TABLE "note" (
     "updated_at" datetime DEFAULT NULL
 );
 
-CREATE INDEX "idx_vault_id_path_hash" ON "note" ("vault_id", "path_hash" DESC);
+CREATE INDEX "idx_vault_id_action_rename" ON "note" ("vault_id", "action", "rename" DESC);
+
+CREATE INDEX "idx_vault_id_rename" ON "note" ("vault_id", "rename" DESC);
 
 CREATE INDEX "idx_vault_id_updated_at" ON "note" ("vault_id", "updated_at" DESC);
 

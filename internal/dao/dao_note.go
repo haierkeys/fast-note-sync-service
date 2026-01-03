@@ -35,6 +35,7 @@ type Note struct {
 type NoteSet struct {
 	VaultID     int64  `json:"vaultId" form:"vaultId"`         // 保险库ID
 	Action      string `json:"action" form:"action"`           // 操作
+	Rename      int64  `json:"rename" form:"rename"`           // 重命名
 	Path        string `json:"path" form:"path"`               // 路径
 	PathHash    string `json:"pathHash" form:"pathHash"`       // 路径哈希
 	Content     string `json:"content" form:"content"`         // 内容
@@ -67,16 +68,39 @@ func (d *Dao) note(uid int64) *query.Query {
 //   - hash string: 路径哈希值
 //   - vaultID int64: 保险库ID
 //   - uid int64: 用户ID
+//   - isRecycle bool: 是否在回收站中查询
 //
 // 返回值说明:
 //   - *Note: 笔记数据
 //   - error: 出错时返回错误
-func (d *Dao) NoteGetByPathHash(hash string, vaultID int64, uid int64) (*Note, error) {
+func (d *Dao) NoteGetRecycleByPathHash(hash string, vaultID int64, uid int64, isRecycle bool) (*Note, error) {
 	u := d.note(uid).Note
-	m, err := u.WithContext(d.ctx).Where(
+	q := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
 		u.PathHash.Eq(hash),
-	).First()
+	)
+
+	if isRecycle {
+		q = q.Where(u.Action.Eq("delete"), u.Rename.Eq(0))
+	} else {
+		q = q.Where(u.Action.Neq("delete"))
+	}
+
+	m, err := q.First()
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Note{}).(*Note), nil
+}
+
+func (d *Dao) NoteGetAllByPathHash(hash string, vaultID int64, uid int64) (*Note, error) {
+	u := d.note(uid).Note
+	q := u.WithContext(d.ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.Eq(hash),
+	)
+
+	m, err := q.First()
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +192,7 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 		u.ID,
 		u.VaultID,
 		u.Action,
+		u.Rename,
 		u.Path,
 		u.PathHash,
 		u.Content,
@@ -177,6 +202,31 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 		u.Ctime,
 		u.Mtime,
 		u.UpdatedAt,
+		u.UpdatedTimestamp,
+	).Save(m)
+
+	if err != nil {
+		return nil, err
+	}
+	return convert.StructAssign(m, &Note{}).(*Note), nil
+}
+
+func (d *Dao) NoteUpdateDelete(params *NoteSet, id int64, uid int64) (*Note, error) {
+	u := d.note(uid).Note
+	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
+	//fields := convert.GetCopyStructFields(params, u)
+	m.UpdatedTimestamp = timex.Now().UnixMilli()
+	m.ID = id
+
+	//fields = append(fields, m.UpdatedAt, m.UpdatedTimestamp)
+
+	err := u.WithContext(d.ctx).Where(
+		u.ID.Eq(id),
+	).Select(
+		u.ID,
+		u.Action,
+		u.Rename,
+		u.ClientName,
 		u.UpdatedTimestamp,
 	).Save(m)
 
@@ -228,16 +278,22 @@ func (d *Dao) NoteUpdateSnapshot(snapshot string, snapshotHash string, version i
 //   - vaultID int64: 保险库ID
 //   - uid int64: 用户ID
 //   - keyword string: 搜索关键字
+//   - isRecycle bool: 是否查询回收站
 //
 // 返回值说明:
 //   - int64: 笔记数量
 //   - error: 出错时返回错误
-func (d *Dao) NoteListCount(vaultID int64, uid int64, keyword string) (int64, error) {
+func (d *Dao) NoteListCount(vaultID int64, uid int64, keyword string, isRecycle bool) (int64, error) {
 	u := d.note(uid).Note
 	q := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
-		u.Action.Neq("delete"),
 	)
+
+	if isRecycle {
+		q = q.Where(u.Action.Eq("delete"), u.Rename.Eq(0))
+	} else {
+		q = q.Where(u.Action.Neq("delete"))
+	}
 
 	var count int64
 	var err error
@@ -265,32 +321,58 @@ func (d *Dao) NoteListCount(vaultID int64, uid int64, keyword string) (int64, er
 //   - pageSize int: 每页数量
 //   - uid int64: 用户ID
 //   - keyword string: 搜索关键字
+//   - isRecycle bool: 是否查询回收站
 //
 // 返回值说明:
 //   - []*Note: 笔记列表
 //   - error: 出错时返回错误
-func (d *Dao) NoteList(vaultID int64, page int, pageSize int, uid int64, keyword string) ([]*Note, error) {
+func (d *Dao) NoteList(vaultID int64, page int, pageSize int, uid int64, keyword string, isRecycle bool) ([]*Note, error) {
 	u := d.note(uid).Note
 	q := u.WithContext(d.ctx).Where(
 		u.VaultID.Eq(vaultID),
-		u.Action.Neq("delete"),
 	)
+
+	if isRecycle {
+		q = q.Where(u.Action.Eq("delete"), u.Rename.Eq(0))
+	} else {
+		q = q.Where(u.Action.Neq("delete"))
+	}
 
 	var modelList []*model.Note
 	var err error
 
 	if keyword != "" {
 		key := "%" + keyword + "%"
-		err = q.UnderlyingDB().Debug().Where("path LIKE ? ", key).
-			Order("path DESC, created_at DESC").
-			Limit(pageSize).
-			Offset(app.GetPageOffset(page, pageSize)).
-			Find(&modelList).Error
+
+		if isRecycle {
+			err = q.UnderlyingDB().Where("path LIKE ? ", key).
+				Order("updated_timestamp DESC").
+				Limit(pageSize).
+				Offset(app.GetPageOffset(page, pageSize)).
+				Find(&modelList).Error
+		} else {
+			err = q.UnderlyingDB().Where("path LIKE ? ", key).
+				Order("path DESC, created_at DESC").
+				Limit(pageSize).
+				Offset(app.GetPageOffset(page, pageSize)).
+				Find(&modelList).Error
+		}
+
 	} else {
-		modelList, err = q.Order(u.Path.Desc(), u.CreatedAt.Desc()).
-			Limit(pageSize).
-			Offset(app.GetPageOffset(page, pageSize)).
-			Find()
+		if isRecycle {
+			modelList, err = q.Order(
+				u.UpdatedTimestamp.Desc(),
+			).Limit(pageSize).
+				Offset(app.GetPageOffset(page, pageSize)).
+				Find()
+		} else {
+			modelList, err = q.Order(
+				u.Path.Desc(),
+				u.CreatedAt.Desc(),
+			).Limit(pageSize).
+				Offset(app.GetPageOffset(page, pageSize)).
+				Find()
+		}
 	}
 
 	if err != nil {
@@ -352,38 +434,6 @@ func (d *Dao) NoteListContentUnchanged(uid int64) ([]*Note, error) {
 		"action != ?", "delete",
 	).Where("content != content_last_snapshot").
 		Find(&mList).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	var list []*Note
-	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
-	}
-	return list, nil
-}
-
-// NoteListByMtime 根据修改时间戳获取笔记列表
-// 函数名: NoteListByMtime
-// 函数使用说明: 查询指定保险库中笔记修改时间戳大于给定时间戳的所有笔记,按更新时间戳倒序排列。
-// 参数说明:
-//   - timestamp int64: 修改时间戳阈值
-//   - vaultID int64: 保险库ID
-//   - uid int64: 用户ID
-//
-// 返回值说明:
-//   - []*Note: 笔记列表
-//   - error: 出错时返回错误
-func (d *Dao) NoteListByMtime(timestamp int64, vaultID int64, uid int64) ([]*Note, error) {
-
-	u := d.note(uid).Note
-
-	mList, err := u.WithContext(d.ctx).Where(
-		u.VaultID.Eq(vaultID),
-		u.Mtime.Gt(timestamp),
-	).Order(u.UpdatedTimestamp.Desc()).
-		Find()
 
 	if err != nil {
 		return nil, err
