@@ -359,26 +359,41 @@ download_release_asset() {
 install_binary_from_tar() {
     local tarball="$1"
     ensure_root
-    $SUDO mkdir -p "$INSTALL_DIR"
-    $SUDO mkdir -p "$(dirname "$LINK_BIN")"
-    step "$L_EXTRACTING $INSTALL_DIR ..."
-    $SUDO tar -xzf "$tarball" -C "$INSTALL_DIR" || { error "$L_ERR_EXTRACT"; return 1; }
 
-    if [ -f "$INSTALL_DIR/$BIN_BASE" ]; then
-        $SUDO mv -f "$INSTALL_DIR/$BIN_BASE" "$BIN_PATH" 2>/dev/null || true
-        $SUDO chmod +x "$BIN_PATH"
+    # 准备临时解压目录
+    local extract_tmp
+    extract_tmp="$(mktemp -d)"
+    trap '$SUDO rm -rf "$extract_tmp"' EXIT
+
+    step "$L_EXTRACTING $INSTALL_DIR ..."
+    $SUDO tar -xzf "$tarball" -C "$extract_tmp" || { error "$L_ERR_EXTRACT"; return 1; }
+
+    # 1. 强制更新二进制程序
+    local exe
+    if [ -f "$extract_tmp/$BIN_BASE" ]; then
+        exe="$extract_tmp/$BIN_BASE"
     else
-        local exe
-        exe="$(find "$INSTALL_DIR" -maxdepth 2 -type f -perm -111 | head -n1 || true)"
-        if [ -n "$exe" ]; then
-            $SUDO mv -f "$exe" "$BIN_PATH"
-            $SUDO chmod +x "$BIN_PATH"
-        else
-            error "$L_ERR_NO_EXE"
-            return 2
-        fi
+        exe="$(find "$extract_tmp" -maxdepth 2 -type f -perm -111 | head -n1 || true)"
     fi
 
+    if [ -n "$exe" ]; then
+        $SUDO mkdir -p "$INSTALL_DIR"
+        $SUDO mv -f "$exe" "$BIN_PATH"
+        $SUDO chmod +x "$BIN_PATH"
+    else
+        error "$L_ERR_NO_EXE"
+        return 2
+    fi
+
+    # 2. 保护性移动配置文件
+    if [ -d "$extract_tmp/config" ]; then
+        $SUDO mkdir -p "$INSTALL_DIR/config"
+        # 仅拷贝目标位置不存在的文件，防止覆盖用户修改过的 config.yaml 等
+        $SUDO cp -rn "$extract_tmp/config/"* "$INSTALL_DIR/config/" 2>/dev/null || true
+    fi
+
+    # 3. 创建软链接
+    $SUDO mkdir -p "$(dirname "$LINK_BIN")"
     $SUDO ln -sf "$BIN_PATH" "$LINK_BIN"
     success "$L_LINK_CREATED: ${_BOLD}$LINK_BIN${_RESET}"
 }
