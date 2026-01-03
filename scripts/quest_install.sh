@@ -363,7 +363,7 @@ install_binary_from_tar() {
     # 准备临时解压目录
     local extract_tmp
     extract_tmp="$(mktemp -d)"
-    trap '$SUDO rm -rf "$extract_tmp"' EXIT
+    trap "$SUDO rm -rf '$extract_tmp'" EXIT
 
     step "$L_EXTRACTING $INSTALL_DIR ..."
     $SUDO tar -xzf "$tarball" -C "$extract_tmp" || { error "$L_ERR_EXTRACT"; return 1; }
