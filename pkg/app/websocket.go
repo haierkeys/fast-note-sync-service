@@ -516,6 +516,9 @@ func (w *WS) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
+	//设置延时
+	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
+
 	if message.Opcode == gws.OpcodeBinary {
 		data := message.Data.Bytes()
 		if len(data) < 2 {

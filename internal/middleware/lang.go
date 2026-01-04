@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
@@ -19,12 +21,14 @@ func Lang() gin.HandlerFunc {
 			lang = s
 		}
 
+		lang = strings.ToLower(strings.ReplaceAll(lang, "-", "_"))
+
 		trans, found := global.Ut.GetTranslator(lang)
 
 		if found {
 			c.Set("trans", trans)
 		} else {
-			trans, _ := global.Ut.GetTranslator("zh")
+			trans, _ := global.Ut.GetTranslator("en")
 			c.Set("trans", trans)
 		}
 

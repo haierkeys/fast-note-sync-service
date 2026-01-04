@@ -211,7 +211,7 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 	return convert.StructAssign(m, &Note{}).(*Note), nil
 }
 
-func (d *Dao) NoteUpdateDelete(params *NoteSet, id int64, uid int64) (*Note, error) {
+func (d *Dao) NoteUpdateDelete(params *NoteSet, id int64, uid int64) error {
 	u := d.note(uid).Note
 	m := convert.StructAssign(params, &model.Note{}).(*model.Note)
 	//fields := convert.GetCopyStructFields(params, u)
@@ -231,9 +231,9 @@ func (d *Dao) NoteUpdateDelete(params *NoteSet, id int64, uid int64) (*Note, err
 	).Save(m)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+	return nil
 }
 
 // NoteUpdateMtime 更新笔记的修改时间

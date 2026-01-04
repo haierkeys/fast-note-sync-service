@@ -19,13 +19,13 @@ exclude_unchanged = true
 follow_symlink = false
 log = "air.log"
 poll = true
-poll_interval = 1_500
+poll_interval = 2_500
 delay = 2_000
 stop_on_error = true
 send_interrupt = false
 kill_delay = 2_000
 rerun = false
-rerun_delay = 1_000
+rerun_delay = 2_000
 
 
 [log]

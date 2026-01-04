@@ -364,10 +364,16 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		ClientName: svc.ClientName,
 		Rename:     0,
 	}
-	noteDao, err := svc.dao.NoteUpdateDelete(noteSet, note.ID, uid)
+	err = svc.dao.NoteUpdateDelete(noteSet, note.ID, uid)
 	if err != nil {
 		return nil, err
 	}
+
+	noteDao, err := svc.dao.NoteGetById(note.ID, uid)
+	if err != nil {
+		return nil, err
+	}
+
 	svc.NoteCountSizeSum(vaultID, uid)
 
 	NoteHistoryDelayPush(noteDao.ID, uid)
@@ -641,7 +647,7 @@ func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
 		ClientName: oldNote.ClientName,
 		Rename:     1,
 	}
-	_, err = svc.dao.NoteUpdateDelete(noteSet, oldNote.ID, uid)
+	err = svc.dao.NoteUpdateDelete(noteSet, oldNote.ID, uid)
 	if err != nil {
 		return err
 	}

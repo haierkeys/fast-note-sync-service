@@ -9,13 +9,13 @@ import (
 // lang 类型，用来存储英文和中文文本
 type lang struct {
 	en string // 英文
-	zh string // 中文
+	zh_cn string // 中文
 }
 
 // 默认语言为英文
-var lng = "zh"
+var lng = "en"
 
-const FALLBACK_LNG = "zh"
+const FALLBACK_LNG = "en"
 
 // getMessage 方法根据传入的语言返回相应的消息
 func (l lang) GetMessage() string {

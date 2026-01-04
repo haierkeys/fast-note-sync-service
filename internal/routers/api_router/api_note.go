@@ -200,11 +200,8 @@ func (n *Note) CreateOrUpdate(c *gin.Context) {
 
 	if noteSelect != nil {
 
-		global.Dump(noteSelect, params, params.SrcPath != "", params.SrcPathHash != params.PathHash)
-
 		if noteSelect.Action != "delete" && params.SrcPath != "" && params.SrcPathHash != params.PathHash {
 
-			global.Dump(params.SrcPathHash != params.PathHash)
 			response.ToResponse(code.ErrorRenameNoteTargetExist)
 			return
 		}
