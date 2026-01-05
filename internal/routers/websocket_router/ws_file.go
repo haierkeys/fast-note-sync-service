@@ -48,6 +48,7 @@ type FileUploadBinaryChunkSession struct {
 	Size           int64              // 文件大小
 	TotalChunks    int64              // 总分块数
 	UploadedChunks int64              // 已上传分块数
+	UploadedBytes  int64              // 已上传字节数
 	ChunkSize      int64              // 分块大小
 	SavePath       string             // 临时保存路径
 	FileHandle     *os.File           // 文件句柄
@@ -221,13 +222,23 @@ func FileUploadChunkBinary(c *app.WebsocketClient, data []byte) {
 		return
 	}
 
-	// 更新已上传计数
+	// 更新已上传计数和字节数
 	session.mu.Lock()
 	session.UploadedChunks++
+	session.UploadedBytes += int64(len(chunkData))
+	uploadedBytes := session.UploadedBytes
 	session.mu.Unlock()
 
-	// 检查是否所有分块都已上传
-	if session.UploadedChunks == session.TotalChunks {
+	// 检查是否所有数据都已上传(根据字节数判断)
+	if uploadedBytes >= session.Size {
+
+		global.Logger.Info("FileUploadComplete: upload finished",
+			zap.String("sessionID", sessionID),
+			zap.String("path", session.Path),
+			zap.Int64("uploadedBytes", uploadedBytes),
+			zap.Int64("totalSize", session.Size),
+			zap.Int64("uploadedChunks", session.UploadedChunks),
+			zap.Int64("totalChunks", session.TotalChunks))
 
 		// 获取并移除会话
 		c.BinaryMu.Lock()
@@ -586,7 +597,6 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	var messageQueue []queuedMessage
 
 	var lastTime int64
-
 	var needUploadCount int64
 	var needModifyCount int64
 	var needSyncMtimeCount int64
@@ -641,7 +651,7 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
+						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
 						if ferr != nil {
 							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 							continue
