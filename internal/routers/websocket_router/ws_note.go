@@ -322,6 +322,9 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 	}
 
+	// 创建消息队列，用于收集所有待发送的消息
+	var messageQueue []queuedMessage
+
 	var lastTime int64
 	var needUploadCount int64
 	var needModifyCount int64
@@ -339,7 +342,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				noteDeleteMessage := &NoteDeleteMessage{
 					Path: note.Path,
 				}
-				c.ToResponse(code.Success.WithData(noteDeleteMessage), "NoteSyncDelete")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response:    code.Success.Clone().WithData(noteDeleteMessage),
+					messageType: "NoteSyncDelete",
+				})
 				needDeleteCount++
 			}
 		} else {
@@ -366,7 +373,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
 								Path: note.Path,
 							}
-							c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+							// 将消息添加到队列而非立即发送
+							messageQueue = append(messageQueue, queuedMessage{
+								response:    code.Success.Clone().WithData(noteSyncNeedPushMessage),
+								messageType: "NoteSyncNeedPush",
+							})
 							needUploadCount++
 						// 当设置新笔记才进行合并, 因为本地笔记比较老, 服务器通知客户端使用云端笔记覆盖本地
 						// 不设置 默认也一样覆盖
@@ -381,7 +392,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 								UpdatedTimestamp: note.UpdatedTimestamp,
 							}
 
-							c.ToResponse(code.Success.Reset().WithData(noteMessage), "NoteSyncModify")
+							// 将消息添加到队列而非立即发送
+							messageQueue = append(messageQueue, queuedMessage{
+								response:    code.Success.Clone().WithData(noteMessage),
+								messageType: "NoteSyncModify",
+							})
 							needModifyCount++
 						}
 						// 服务端修改时间比客户端新, 通知客户端更新笔记
@@ -397,7 +412,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
 							Path: note.Path,
 						}
-						c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+						// 将消息添加到队列而非立即发送
+						messageQueue = append(messageQueue, queuedMessage{
+							response:    code.Success.Clone().WithData(noteSyncNeedPushMessage),
+							messageType: "NoteSyncNeedPush",
+						})
 						needUploadCount++
 					}
 				} else {
@@ -407,7 +426,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Ctime: note.Ctime,
 						Mtime: note.Mtime,
 					}
-					c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+					// 将消息添加到队列而非立即发送
+					messageQueue = append(messageQueue, queuedMessage{
+						response:    code.Success.Clone().WithData(noteSyncMtimeMessage),
+						messageType: "NoteSyncMtime",
+					})
 					needSyncMtimeCount++
 				}
 			} else {
@@ -421,7 +444,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					Mtime:            note.Mtime,
 					UpdatedTimestamp: note.UpdatedTimestamp,
 				}
-				c.ToResponse(code.Success.WithData(noteMessage), "NoteSyncModify")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response:    code.Success.Clone().WithData(noteMessage),
+					messageType: "NoteSyncModify",
+				})
 				needModifyCount++
 			}
 		}
@@ -433,14 +460,24 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	if len(cNotesKeys) > 0 {
 		for pathHash := range cNotesKeys {
 			note := cNotes[pathHash]
-			NoteCheck := convert.StructAssign(&note, &NoteSyncNeedPushMessage{}).(*NoteSyncNeedPushMessage)
-			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+
+			data := NoteSyncNeedPushMessage{
+				Path: note.Path,
+			}
+
+			// 将消息添加到队列而非立即发送
+			messageQueue = append(messageQueue, queuedMessage{
+				response:    code.Success.Clone().WithData(data),
+				messageType: "NoteSyncNeedPush",
+			})
+
 			needUploadCount++
 		}
 	}
 
 	c.IsFirstSync = true
 
+	// 先发送 NoteSyncEnd 消息
 	message := &NoteSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
@@ -449,6 +486,11 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		NeedDeleteCount:    needDeleteCount,
 	}
 	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "NoteSyncEnd")
+
+	// 批量发送收集的所有消息
+	for _, msg := range messageQueue {
+		c.ToResponse(msg.response, msg.messageType)
+	}
 }
 
 // UserInfo 验证并获取用户信息

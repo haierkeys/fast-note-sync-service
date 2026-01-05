@@ -164,6 +164,9 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if code.HaveVault() {
 		content.Vault = code.Vault()
 	}
+	if code.HaveContext() {
+		content.Context = code.Context()
+	}
 
 	responseBytes, _ = sonic.Marshal(content)
 
@@ -211,6 +214,10 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 
 	if code.HaveVault() {
 		content.Vault = code.Vault()
+	}
+
+	if code.HaveContext() {
+		content.Context = code.Context()
 	}
 
 	responseBytes, _ = sonic.Marshal(content)

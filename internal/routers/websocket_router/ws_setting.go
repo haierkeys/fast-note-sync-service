@@ -188,6 +188,9 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		cSettingsKeys[s.PathHash] = struct{}{}
 	}
 
+	// 创建消息队列，用于收集所有待发送的消息
+	var messageQueue []queuedMessage
+
 	var lastTime int64
 	var needUploadCount int64
 	var needModifyCount int64
@@ -202,7 +205,11 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 			if _, ok := cSettings[s.PathHash]; ok {
 				delete(cSettingsKeys, s.PathHash)
-				c.ToResponse(code.Success.WithData(&SettingDeleteMessage{Path: s.Path}), "SettingSyncDelete")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response:    code.Success.Clone().WithData(&SettingDeleteMessage{Path: s.Path}),
+					messageType: "SettingSyncDelete",
+				})
 				needDeleteCount++
 			}
 		} else {
@@ -213,23 +220,9 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				}
 				// 强制覆盖连接端
 				if params.Cover {
-					c.ToResponse(code.Success.Reset().WithData(&SettingMessage{
-						Path:             s.Path,
-						PathHash:         s.PathHash,
-						Content:          s.Content,
-						ContentHash:      s.ContentHash,
-						Ctime:            s.Ctime,
-						Mtime:            s.Mtime,
-						UpdatedTimestamp: s.UpdatedTimestamp,
-					}), "SettingSyncModify")
-					needModifyCount++
-					continue
-				}
-				// 链接端和服务端， 文件内容相同
-				if s.ContentHash != cSetting.ContentHash {
-					if s.Mtime >= cSetting.Mtime {
-						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
-						c.ToResponse(code.Success.Reset().WithData(&SettingMessage{
+					// 将消息添加到队列而非立即发送
+					messageQueue = append(messageQueue, queuedMessage{
+						response: code.Success.Clone().WithData(&SettingMessage{
 							Path:             s.Path,
 							PathHash:         s.PathHash,
 							Content:          s.Content,
@@ -237,34 +230,68 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Ctime:            s.Ctime,
 							Mtime:            s.Mtime,
 							UpdatedTimestamp: s.UpdatedTimestamp,
-						}), "SettingSyncModify")
+						}),
+						messageType: "SettingSyncModify",
+					})
+					needModifyCount++
+					continue
+				}
+				// 链接端和服务端， 文件内容相同
+				if s.ContentHash != cSetting.ContentHash {
+					if s.Mtime >= cSetting.Mtime {
+						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
+						// 将消息添加到队列而非立即发送
+						messageQueue = append(messageQueue, queuedMessage{
+							response: code.Success.Clone().WithData(&SettingMessage{
+								Path:             s.Path,
+								PathHash:         s.PathHash,
+								Content:          s.Content,
+								ContentHash:      s.ContentHash,
+								Ctime:            s.Ctime,
+								Mtime:            s.Mtime,
+								UpdatedTimestamp: s.UpdatedTimestamp,
+							}),
+							messageType: "SettingSyncModify",
+						})
 						needModifyCount++
 					} else {
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
-						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedUploadMessage{
-							Path: s.Path,
-						}), "SettingSyncNeedUpload")
+						// 将消息添加到队列而非立即发送
+						messageQueue = append(messageQueue, queuedMessage{
+							response: code.Success.Clone().WithData(&SettingSyncNeedUploadMessage{
+								Path: s.Path,
+							}),
+							messageType: "SettingSyncNeedUpload",
+						})
 						needUploadCount++
 					}
 				} else {
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
-					c.ToResponse(code.Success.WithData(&SettingSyncMtimeMessage{
-						Path:  s.Path,
-						Ctime: s.Ctime,
-						Mtime: s.Mtime,
-					}), "SettingSyncMtime")
+					// 将消息添加到队列而非立即发送
+					messageQueue = append(messageQueue, queuedMessage{
+						response: code.Success.Clone().WithData(&SettingSyncMtimeMessage{
+							Path:  s.Path,
+							Ctime: s.Ctime,
+							Mtime: s.Mtime,
+						}),
+						messageType: "SettingSyncMtime",
+					})
 					needSyncMtimeCount++
 				}
 			} else {
-				c.ToResponse(code.Success.WithData(&SettingMessage{
-					Path:             s.Path,
-					PathHash:         s.PathHash,
-					Content:          s.Content,
-					ContentHash:      s.ContentHash,
-					Ctime:            s.Ctime,
-					Mtime:            s.Mtime,
-					UpdatedTimestamp: s.UpdatedTimestamp,
-				}), "SettingSyncModify")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response: code.Success.Clone().WithData(&SettingMessage{
+						Path:             s.Path,
+						PathHash:         s.PathHash,
+						Content:          s.Content,
+						ContentHash:      s.ContentHash,
+						Ctime:            s.Ctime,
+						Mtime:            s.Mtime,
+						UpdatedTimestamp: s.UpdatedTimestamp,
+					}),
+					messageType: "SettingSyncModify",
+				})
 				needModifyCount++
 			}
 		}
@@ -275,10 +302,15 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
-		c.ToResponse(code.Success.WithData(&SettingSyncNeedUploadMessage{Path: s.Path}), "SettingSyncNeedUpload")
+		// 将消息添加到队列而非立即发送
+		messageQueue = append(messageQueue, queuedMessage{
+			response:    code.Success.Clone().WithData(&SettingSyncNeedUploadMessage{Path: s.Path}),
+			messageType: "SettingSyncNeedUpload",
+		})
 		needUploadCount++
 	}
 
+	// 先发送 SettingSyncEnd 消息
 	message := &SettingSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
@@ -288,4 +320,9 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "SettingSyncEnd")
+
+	// 批量发送收集的所有消息
+	for _, msg := range messageQueue {
+		c.ToResponse(msg.response, msg.messageType)
+	}
 }

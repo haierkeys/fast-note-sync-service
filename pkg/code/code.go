@@ -25,6 +25,9 @@ type Code struct {
 	details []string
 	// 是否含有详情
 	haveDetails bool
+	context     string
+	// 是否含有Context
+	haveContext bool
 }
 
 var codes = map[int]string{}
@@ -81,7 +84,29 @@ func (e *Code) Reset() *Code {
 	e.details = []string{}
 	e.haveVault = false
 	e.vault = ""
+	e.haveContext = false
+	e.context = ""
 	return e
+}
+
+// Clone 创建一个新的 Code 副本
+func (e *Code) Clone() *Code {
+	// 创建一个新的副本,而不是修改原对象
+	return &Code{
+		code:   e.code,
+		status: e.status,
+		Lang:   e.Lang,
+		msg:    e.msg,
+		// 其他字段保持默认零值
+		data:        nil,
+		vault:       "",
+		haveVault:   false,
+		haveData:    false,
+		details:     []string{},
+		haveDetails: false,
+		context:     "",
+		haveContext: false,
+	}
 }
 
 func (e *Code) Error() string {
@@ -116,6 +141,10 @@ func (e *Code) Vault() string {
 	return e.vault
 }
 
+func (e *Code) Context() string {
+	return e.context
+}
+
 func (e *Code) HaveDetails() bool {
 	return e.haveDetails
 }
@@ -126,6 +155,10 @@ func (e *Code) HaveData() bool {
 
 func (e *Code) HaveVault() bool {
 	return e.haveVault
+}
+
+func (e *Code) HaveContext() bool {
+	return e.haveContext
 }
 
 func (e *Code) WithData(data interface{}) *Code {
@@ -146,6 +179,12 @@ func (e *Code) WithDetails(details ...string) *Code {
 
 	e.details = append(e.details, details...)
 
+	return e
+}
+
+func (e *Code) WithContext(context string) *Code {
+	e.haveContext = true
+	e.context = context
 	return e
 }
 

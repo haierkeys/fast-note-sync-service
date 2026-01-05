@@ -79,8 +79,6 @@ type FileSyncEndMessage struct {
 // FileUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
 type FileUploadMessage struct {
 	Path      string `json:"path"`      // 文件路径
-	Ctime     int64  `json:"ctime" `    // 创建时间
-	Mtime     int64  `json:"mtime" `    // 修改时间
 	SessionID string `json:"sessionId"` // 会话 ID
 	ChunkSize int64  `json:"chunkSize"` // 分块大小
 }
@@ -584,6 +582,9 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 	}
 
+	// 创建消息队列，用于收集所有待发送的消息
+	var messageQueue []queuedMessage
+
 	var lastTime int64
 
 	var needUploadCount int64
@@ -601,7 +602,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			// 服务端已删除，通知客户端删除
 			if _, ok := cFiles[file.PathHash]; ok {
 				delete(cFilesKeys, file.PathHash)
-				c.ToResponse(code.Success.WithData(file).WithVault(params.Vault), "FileSyncDelete")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response:    code.Success.Clone().WithData(file).WithVault(params.Vault),
+					messageType: "FileSyncDelete",
+				})
 				needDeleteCount++
 			}
 
@@ -628,7 +633,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Mtime:            file.Mtime,
 							UpdatedTimestamp: file.UpdatedTimestamp,
 						}
-						c.ToResponse(code.Success.WithData(fileMessage).WithVault(params.Vault), "FileSyncUpdate")
+						// 将消息添加到队列而非立即发送
+						messageQueue = append(messageQueue, queuedMessage{
+							response:    code.Success.Clone().WithData(fileMessage).WithVault(params.Vault),
+							messageType: "FileSyncUpdate",
+						})
 						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
@@ -637,7 +646,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 							continue
 						}
-						c.ToResponse(code.Success.WithData(fileUploadMessage).WithVault(params.Vault), "FileUpload")
+						// 将消息添加到队列而非立即发送
+						messageQueue = append(messageQueue, queuedMessage{
+							response:    code.Success.Clone().WithData(fileUploadMessage).WithVault(params.Vault),
+							messageType: "FileUpload",
+						})
 						needUploadCount++
 					}
 				} else {
@@ -647,7 +660,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Ctime: file.Ctime,
 						Mtime: file.Mtime,
 					}
-					c.ToResponse(code.Success.WithData(fileSyncMtimeMessage).WithVault(params.Vault), "FileSyncMtime")
+					// 将消息添加到队列而非立即发送
+					messageQueue = append(messageQueue, queuedMessage{
+						response:    code.Success.Clone().WithData(fileSyncMtimeMessage).WithVault(params.Vault),
+						messageType: "FileSyncMtime",
+					})
 					needSyncMtimeCount++
 				}
 			} else {
@@ -662,7 +679,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					Mtime:            file.Mtime,
 					UpdatedTimestamp: file.UpdatedTimestamp,
 				}
-				c.ToResponse(code.Success.WithData(fileMessage).WithVault(params.Vault), "FileSyncUpdate")
+				// 将消息添加到队列而非立即发送
+				messageQueue = append(messageQueue, queuedMessage{
+					response:    code.Success.Clone().WithData(fileMessage).WithVault(params.Vault),
+					messageType: "FileSyncUpdate",
+				})
 				needModifyCount++
 			}
 		}
@@ -681,11 +702,16 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 				continue
 			}
-			c.ToResponse(code.Success.WithData(fileUploadMessage).WithVault(params.Vault), "FileUpload")
+			// 将消息添加到队列而非立即发送
+			messageQueue = append(messageQueue, queuedMessage{
+				response:    code.Success.Clone().WithData(fileUploadMessage).WithVault(params.Vault),
+				messageType: "FileUpload",
+			})
 			needUploadCount++
 		}
 	}
 
+	// 先发送 FileSyncEnd 消息
 	message := &FileSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
@@ -693,8 +719,13 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		NeedSyncMtimeCount: needSyncMtimeCount,
 		NeedDeleteCount:    needDeleteCount,
 	}
-	// 发送同步结束消息
+
 	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "FileSyncEnd")
+
+	// 批量发送收集的所有消息
+	for _, msg := range messageQueue {
+		c.ToResponse(msg.response, msg.messageType)
+	}
 }
 
 // cleanupSession 清理因为完成或超时而废弃的上传会话。
@@ -822,10 +853,10 @@ func handleFileUploadSession(c *app.WebsocketClient, vault, path, pathHash, cont
 			global.Logger.Warn("handleFileUploadSession: invalid upload-session-timeout config, using default 5m",
 				zap.String("config", global.Config.App.UploadSessionTimeout),
 				zap.Error(err))
-			timeout = 5 * time.Minute
+			timeout = 20 * time.Minute
 		}
 	} else {
-		timeout = 5 * time.Minute
+		timeout = 20 * time.Minute
 	}
 
 	// 启动超时清理任务
@@ -838,8 +869,6 @@ func handleFileUploadSession(c *app.WebsocketClient, vault, path, pathHash, cont
 
 	return &FileUploadMessage{
 		Path:      path,
-		Ctime:     ctime,
-		Mtime:     mtime,
 		SessionID: session.ID,
 		ChunkSize: session.ChunkSize,
 	}, nil

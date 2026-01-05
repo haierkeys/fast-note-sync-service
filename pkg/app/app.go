@@ -38,6 +38,7 @@ type Res struct {
 	Data    interface{} `json:"data,omitempty"`
 	Details interface{} `json:"details,omitempty"`
 	Vault   interface{} `json:"vault,omitempty"`
+	Context interface{} `json:"context,omitempty"`
 }
 
 func NewResponse(ctx *gin.Context) *Response {
