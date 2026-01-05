@@ -69,8 +69,11 @@ type FileDownloadChunkSession struct {
 
 // FileSyncEndMessage 定义文件同步结束时的消息结构。
 type FileSyncEndMessage struct {
-	Vault    string `json:"vault" form:"vault"`       // 仓库名称
-	LastTime int64  `json:"lastTime" form:"lastTime"` // 最后同步时间
+	LastTime           int64 `json:"lastTime" form:"lastTime"`                     // 最后同步时间
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
 }
 
 // FileUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
@@ -583,6 +586,11 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	var lastTime int64
 
+	var needUploadCount int64
+	var needModifyCount int64
+	var needSyncMtimeCount int64
+	var needDeleteCount int64
+
 	// 遍历服务端文件列表进行处理
 	for _, file := range list {
 		if file.UpdatedTimestamp >= lastTime {
@@ -593,7 +601,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			// 服务端已删除，通知客户端删除
 			if _, ok := cFiles[file.PathHash]; ok {
 				delete(cFilesKeys, file.PathHash)
-				c.ToResponse(code.Success.WithData(file), "FileSyncDelete")
+				c.ToResponse(code.Success.WithData(file).WithVault(params.Vault), "FileSyncDelete")
+				needDeleteCount++
 			}
 
 		} else {
@@ -619,7 +628,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Mtime:            file.Mtime,
 							UpdatedTimestamp: file.UpdatedTimestamp,
 						}
-						c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
+						c.ToResponse(code.Success.WithData(fileMessage).WithVault(params.Vault), "FileSyncUpdate")
+						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
 						fileUploadMessage, ferr := handleFileUploadSession(c, params.Vault, file.Path, file.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
@@ -627,7 +637,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 							continue
 						}
-						c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
+						c.ToResponse(code.Success.WithData(fileUploadMessage).WithVault(params.Vault), "FileUpload")
+						needUploadCount++
 					}
 				} else {
 					// 内容一致, 但修改时间不一致, 通知客户端更新文件修改时间
@@ -636,7 +647,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Ctime: file.Ctime,
 						Mtime: file.Mtime,
 					}
-					c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
+					c.ToResponse(code.Success.WithData(fileSyncMtimeMessage).WithVault(params.Vault), "FileSyncMtime")
+					needSyncMtimeCount++
 				}
 			} else {
 				// 客户端没有的文件, 通知客户端下载文件
@@ -650,7 +662,8 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					Mtime:            file.Mtime,
 					UpdatedTimestamp: file.UpdatedTimestamp,
 				}
-				c.ToResponse(code.Success.WithData(fileMessage), "FileSyncUpdate")
+				c.ToResponse(code.Success.WithData(fileMessage).WithVault(params.Vault), "FileSyncUpdate")
+				needModifyCount++
 			}
 		}
 	}
@@ -668,16 +681,20 @@ func FileSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
 				continue
 			}
-			c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
+			c.ToResponse(code.Success.WithData(fileUploadMessage).WithVault(params.Vault), "FileUpload")
+			needUploadCount++
 		}
 	}
 
 	message := &FileSyncEndMessage{
-		Vault:    params.Vault,
-		LastTime: lastTime,
+		LastTime:           lastTime,
+		NeedUploadCount:    needUploadCount,
+		NeedModifyCount:    needModifyCount,
+		NeedSyncMtimeCount: needSyncMtimeCount,
+		NeedDeleteCount:    needDeleteCount,
 	}
 	// 发送同步结束消息
-	c.ToResponse(code.Success.WithData(message), "FileSyncEnd")
+	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "FileSyncEnd")
 }
 
 // cleanupSession 清理因为完成或超时而废弃的上传会话。

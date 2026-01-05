@@ -23,8 +23,11 @@ type SettingMessage struct {
 }
 
 type SettingSyncEndMessage struct {
-	Vault    string `json:"vault" form:"vault"`
-	LastTime int64  `json:"lastTime" form:"lastTime"`
+	LastTime           int64 `json:"lastTime" form:"lastTime"`
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
 }
 
 type SettingSyncNeedUploadMessage struct {
@@ -186,6 +189,11 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	var lastTime int64
+	var needUploadCount int64
+	var needModifyCount int64
+	var needSyncMtimeCount int64
+	var needDeleteCount int64
+
 	for _, s := range list {
 		if s.UpdatedTimestamp >= lastTime {
 			lastTime = s.UpdatedTimestamp
@@ -195,6 +203,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			if _, ok := cSettings[s.PathHash]; ok {
 				delete(cSettingsKeys, s.PathHash)
 				c.ToResponse(code.Success.WithData(&SettingDeleteMessage{Path: s.Path}), "SettingSyncDelete")
+				needDeleteCount++
 			}
 		} else {
 			if cSetting, ok := cSettings[s.PathHash]; ok {
@@ -213,6 +222,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Mtime:            s.Mtime,
 						UpdatedTimestamp: s.UpdatedTimestamp,
 					}), "SettingSyncModify")
+					needModifyCount++
 					continue
 				}
 				// 链接端和服务端， 文件内容相同
@@ -228,11 +238,13 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Mtime:            s.Mtime,
 							UpdatedTimestamp: s.UpdatedTimestamp,
 						}), "SettingSyncModify")
+						needModifyCount++
 					} else {
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						c.ToResponse(code.Success.Reset().WithData(&SettingSyncNeedUploadMessage{
 							Path: s.Path,
 						}), "SettingSyncNeedUpload")
+						needUploadCount++
 					}
 				} else {
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
@@ -241,6 +253,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Ctime: s.Ctime,
 						Mtime: s.Mtime,
 					}), "SettingSyncMtime")
+					needSyncMtimeCount++
 				}
 			} else {
 				c.ToResponse(code.Success.WithData(&SettingMessage{
@@ -252,6 +265,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					Mtime:            s.Mtime,
 					UpdatedTimestamp: s.UpdatedTimestamp,
 				}), "SettingSyncModify")
+				needModifyCount++
 			}
 		}
 	}
@@ -262,10 +276,16 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
 		c.ToResponse(code.Success.WithData(&SettingSyncNeedUploadMessage{Path: s.Path}), "SettingSyncNeedUpload")
+		needUploadCount++
 	}
 
-	c.ToResponse(code.Success.WithData(&SettingSyncEndMessage{
-		Vault:    params.Vault,
-		LastTime: lastTime,
-	}), "SettingSyncEnd")
+	message := &SettingSyncEndMessage{
+		LastTime:           lastTime,
+		NeedUploadCount:    needUploadCount,
+		NeedModifyCount:    needModifyCount,
+		NeedSyncMtimeCount: needSyncMtimeCount,
+		NeedDeleteCount:    needDeleteCount,
+	}
+
+	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "SettingSyncEnd")
 }

@@ -23,8 +23,11 @@ type NoteMessage struct {
 
 // NoteSyncEndMessage 同步结束时返回的信息结构。
 type NoteSyncEndMessage struct {
-	Vault    string `json:"vault" form:"vault"`       // 仓库标识
-	LastTime int64  `json:"lastTime" form:"lastTime"` // 本次同步更新时间
+	LastTime           int64 `json:"lastTime" form:"lastTime"`                     // 本次同步更新时间
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的笔记数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的笔记数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的笔记数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的笔记数量
 }
 
 // NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
@@ -320,6 +323,10 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	}
 
 	var lastTime int64
+	var needUploadCount int64
+	var needModifyCount int64
+	var needSyncMtimeCount int64
+	var needDeleteCount int64
 
 	for _, note := range list {
 		if note.UpdatedTimestamp >= lastTime {
@@ -333,6 +340,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					Path: note.Path,
 				}
 				c.ToResponse(code.Success.WithData(noteDeleteMessage), "NoteSyncDelete")
+				needDeleteCount++
 			}
 		} else {
 			//检查客户端是否有
@@ -359,6 +367,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 								Path: note.Path,
 							}
 							c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+							needUploadCount++
 						// 当设置新笔记才进行合并, 因为本地笔记比较老, 服务器通知客户端使用云端笔记覆盖本地
 						// 不设置 默认也一样覆盖
 						case "newTimeMerge", "":
@@ -373,6 +382,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							}
 
 							c.ToResponse(code.Success.Reset().WithData(noteMessage), "NoteSyncModify")
+							needModifyCount++
 						}
 						// 服务端修改时间比客户端新, 通知客户端更新笔记
 
@@ -388,6 +398,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Path: note.Path,
 						}
 						c.ToResponse(code.Success.Reset().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+						needUploadCount++
 					}
 				} else {
 					// 内容一致, 但修改时间不一致, 通知客户端更新笔记修改时间
@@ -397,6 +408,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Mtime: note.Mtime,
 					}
 					c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+					needSyncMtimeCount++
 				}
 			} else {
 				// 客户端没有的文件, 通知客户端创建文件
@@ -410,6 +422,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					UpdatedTimestamp: note.UpdatedTimestamp,
 				}
 				c.ToResponse(code.Success.WithData(noteMessage), "NoteSyncModify")
+				needModifyCount++
 			}
 		}
 	}
@@ -422,16 +435,20 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			note := cNotes[pathHash]
 			NoteCheck := convert.StructAssign(&note, &NoteSyncNeedPushMessage{}).(*NoteSyncNeedPushMessage)
 			c.ToResponse(code.Success.WithData(NoteCheck), "NoteSyncNeedPush")
+			needUploadCount++
 		}
 	}
 
 	c.IsFirstSync = true
 
 	message := &NoteSyncEndMessage{
-		Vault:    params.Vault,
-		LastTime: lastTime,
+		LastTime:           lastTime,
+		NeedUploadCount:    needUploadCount,
+		NeedModifyCount:    needModifyCount,
+		NeedSyncMtimeCount: needSyncMtimeCount,
+		NeedDeleteCount:    needDeleteCount,
 	}
-	c.ToResponse(code.Success.WithData(message), "NoteSyncEnd")
+	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "NoteSyncEnd")
 }
 
 // UserInfo 验证并获取用户信息

@@ -147,24 +147,32 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if len(action) > 0 {
 		actionType = action[0]
 	}
+
+	var responseBytes []byte
+
+	content := Res{
+		Code:    code.Code(),
+		Status:  code.Status(),
+		Message: code.Lang.GetMessage(),
+		Data:    code.Data(),
+	}
+
 	if code.HaveDetails() {
-		details := strings.Join(code.Details(), ",")
-		c.send(actionType, ResDetailsResult{
-			Code:    code.Code(),
-			Status:  code.Status(),
-			Msg:     code.Lang.GetMessage(),
-			Data:    code.Data(),
-			Details: details,
-		}, false, false)
-	} else {
-		if global.Config.App.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() {
-			c.send(actionType, ResResult{
-				Code:   code.Code(),
-				Status: code.Status(),
-				Msg:    code.Lang.GetMessage(),
-				Data:   code.Data(),
-			}, false, false)
-		}
+		content.Details = strings.Join(code.Details(), ",")
+	}
+
+	if code.HaveVault() {
+		content.Vault = code.Vault()
+	}
+
+	responseBytes, _ = sonic.Marshal(content)
+
+	if actionType != "" {
+		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
+	}
+
+	if global.Config.App.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
+		c.send(responseBytes, false, false)
 	}
 	code.Reset()
 }
@@ -188,78 +196,47 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		return
 	}
 
-	if code.HaveDetails() {
-		details := strings.Join(code.Details(), ",")
-		if code.HaveVault() {
-			c.send(actionType, ResVaultDetailsResult{
-				Code:    code.Code(),
-				Status:  code.Status(),
-				Msg:     code.Lang.GetMessage(),
-				Data:    code.Data(),
-				Details: details,
-				Vault:   code.Vault(),
-			}, true, options[0].(bool))
-		} else {
-			c.send(actionType, ResDetailsResult{
-				Code:    code.Code(),
-				Status:  code.Status(),
-				Msg:     code.Lang.GetMessage(),
-				Data:    code.Data(),
-				Details: details,
-			}, true, options[0].(bool))
-		}
-	} else {
-		if code.HaveVault() {
-			c.send(actionType, ResVaultResult{
-				Code:   code.Code(),
-				Status: code.Status(),
-				Msg:    code.Lang.GetMessage(),
-				Data:   code.Data(),
-				Vault:  code.Vault(),
-			}, true, options[0].(bool))
-		} else {
-			c.send(actionType, ResResult{
-				Code:   code.Code(),
-				Status: code.Status(),
-				Msg:    code.Lang.GetMessage(),
-				Data:   code.Data(),
-			}, true, options[0].(bool))
-		}
+	var responseBytes []byte
+
+	content := Res{
+		Code:    code.Code(),
+		Status:  code.Status(),
+		Message: code.Lang.GetMessage(),
+		Data:    code.Data(),
 	}
+
+	if code.HaveDetails() {
+		content.Details = strings.Join(code.Details(), ",")
+	}
+
+	if code.HaveVault() {
+		content.Vault = code.Vault()
+	}
+
+	responseBytes, _ = sonic.Marshal(content)
+
+	if actionType != "" {
+		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
+	}
+
+	c.send(responseBytes, true, options[0].(bool))
 
 	code.Reset()
 }
 
-func (c *WebsocketClient) send(actionType string, content any, isBroadcast bool, isExcludeSelf bool) {
-	responseBytes, _ := sonic.Marshal(content)
-	if actionType != "" {
-		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
-	}
+func (c *WebsocketClient) send(responseBytes []byte, isBroadcast bool, isExcludeSelf bool) {
 	if isBroadcast {
-		c.broadcast(responseBytes, isExcludeSelf)
+		c.sendBroadcast(responseBytes, isExcludeSelf)
 	} else {
-		c.message(responseBytes)
+		c.sendMessage(responseBytes)
 	}
 }
 
-func (c *WebsocketClient) message(payload []byte) {
+func (c *WebsocketClient) sendMessage(payload []byte) {
 	c.conn.WriteMessage(gws.OpcodeText, payload)
 }
 
-// SendBinary 发送二进制消息
-// prefix: 2字节前缀
-func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
-	if len(prefix) != 2 {
-		return fmt.Errorf("prefix must be 2 bytes")
-	}
-	// 拼接前缀和数据
-	data := make([]byte, 2+len(payload))
-	copy(data[0:2], prefix)
-	copy(data[2:], payload)
-	return c.conn.WriteMessage(gws.OpcodeBinary, data)
-}
-
-func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
+func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
 	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
 	defer b.Close()
 
@@ -273,6 +250,19 @@ func (c *WebsocketClient) broadcast(payload []byte, isExcludeSelf bool) {
 
 		_ = b.Broadcast(uc.conn)
 	}
+}
+
+// SendBinary 发送二进制消息
+// prefix: 2字节前缀
+func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
+	if len(prefix) != 2 {
+		return fmt.Errorf("prefix must be 2 bytes")
+	}
+	// 拼接前缀和数据
+	data := make([]byte, 2+len(payload))
+	copy(data[0:2], prefix)
+	copy(data[2:], payload)
+	return c.conn.WriteMessage(gws.OpcodeBinary, data)
 }
 
 // ------------------------------------> WS
@@ -590,49 +580,22 @@ func (w *WS) BroadcastToUser(uid int64, code *code.Code, action string) {
 	}
 
 	var responseBytes []byte
-	if code.HaveDetails() {
-		details := strings.Join(code.Details(), ",")
-		if code.HaveVault() {
-			content := ResVaultDetailsResult{
-				Code:    code.Code(),
-				Status:  code.Status(),
-				Msg:     code.Lang.GetMessage(),
-				Data:    code.Data(),
-				Details: details,
-				Vault:   code.Vault(),
-			}
-			responseBytes, _ = sonic.Marshal(content)
-		} else {
-			content := ResDetailsResult{
-				Code:    code.Code(),
-				Status:  code.Status(),
-				Msg:     code.Lang.GetMessage(),
-				Data:    code.Data(),
-				Details: details,
-			}
-			responseBytes, _ = sonic.Marshal(content)
-		}
-
-	} else {
-		if code.HaveVault() {
-			content := ResVaultResult{
-				Code:   code.Code(),
-				Status: code.Status(),
-				Msg:    code.Lang.GetMessage(),
-				Data:   code.Data(),
-				Vault:  code.Vault(),
-			}
-			responseBytes, _ = sonic.Marshal(content)
-		} else {
-			content := ResResult{
-				Code:   code.Code(),
-				Status: code.Status(),
-				Msg:    code.Lang.GetMessage(),
-				Data:   code.Data(),
-			}
-			responseBytes, _ = sonic.Marshal(content)
-		}
+	content := Res{
+		Code:    code.Code(),
+		Status:  code.Status(),
+		Message: code.Lang.GetMessage(),
+		Data:    code.Data(),
 	}
+
+	if code.HaveDetails() {
+		content.Details = strings.Join(code.Details(), ",")
+	}
+
+	if code.HaveVault() {
+		content.Vault = code.Vault()
+	}
+
+	responseBytes, _ = sonic.Marshal(content)
 
 	if action != "" {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, action, string(responseBytes)))

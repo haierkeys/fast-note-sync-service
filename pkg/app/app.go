@@ -21,6 +21,7 @@ type Pager struct {
 	// 总行数
 	TotalRows int `json:"totalRows"`
 }
+
 type ListRes struct {
 	// 数据清单
 	List interface{} `json:"list"`
@@ -28,65 +29,15 @@ type ListRes struct {
 	Pager Pager `json:"pager"`
 }
 
-type ResResult struct {
-	// 业务状态码
-	Code int `json:"code"`
-	// 状态
-	Status bool `json:"status"`
-	// 失败&&成功消息
-	Msg interface{} `json:"message"`
-	// 数据集合
-	Data interface{} `json:"data"`
-}
-
-type ResDetailsResult struct {
-	// 业务状态码
-	Code int `json:"code"`
-	// 状态
-	Status bool `json:"status"`
-	// 失败&&成功消息
-	Msg interface{} `json:"message"`
-	// 错误格式数据
-	Data interface{} `json:"data"`
-	// 错误支付
-	Details interface{} `json:"details"`
-}
-
-type ResVaultResult struct {
-	// 业务状态码
-	Code int `json:"code"`
-	// 状态
-	Status bool `json:"status"`
-	// 失败&&成功消息
-	Msg interface{} `json:"message"`
-	// 数据集合
-	Data  interface{} `json:"data"`
-	Vault string      `json:"vault"`
-}
-
-type ResVaultDetailsResult struct {
-	// 业务状态码
-	Code int `json:"code"`
-	// 状态
-	Status bool `json:"status"`
-	// 失败&&成功消息
-	Msg interface{} `json:"message"`
-	// 错误格式数据
-	Data interface{} `json:"data"`
-	// 错误支付
-	Details interface{} `json:"details"`
-	Vault   string      `json:"vault"`
-}
-
-type ResListResult struct {
-	// 业务状态码
-	Code int `json:"code"`
-	// 状态
-	Status bool `json:"status"`
-	// 失败&&成功消息
-	Msg interface{} `json:"message"`
-	// 数据集合
-	Data ListRes `json:"data"`
+// BaseRes 是统一的响应结构：Code/Status/Msg/Data
+// 可选字段 Vault 与 Details 使用 omitempty（nil 则不会被序列化）
+type Res struct {
+	Code    int         `json:"code"`
+	Status  bool        `json:"status"`
+	Message interface{} `json:"message,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+	Details interface{} `json:"details,omitempty"`
+	Vault   interface{} `json:"vault,omitempty"`
 }
 
 func NewResponse(ctx *gin.Context) *Response {
@@ -96,6 +47,7 @@ func NewResponse(ctx *gin.Context) *Response {
 }
 
 // RequestParamStrParse 解析
+// 保持原有行为
 func RequestParamStrParse(c *gin.Context, param any) {
 	tParam := reflect.TypeOf(param).Elem()
 	vParam := reflect.ValueOf(param).Elem()
@@ -132,37 +84,37 @@ func GetAccessHost(c *gin.Context) string {
 	return AccessProto + c.Request.Host
 }
 
-// ToResponse 输出到浏览器
-func (r *Response) ToResponse(code *code.Code) {
+// ToResponse 输出到浏览器：统一使用 BaseRes，根据情况设置 Details 与 Vault
+func (r *Response) ToResponse(codeObj *code.Code) {
+	r.Ctx.Set("status_code", codeObj.StatusCode())
 
-	r.Ctx.Set("status_code", code.StatusCode())
-	if code.HaveDetails() {
-		details := strings.Join(code.Details(), ",")
-		r.SendResultResponse(code.StatusCode(), ResDetailsResult{
-			Code:    code.Code(),
-			Status:  code.Status(),
-			Msg:     code.Lang.GetMessage(),
-			Data:    code.Data(),
-			Details: details,
-		})
-	} else {
-		r.SendResultResponse(code.StatusCode(), ResResult{
-			Code:   code.Code(),
-			Status: code.Status(),
-			Msg:    code.Lang.GetMessage(),
-			Data:   code.Data(),
-		})
+	content := Res{
+		Code:    codeObj.Code(),
+		Status:  codeObj.Status(),
+		Message: codeObj.Lang.GetMessage(),
+		Data:    codeObj.Data(),
 	}
+
+	if codeObj.HaveDetails() {
+		content.Details = strings.Join(codeObj.Details(), ",")
+	}
+
+	if codeObj.HaveVault() {
+		// 假设 codeObj.Vault() 返回可序列化的值（string 或 struct 等）
+		content.Vault = codeObj.Vault()
+	}
+
+	r.send(codeObj.StatusCode(), content)
 }
 
-func (r *Response) ToResponseList(code *code.Code, list interface{}, totalRows int) {
+// ToResponseList 输出列表响应，使用 ListRes 作为 Data；同样支持 Vault 动态添加
+func (r *Response) ToResponseList(codeObj *code.Code, list interface{}, totalRows int) {
+	r.Ctx.Set("status_code", codeObj.StatusCode())
 
-	r.Ctx.Set("status_code", code.StatusCode())
-
-	r.SendResultResponse(code.StatusCode(), ResListResult{
-		Code:   code.Code(),
-		Status: code.Status(),
-		Msg:    code.Lang.GetMessage(),
+	content := Res{
+		Code:    codeObj.Code(),
+		Status:  codeObj.Status(),
+		Message: codeObj.Lang.GetMessage(),
 		Data: ListRes{
 			List: list,
 			Pager: Pager{
@@ -171,9 +123,15 @@ func (r *Response) ToResponseList(code *code.Code, list interface{}, totalRows i
 				TotalRows: totalRows,
 			},
 		},
-	})
+	}
+
+	if codeObj.HaveVault() {
+		content.Vault = codeObj.Vault()
+	}
+
+	r.send(codeObj.StatusCode(), content)
 }
 
-func (r *Response) SendResultResponse(statusCode int, content interface{}) {
+func (r *Response) send(statusCode int, content interface{}) {
 	r.Ctx.JSON(statusCode, content)
 }
