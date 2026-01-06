@@ -103,6 +103,15 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	switch updateMode {
 	case "UpdateContent", "Create":
 
+		// c.DiffMergePathsMu.RLock()
+		// _, ok := c.DiffMergePaths[params.Path]
+		// c.DiffMergePathsMu.RUnlock()
+
+		// // 如果是 diff 合并，需要跳过
+		// if ok {
+		// 	return
+		// }
+
 		_, note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
 			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))

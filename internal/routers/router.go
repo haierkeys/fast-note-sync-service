@@ -29,7 +29,7 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 
 func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
-	var wss = app.NewWS(app.WSConfig{
+	var wss = app.NewWebsocketServer(app.WSConfig{
 		GWSOption: gws.ServerOption{
 			CheckUtf8Enabled:  true,
 			ParallelEnabled:   true,                                 // 开启并行消息处理

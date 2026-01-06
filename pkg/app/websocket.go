@@ -272,11 +272,11 @@ func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
 	return c.conn.WriteMessage(gws.OpcodeBinary, data)
 }
 
-// ------------------------------------> WS
+// ------------------------------------> WebsocketServer
 
 type ConnStorage = map[*gws.Conn]*WebsocketClient
 
-type WS struct {
+type WebsocketServer struct {
 	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
 	// binaryHandler     func(*WebsocketClient, []byte) // Deprecated: replaced by binaryHandlers
@@ -288,14 +288,14 @@ type WS struct {
 	config         *WSConfig
 }
 
-func NewWS(c WSConfig) *WS {
+func NewWebsocketServer(c WSConfig) *WebsocketServer {
 	if c.PingInterval == 0 {
 		c.PingInterval = WSPingInterval
 	}
 	if c.PingWait == 0 {
 		c.PingWait = WSPingWait
 	}
-	wss := WS{
+	wss := WebsocketServer{
 		handlers:       make(map[string]func(*WebsocketClient, *WebSocketMessage)),
 		binaryHandlers: make(map[string]func(*WebsocketClient, []byte)),
 		clients:        make(ConnStorage),
@@ -305,11 +305,11 @@ func NewWS(c WSConfig) *WS {
 	return &wss
 }
 
-func (w *WS) Upgrade() {
+func (w *WebsocketServer) Upgrade() {
 	w.up = gws.NewUpgrader(w, &w.config.GWSOption)
 }
 
-func (w *WS) Run() gin.HandlerFunc {
+func (w *WebsocketServer) Run() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
@@ -326,22 +326,22 @@ func (w *WS) Run() gin.HandlerFunc {
 	}
 }
 
-func (w *WS) Use(action string, handler func(*WebsocketClient, *WebSocketMessage)) {
+func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *WebSocketMessage)) {
 	w.handlers[action] = handler
 }
 
-func (w *WS) UseUserVerify(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
+func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
 	w.userVerifyHandler = handler
 }
 
-func (w *WS) UseBinary(prefix string, handler func(*WebsocketClient, []byte)) {
+func (w *WebsocketServer) UseBinary(prefix string, handler func(*WebsocketClient, []byte)) {
 	if len(prefix) != 2 {
 		panic("binary message prefix must be 2 characters")
 	}
 	w.binaryHandlers[prefix] = handler
 }
 
-func (w *WS) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
+func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
 
 	if user, err := ParseToken(string(msg.Data)); err != nil {
 		log(LogError, "WS Authorization FAILD", zap.Error(err))
@@ -396,7 +396,7 @@ func (w *WS) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
 	}
 }
 
-func (w *WS) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
+func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
 	var info ClientInfoMessage
 	if err := sonic.Unmarshal(msg.Data, &info); err != nil {
 		log(LogError, "WS ClientInfo Unmarshal FAILD", zap.Error(err))
@@ -417,25 +417,25 @@ func (w *WS) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
 	c.ToResponse(code.Success, "ClientInfo")
 }
 
-func (w *WS) GetClient(conn *gws.Conn) *WebsocketClient {
+func (w *WebsocketServer) GetClient(conn *gws.Conn) *WebsocketClient {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.clients[conn]
 }
 
-func (w *WS) AddClient(c *WebsocketClient) {
+func (w *WebsocketServer) AddClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.clients[c.conn] = c
 }
 
-func (w *WS) RemoveClient(conn *gws.Conn) {
+func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	delete(w.clients, conn)
 }
 
-func (w *WS) AddUserClient(c *WebsocketClient) {
+func (w *WebsocketServer) AddUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.userClients[c.User.ID] == nil {
@@ -444,19 +444,19 @@ func (w *WS) AddUserClient(c *WebsocketClient) {
 	w.userClients[c.User.ID][c.conn] = c
 }
 
-func (w *WS) RemoveUserClient(c *WebsocketClient) {
+func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	delete(w.userClients[c.User.ID], c.conn)
 	log(LogInfo, "WS Client Remove", zap.Int("userCount", len(w.clients)))
 }
 
-func (w *WS) OnOpen(conn *gws.Conn) {
+func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	log(LogInfo, "WS Client Connect", zap.Int("Count", len(w.clients)))
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
-func (w *WS) OnClose(conn *gws.Conn, err error) {
+func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	c := w.GetClient(conn)
 	if c == nil {
@@ -489,16 +489,16 @@ func (w *WS) OnClose(conn *gws.Conn, err error) {
 
 }
 
-func (w *WS) OnPing(socket *gws.Conn, payload []byte) {
+func (w *WebsocketServer) OnPing(socket *gws.Conn, payload []byte) {
 	_ = socket.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 	_ = socket.WritePong(nil)
 }
 
-func (w *WS) OnPong(socket *gws.Conn, payload []byte) {
+func (w *WebsocketServer) OnPong(socket *gws.Conn, payload []byte) {
 	_ = socket.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
-func (w *WS) OnMessage(conn *gws.Conn, message *gws.Message) {
+func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	defer message.Close()
 	if message.Opcode != gws.OpcodeText && message.Opcode != gws.OpcodeBinary {
 		return
@@ -576,7 +576,7 @@ func (w *WS) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 }
 
-func (w *WS) BroadcastToUser(uid int64, code *code.Code, action string) {
+func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action string) {
 	uidStr := strconv.FormatInt(uid, 10)
 	w.mu.Lock()
 	userClients, ok := w.userClients[uidStr]
