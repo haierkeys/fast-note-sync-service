@@ -3,7 +3,7 @@ services:
     image: haierkeys/fast-note-sync-service:latest
     container_name: fast-note-sync-service
     ports:
-      - "8000:8000"
+      - "9000:9000"
     volumes:
       - /data/fast-note-sync/storage/:/fast-note-sync/storage/
       - /data/fast-note-sync/config/:/fast-note-sync/config/
@@ -17,10 +17,9 @@ services:
     ports:
       - "443:443"  # 映射宿主机的 8000 端口到容器的 443
     depends_on:
-      - image-api  # 替代 --link，确保 Nginx 在 image-api 启动后运行
+      - fast-note-sync-service  # 替代 --link，确保 Nginx 在 image-api 启动后运行
      # - better-sync # 替代 --link，确保 Nginx 在 image-api 启动后运行
     volumes:
-      - /data/image-api/storage:/api/storage/  # 与 image-api 共享存储目录
       - /data/ssl/diybeta-com.key:/privkey.pem  # SSL 私钥
       - /data/ssl/diybeta-com.pem:/cert.pem     # SSL 证书
       - /data/nginx/site.conf:/etc/nginx/conf.d/site.conf  # Nginx 配置文件
