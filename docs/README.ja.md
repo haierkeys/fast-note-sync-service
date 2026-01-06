@@ -1,5 +1,7 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
+質問がある場合は、新しい [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new) を作成するか、テレグラム交流グループに参加して助けを求めてください: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -10,13 +12,13 @@
 </p>
 
 <p align="center">
-  <strong>高性能・低遅延なノート同期サービスソリューション</strong>
+  <strong>高性能、低遅延のノート同期サービスソリューション</strong>
   <br>
   <em>Golang + Websocket + Sqlite + React で構築</em>
 </p>
 
 <p align="center">
-  クライアントプラグインと一緒に使用する必要があります：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  クライアントプラグインと組み合わせて使用する必要があります：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
@@ -25,50 +27,50 @@
 
 ---
 
-## ✨ 核心機能
+## ✨ コア機能
 
-* **💻 Web 管理パネル**: モダンな管理インターフェースを内蔵し、ユーザー作成、プラグイン設定の生成、リポジトリおよびノート内容の管理を簡単に行えます。
-* **🔄 マルチデバイス同期**:
+* **💻 Web 管理パネル**: モダンな管理インターフェースを内蔵し、ユーザーの作成、プラグイン設定の生成、リポジトリおよびノート内容の管理を簡単に行えます。
+* **🔄 マルチデバイスノート同期**:
     * **Vault (リポジトリ)** の自動作成をサポート。
-    * ノート管理（追加、削除、編集、検索）をサポート。変更はミリ秒単位でオンラインのすべてのデバイスにリアルタイムに配信されます。
-* **🖼️ 添付ファイルの同期**:
+    * ノート管理（追加、削除、編集、検索）をサポートし、変更はミリ秒単位でリアルタイムにすべてのオンラインデバイスに配信されます。
+* **🖼️ 添付ファイル同期のサポート**:
     * 画像などの非ノートファイルの同期を完全にサポート。
-    * *(注：サーバー v0.9+ および [Obsidian プラグイン v1.0+ ](https://github.com/haierkeys/obsidian-fast-note-sync/releases) が必要です。Obsidian の設定ファイルはサポートされていません)*
+    * *(注：サーバー v0.9+ および [Obsidian プラグイン v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases) が必要です。Obsidian の設定ファイルはサポートされていません)*
 * **📝 ノート履歴**:
-    * Web ページやプラグイン端から、各ノートの過去の変更履歴を確認できます。
+    * Web ページまたはプラグイン端で、各ノートの過去の修正バージョンを確認できます。
     * (サーバー v1.2+ が必要)
 * **⚙️ 設定同期**:
-    * `.obsidian` 設定ファイルの同期をサポートしています。
+    * `.obsidian` 設定ファイルの同期をサポート。
 
-## ☕ 支援とスポンサー
+## ☕ スポンサーとサポート
 
-- このプラグインが有用だと感じ、開発を継続してほしい場合は、以下の方法で私を支援してくださると幸いです。
+- このプラグインが便利だと感じ、開発を継続してほしい場合は、以下の方法で私をサポートしてください：
 
-  | Ko-fi *中国以外*  |  | 微信 (WeChat) スキャンで寄付 *中国* |
-  | --- | ---| --- |
+  | Ko-fi *中国国外*                                                                                                     |     | WeChat Pay *中国国内*                                              |
+  |----------------------------------------------------------------------------------------------------------------------|-----|--------------------------------------------------------------------|
   | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | または | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
 
 ## ⏱️ 更新履歴
 
-- ♨️ [更新履歴を表示](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.ja.md)
+- ♨️ [更新履歴を表示する](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.ja.md)
 
 ## 🗺️ ロードマップ (Roadmap)
 
-継続的に改善を行っています。今後の開発計画は以下の通りです。
+継続的に改善を行っており、以下の開発計画があります：
 
-- [ ] **Git バージョン管理の統合**: ノートのより安全なバージョン履歴の遡及を提供します。
-- [ ] **同期アルゴリズムの最適化**: `google-diff-match-patch` を統合し、より効率的な増分同期を実現します。
+- [ ] **Git バージョン管理の統合**: ノートにより安全なバージョン履歴を提供。
+- [ ] **同期アルゴリズムの最適化**: より効率的な増分同期を実現するために `google-diff-match-patch` を統合。
 - [ ] **クラウドストレージとバックアップ戦略**:
     - [ ] カスタムバックアップ戦略の設定。
-    - [ ] マルチプロトコル対応：S3 / Minio / Cloudflare R2 / Aliyun OSS / WebDAV。
+    - [ ] マルチプロトコル対応：S3 / Minio / Cloudflare R2 / Alibaba Cloud OSS / WebDAV。
 
-> **改善の提案や新しいアイデアがある場合は、issue を通じて共有してください。適切な提案を慎重に評価し、採用します。**
+> **改善の提案や新しいアイデアがある場合は、issue を通じて共有してください。適切な提案は慎重に評価し、採用させていただきます。**
 
 ## 🚀 クイックデプロイ
 
-様々なインストール方法を提供していますが、**ワンクリックスクリプト** または **Docker** を推奨します。
+複数のインストール方法を提供しています。**ワンクリックスクリプト**または **Docker** の使用を推奨します。
 
-### 方法1：ワンクリックスクリプト（推奨）
+### 方法 1：ワンクリックスクリプト（推奨）
 
 システム環境を自動検出し、インストールとサービス登録を完了します。
 
@@ -79,21 +81,21 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 **スクリプトの主な動作：**
 
   * 現在のシステムに適した Release バイナリファイルを自動的にダウンロードします。
-  * デフォルトで `/opt/fast-note` にインストールし、`/usr/local/bin/fast-note` にショートカットを作成します。
-  * Systemd サービス (`fast-note.service`) を設定して起動し、OS 起動時の自動実行を実現します。
+  * デフォルトで `/opt/fast-note` にインストールし、`/usr/local/bin/fast-note` にショートカットコマンドを作成します。
+  * Systemd サービス (`fast-note.service`) を設定・起動し、OS 起動時の自動実行を実現します。
   * **管理コマンド**: `fast-note [install|uninstall|start|stop|status|update|menu]`
 
 -----
 
-### 方法2：Docker デプロイ
+### 方法 2：Docker デプロイ
 
 #### Docker Run
 
 ```bash
-# 1. イメージをプルする
+# 1. イメージをプル
 docker pull haierkeys/fast-note-sync-service:latest
 
-# 2. コンテナを起動する
+# 2. コンテナを起動
 docker run -tid --name fast-note-sync-service \
     -p 9000:9000 -p 9001:9001 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
@@ -120,7 +122,7 @@ services:
       - ./config:/fast-note-sync/config    # 設定ファイル
 ```
 
-サービスを起動します：
+サービスを起動：
 
 ```bash
 docker compose up -d
@@ -128,7 +130,7 @@ docker compose up -d
 
 -----
 
-### 方法3：手動バイナリインストール
+### 方法 3：手動バイナリインストール
 
 [Releases](https://github.com/haierkeys/fast-note-sync-service/releases) から対応するシステムの最新バージョンをダウンロードし、解凍して実行します：
 
@@ -138,18 +140,18 @@ docker compose up -d
 
 ## 📖 使用ガイド
 
-1.  **管理パネルへのアクセス**:
+1.  **管理パネルにアクセス**:
     ブラウザで `http://{サーバーIP}:9000` を開きます。
 2.  **初期設定**:
-    初回アクセス時にアカウント登録が必要です。*(登録機能をオフにする場合は、設定ファイルで `user.register-is-enable: false` を設定してください)*
+    初回アクセス時はアカウント登録が必要です。*(登録機能を無効にする場合は、設定ファイルで `user.register-is-enable: false` を設定してください)*
 3.  **クライアントの設定**:
-    管理パネルにログインし、「**API 設定をコピー**」をクリックします。
-4.  **Obsidian への接続**:
-    Obsidian プラグインの設定ページを開き、今コピーした設定情報を貼り付けます。
+    管理パネルにログインし、**「API 設定をコピー」**をクリックします。
+4.  **Obsidian に接続**:
+    Obsidian プラグインの設定ページを開き、コピーした設定情報を貼り付けます。
 
 ## ⚙️ 設定の説明
 
-デフォルトの設定ファイルは `config.yaml` で、プログラムは **ルートディレクトリ** または **config/** ディレクトリから自動的に検索します。
+デフォルトの設定ファイルは `config.yaml` で、プログラムは自動的に**ルートディレクトリ**または **config/** ディレクトリ内を検索します。
 
 完全な設定例を表示：[config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
 

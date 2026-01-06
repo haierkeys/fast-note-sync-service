@@ -1,5 +1,7 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
+有問題請新建 [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new) , 或加入電報交流群尋求幫助: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -16,7 +18,7 @@
 </p>
 
 <p align="center">
-  需配合客戶端插件使用：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  需配合用戶端插件使用：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
@@ -27,25 +29,25 @@
 
 ## ✨ 核心功能
 
-* **💻 Web 管理面板**：內置現代化管理界面，輕鬆創建用戶、生成插件配置、管理倉庫及筆記內容。
+* **💻 Web 管理面板**：內置現代化管理介面，輕鬆創建用戶、生成插件配置、管理倉庫及筆記內容。
 * **🔄 多端筆記同步**：
-    * 支持 **Vault (倉庫)** 自動創建。
-    * 支持筆記管理（增、刪、改、查），變更毫秒級實時分發至所有在線設備。
-* **🖼️ 附件同步支持**：
-    * 完美支持圖片等非筆記文件同步。
-    * *(注：需服務端 v0.9+ 及 [Obsidian 插件端 v1.0+ ](https://github.com/haierkeys/obsidian-fast-note-sync/releases), 不支持 Obsidian 設置文件)*
+    * 支援 **Vault (倉庫)** 自動創建。
+    * 支援筆記管理（增、刪、改、查），變更毫秒級實時分發至所有在線設備。
+* **🖼️ 附件同步支援**：
+    * 完美支援圖片等非筆記文件同步。
+    * *(註：需服務端 v0.9+ 及 [Obsidian 插件端 v1.0+ ](https://github.com/haierkeys/obsidian-fast-note-sync/releases), 不支援 Obsidian 設置文件)*
 * **📝 筆記歷史**：
     * 可以在 Web 頁面，插件端查看每一個筆記的 歷史修改版本。
     * (需服務端 v1.2+ )
 * **⚙️ 配置同步**：
-    * 支持 `.obsidian` 配置文件的同步。
+    * 支援 `.obsidian` 配置文件的同步。
 
 ## ☕ 贊助與支持
 
 - 如果覺得這個插件很有用，並且想要它繼續開發，請在以下方式支持我:
 
-  | Ko-fi *非中國地區*  |  | 微信掃碼打賞 *中國地區* |
-  | --- | ---| --- |
+  | Ko-fi *非中國地區*                                                                                                   |    | 微信掃碼打賞 *中國地區*                                            |
+  |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
   | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
 
 ## ⏱️ 更新日誌
@@ -78,9 +80,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 
 **腳本主要行為：**
 
-  * 自動下載適配當前系統的 Release 二進制文件。
+  * 自動下載適配當前系統的 Release 二進位文件。
   * 默認安裝至 `/opt/fast-note`，並在 `/usr/local/bin/fast-note` 創建快捷指令。
-  * 配置並啓動 Systemd 服務 (`fast-note.service`)，實現開機自啓。
+  * 配置並啟動 Systemd 服務 (`fast-note.service`)，實現開機自啟。
   * **管理命令**：`fast-note [install|uninstall|start|stop|status|update|menu]`
 
 -----
@@ -93,7 +95,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 # 1. 拉取鏡像
 docker pull haierkeys/fast-note-sync-service:latest
 
-# 2. 啓動容器
+# 2. 啟動容器
 docker run -tid --name fast-note-sync-service \
     -p 9000:9000 -p 9001:9001 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
@@ -120,7 +122,7 @@ services:
       - ./config:/fast-note-sync/config    # 配置文件
 ```
 
-啓動服務：
+啟動服務：
 
 ```bash
 docker compose up -d
@@ -128,7 +130,7 @@ docker compose up -d
 
 -----
 
-### 方式三：手動二進制安裝
+### 方式三：手動二進位安裝
 
 從 [Releases](https://github.com/haierkeys/fast-note-sync-service/releases) 下載對應系統的最新版本，解壓後運行：
 
@@ -139,13 +141,13 @@ docker compose up -d
 ## 📖 使用指南
 
 1.  **訪問管理面板**：
-    在瀏覽器打開 `http://{服務器IP}:9000`。
+    在瀏覽器打開 `http://{伺服器IP}:9000`。
 2.  **初始化設置**：
-    首次訪問需注冊賬號。*(如需關閉注冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
-3.  **配置客戶端**：
-    登錄管理面板，點擊 **“復制 API 配置”**。
+    首次訪問需注冊帳號。*(如需關閉注冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
+3.  **配置用戶端**：
+    登錄管理面板，點擊 **“複製 API 配置”**。
 4.  **連接 Obsidian**：
-    打開 Obsidian 插件設置頁面，粘貼剛才復制的配置信息即可。
+    打開 Obsidian 插件設置頁面，粘貼剛才複製的配置信息即可。
 
 ## ⚙️ 配置說明
 
@@ -156,4 +158,4 @@ docker compose up -d
 
 ## 🔗 相關資源
 
-  * [Obsidian Fast Note Sync Plugin (客戶端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
+  * [Obsidian Fast Note Sync Plugin (用戶端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)

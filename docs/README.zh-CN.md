@@ -1,5 +1,7 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
+有问题请新建 [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new) , 或加入电报交流群寻求帮助: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
@@ -44,8 +46,8 @@
 
 - 如果觉得这个插件很有用，并且想要它继续开发，请在以下方式支持我:
 
-  | Ko-fi *非中国地区*  |  | 微信扫码打赏 *中国地区* |
-  | --- | ---| --- |
+  | Ko-fi *非中国地区*                                                                                                   |    | 微信扫码打赏 *中国地区*                                            |
+  |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
   | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
 
 ## ⏱️ 更新日志
