@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
@@ -39,6 +41,32 @@ type FileSet struct {
 	Mtime       int64  `json:"mtime" form:"mtime"`             // 修改时间戳
 }
 
+// fillFilePath 填充文件的保存路径并处理旧文件迁移
+func (d *Dao) fillFilePath(uid int64, f *File) {
+	if f == nil {
+		return
+	}
+	folderPath := d.GetFileFolderPath(uid, f.ID)
+	standardPath := filepath.Join(folderPath, "file.dat")
+
+	// 如果标准路径不存在，检查是否有旧路径文件并迁移
+	if _, err := os.Stat(standardPath); os.IsNotExist(err) && f.SavePath != "" && f.SavePath != standardPath {
+		if _, errOld := os.Stat(f.SavePath); errOld == nil {
+			_ = os.MkdirAll(folderPath, 0755)
+			_ = os.Rename(f.SavePath, standardPath)
+		} else {
+			// 兜底方案：检查文件夹内是否有任何文件，如果有则重命名第一个
+			if files, err := os.ReadDir(folderPath); err == nil && len(files) > 0 {
+				oldName := files[0].Name()
+				if oldName != "file.dat" {
+					_ = os.Rename(filepath.Join(folderPath, oldName), standardPath)
+				}
+			}
+		}
+	}
+	f.SavePath = standardPath
+}
+
 // file 获取文件查询对象
 // 函数名: file
 // 函数使用说明: 获取指定用户的文件表查询对象,内部方法。
@@ -48,7 +76,7 @@ type FileSet struct {
 // 返回值说明:
 //   - *query.Query: 查询对象
 func (d *Dao) file(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := "user_file_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "File")
 	}, key+"#file", key)
@@ -74,7 +102,9 @@ func (d *Dao) FileGetByPathHash(hash string, vaultID int64, uid int64) (*File, e
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &File{}).(*File), nil
+	res := convert.StructAssign(m, &File{}).(*File)
+	d.fillFilePath(uid, res)
+	return res, nil
 }
 
 // FileGetByPath 根据路径获取文件
@@ -97,7 +127,9 @@ func (d *Dao) FileGetByPath(path string, vaultID int64, uid int64) (*File, error
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &File{}).(*File), nil
+	res := convert.StructAssign(m, &File{}).(*File)
+	d.fillFilePath(uid, res)
+	return res, nil
 }
 
 // FileGetByPathLike 根据路径后缀获取文件
@@ -121,7 +153,9 @@ func (d *Dao) FileGetByPathLike(path string, vaultID int64, uid int64) (*File, e
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &File{}).(*File), nil
+	res := convert.StructAssign(m, &File{}).(*File)
+	d.fillFilePath(uid, res)
+	return res, nil
 }
 
 // FileCreate 创建文件记录
@@ -141,11 +175,27 @@ func (d *Dao) FileCreate(params *FileSet, uid int64) (*File, error) {
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.CreatedAt = timex.Now()
 	m.UpdatedAt = timex.Now()
+	m.SavePath = "" // 不在数据库中保存路径
+
 	err := u.WithContext(d.ctx).Create(m)
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &File{}).(*File), nil
+
+	// 移动文件到 Vault 目录，固定命名为 file.dat
+	if params.SavePath != "" {
+		folderPath := d.GetFileFolderPath(uid, m.ID)
+		_ = os.MkdirAll(folderPath, 0755)
+		finalPath := filepath.Join(folderPath, "file.dat")
+
+		if err := os.Rename(params.SavePath, finalPath); err != nil {
+			_ = os.Rename(params.SavePath, finalPath)
+		}
+	}
+
+	res := convert.StructAssign(m, &File{}).(*File)
+	d.fillFilePath(uid, res)
+	return res, nil
 }
 
 // FileUpdate 更新文件记录
@@ -161,10 +211,23 @@ func (d *Dao) FileCreate(params *FileSet, uid int64) (*File, error) {
 //   - error: 出错时返回错误
 func (d *Dao) FileUpdate(params *FileSet, id int64, uid int64) (*File, error) {
 	u := d.file(uid).File
+
 	m := convert.StructAssign(params, &model.File{}).(*model.File)
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.UpdatedAt = timex.Now()
 	m.ID = id
+	m.SavePath = "" // 不在数据库中更新路径
+
+	// 如果提供了新的临时路径，则移动到固定的 file.dat
+	if params.SavePath != "" {
+		folderPath := d.GetFileFolderPath(uid, id)
+		_ = os.MkdirAll(folderPath, 0755)
+		finalPath := filepath.Join(folderPath, "file.dat")
+
+		// 如果旧文件存在且不是当前路径，清理它 (在此设计中，文件名是固定的，Rename 会自动覆盖)
+		_ = os.Rename(params.SavePath, finalPath)
+	}
+
 	err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
 	).Save(m)
@@ -172,7 +235,9 @@ func (d *Dao) FileUpdate(params *FileSet, id int64, uid int64) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &File{}).(*File), nil
+	res := convert.StructAssign(m, &File{}).(*File)
+	d.fillFilePath(uid, res)
+	return res, nil
 }
 
 // FileUpdateMtime 更新文件的修改时间
@@ -251,7 +316,9 @@ func (d *Dao) FileList(vaultID int64, page int, pageSize int, uid int64) ([]*Fil
 
 	var list []*File
 	for _, m := range modelList {
-		list = append(list, convert.StructAssign(m, &File{}).(*File))
+		f := convert.StructAssign(m, &File{}).(*File)
+		d.fillFilePath(uid, f)
+		list = append(list, f)
 	}
 	return list, nil
 }
@@ -267,6 +334,7 @@ func (d *Dao) FileList(vaultID int64, page int, pageSize int, uid int64) ([]*Fil
 // 返回值说明:
 //   - []*File: 文件列表
 //   - error: 出错时返回错误
+
 func (d *Dao) FileListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int64) ([]*File, error) {
 	u := d.file(uid).File
 	mList, err := u.WithContext(d.ctx).Where(
@@ -281,7 +349,9 @@ func (d *Dao) FileListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int
 
 	var list []*File
 	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &File{}).(*File))
+		f := convert.StructAssign(m, &File{}).(*File)
+		d.fillFilePath(uid, f)
+		list = append(list, f)
 	}
 	return list, nil
 }
@@ -313,7 +383,9 @@ func (d *Dao) FileListByMtime(timestamp int64, vaultID int64, uid int64) ([]*Fil
 
 	var list []*File
 	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &File{}).(*File))
+		f := convert.StructAssign(m, &File{}).(*File)
+		d.fillFilePath(uid, f)
+		list = append(list, f)
 	}
 	return list, nil
 }
@@ -361,7 +433,20 @@ func (d *Dao) FileCountSizeSum(vaultID int64, uid int64) (*FileCountSizeSum, err
 func (d *Dao) FileDeletePhysicalByTime(timestamp int64, uid int64) error {
 	u := d.file(uid).File
 
-	_, err := u.WithContext(d.ctx).Where(
+	// 查找待删除的记录，以便删除文件系统中的文件夹
+	mList, err := u.WithContext(d.ctx).Where(
+		u.Action.Eq("delete"),
+		u.UpdatedTimestamp.Lt(timestamp),
+	).Find()
+
+	if err == nil {
+		for _, m := range mList {
+			folderPath := d.GetFileFolderPath(uid, m.ID)
+			_ = d.RemoveContentFolder(folderPath) // 使用 helper 中的清理
+		}
+	}
+
+	_, err = u.WithContext(d.ctx).Where(
 		u.Action.Eq("delete"),
 		u.UpdatedTimestamp.Lt(timestamp),
 	).Delete()

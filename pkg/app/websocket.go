@@ -44,6 +44,34 @@ func log(t LogType, msg string, fields ...zap.Field) {
 	}
 }
 
+// NoteModifyLog 打印笔记修改相关的控制台日志内容（由 [WS] 标识）
+// uid: 用户 ID
+// action: 执行的操作名称
+// params: 可变参数，通常第一个为 Path，第二个为 Vault
+func NoteModifyLog(uid int64, action string, params ...string) {
+	var path, vault string
+
+	if len(params) > 0 {
+		path = params[0]
+	}
+
+	if len(params) > 1 {
+		vault = params[1]
+	}
+
+	str := fmt.Sprintf("[WS] | \033[30;43m %d \033[0m\033[97;44m %s \033[0m", uid, action)
+
+	if vault != "" {
+		str += fmt.Sprintf("\033[32m %s \033[0m", vault)
+	}
+
+	if path != "" {
+		str += fmt.Sprintf("\033[32m %s \033[0m", path)
+	}
+
+	fmt.Println(str)
+}
+
 type WebSocketMessage struct {
 	Type string `json:"type"` // 操作类型，例如 "upload", "update", "delete"
 	Data []byte `json:"data"` // 文件数据（仅在上传和更新时使用）
@@ -58,6 +86,11 @@ type WSConfig struct {
 	GWSOption    gws.ServerOption
 	PingInterval time.Duration
 	PingWait     time.Duration
+}
+
+// SessionCleaner 接口，用于在连接断开时清理会话资源
+type SessionCleaner interface {
+	Cleanup()
 }
 
 // WebsocketClient 结构体来存储每个 WebSocket 连接及其相关状态
@@ -453,7 +486,7 @@ func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	log(LogInfo, "WS Client Connect", zap.Int("Count", len(w.clients)))
-	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
+	//_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
@@ -466,16 +499,27 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 	w.RemoveClient(conn)
 
 	if c.User != nil {
-		c.done <- struct{}{}
-		log(LogInfo, "WS User Leave", zap.String("uid", c.User.ID))
+		select {
+		case c.done <- struct{}{}:
+		default:
+		}
+		log(LogInfo, "WS User Leave", zap.String("uid", c.User.ID), zap.Error(err))
 		w.RemoveUserClient(c)
+	} else {
+		log(LogInfo, "WS Client Leave (Unauth)", zap.Error(err))
 	}
 
 	// 清理所有未完成的上传会话
 	if len(c.BinaryChunkSessions) > 0 {
 		c.BinaryMu.Lock()
 		sessionCount := len(c.BinaryChunkSessions)
-		// 清空所有会话(具体的文件清理由超时机制或 cleanupSession 处理)
+		// 显式清理资源（关闭文件句柄等）
+		for _, sess := range c.BinaryChunkSessions {
+			if cleaner, ok := sess.(SessionCleaner); ok {
+				cleaner.Cleanup()
+			}
+		}
+		// 清空所有会话
 		c.BinaryChunkSessions = make(map[string]any)
 		c.BinaryMu.Unlock()
 
@@ -525,8 +569,12 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		prefix := string(data[:2])
 		payload := data[2:]
 
+		// 创建 payload 的深拷贝，防止异步处理时底层缓冲区被 gws 回收或重用
+		payloadCopy := make([]byte, len(payload))
+		copy(payloadCopy, payload)
+
 		if handler, ok := w.binaryHandlers[prefix]; ok {
-			handler(c, payload)
+			go handler(c, payloadCopy)
 		} else {
 			log(LogWarn, "WS OnMessage Unknown Binary Prefix", zap.String("prefix", prefix))
 		}
@@ -568,7 +616,6 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	// 执行操作
 	handler, exists := w.handlers[msg.Type]
 	if exists {
-		log(LogInfo, "WS Message "+msg.Type, zap.String("uid", c.User.ID))
 		// Use the client object retrieved at the beginning of the function
 		handler(c, &msg)
 	} else {

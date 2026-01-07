@@ -23,11 +23,12 @@ type NoteMessage struct {
 
 // NoteSyncEndMessage 同步结束时返回的信息结构。
 type NoteSyncEndMessage struct {
-	LastTime           int64 `json:"lastTime" form:"lastTime"`                     // 本次同步更新时间
-	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的笔记数量
-	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的笔记数量
-	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的笔记数量
-	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的笔记数量
+	LastTime           int64           `json:"lastTime" form:"lastTime"`                     // 本次同步更新时间
+	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的笔记数量
+	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的笔记数量
+	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的笔记数量
+	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
+	Messages           []queuedMessage `json:"messages"`                                     // 合并的消息队列
 }
 
 // NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
@@ -67,25 +68,27 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 	if params.PathHash == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("pathHash is required"))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails("pathHash is required"))
 		return
 	}
 	if params.ContentHash == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("contentHash is required"))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails("contentHash is required"))
 		return
 	}
 	if params.Mtime == 0 {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("mtime is required"))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails("mtime is required"))
 		return
 	}
 	if params.Ctime == 0 {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("ctime is required"))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails("ctime is required"))
 		return
 	}
+
+	app.NoteModifyLog(c.User.UID, "NoteModify", params.Path, params.Vault)
 
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
 
@@ -96,7 +99,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	updateMode, nodeCheck, err := svc.NoteUpdateCheck(c.User.UID, checkParams)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteModifyOrCreateFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -114,7 +117,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 		_, note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
-			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.Clone().WithDetails(err.Error()))
 			return
 		}
 
@@ -129,8 +132,8 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			UpdatedTimestamp: note.UpdatedTimestamp,
 		}
 
-		c.ToResponse(code.Success.Reset())
-		c.BroadcastResponse(code.Success.Reset().WithData(noteMessage).WithVault(params.Vault), true, "NoteSyncModify")
+		c.ToResponse(code.Success.Clone())
+		c.BroadcastResponse(code.Success.Clone().WithData(noteMessage).WithVault(params.Vault), true, "NoteSyncModify")
 		return
 
 	case "UpdateMtime":
@@ -140,10 +143,10 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Ctime: nodeCheck.Ctime,
 			Mtime: nodeCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+		c.ToResponse(code.Success.Clone().WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate.Reset())
+		c.ToResponse(code.SuccessNoUpdate.Clone())
 		return
 	}
 }
@@ -164,11 +167,13 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
+
+	app.NoteModifyLog(c.User.UID, "NoteModifyCheck", params.Path, params.Vault)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -176,7 +181,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	updateMode, nodeCheck, err := svc.NoteUpdateCheck(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteUpdateCheckFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteUpdateCheckFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -186,7 +191,7 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
 			Path: nodeCheck.Path,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+		c.ToResponse(code.Success.Clone().WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
 		return
 	case "UpdateMtime":
 		// 强制客户端更新mtime 不传输笔记内容
@@ -195,10 +200,10 @@ func NoteModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Ctime: nodeCheck.Ctime,
 			Mtime: nodeCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+		c.ToResponse(code.Success.Clone().WithData(noteSyncMtimeMessage), "NoteSyncMtime")
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate.Reset())
+		c.ToResponse(code.SuccessNoUpdate.Clone())
 		return
 	}
 }
@@ -218,9 +223,12 @@ func NoteDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteDelete.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
+
+	app.NoteModifyLog(c.User.UID, "NoteDelete", params.Path, params.Vault)
+
 	handleNoteDelete(c, params)
 }
 
@@ -234,12 +242,12 @@ func handleNoteDelete(c *app.WebsocketClient, params *service.NoteDeleteRequestP
 	note, err := svc.NoteDelete(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteDeleteFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
-	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
+	c.ToResponse(code.Success.Clone())
+	c.BroadcastResponse(code.Success.Clone().WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
 }
 
 // NoteRename 处理文件重命名的 WebSocket 消息
@@ -261,9 +269,11 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteRename.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
+
+	app.NoteModifyLog(c.User.UID, "NoteRename", params.Path, params.Vault)
 
 	handleNoteDelete(c, &service.NoteDeleteRequestParams{
 		Vault:    params.Vault,
@@ -282,11 +292,11 @@ func NoteRename(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	})
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteRenameFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteRenameFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 	// 相应成功
-	c.ToResponse(code.Success.Reset())
+	c.ToResponse(code.Success.Clone())
 
 }
 
@@ -305,11 +315,13 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.note.NoteModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF).WithClientName(c.ClientName).WithClientVersion(c.ClientVersion)
+
+	app.NoteModifyLog(c.User.UID, "NoteSync", "", params.Vault)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
@@ -317,7 +329,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	list, err := svc.NoteListByLastTime(c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteListFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorNoteListFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -353,8 +365,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				}
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					response:    code.Success.Clone().WithData(noteDeleteMessage),
-					messageType: "NoteSyncDelete",
+					Action: "NoteSyncDelete",
+					Data:   noteDeleteMessage,
 				})
 				needDeleteCount++
 			}
@@ -384,8 +396,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							}
 							// 将消息添加到队列而非立即发送
 							messageQueue = append(messageQueue, queuedMessage{
-								response:    code.Success.Clone().WithData(noteSyncNeedPushMessage),
-								messageType: "NoteSyncNeedPush",
+								Action: "NoteSyncNeedPush",
+								Data:   noteSyncNeedPushMessage,
 							})
 							needUploadCount++
 						// 当设置新笔记才进行合并, 因为本地笔记比较老, 服务器通知客户端使用云端笔记覆盖本地
@@ -403,8 +415,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 							// 将消息添加到队列而非立即发送
 							messageQueue = append(messageQueue, queuedMessage{
-								response:    code.Success.Clone().WithData(noteMessage),
-								messageType: "NoteSyncModify",
+								Action: "NoteSyncModify",
+								Data:   noteMessage,
 							})
 							needModifyCount++
 						}
@@ -423,8 +435,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						}
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							response:    code.Success.Clone().WithData(noteSyncNeedPushMessage),
-							messageType: "NoteSyncNeedPush",
+							Action: "NoteSyncNeedPush",
+							Data:   noteSyncNeedPushMessage,
 						})
 						needUploadCount++
 					}
@@ -437,8 +449,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					}
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
-						response:    code.Success.Clone().WithData(noteSyncMtimeMessage),
-						messageType: "NoteSyncMtime",
+						Action: "NoteSyncMtime",
+						Data:   noteSyncMtimeMessage,
 					})
 					needSyncMtimeCount++
 				}
@@ -455,8 +467,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				}
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					response:    code.Success.Clone().WithData(noteMessage),
-					messageType: "NoteSyncModify",
+					Action: "NoteSyncModify",
+					Data:   noteMessage,
 				})
 				needModifyCount++
 			}
@@ -476,8 +488,8 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 			// 将消息添加到队列而非立即发送
 			messageQueue = append(messageQueue, queuedMessage{
-				response:    code.Success.Clone().WithData(data),
-				messageType: "NoteSyncNeedPush",
+				Action: "NoteSyncNeedPush",
+				Data:   data,
 			})
 
 			needUploadCount++
@@ -486,20 +498,16 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 
 	c.IsFirstSync = true
 
-	// 先发送 NoteSyncEnd 消息
+	// 发送 NoteSyncEnd 消息，包含所有合并的消息
 	message := &NoteSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
 		NeedModifyCount:    needModifyCount,
 		NeedSyncMtimeCount: needSyncMtimeCount,
 		NeedDeleteCount:    needDeleteCount,
+		Messages:           messageQueue,
 	}
-	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "NoteSyncEnd")
-
-	// 批量发送收集的所有消息
-	for _, msg := range messageQueue {
-		c.ToResponse(msg.response, msg.messageType)
-	}
+	c.ToResponse(code.Success.Clone().WithData(message).WithVault(params.Vault), "NoteSyncEnd")
 }
 
 // UserInfo 验证并获取用户信息

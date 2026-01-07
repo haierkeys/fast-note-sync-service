@@ -90,13 +90,13 @@ func NewServer(runEnv *runFlags) (*Server, error) {
  / __/ / /_/ (__  ) /_   / /|  / /_/ / /_/  __/   ___/ / /_/ / / / / /__
 /_/    \__,_/____/\__/  /_/ |_/\____/\__/\___/   /____/\__, /_/ /_/\___/
                                                       /____/              `
-	s.logger.Info(fmt.Sprintf("%s\n\n%s v%s\nGit: %s\nBuildTime: %s\n", banner, global.Name, global.Version, global.GitTag, global.BuildTime))
+	s.logger.Warn(fmt.Sprintf("%s\n\n%s v%s\nGit: %s\nBuildTime: %s\n", banner, global.Name, global.Version, global.GitTag, global.BuildTime))
 
-	s.logger.Info("config loaded", zap.String("path", configRealpath))
+	s.logger.Warn("config loaded", zap.String("path", configRealpath))
 
 	// Start http api server
 	if httpAddr := global.Config.Server.HttpPort; len(httpAddr) > 0 {
-		s.logger.Info("api_router", zap.String("config.server.HttpPort", global.Config.Server.HttpPort))
+		s.logger.Warn("api_router", zap.String("config.server.HttpPort", global.Config.Server.HttpPort))
 		s.httpServer = &http.Server{
 			Addr:           global.Config.Server.HttpPort,
 			Handler:        routers.NewRouter(frontendFiles),

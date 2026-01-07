@@ -41,9 +41,13 @@ func (svc *Service) VaultCreate(param *VaultPostRequest, uid int64) (*Vault, err
 		return nil, code.ErrorVaultExist
 	}
 
-	vault, err = svc.dao.VaultCreate(&dao.VaultSet{
-		Vault: param.Vault,
-	}, uid)
+	err = svc.dao.WithRetry(func() error {
+		var errRes error
+		vault, errRes = svc.dao.VaultCreate(&dao.VaultSet{
+			Vault: param.Vault,
+		}, uid)
+		return errRes
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -52,9 +56,14 @@ func (svc *Service) VaultCreate(param *VaultPostRequest, uid int64) (*Vault, err
 
 // VaultUpdate 更新保险库信息
 func (svc *Service) VaultUpdate(param *VaultPostRequest, uid int64) (*Vault, error) {
-	vault, err := svc.dao.VaultUpdate(&dao.VaultSet{
-		Vault: param.Vault,
-	}, param.ID, uid)
+	var vault *dao.Vault
+	err := svc.dao.WithRetry(func() error {
+		var errRes error
+		vault, errRes = svc.dao.VaultUpdate(&dao.VaultSet{
+			Vault: param.Vault,
+		}, param.ID, uid)
+		return errRes
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -99,9 +108,13 @@ func (svc *Service) VaultGetOrCreate(name string, uid int64) (int64, error) {
 	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_GetOrCreate_%d", uid), func() (any, error) {
 		vault, err := svc.dao.VaultGetByName(name, uid)
 		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
-			vault, err = svc.dao.VaultCreate(&dao.VaultSet{
-				Vault: name,
-			}, uid)
+			err = svc.dao.WithRetry(func() error {
+				var errRes error
+				vault, errRes = svc.dao.VaultCreate(&dao.VaultSet{
+					Vault: name,
+				}, uid)
+				return errRes
+			})
 			if err != nil {
 				return 0, err
 			}

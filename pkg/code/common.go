@@ -64,4 +64,5 @@ var (
 	ErrorSettingSyncFailed           = NewError(441, lang{zh_cn: "同步配置失败", en: "Sync setting failed"})
 	ErrorSettingUpdateCheckFailed    = NewError(442, lang{zh_cn: "配置更新检查失败", en: "Setting update check failed"})
 	ErrorSettingListFailed           = NewError(443, lang{zh_cn: "配置列表获取失败", en: "Setting list get failed"})
+	ErrorUserLocalFSDisabled         = NewError(444, lang{zh_cn: "用户本地文件系统已禁用", en: "User local file system is disabled"})
 )

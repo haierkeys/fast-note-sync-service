@@ -83,3 +83,8 @@ func (p *LocalFS) PutContent(fileKey string, content []byte) (string, error) {
 		return dstFileKey, nil
 	}
 }
+
+func (p *LocalFS) DeleteFile(fileKey string) error {
+	dstFileKey := p.getSavePath() + fileKey
+	return os.Remove(dstFileKey)
+}

@@ -231,7 +231,9 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 			if params.Mtime < note.Mtime {
 				return "UpdateMtime", noteSvc, nil
 			} else if params.Mtime > note.Mtime {
-				svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
+				svc.dao.WithRetry(func() error {
+					return svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
+				})
 			}
 			return "", noteSvc, nil
 		} else {
@@ -295,7 +297,9 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 		}
 		// 检查内容是否一致 但是修改时间不同 则只更新修改时间
 		if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
-			err := svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
+			err := svc.dao.WithRetry(func() error {
+				return svc.dao.NoteUpdateMtime(params.Mtime, note.ID, uid)
+			})
 			if err != nil {
 				return isNew, nil, err
 			}
@@ -309,22 +313,32 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 			noteSet.Action = "modify"
 		}
 
-		noteDao, err := svc.dao.NoteUpdate(noteSet, note.ID, uid)
+		var noteDao *dao.Note
+		err := svc.dao.WithRetry(func() error {
+			var errRes error
+			noteDao, errRes = svc.dao.NoteUpdate(noteSet, note.ID, uid)
+			return errRes
+		})
 		if err != nil {
 			return isNew, nil, err
 		}
-		svc.NoteCountSizeSum(vaultID, uid)
+		go svc.NoteCountSizeSum(vaultID, uid)
 		NoteHistoryDelayPush(noteDao.ID, uid)
 		rNote := convert.StructAssign(noteDao, &Note{}).(*Note)
 		return isNew, rNote, nil
 	} else {
 		isNew = true
 		noteSet.Action = "create"
-		noteDao, err := svc.dao.NoteCreate(noteSet, uid)
+		var noteDao *dao.Note
+		err := svc.dao.WithRetry(func() error {
+			var errRes error
+			noteDao, errRes = svc.dao.NoteCreate(noteSet, uid)
+			return errRes
+		})
 		if err != nil {
 			return isNew, nil, err
 		}
-		svc.NoteCountSizeSum(vaultID, uid)
+		go svc.NoteCountSizeSum(vaultID, uid)
 
 		NoteHistoryDelayPush(noteDao.ID, uid)
 
@@ -364,7 +378,9 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		ClientName: svc.ClientName,
 		Rename:     0,
 	}
-	err = svc.dao.NoteUpdateDelete(noteSet, note.ID, uid)
+	err = svc.dao.WithRetry(func() error {
+		return svc.dao.NoteUpdateDelete(noteSet, note.ID, uid)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +390,7 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 		return nil, err
 	}
 
-	svc.NoteCountSizeSum(vaultID, uid)
+	go svc.NoteCountSizeSum(vaultID, uid)
 
 	NoteHistoryDelayPush(noteDao.ID, uid)
 
@@ -520,11 +536,18 @@ func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams)
 // 返回值说明:
 //   - error: 出错时返回错误
 func (svc *Service) NoteCountSizeSum(vaultID int64, uid int64) error {
-	result, err := svc.dao.NoteCountSizeSum(vaultID, uid)
-	if err != nil {
-		return err
-	}
-	return svc.dao.VaultUpdateNoteCountSize(result.Size, result.Count, vaultID, uid)
+	// 使用 singleflight 合并并发统计请求
+	_, err, _ := svc.SF.Do(fmt.Sprintf("NoteCountSizeSum_%d_%d", uid, vaultID), func() (any, error) {
+		result, err := svc.dao.NoteCountSizeSum(vaultID, uid)
+		if err != nil {
+			return nil, err
+		}
+		// 更新统计信息也增加重试
+		return nil, svc.dao.WithRetry(func() error {
+			return svc.dao.VaultUpdateNoteCountSize(result.Size, result.Count, vaultID, uid)
+		})
+	})
+	return err
 }
 
 // NoteCleanup 清理过期的软删除笔记
@@ -635,7 +658,9 @@ func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
 	}
 
 	// 2. 将旧笔记的 ContentLastSnapshot 和 Version 迁移到新笔记
-	err = svc.dao.NoteUpdateSnapshot(oldNote.ContentLastSnapshot, oldNote.ContentLastSnapshotHash, oldNote.Version, newNoteID, uid)
+	err = svc.dao.WithRetry(func() error {
+		return svc.dao.NoteUpdateSnapshot(oldNote.ContentLastSnapshot, oldNote.ContentLastSnapshotHash, oldNote.Version, newNoteID, uid)
+	})
 	if err != nil {
 		return err
 	}
@@ -647,10 +672,12 @@ func (svc *Service) NoteMigrate(oldNoteID, newNoteID int64, uid int64) error {
 		ClientName: oldNote.ClientName,
 		Rename:     1,
 	}
-	err = svc.dao.NoteUpdateDelete(noteSet, oldNote.ID, uid)
+	err = svc.dao.WithRetry(func() error {
+		return svc.dao.NoteUpdateDelete(noteSet, oldNote.ID, uid)
+	})
 	if err != nil {
 		return err
 	}
-	svc.NoteCountSizeSum(oldNote.VaultID, uid)
+	go svc.NoteCountSizeSum(oldNote.VaultID, uid)
 	return nil
 }

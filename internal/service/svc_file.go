@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 
 	"time"
 
@@ -222,7 +221,9 @@ func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtim
 		}
 		// 检查内容是否一致 但是修改时间不同 则只更新修改时间
 		if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
-			err := svc.dao.FileUpdateMtime(params.Mtime, file.ID, uid)
+			err := svc.dao.WithRetry(func() error {
+				return svc.dao.FileUpdateMtime(params.Mtime, file.ID, uid)
+			})
 			if err != nil {
 				return isNew, nil, err
 			}
@@ -236,25 +237,33 @@ func (svc *Service) FileUpdateOrCreate(uid int64, params *FileUpdateParams, mtim
 			fileSet.Action = "modify"
 		}
 
-		fileDao, err := svc.dao.FileUpdate(fileSet, file.ID, uid)
+		err := svc.dao.WithRetry(func() error {
+			_, errRes := svc.dao.FileUpdate(fileSet, file.ID, uid)
+			return errRes
+		})
 		if err != nil {
 			return isNew, nil, err
 		}
-		svc.FileCountSizeSum(vaultID, uid)
-		rFile := convert.StructAssign(fileDao, &File{}).(*File)
+		// 异步或延迟统计，避免阻塞当前写事务
+		go svc.FileCountSizeSum(vaultID, uid)
+		rFile := convert.StructAssign(file, &File{}).(*File)
 		return isNew, rFile, nil
 	} else {
 		isNew = true
 		fileSet.Action = "create"
-		fileDao, err := svc.dao.FileCreate(fileSet, uid)
+		var fileDao *dao.File
+		err := svc.dao.WithRetry(func() error {
+			var errRes error
+			fileDao, errRes = svc.dao.FileCreate(fileSet, uid)
+			return errRes
+		})
 		if err != nil {
 			return isNew, nil, err
 		}
-		svc.FileCountSizeSum(vaultID, uid)
+		go svc.FileCountSizeSum(vaultID, uid)
 		rFile := convert.StructAssign(fileDao, &File{}).(*File)
 		return isNew, rFile, nil
 	}
-
 }
 
 // FileDelete 删除文件
@@ -294,17 +303,23 @@ func (svc *Service) FileDelete(uid int64, params *FileDeleteParams) (*File, erro
 		Mtime:       0,
 		Ctime:       0,
 	}
-	fileDao, err := svc.dao.FileUpdate(fileSet, file.ID, uid)
+	var updatedFile *dao.File
+	err = svc.dao.WithRetry(func() error {
+		var errRes error
+		updatedFile, errRes = svc.dao.FileUpdate(fileSet, file.ID, uid)
+		return errRes
+	})
 	if err != nil {
 		return nil, err
 	}
-	// 删除文件
-	err = os.Remove(savePath)
-	if err != nil {
-		return nil, err
+	// 删除文件或文件夹
+	if savePath != "" {
+		folderPath := svc.dao.GetFileFolderPath(uid, file.ID) // 注意：此处我需要确认 GetFileFolderPath 的首字母，之前在 dao_helper 是 getFileFolderPath (小写)
+		_ = svc.dao.RemoveContentFolder(folderPath)           // 同上，helper 里的方法是导出还是非导出的？
 	}
-	svc.FileCountSizeSum(vaultID, uid)
-	rFile := convert.StructAssign(fileDao, &File{}).(*File)
+
+	go svc.FileCountSizeSum(vaultID, uid)
+	rFile := convert.StructAssign(updatedFile, &File{}).(*File)
 
 	return rFile, nil
 }
@@ -397,11 +412,18 @@ func (svc *Service) FileListByLastTime(uid int64, params *FileSyncParams) ([]*Fi
 // 返回值说明:
 //   - error: 出错时返回错误
 func (svc *Service) FileCountSizeSum(vaultID int64, uid int64) error {
-	result, err := svc.dao.FileCountSizeSum(vaultID, uid)
-	if err != nil {
-		return err
-	}
-	return svc.dao.VaultUpdateFileCountSize(result.Size, result.Count, vaultID, uid)
+	// 使用 singleflight 合并并发统计请求
+	_, err, _ := svc.SF.Do(fmt.Sprintf("FileCountSizeSum_%d_%d", uid, vaultID), func() (any, error) {
+		result, err := svc.dao.FileCountSizeSum(vaultID, uid)
+		if err != nil {
+			return nil, err
+		}
+		// 更新统计信息也增加重试
+		return nil, svc.dao.WithRetry(func() error {
+			return svc.dao.VaultUpdateFileCountSize(result.Size, result.Count, vaultID, uid)
+		})
+	})
+	return err
 }
 
 // FileCleanup 清理过期的软删除文件

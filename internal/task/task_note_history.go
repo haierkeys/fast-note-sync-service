@@ -98,6 +98,7 @@ func (t *NoteHistoryTask) handleNoteHistoryWithDelay(msg service.NoteHistoryMsg,
 
 // handleNoteHistoryProcess 执行实际的历史记录保存逻辑
 func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string) {
+
 	t.mu.Lock()
 	delete(t.timers, key)
 	t.mu.Unlock()

@@ -42,7 +42,7 @@ func IsUserEnabled(cType Type) error {
 		return code.ErrorInvalidCloudStorageType
 	}
 
-	if cType == LOCAL && !global.Config.LocalFS.IsUserEnabled {
+	if cType == LOCAL && !global.Config.LocalFS.IsEnabled {
 		return code.ErrorUserLocalFSDisabled
 	}
 	return nil
@@ -51,7 +51,7 @@ func IsUserEnabled(cType Type) error {
 func GetIsUserEnabledStorageTypes() []CloudType {
 
 	var list []CloudType
-	if global.Config.LocalFS.IsUserEnabled {
+	if global.Config.LocalFS.IsEnabled {
 		list = append(list, LOCAL)
 	}
 	return list

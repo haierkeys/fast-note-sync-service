@@ -90,7 +90,9 @@ func (d *Dao) NoteGetRecycleByPathHash(hash string, vaultID int64, uid int64, is
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	d.fillNoteContent(uid, res)
+	return res, nil
 }
 
 func (d *Dao) NoteGetAllByPathHash(hash string, vaultID int64, uid int64) (*Note, error) {
@@ -104,7 +106,9 @@ func (d *Dao) NoteGetAllByPathHash(hash string, vaultID int64, uid int64) (*Note
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	d.fillNoteContent(uid, res)
+	return res, nil
 }
 
 // NoteGetById 根据ID获取笔记
@@ -115,7 +119,9 @@ func (d *Dao) NoteGetById(id int64, uid int64) (*Note, error) {
 		return nil, err
 	}
 
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	d.fillNoteContent(uid, res)
+	return res, nil
 }
 
 // NoteGetByPath 根据路径获取笔记
@@ -138,7 +144,9 @@ func (d *Dao) NoteGetByPath(path string, vaultID int64, uid int64) (*Note, error
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	d.fillNoteContent(uid, res)
+	return res, nil
 }
 
 // NoteCreate 创建笔记记录
@@ -158,11 +166,23 @@ func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.CreatedAt = timex.Now()
 	m.UpdatedAt = timex.Now()
+
+	content := m.Content
+	m.Content = "" // 不在数据库存储内容
+	m.ContentLastSnapshot = ""
+
 	err := u.WithContext(d.ctx).Create(m)
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+
+	// 异步保存内容到文件
+	folder := d.GetNoteFolderPath(uid, m.ID)
+	_ = d.SaveContentToFile(folder, "content.txt", params.Content)
+
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	res.Content = content
+	return res, nil
 }
 
 // NoteUpdate 更新笔记记录
@@ -183,6 +203,9 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.UpdatedAt = timex.Now()
 	m.ID = id
+
+	content := m.Content
+	m.Content = "" // 不在数据库更新内容
 
 	//fields = append(fields, m.UpdatedAt, m.UpdatedTimestamp)
 
@@ -208,7 +231,14 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Note{}).(*Note), nil
+
+	// 异步保存内容到文件
+	folder := d.GetNoteFolderPath(uid, id)
+	_ = d.SaveContentToFile(folder, "content.txt", params.Content)
+
+	res := convert.StructAssign(m, &Note{}).(*Note)
+	res.Content = content
+	return res, nil
 }
 
 func (d *Dao) NoteUpdateDelete(params *NoteSet, id int64, uid int64) error {
@@ -262,9 +292,14 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 // NoteUpdateSnapshot 更新笔记的快照内容
 func (d *Dao) NoteUpdateSnapshot(snapshot string, snapshotHash string, version int64, id int64, uid int64) error {
 	u := d.note(uid).Note
+
+	// 异步保存快照
+	folder := d.GetNoteFolderPath(uid, id)
+	_ = d.SaveContentToFile(folder, "snapshot.txt", snapshot)
+
 	// 使用 UpdateSimple 更新多个字段
 	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).UpdateSimple(
-		u.ContentLastSnapshot.Value(snapshot),
+		u.ContentLastSnapshot.Value(""), // 清空数据库中的快照
 		u.ContentLastSnapshotHash.Value(snapshotHash),
 		u.Version.Value(version),
 	)
@@ -411,7 +446,9 @@ func (d *Dao) NoteListByUpdatedTimestamp(timestamp int64, vaultID int64, uid int
 
 	var list []*Note
 	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
+		res := convert.StructAssign(m, &Note{}).(*Note)
+		d.fillNoteContent(uid, res)
+		list = append(list, res)
 	}
 	return list, nil
 }
@@ -432,7 +469,7 @@ func (d *Dao) NoteListContentUnchanged(uid int64) ([]*Note, error) {
 	// 使用 UnderlyingDB 以支持 raw sql condition "content != content_last_snapshot"
 	err := u.WithContext(d.ctx).UnderlyingDB().Where(
 		"action != ?", "delete",
-	).Where("content != content_last_snapshot").
+	).Where("content_hash != content_last_snapshot_hash").
 		Find(&mList).Error
 
 	if err != nil {
@@ -441,7 +478,9 @@ func (d *Dao) NoteListContentUnchanged(uid int64) ([]*Note, error) {
 
 	var list []*Note
 	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &Note{}).(*Note))
+		res := convert.StructAssign(m, &Note{}).(*Note)
+		d.fillNoteContent(uid, res)
+		list = append(list, res)
 	}
 	return list, nil
 }
@@ -488,10 +527,24 @@ func (d *Dao) NoteCountSizeSum(vaultID int64, uid int64) (*NoteCountSizeSum, err
 //   - error: 出错时返回错误
 func (d *Dao) NoteDeletePhysicalByTime(timestamp int64, uid int64) error {
 	u := d.note(uid).Note
+
+	// 先找到要删除的 ID
+	list, _ := u.WithContext(d.ctx).Where(
+		u.Action.Eq("delete"),
+		u.UpdatedTimestamp.Lt(timestamp),
+	).Select(u.ID).Find()
+
 	_, err := u.WithContext(d.ctx).Where(
 		u.Action.Eq("delete"),
 		u.UpdatedTimestamp.Lt(timestamp),
 	).Delete()
+
+	if err == nil {
+		for _, m := range list {
+			folder := d.GetNoteFolderPath(uid, m.ID)
+			_ = d.RemoveContentFolder(folder)
+		}
+	}
 	return err
 }
 
@@ -502,5 +555,33 @@ func (d *Dao) NoteDelete(id int64, uid int64) error {
 	if err != nil {
 		return err
 	}
+
+	// 删除物理文件
+	folder := d.GetNoteFolderPath(uid, id)
+	_ = d.RemoveContentFolder(folder)
+
 	return nil
+}
+
+// fillNoteContent 填充笔记内容
+func (d *Dao) fillNoteContent(uid int64, n *Note) {
+	if n == nil {
+		return
+	}
+	folder := d.GetNoteFolderPath(uid, n.ID)
+
+	// 加载内容
+	if content, exists, _ := d.LoadContentFromFile(folder, "content.txt"); exists {
+		n.Content = content
+	} else if n.Content != "" {
+		// 懒迁移: 保存到文件 (由于此处是读取，暂不写回数据库清空，交给下次 Update)
+		_ = d.SaveContentToFile(folder, "content.txt", n.Content)
+	}
+
+	// 加载快照
+	if snapshot, exists, _ := d.LoadContentFromFile(folder, "snapshot.txt"); exists {
+		n.ContentLastSnapshot = snapshot
+	} else if n.ContentLastSnapshot != "" {
+		_ = d.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot)
+	}
 }

@@ -38,7 +38,7 @@ type NoteHistorySet struct {
 }
 
 func (d *Dao) noteHistory(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := "user_note_history" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
 	}, key+"#noteHistory", key)
@@ -47,11 +47,29 @@ func (d *Dao) noteHistory(uid int64) *query.Query {
 func (d *Dao) NoteHistoryCreate(params *NoteHistorySet, uid int64) (*NoteHistory, error) {
 	u := d.noteHistory(uid).NoteHistory
 	m := convert.StructAssign(params, &model.NoteHistory{}).(*model.NoteHistory)
+
+	// 暂存内容用于写文件
+	diffPatch := m.DiffPatch
+	content := m.Content
+
+	// 不在数据库中保存大数据
+	m.DiffPatch = ""
+	m.Content = ""
+
 	err := u.WithContext(d.ctx).Create(m)
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &NoteHistory{}).(*NoteHistory), nil
+
+	// 保存到文件
+	folder := d.GetNoteHistoryFolderPath(uid, m.ID)
+	_ = d.SaveContentToFile(folder, "diff.patch", diffPatch)
+	_ = d.SaveContentToFile(folder, "content.txt", content)
+
+	res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
+	res.DiffPatch = diffPatch
+	res.Content = content
+	return res, nil
 }
 
 func (d *Dao) NoteHistoryGetById(id int64, uid int64) (*NoteHistory, error) {
@@ -60,7 +78,9 @@ func (d *Dao) NoteHistoryGetById(id int64, uid int64) (*NoteHistory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &NoteHistory{}).(*NoteHistory), nil
+	res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
+	d.fillHistoryContent(uid, res)
+	return res, nil
 }
 
 func (d *Dao) NoteHistoryListByNoteId(noteId int64, page, pageSize int, uid int64) ([]*NoteHistory, int64, error) {
@@ -82,7 +102,9 @@ func (d *Dao) NoteHistoryListByNoteId(noteId int64, page, pageSize int, uid int6
 
 	var list []*NoteHistory
 	for _, m := range modelList {
-		list = append(list, convert.StructAssign(m, &NoteHistory{}).(*NoteHistory))
+		res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
+		d.fillHistoryContent(uid, res)
+		list = append(list, res)
 	}
 	return list, count, nil
 }
@@ -103,4 +125,28 @@ func (d *Dao) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {
 	u := d.noteHistory(uid).NoteHistory
 	_, err := u.WithContext(d.ctx).Where(u.NoteID.Eq(oldNoteID)).Update(u.NoteID, newNoteID)
 	return err
+}
+
+// fillHistoryContent 填充历史记录内容及补丁
+func (d *Dao) fillHistoryContent(uid int64, h *NoteHistory) {
+	if h == nil {
+		return
+	}
+	folder := d.GetNoteHistoryFolderPath(uid, h.ID)
+
+	// 加载补丁
+	if patch, exists, _ := d.LoadContentFromFile(folder, "diff.patch"); exists {
+		h.DiffPatch = patch
+	} else if h.DiffPatch != "" {
+		// 懒迁移
+		_ = d.SaveContentToFile(folder, "diff.patch", h.DiffPatch)
+	}
+
+	// 加载内容
+	if content, exists, _ := d.LoadContentFromFile(folder, "content.txt"); exists {
+		h.Content = content
+	} else if h.Content != "" {
+		// 懒迁移
+		_ = d.SaveContentToFile(folder, "content.txt", h.Content)
+	}
 }

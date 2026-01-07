@@ -31,13 +31,13 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 
 	var wss = app.NewWebsocketServer(app.WSConfig{
 		GWSOption: gws.ServerOption{
-			CheckUtf8Enabled:  true,
-			ParallelEnabled:   true,                                 // 开启并行消息处理
-			Recovery:          gws.Recovery,                         // 开启异常恢复
-			PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // 开启压缩
-			ParallelGolimit:   8,
-			// ReadMaxPayloadSize:    1024 * 1024 * 16,                     // 设置最大读取缓冲区大小
-			// WriteMaxPayloadSize:   1024 * 1024 * 16,                     // 设置最大写入缓冲区大小
+			CheckUtf8Enabled:    true,
+			ParallelEnabled:     true,                                 // 开启并行消息处理
+			Recovery:            gws.Recovery,                         // 开启异常恢复
+			PermessageDeflate:   gws.PermessageDeflate{Enabled: true}, // 开启压缩
+			ParallelGolimit:     8,
+			ReadMaxPayloadSize:  1024 * 1024 * 64, // 设置最大读取缓冲区大小 64MB
+			WriteMaxPayloadSize: 1024 * 1024 * 64, // 设置最大写入缓冲区大小 64MB
 		},
 	})
 	// 修改 创建

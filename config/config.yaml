@@ -61,7 +61,7 @@ user:
 log:
   # 日志级别
   # Log level
-  level: debug
+  level: warn
   # 日志文件路径
   # Log file path
   file: storage/logs/log.log

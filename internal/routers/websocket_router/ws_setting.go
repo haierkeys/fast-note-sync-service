@@ -23,11 +23,12 @@ type SettingMessage struct {
 }
 
 type SettingSyncEndMessage struct {
-	LastTime           int64 `json:"lastTime" form:"lastTime"`
-	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
-	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
-	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
-	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
+	LastTime           int64           `json:"lastTime" form:"lastTime"`
+	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
+	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
+	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
+	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
+	Messages           []queuedMessage `json:"messages"`                                     // 合并的消息队列
 }
 
 type SettingSyncNeedUploadMessage struct {
@@ -50,17 +51,20 @@ func SettingModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.setting.SettingModify.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	app.NoteModifyLog(c.User.UID, "SettingModify", params.Path, params.Vault)
+
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	checkParams := convert.StructAssign(params, &service.SettingUpdateCheckRequestParams{}).(*service.SettingUpdateCheckRequestParams)
 	updateMode, settingCheck, err := svc.SettingUpdateCheck(c.User.UID, checkParams)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingModifyOrCreateFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorSettingModifyOrCreateFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -68,7 +72,7 @@ func SettingModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	case "UpdateContent", "Create":
 		_, setting, err := svc.SettingModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
-			c.ToResponse(code.ErrorSettingModifyOrCreateFailed.WithDetails(err.Error()))
+			c.ToResponse(code.ErrorSettingModifyOrCreateFailed.Clone().WithDetails(err.Error()))
 			return
 		}
 
@@ -81,8 +85,8 @@ func SettingModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Mtime:            setting.Mtime,
 			UpdatedTimestamp: setting.UpdatedTimestamp,
 		}
-		c.ToResponse(code.Success.Reset())
-		c.BroadcastResponse(code.Success.Reset().WithData(settingMessage).WithVault(params.Vault), true, "SettingSyncModify")
+		c.ToResponse(code.Success.Clone())
+		c.BroadcastResponse(code.Success.Clone().WithData(settingMessage).WithVault(params.Vault), true, "SettingSyncModify")
 		return
 
 	case "UpdateMtime":
@@ -91,10 +95,10 @@ func SettingModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Ctime: settingCheck.Ctime,
 			Mtime: settingCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(settingSyncMtimeMessage), "SettingSyncMtime")
+		c.ToResponse(code.Success.Clone().WithData(settingSyncMtimeMessage), "SettingSyncMtime")
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate.Reset())
+		c.ToResponse(code.SuccessNoUpdate.Clone())
 		return
 	}
 }
@@ -105,16 +109,19 @@ func SettingModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.setting.SettingModifyCheck.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	app.NoteModifyLog(c.User.UID, "SettingModifyCheck", params.Path, params.Vault)
+
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	updateMode, settingCheck, err := svc.SettingUpdateCheck(c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingUpdateCheckFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorSettingUpdateCheckFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -123,7 +130,7 @@ func SettingModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		settingSyncNeedPushMessage := &SettingSyncNeedUploadMessage{
 			Path: settingCheck.Path,
 		}
-		c.ToResponse(code.Success.WithData(settingSyncNeedPushMessage), "SettingSyncNeedUpload")
+		c.ToResponse(code.Success.Clone().WithData(settingSyncNeedPushMessage), "SettingSyncNeedUpload")
 		return
 	case "UpdateMtime":
 		settingSyncMtimeMessage := &SettingSyncMtimeMessage{
@@ -131,10 +138,10 @@ func SettingModifyCheck(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 			Ctime: settingCheck.Ctime,
 			Mtime: settingCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(settingSyncMtimeMessage), "SettingSyncMtime")
+		c.ToResponse(code.Success.Clone().WithData(settingSyncMtimeMessage), "SettingSyncMtime")
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate.Reset())
+		c.ToResponse(code.SuccessNoUpdate.Clone())
 		return
 	}
 }
@@ -145,21 +152,24 @@ func SettingDelete(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.setting.SettingDelete.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	app.NoteModifyLog(c.User.UID, "SettingDelete", params.Path, params.Vault)
+
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	setting, err := svc.SettingDelete(c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingDeleteFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorSettingDeleteFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
-	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, "SettingSyncDelete")
+	c.ToResponse(code.Success.Clone())
+	c.BroadcastResponse(code.Success.Clone().WithData(setting).WithVault(params.Vault), true, "SettingSyncDelete")
 }
 
 // SettingSync 处理配置同步消息
@@ -168,16 +178,19 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
 		global.Logger.Error("websocket_router.setting.SettingSync.BindAndValid errs: %v", zap.Error(errs))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		c.ToResponse(code.ErrorInvalidParams.Clone().WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	svc := service.New(c.Ctx).WithSF(c.SF)
+
+	app.NoteModifyLog(c.User.UID, "SettingSync", "", params.Vault)
+
 	svc.VaultGetOrCreate(params.Vault, c.User.UID)
 
 	list, err := svc.SettingListByLastTime(c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingListFailed.WithDetails(err.Error()))
+		c.ToResponse(code.ErrorSettingListFailed.Clone().WithDetails(err.Error()))
 		return
 	}
 
@@ -207,8 +220,8 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				delete(cSettingsKeys, s.PathHash)
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					response:    code.Success.Clone().WithData(&SettingDeleteMessage{Path: s.Path}),
-					messageType: "SettingSyncDelete",
+					Action: "SettingSyncDelete",
+					Data:   &SettingDeleteMessage{Path: s.Path},
 				})
 				needDeleteCount++
 			}
@@ -222,7 +235,8 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 				if params.Cover {
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
-						response: code.Success.Clone().WithData(&SettingMessage{
+						Action: "SettingSyncModify",
+						Data: &SettingMessage{
 							Path:             s.Path,
 							PathHash:         s.PathHash,
 							Content:          s.Content,
@@ -230,8 +244,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 							Ctime:            s.Ctime,
 							Mtime:            s.Mtime,
 							UpdatedTimestamp: s.UpdatedTimestamp,
-						}),
-						messageType: "SettingSyncModify",
+						},
 					})
 					needModifyCount++
 					continue
@@ -242,7 +255,8 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							response: code.Success.Clone().WithData(&SettingMessage{
+							Action: "SettingSyncModify",
+							Data: &SettingMessage{
 								Path:             s.Path,
 								PathHash:         s.PathHash,
 								Content:          s.Content,
@@ -250,18 +264,17 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 								Ctime:            s.Ctime,
 								Mtime:            s.Mtime,
 								UpdatedTimestamp: s.UpdatedTimestamp,
-							}),
-							messageType: "SettingSyncModify",
+							},
 						})
 						needModifyCount++
 					} else {
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							response: code.Success.Clone().WithData(&SettingSyncNeedUploadMessage{
+							Action: "SettingSyncNeedUpload",
+							Data: &SettingSyncNeedUploadMessage{
 								Path: s.Path,
-							}),
-							messageType: "SettingSyncNeedUpload",
+							},
 						})
 						needUploadCount++
 					}
@@ -269,19 +282,20 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
-						response: code.Success.Clone().WithData(&SettingSyncMtimeMessage{
+						Action: "SettingSyncMtime",
+						Data: &SettingSyncMtimeMessage{
 							Path:  s.Path,
 							Ctime: s.Ctime,
 							Mtime: s.Mtime,
-						}),
-						messageType: "SettingSyncMtime",
+						},
 					})
 					needSyncMtimeCount++
 				}
 			} else {
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					response: code.Success.Clone().WithData(&SettingMessage{
+					Action: "SettingSyncModify",
+					Data: &SettingMessage{
 						Path:             s.Path,
 						PathHash:         s.PathHash,
 						Content:          s.Content,
@@ -289,8 +303,7 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						Ctime:            s.Ctime,
 						Mtime:            s.Mtime,
 						UpdatedTimestamp: s.UpdatedTimestamp,
-					}),
-					messageType: "SettingSyncModify",
+					},
 				})
 				needModifyCount++
 			}
@@ -304,25 +317,20 @@ func SettingSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		s := cSettings[pathHash]
 		// 将消息添加到队列而非立即发送
 		messageQueue = append(messageQueue, queuedMessage{
-			response:    code.Success.Clone().WithData(&SettingSyncNeedUploadMessage{Path: s.Path}),
-			messageType: "SettingSyncNeedUpload",
+			Action: "SettingSyncNeedUpload",
+			Data:   &SettingSyncNeedUploadMessage{Path: s.Path},
 		})
 		needUploadCount++
 	}
 
-	// 先发送 SettingSyncEnd 消息
+	// 发送 SettingSyncEnd 消息，包含所有合并的消息
 	message := &SettingSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
 		NeedModifyCount:    needModifyCount,
 		NeedSyncMtimeCount: needSyncMtimeCount,
 		NeedDeleteCount:    needDeleteCount,
+		Messages:           messageQueue,
 	}
-
-	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "SettingSyncEnd")
-
-	// 批量发送收集的所有消息
-	for _, msg := range messageQueue {
-		c.ToResponse(msg.response, msg.messageType)
-	}
+	c.ToResponse(code.Success.Clone().WithData(message).WithVault(params.Vault), "SettingSyncEnd")
 }

@@ -1,10 +1,8 @@
 package websocket_router
 
-import "github.com/haierkeys/fast-note-sync-service/pkg/code"
-
-// queuedMessage 表示待发送的消息队列项
-// 用于在同步过程中收集消息,在 SyncEnd 消息发送后统一批量发送
+// queuedMessage 表示待发送的消息项
+// 用于在同步过程中收集消息,在 SyncEnd 消息中统一合并发送
 type queuedMessage struct {
-	response    *code.Code
-	messageType string
+	Action string `json:"action"` // 消息类型
+	Data   any    `json:"data"`   // 消息内容
 }

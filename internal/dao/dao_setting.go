@@ -40,7 +40,7 @@ type SettingSet struct {
 
 // setting 获取配置查询对象
 func (d *Dao) setting(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := "user_setting_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Setting")
 	}, key+"#setting", key)
@@ -56,7 +56,9 @@ func (d *Dao) SettingGetByPathHash(hash string, vaultID int64, uid int64) (*Sett
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+	res := convert.StructAssign(m, &Setting{}).(*Setting)
+	d.fillSettingContent(uid, res)
+	return res, nil
 }
 
 // SettingCreate 创建配置记录
@@ -67,11 +69,22 @@ func (d *Dao) SettingCreate(params *SettingSet, uid int64) (*Setting, error) {
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.CreatedAt = timex.Now()
 	m.UpdatedAt = timex.Now()
+
+	content := m.Content
+	m.Content = "" // 不在数据库存储内容
+
 	err := u.WithContext(d.ctx).Create(m)
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+
+	// 异步保存到文件存储
+	folderPath := d.GetSettingFolderPath(uid, m.ID)
+	_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+
+	res := convert.StructAssign(m, &Setting{}).(*Setting)
+	res.Content = content
+	return res, nil
 }
 
 // SettingUpdate 更新配置记录
@@ -81,6 +94,10 @@ func (d *Dao) SettingUpdate(params *SettingSet, id int64, uid int64) (*Setting, 
 	m.UpdatedTimestamp = timex.Now().UnixMilli()
 	m.UpdatedAt = timex.Now()
 	m.ID = id
+
+	content := m.Content
+	m.Content = "" // 不在数据库更新内容
+
 	err := u.WithContext(d.ctx).Where(
 		u.ID.Eq(id),
 	).Save(m)
@@ -88,7 +105,14 @@ func (d *Dao) SettingUpdate(params *SettingSet, id int64, uid int64) (*Setting, 
 	if err != nil {
 		return nil, err
 	}
-	return convert.StructAssign(m, &Setting{}).(*Setting), nil
+
+	// 异步保存到文件存储
+	folderPath := d.GetSettingFolderPath(uid, id)
+	_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+
+	res := convert.StructAssign(m, &Setting{}).(*Setting)
+	res.Content = content
+	return res, nil
 }
 
 // SettingUpdateMtime 更新配置的修改时间
@@ -121,7 +145,9 @@ func (d *Dao) SettingListByUpdatedTimestamp(timestamp int64, vaultID int64, uid 
 
 	var list []*Setting
 	for _, m := range mList {
-		list = append(list, convert.StructAssign(m, &Setting{}).(*Setting))
+		res := convert.StructAssign(m, &Setting{}).(*Setting)
+		d.fillSettingContent(uid, res)
+		list = append(list, res)
 	}
 	return list, nil
 }
@@ -129,9 +155,40 @@ func (d *Dao) SettingListByUpdatedTimestamp(timestamp int64, vaultID int64, uid 
 // SettingDeletePhysicalByTime 根据时间物理删除配置记录
 func (d *Dao) SettingDeletePhysicalByTime(timestamp int64, uid int64) error {
 	u := d.setting(uid).Setting
-	_, err := u.WithContext(d.ctx).Where(
+
+	// 查找待物理删除的记录，清理文件
+	mList, err := u.WithContext(d.ctx).Where(
+		u.Action.Eq("delete"),
+		u.UpdatedTimestamp.Lt(timestamp),
+	).Find()
+
+	if err == nil {
+		for _, m := range mList {
+			folder := d.GetSettingFolderPath(uid, m.ID)
+			_ = d.RemoveContentFolder(folder)
+		}
+	}
+
+	_, err = u.WithContext(d.ctx).Where(
 		u.Action.Eq("delete"),
 		u.UpdatedTimestamp.Lt(timestamp),
 	).Delete()
+
 	return err
+}
+
+// fillSettingContent 填充配置内容
+func (d *Dao) fillSettingContent(uid int64, s *Setting) {
+	if s == nil {
+		return
+	}
+	folder := d.GetSettingFolderPath(uid, s.ID)
+
+	// 加载内容
+	if content, exists, _ := d.LoadContentFromFile(folder, "content.txt"); exists {
+		s.Content = content
+	} else if s.Content != "" {
+		// 懒迁移
+		_ = d.SaveContentToFile(folder, "content.txt", s.Content)
+	}
 }

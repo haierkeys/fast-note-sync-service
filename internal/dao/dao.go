@@ -209,3 +209,25 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	}
 	return model.AutoMigrate(b, modelKey)
 }
+
+// WithRetry 封装数据库操作的重试逻辑，主要用于解决 SQLite "database is locked" 问题
+func (d *Dao) WithRetry(fn func() error) error {
+	maxRetries := 5
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+
+		// 检查是否为 SQLite 锁定错误
+		errStr := err.Error()
+		if strings.Contains(errStr, "database is locked") || strings.Contains(errStr, "SQLITE_BUSY") {
+			// 指数退避或固定延迟
+			time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
+			continue
+		}
+		return err // 其他错误直接返回
+	}
+	return err
+}
