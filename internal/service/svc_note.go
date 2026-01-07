@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -8,9 +9,11 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"gorm.io/gorm"
 )
 
 var (
@@ -183,8 +186,15 @@ func (svc *Service) NoteMigratePush(oldNoteID, newNoteID int64, uid int64) {
 func (svc *Service) NoteGet(uid int64, params *NoteGetRequestParams) (*Note, error) {
 
 	// 避免重复创建问题，合并并发请求
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, err
@@ -215,8 +225,15 @@ func (svc *Service) NoteUpdateCheck(uid int64, params *NoteUpdateCheckRequestPar
 	var vaultID int64
 
 	// 单例模式获取VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return "", nil, err
@@ -268,8 +285,15 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 	var isNew bool
 
 	// 避免重复创建问题，合并并发请求
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return isNew, nil, err
@@ -360,8 +384,15 @@ func (svc *Service) NoteModifyOrCreate(uid int64, params *NoteModifyOrCreateRequ
 //   - error: 出错时返回错误
 func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Note, error) {
 	// 避免重复创建问题，合并并发请求
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, err
@@ -410,8 +441,15 @@ func (svc *Service) NoteDelete(uid int64, params *NoteDeleteRequestParams) (*Not
 //   - error: 出错时返回错误
 func (svc *Service) NoteRename(uid int64, params *NoteRenameRequestParams) error {
 	// 0. 获取 VaultID
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return err
@@ -462,9 +500,17 @@ func (svc *Service) NoteRename(uid int64, params *NoteRenameRequestParams) error
 //   - error: 出错时返回错误
 func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *app.Pager) ([]*NoteNoContent, int, error) {
 
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
+
 	if err != nil {
 		return nil, 0, err
 	}
@@ -500,8 +546,15 @@ func (svc *Service) NoteList(uid int64, params *NoteListRequestParams, pager *ap
 //   - error: 出错时返回错误
 func (svc *Service) NoteListByLastTime(uid int64, params *NoteSyncRequestParams) ([]*Note, error) {
 
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, err
