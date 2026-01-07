@@ -82,8 +82,15 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	r.GET("/", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendIndexContent)
 	})
-	r.StaticFS("/assets", http.FS(frontendAssets))
-	r.StaticFS("/fonts", http.FS(frontendFonts))
+
+	cacheMiddleware := func(c *gin.Context) {
+		// 设置强缓存，缓存一年
+		c.Header("Cache-Control", "public, s-maxage=31536000, max-age=31536000, must-revalidate")
+		c.Next()
+	}
+
+	r.Group("/assets", cacheMiddleware).StaticFS("/", http.FS(frontendAssets))
+	r.Group("/fonts", cacheMiddleware).StaticFS("/", http.FS(frontendFonts))
 
 	api := r.Group("/api")
 	{

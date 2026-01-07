@@ -40,7 +40,7 @@ app:
   soft-delete-retention-time: "7d"
   # 文件上传会话超时时间(如:5m/30s,0表示不超时)
   # File upload session timeout (e.g., 5m/30s, 0 means no timeout)
-  upload-session-timeout: "20m"
+  upload-session-timeout: "1d"
   # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
