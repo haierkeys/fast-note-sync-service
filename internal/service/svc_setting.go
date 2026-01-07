@@ -1,14 +1,17 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"gorm.io/gorm"
 )
 
 // Setting 表示配置的完整数据结构。
@@ -72,8 +75,15 @@ type SettingSyncCheckRequestParams struct {
 
 // SettingUpdateCheck 检查配置是否需要更新
 func (svc *Service) SettingUpdateCheck(uid int64, params *SettingUpdateCheckRequestParams) (string, *Setting, error) {
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return "", nil, err
@@ -100,8 +110,15 @@ func (svc *Service) SettingUpdateCheck(uid int64, params *SettingUpdateCheckRequ
 // SettingModifyOrCreate 创建或修改配置
 func (svc *Service) SettingModifyOrCreate(uid int64, params *SettingModifyOrCreateRequestParams, mtimeCheck bool) (bool, *Setting, error) {
 
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return false, nil, err
@@ -155,8 +172,15 @@ func (svc *Service) SettingModifyOrCreate(uid int64, params *SettingModifyOrCrea
 // SettingDelete 删除配置
 func (svc *Service) SettingDelete(uid int64, params *SettingDeleteRequestParams) (*Setting, error) {
 
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, err
@@ -186,8 +210,15 @@ func (svc *Service) SettingDelete(uid int64, params *SettingDeleteRequestParams)
 // SettingListByLastTime 根据最后更新时间获取配置列表
 func (svc *Service) SettingListByLastTime(uid int64, params *SettingSyncRequestParams) ([]*Setting, error) {
 
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, err

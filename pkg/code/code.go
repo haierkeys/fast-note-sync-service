@@ -113,6 +113,13 @@ func (e *Code) Error() string {
 	return e.Msg()
 }
 
+func (e *Code) ErrorWithErr(err ...error) string {
+	if len(err) > 0 {
+		return e.Msg() + ": " + err[0].Error()
+	}
+	return e.Msg()
+}
+
 func (e *Code) Code() int {
 	return e.code
 }

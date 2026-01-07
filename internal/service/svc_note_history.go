@@ -1,14 +1,17 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"gorm.io/gorm"
 )
 
 // NoteHistoryMsg 笔记历史记录延时处理消息
@@ -62,8 +65,15 @@ type NoteHistoryListRequestParams struct {
 func (svc *Service) NoteHistoryList(uid int64, params *NoteHistoryListRequestParams, pager *app.Pager) ([]*NoteHistoryNoContent, int64, error) {
 
 	// get vault id
-	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d", uid), func() (any, error) {
-		return svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
 	})
 	if err != nil {
 		return nil, 0, err

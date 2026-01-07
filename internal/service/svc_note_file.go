@@ -1,13 +1,16 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"gorm.io/gorm"
 )
 
 // NoteGetFileContent 获取文件内容
@@ -25,10 +28,20 @@ import (
 //   - error: 出错时返回错误
 func (svc *Service) NoteGetFileContent(uid int64, params *NoteGetRequestParams) ([]byte, string, int64, string, error) {
 	// 1. 获取仓库 ID
-	vaultID, err := svc.VaultIdGetByName(params.Vault, uid)
+	vID, err, _ := svc.SF.Do(fmt.Sprintf("Vault_Get_%d_%s", uid, params.Vault), func() (any, error) {
+		vault, err := svc.dao.VaultGetByName(params.Vault, uid)
+		if vault == nil || errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New(code.ErrorVaultNotFound.ErrorWithErr(err))
+		}
+		if err != nil {
+			return nil, errors.New(code.ErrorDBQuery.ErrorWithErr(err))
+		}
+		return vault.ID, nil
+	})
 	if err != nil {
-		return nil, "", 0, "", fmt.Errorf("获取仓库失败: %w", err)
+		return nil, "", 0, "", err
 	}
+	vaultID := vID.(int64)
 
 	// 2. 确认路径哈希
 	if params.PathHash == "" {
