@@ -77,6 +77,9 @@ security:
   # 多用户开放网关 Token 加密混淆 Key
   # Multi-user open gateway Token encryption and obfuscation key
   auth-token-key: fast-note-sync-Auth-Token
+  # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 7d
+  # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 7d
+  token-expiry: "7d"
 
 # database
 # 数据库配置
@@ -86,5 +89,28 @@ database:
   path: storage/database/db.sqlite3
   table-prefix:
   auto-migrate: true
+  # 最大打开连接数，默认 100
+  # Maximum number of open connections, default 100
+  max-open-conns: 100
+  # 最大空闲连接数，默认 10
+  # Maximum number of idle connections, default 10
+  max-idle-conns: 10
+  # 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
+  # Connection max lifetime, supports formats: 30m (minutes), 1h (hours), default 30m
+  conn-max-lifetime: "30m"
+  # 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
+  # Idle connection max lifetime, supports formats: 10m (minutes), 1h (hours), default 10m
+  conn-max-idle-time: "10m"
+
+# tracer
+# 请求追踪配置
+# Request tracing configuration
+tracer:
+  # 是否启用追踪
+  # Whether to enable tracing
+  enabled: true
+  # 追踪 ID 请求头名称
+  # Trace ID header name
+  header: "X-Trace-ID"
 
 

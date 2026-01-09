@@ -14,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"github.com/glebarez/sqlite"
 	"github.com/haierkeys/gormTracing"
@@ -139,15 +140,38 @@ func NewDBEngine(c global.Database) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// SetMaxIdleConns 用于设置连接池中空闲连接的最大数量。
-	sqlDB.SetMaxIdleConns(c.MaxIdleConns)
+	// 设置连接池参数（带默认值）
+	// MaxIdleConns: 默认 10
+	maxIdleConns := c.MaxIdleConns
+	if maxIdleConns == 0 {
+		maxIdleConns = 10
+	}
+	sqlDB.SetMaxIdleConns(maxIdleConns)
 
-	// SetMaxOpenConns 设置打开数据库连接的最大数量。
-	//sqlDB.SetMaxOpenConns(1)
-	sqlDB.SetMaxOpenConns(c.MaxOpenConns)
+	// MaxOpenConns: 默认 100
+	maxOpenConns := c.MaxOpenConns
+	if maxOpenConns == 0 {
+		maxOpenConns = 100
+	}
+	sqlDB.SetMaxOpenConns(maxOpenConns)
 
-	// SetConnMaxLifetime 设置了连接可复用的最大时间。
-	sqlDB.SetConnMaxLifetime(time.Minute * 10)
+	// ConnMaxLifetime: 默认 30 分钟
+	connMaxLifetime := 30 * time.Minute
+	if c.ConnMaxLifetime != "" {
+		if parsed, err := util.ParseDuration(c.ConnMaxLifetime); err == nil {
+			connMaxLifetime = parsed
+		}
+	}
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+
+	// ConnMaxIdleTime: 默认 10 分钟
+	connMaxIdleTime := 10 * time.Minute
+	if c.ConnMaxIdleTime != "" {
+		if parsed, err := util.ParseDuration(c.ConnMaxIdleTime); err == nil {
+			connMaxIdleTime = parsed
+		}
+	}
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
 
 	_ = db.Use(&gormTracing.OpentracingPlugin{})
 

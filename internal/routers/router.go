@@ -8,10 +8,11 @@ import (
 
 	_ "github.com/haierkeys/fast-note-sync-service/docs"
 	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
-	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/limiter"
 
 	"github.com/gin-gonic/gin"
@@ -27,9 +28,9 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 	},
 )
 
-func NewRouter(frontendFiles embed.FS) *gin.Engine {
+func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 
-	var wss = app.NewWebsocketServer(app.WSConfig{
+	var wss = pkgapp.NewWebsocketServer(pkgapp.WSConfig{
 		GWSOption: gws.ServerOption{
 			CheckUtf8Enabled:    true,
 			ParallelEnabled:     true,                                 // 开启并行消息处理
@@ -40,39 +41,45 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 			WriteMaxPayloadSize: 1024 * 1024 * 64, // 设置最大写入缓冲区大小 64MB
 		},
 	})
+
+	// 创建 WebSocket Handlers（注入 App Container）
+	noteWSHandler := websocket_router.NewNoteWSHandler(appContainer)
+	fileWSHandler := websocket_router.NewFileWSHandler(appContainer)
+	settingWSHandler := websocket_router.NewSettingWSHandler(appContainer)
+
 	// 修改 创建
-	wss.Use("NoteModify", websocket_router.NoteModify)
+	wss.Use("NoteModify", noteWSHandler.NoteModify)
 	//删除
-	wss.Use("NoteDelete", websocket_router.NoteDelete)
+	wss.Use("NoteDelete", noteWSHandler.NoteDelete)
 	//重命名
-	wss.Use("NoteRename", websocket_router.NoteRename)
+	wss.Use("NoteRename", noteWSHandler.NoteRename)
 	// 笔记检查
-	wss.Use("NoteCheck", websocket_router.NoteModifyCheck)
+	wss.Use("NoteCheck", noteWSHandler.NoteModifyCheck)
 	// 基于mtime的更新通知
-	wss.Use("NoteSync", websocket_router.NoteSync)
+	wss.Use("NoteSync", noteWSHandler.NoteSync)
 
 	// 配置同步
-	wss.Use("SettingModify", websocket_router.SettingModify)
-	wss.Use("SettingDelete", websocket_router.SettingDelete)
-	wss.Use("SettingCheck", websocket_router.SettingModifyCheck)
-	wss.Use("SettingSync", websocket_router.SettingSync)
+	wss.Use("SettingModify", settingWSHandler.SettingModify)
+	wss.Use("SettingDelete", settingWSHandler.SettingDelete)
+	wss.Use("SettingCheck", settingWSHandler.SettingModifyCheck)
+	wss.Use("SettingSync", settingWSHandler.SettingSync)
 
 	// 附件同步
-	wss.Use("FileSync", websocket_router.FileSync)
+	wss.Use("FileSync", fileWSHandler.FileSync)
 	//附件上传前检查
-	wss.Use("FileUploadCheck", websocket_router.FileUploadCheck)
+	wss.Use("FileUploadCheck", fileWSHandler.FileUploadCheck)
 	//附件删除
-	wss.Use("FileDelete", websocket_router.FileDelete)
+	wss.Use("FileDelete", fileWSHandler.FileDelete)
 
-	wss.Use("FileChunkDownload", websocket_router.FileChunkDownload)
+	wss.Use("FileChunkDownload", fileWSHandler.FileChunkDownload)
 
 	//附件上传分块
-	wss.UseBinary(websocket_router.VaultFileSync, websocket_router.FileUploadChunkBinary)
+	wss.UseBinary(websocket_router.VaultFileSync, fileWSHandler.FileUploadChunkBinary)
 
 	// WebGUI 配置
 	wss.Use("WebGUIConfigGet", websocket_router.WebGUIConfigGet)
 
-	wss.UseUserVerify(websocket_router.UserInfo)
+	wss.UseUserVerify(noteWSHandler.UserInfo)
 
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendStatic, _ := fs.Sub(frontendFiles, "frontend/static")
@@ -96,6 +103,7 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 	{
 		api.Use(middleware.AppInfo())
 		api.Use(gin.Logger())
+		api.Use(middleware.TraceMiddleware()) // Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))
 		api.Use(middleware.ContextTimeout(time.Duration(global.Config.App.DefaultContextTimeout) * time.Second))
 		api.Use(middleware.Cors())
@@ -103,30 +111,36 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.Use(middleware.AccessLog())
 		api.Use(middleware.Recovery())
 
-		api.POST("/user/register", api_router.NewUser().Register)
-		api.POST("/user/login", api_router.NewUser().Login)
+		// 创建 Handlers（注入 App Container）
+		userHandler := api_router.NewUserHandler(appContainer)
+		vaultHandler := api_router.NewVaultHandler(appContainer)
+		noteHandler := api_router.NewNoteHandler(appContainer, wss)
+		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer)
+		versionHandler := api_router.NewVersionHandler(appContainer)
+		webGUIHandler := api_router.NewWebGUIHandler(appContainer)
+
+		api.POST("/user/register", userHandler.Register)
+		api.POST("/user/login", userHandler.Login)
 		api.GET("/user/sync", wss.Run())
 
 		// 添加服务端版本号接口（无需认证）
-		api.GET("/version", api_router.NewVersion().ServerVersion)
-		api.GET("/webgui/config", api_router.NewWebGUI().Config)
+		api.GET("/version", versionHandler.ServerVersion)
+		api.GET("/webgui/config", webGUIHandler.Config)
 
-		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
-		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)
-		api.Use(middleware.UserAuthToken()).GET("/vault", api_router.NewVault().List)
-		api.Use(middleware.UserAuthToken()).POST("/vault", api_router.NewVault().CreateOrUpdate)
-		api.Use(middleware.UserAuthToken()).DELETE("/vault", api_router.NewVault().Delete)
+		api.Use(middleware.UserAuthToken()).POST("/user/change_password", userHandler.UserChangePassword)
+		api.Use(middleware.UserAuthToken()).GET("/user/info", userHandler.UserInfo)
+		api.Use(middleware.UserAuthToken()).GET("/vault", vaultHandler.List)
+		api.Use(middleware.UserAuthToken()).POST("/vault", vaultHandler.CreateOrUpdate)
+		api.Use(middleware.UserAuthToken()).DELETE("/vault", vaultHandler.Delete)
 
-		noteApiWithWss := api_router.NewNote(wss)
+		api.Use(middleware.UserAuthToken()).GET("/note", noteHandler.Get)
+		api.Use(middleware.UserAuthToken()).GET("/note/file", noteHandler.GetFileContent)
+		api.Use(middleware.UserAuthToken()).POST("/note", noteHandler.CreateOrUpdate)
+		api.Use(middleware.UserAuthToken()).DELETE("/note", noteHandler.Delete)
+		api.Use(middleware.UserAuthToken()).GET("/notes", noteHandler.List)
 
-		api.Use(middleware.UserAuthToken()).GET("/note", noteApiWithWss.Get)
-		api.Use(middleware.UserAuthToken()).GET("/note/file", noteApiWithWss.GetFileContent)
-		api.Use(middleware.UserAuthToken()).POST("/note", noteApiWithWss.CreateOrUpdate)
-		api.Use(middleware.UserAuthToken()).DELETE("/note", noteApiWithWss.Delete)
-		api.Use(middleware.UserAuthToken()).GET("/notes", noteApiWithWss.List)
-
-		api.Use(middleware.UserAuthToken()).GET("/note/history", api_router.NewNoteHistory().Get)
-		api.Use(middleware.UserAuthToken()).GET("/note/histories", api_router.NewNoteHistory().List)
+		api.Use(middleware.UserAuthToken()).GET("/note/history", noteHistoryHandler.Get)
+		api.Use(middleware.UserAuthToken()).GET("/note/histories", noteHistoryHandler.List)
 	}
 
 	if global.Config.App.UploadSavePath != "" {
