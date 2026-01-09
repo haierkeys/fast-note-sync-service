@@ -2,8 +2,8 @@ package global
 
 import (
 	"os"
+	"path/filepath"
 
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/haierkeys/fast-note-sync-service/pkg/storage/local_fs"
 
 	"github.com/pkg/errors"
@@ -140,14 +140,15 @@ type webGUI struct {
 // ConfigLoad 初始化
 func ConfigLoad(f string) (string, error) {
 
-	realpath, err := fileurl.GetAbsPath(f, "")
+	realpath, err := filepath.Abs(f)
 	if err != nil {
-		return realpath, err
+		return "", err
 	}
+	realpath = filepath.Clean(realpath)
 	c := new(config)
 
-	c.File = f
-	file, err := os.ReadFile(f)
+	c.File = realpath
+	file, err := os.ReadFile(realpath)
 	if err != nil {
 		return realpath, errors.Wrap(err, "read config file failed")
 	}
@@ -159,4 +160,19 @@ func ConfigLoad(f string) (string, error) {
 	Config = c
 	return realpath, nil
 
+}
+
+// Save 保存配置
+func (c *config) Save() error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return errors.Wrap(err, "marshal config failed")
+	}
+
+	err = os.WriteFile(c.File, data, 0644)
+	if err != nil {
+		return errors.Wrap(err, "write config file failed")
+	}
+
+	return nil
 }

@@ -6,7 +6,9 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/diff"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"go.uber.org/zap"
 )
@@ -106,14 +108,64 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 	switch updateMode {
 	case "UpdateContent", "Create":
 
-		// c.DiffMergePathsMu.RLock()
-		// _, ok := c.DiffMergePaths[params.Path]
-		// c.DiffMergePathsMu.RUnlock()
+		var isExcludeSelf bool = true
 
-		// // 如果是 diff 合并，需要跳过
-		// if ok {
-		// 	return
-		// }
+		if c.OfflineSyncStrategy != "" && nodeCheck != nil && nodeCheck.ContentHash != params.BaseHash && nodeCheck.ContentHash != params.ContentHash {
+			c.DiffMergePathsMu.RLock()
+			_, ok := c.DiffMergePaths[params.Path]
+			c.DiffMergePathsMu.RUnlock()
+
+			// 如果是 diff 合并，需要跳过
+			if ok {
+				c.DiffMergePathsMu.Lock()
+				delete(c.DiffMergePaths, params.Path)
+				c.DiffMergePathsMu.Unlock()
+
+				var history *service.NoteHistory
+				// 如果 忽略时间合并， 如果内容在快照中找到 则 忽略掉 插件端更新
+				if c.OfflineSyncStrategy == "ignoreTimeMerge" {
+					history, err = svc.NoteHistoryGetByNoteIdAndHash(c.User.UID, nodeCheck.ID, params.ContentHash)
+					if err != nil {
+						c.ToResponse(code.ErrorNoteModifyOrCreateFailed.Clone().WithDetails(err.Error()))
+						return
+					}
+				}
+
+				if history == nil {
+
+					var baseContent string
+
+					if params.BaseHash != params.ContentHash && params.BaseHash != "" {
+						noteHistory, err := svc.NoteHistoryGetByNoteIdAndHash(c.User.UID, nodeCheck.ID, params.BaseHash)
+						if err != nil {
+							c.ToResponse(code.ErrorNoteModifyOrCreateFailed.Clone().WithDetails(err.Error()))
+							return
+						}
+
+						if noteHistory != nil {
+							baseContent = noteHistory.Content
+						} else {
+							baseContent = nodeCheck.Content
+						}
+					} else {
+						baseContent = nodeCheck.Content
+					}
+
+					clientContent := params.Content
+					serverContent := nodeCheck.Content
+
+					params.Content, err = diff.MergeTexts(baseContent, clientContent, serverContent, params.Mtime <= nodeCheck.Mtime)
+					if err != nil {
+						c.ToResponse(code.ErrorNoteModifyOrCreateFailed.Clone().WithDetails(err.Error()))
+						return
+					}
+					params.ContentHash = util.EncodeHash32(params.Content)
+					params.Mtime = timex.Now().Unix()
+
+					isExcludeSelf = false
+				}
+			}
+		}
 
 		_, note, err := svc.NoteModifyOrCreate(c.User.UID, params, true)
 		if err != nil {
@@ -133,7 +185,7 @@ func NoteModify(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 		}
 
 		c.ToResponse(code.Success.Clone())
-		c.BroadcastResponse(code.Success.Clone().WithData(noteMessage).WithVault(params.Vault), true, "NoteSyncModify")
+		c.BroadcastResponse(code.Success.Clone().WithData(noteMessage).WithVault(params.Vault), isExcludeSelf, "NoteSyncModify")
 		return
 
 	case "UpdateMtime":
@@ -388,7 +440,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						case "ignoreTimeMerge":
 
 							c.DiffMergePathsMu.Lock()
-							c.DiffMergePaths[note.Path] = note.Path
+							c.DiffMergePaths[note.Path] = struct{}{}
 							c.DiffMergePathsMu.Unlock()
 
 							noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
@@ -426,7 +478,7 @@ func NoteSync(c *app.WebsocketClient, msg *app.WebSocketMessage) {
 						// 客户端笔记 比服务端笔记新, 通知客户端上传笔记
 						if c.OfflineSyncStrategy == "ignoreTimeMerge" || c.OfflineSyncStrategy == "newTimeMerge" {
 							c.DiffMergePathsMu.Lock()
-							c.DiffMergePaths[note.Path] = note.Path
+							c.DiffMergePaths[note.Path] = struct{}{}
 							c.DiffMergePathsMu.Unlock()
 						}
 

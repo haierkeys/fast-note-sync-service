@@ -1,8 +1,12 @@
 package diff
 
-import "github.com/sergi/go-diff/diffmatchpatch"
+import (
+	"errors"
 
-func MergeTexts(base, pc1, pc2 string, pc1First bool) (merged string, success bool) {
+	"github.com/sergi/go-diff/diffmatchpatch"
+)
+
+func MergeTexts(base, pc1, pc2 string, pc1First bool) (merged string, err error) {
 	dmp := diffmatchpatch.New()
 
 	// 计算 PC1 相对于 base 的 diff,并过滤删除操作
@@ -41,21 +45,16 @@ func MergeTexts(base, pc1, pc2 string, pc1First bool) (merged string, success bo
 	}
 
 	// 检查是否所有补丁都成功应用
-	success = true
 	for _, s := range step1Success {
 		if !s {
-			success = false
-			break
+			return merged, errors.New("failed to apply patches from first step")
 		}
 	}
-	if success {
-		for _, s := range step2Success {
-			if !s {
-				success = false
-				break
-			}
+	for _, s := range step2Success {
+		if !s {
+			return merged, errors.New("failed to apply patches from second step")
 		}
 	}
 
-	return merged, success
+	return merged, nil
 }
