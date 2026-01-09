@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"log"
 	"runtime/debug"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -52,10 +51,6 @@ func RecoveryWithLogger(logger *zap.Logger) gin.HandlerFunc {
 						zap.String("stack", string(debug.Stack())),        // 错误堆栈
 					)
 				}
-
-				// 打印错误堆栈到控制台
-				log.Printf("Recovered from panic: %v", errorMsg)
-				log.Printf("Stack trace:\n%s", string(debug.Stack()))
 
 				// 返回统一的错误响应
 				app.NewResponse(c).ToResponse(code.ErrorServerInternal.WithDetails(errorMsg))

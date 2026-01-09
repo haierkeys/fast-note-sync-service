@@ -128,13 +128,13 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 
 	user, err := s.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorUserRegister.WithDetails(err.Error())
 	}
 
 	// 生成 Token
 	token, err := s.tokenManager.Generate(user.UID, "", "")
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
@@ -168,7 +168,7 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 	// 生成 Token
 	token, err := s.tokenManager.Generate(user.UID, user.Username, clientIP)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)

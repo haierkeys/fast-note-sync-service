@@ -9,11 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -151,7 +154,16 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 			if params.Mtime < file.Mtime {
 				return "UpdateMtime", fileDTO, nil
 			} else if params.Mtime > file.Mtime {
-				_ = s.fileRepo.UpdateMtime(ctx, params.Mtime, file.ID, uid)
+				if err := s.fileRepo.UpdateMtime(ctx, params.Mtime, file.ID, uid); err != nil {
+					// 非关键更新失败，记录警告日志但不阻断流程
+					global.Logger.Warn("UpdateMtime failed for file",
+						zap.Int64(logger.FieldUID, uid),
+						zap.Int64("fileId", file.ID),
+						zap.Int64("mtime", params.Mtime),
+						zap.String(logger.FieldMethod, "FileService.UpdateCheck"),
+						zap.Error(err),
+					)
+				}
 			}
 			return "", fileDTO, nil
 		}

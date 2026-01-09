@@ -61,8 +61,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	params := &dto.SettingModifyOrCreateRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.setting.SettingModify.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModify.BindAndValid")
 		return
 	}
 
@@ -75,7 +74,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	checkParams := convert.StructAssign(params, &dto.SettingUpdateCheckRequest{}).(*dto.SettingUpdateCheckRequest)
 	updateMode, settingCheck, err := h.App.SettingService.UpdateCheck(ctx, c.User.UID, checkParams)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingModifyOrCreateFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorSettingModifyOrCreateFailed, err, "websocket_router.setting.SettingModify.UpdateCheck")
 		return
 	}
 
@@ -83,7 +82,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	case "UpdateContent", "Create":
 		_, setting, err := h.App.SettingService.ModifyOrCreate(ctx, c.User.UID, params, true)
 		if err != nil {
-			c.ToResponse(code.ErrorSettingModifyOrCreateFailed.WithDetails(err.Error()))
+			h.respondError(c, code.ErrorSettingModifyOrCreateFailed, err, "websocket_router.setting.SettingModify.ModifyOrCreate")
 			return
 		}
 
@@ -119,8 +118,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 	params := &dto.SettingUpdateCheckRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.setting.SettingModifyCheck.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModifyCheck.BindAndValid")
 		return
 	}
 
@@ -132,7 +130,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	updateMode, settingCheck, err := h.App.SettingService.UpdateCheck(ctx, c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingUpdateCheckFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorSettingUpdateCheckFailed, err, "websocket_router.setting.SettingModifyCheck.UpdateCheck")
 		return
 	}
 
@@ -162,8 +160,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 	params := &dto.SettingDeleteRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.setting.SettingDelete.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingDelete.BindAndValid")
 		return
 	}
 
@@ -175,7 +172,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	setting, err := h.App.SettingService.Delete(ctx, c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingDeleteFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorSettingDeleteFailed, err, "websocket_router.setting.SettingDelete.Delete")
 		return
 	}
 
@@ -188,8 +185,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	params := &dto.SettingSyncRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.setting.SettingSync.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSync.BindAndValid")
 		return
 	}
 
@@ -201,7 +197,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 
 	list, err := h.App.SettingService.Sync(ctx, c.User.UID, params)
 	if err != nil {
-		c.ToResponse(code.ErrorSettingListFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorSettingListFailed, err, "websocket_router.setting.SettingSync.Sync")
 		return
 	}
 

@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"embed"
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var frontendFiles embed.FS
@@ -23,7 +23,7 @@ func Execute(efs embed.FS, c string) {
 	frontendFiles = efs
 	configDefault = c
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		BootstrapLogger().Error("command execution failed", zap.Error(err))
 		os.Exit(1)
 	}
 }

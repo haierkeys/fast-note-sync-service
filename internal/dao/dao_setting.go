@@ -4,10 +4,13 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -83,9 +86,11 @@ func (d *Dao) SettingCreate(params *SettingSet, uid int64) (*Setting, error) {
 			return createErr
 		}
 
-		// 异步保存到文件存储
+		// 保存到文件存储
 		folderPath := d.GetSettingFolderPath(uid, m.ID)
-		_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+		if err := d.SaveContentToFile(folderPath, "content.txt", params.Content); err != nil {
+			return err
+		}
 
 		res := convert.StructAssign(m, &Setting{}).(*Setting)
 		res.Content = content
@@ -122,9 +127,11 @@ func (d *Dao) SettingUpdate(params *SettingSet, id int64, uid int64) (*Setting, 
 			return updateErr
 		}
 
-		// 异步保存到文件存储
+		// 保存到文件存储
 		folderPath := d.GetSettingFolderPath(uid, id)
-		_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+		if err := d.SaveContentToFile(folderPath, "content.txt", params.Content); err != nil {
+			return err
+		}
 
 		res := convert.StructAssign(m, &Setting{}).(*Setting)
 		res.Content = content
@@ -215,7 +222,14 @@ func (d *Dao) fillSettingContent(uid int64, s *Setting) {
 	if content, exists, _ := d.LoadContentFromFile(folder, "content.txt"); exists {
 		s.Content = content
 	} else if s.Content != "" {
-		// 懒迁移
-		_ = d.SaveContentToFile(folder, "content.txt", s.Content)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := d.SaveContentToFile(folder, "content.txt", s.Content); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for setting content",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("settingId", s.ID),
+				zap.String(logger.FieldMethod, "Dao.fillSettingContent"),
+				zap.Error(err),
+			)
+		}
 	}
 }

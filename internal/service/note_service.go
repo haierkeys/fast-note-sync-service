@@ -12,12 +12,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
@@ -218,7 +221,16 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 			if params.Mtime < note.Mtime {
 				return "UpdateMtime", noteDTO, nil
 			} else if params.Mtime > note.Mtime {
-				_ = s.noteRepo.UpdateMtime(ctx, params.Mtime, note.ID, uid)
+				if err := s.noteRepo.UpdateMtime(ctx, params.Mtime, note.ID, uid); err != nil {
+					// 非关键更新失败，记录警告日志但不阻断流程
+					global.Logger.Warn("UpdateMtime failed for note",
+						zap.Int64(logger.FieldUID, uid),
+						zap.Int64("noteId", note.ID),
+						zap.Int64("mtime", params.Mtime),
+						zap.String(logger.FieldMethod, "NoteService.UpdateCheck"),
+						zap.Error(err),
+					)
+				}
 			}
 			return "", noteDTO, nil
 		}
@@ -248,7 +260,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
 			err := s.noteRepo.UpdateMtime(ctx, params.Mtime, note.ID, uid)
 			if err != nil {
-				return isNew, nil, err
+				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			note.Mtime = params.Mtime
 			return isNew, s.domainToDTO(note), nil
@@ -276,7 +288,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 		updated, err := s.noteRepo.Update(ctx, note, uid)
 		if err != nil {
-			return isNew, nil, err
+			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
 		go s.CountSizeSum(ctx, vaultID, uid)
@@ -302,7 +314,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 	created, err := s.noteRepo.Create(ctx, newNote, uid)
 	if err != nil {
-		return isNew, nil, err
+		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	go s.CountSizeSum(ctx, vaultID, uid)
@@ -316,7 +328,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return nil, err
+		return nil, err // VaultService 已返回 code.Error
 	}
 
 	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
@@ -334,13 +346,13 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 重新获取更新后的笔记
 	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	go s.CountSizeSum(ctx, vaultID, uid)
@@ -392,12 +404,12 @@ func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListR
 
 	notes, err := s.noteRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	count, err := s.noteRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var result []*NoteNoContentDTO
@@ -413,12 +425,12 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return nil, err
+		return nil, err // VaultService 已返回 code.Error
 	}
 
 	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, params.LastTime, vaultID, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var results []*NoteDTO
@@ -440,7 +452,7 @@ func (s *noteService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 	_, err, _ := s.sf.Do(key, func() (any, error) {
 		result, err := s.noteRepo.CountSizeSum(ctx, vaultID, uid)
 		if err != nil {
-			return nil, err
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 		return nil, s.vaultService.UpdateNoteStats(ctx, result.Size, result.Count, vaultID, uid)
 	})
@@ -522,7 +534,7 @@ func (s *noteService) CleanupAll(ctx context.Context) error {
 func (s *noteService) ListNeedSnapshot(ctx context.Context, uid int64) ([]*NoteDTO, error) {
 	list, err := s.noteRepo.ListContentUnchanged(ctx, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var result []*NoteDTO
@@ -537,13 +549,13 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 	// 获取旧笔记信息
 	oldNote, err := s.noteRepo.GetByID(ctx, oldNoteID, uid)
 	if err != nil {
-		return err
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 将旧笔记的 ContentLastSnapshot 和 Version 迁移到新笔记
 	err = s.noteRepo.UpdateSnapshot(ctx, oldNote.ContentLastSnapshot, oldNote.ContentLastSnapshotHash, oldNote.Version, newNoteID, uid)
 	if err != nil {
-		return err
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 标记删除旧笔记，并标记是 rename 删除的笔记
@@ -552,7 +564,7 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 
 	err = s.noteRepo.UpdateDelete(ctx, oldNote, uid)
 	if err != nil {
-		return err
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	go s.CountSizeSum(ctx, oldNote.VaultID, uid)

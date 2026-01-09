@@ -227,6 +227,12 @@ func (a *App) GetAuthTokenKey() string {
 	return a.config.Security.AuthTokenKey
 }
 
+// IsProductionMode 是否为生产模式
+// 根据日志配置中的 Production 字段判断
+func (a *App) IsProductionMode() bool {
+	return a.config.Log.Production
+}
+
 // ExecuteWrite 执行写操作（通过 Write Queue 串行化）
 // uid: 用户 ID，用于确定写队列
 // fn: 写操作函数

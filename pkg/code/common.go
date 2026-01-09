@@ -20,6 +20,16 @@ var (
 	ErrorInvalidUserAuthToken = NewError(508, lang{zh_cn: "登录状态失效,请重新登录", en: "Session expired, please log in again."})
 	ErrorInvalidToken         = NewError(509, lang{zh_cn: "您的访问缺少用户令牌", en: "Your access is missing a user token"})
 	ErrorTokenExpired         = NewError(510, lang{zh_cn: "用户令牌已过期", en: "User token has expired"})
+	ErrorTokenGenerate        = NewError(511, lang{zh_cn: "令牌生成失败", en: "Token generation failed"})
+
+	// 文件操作相关 (520-529)
+	ErrorFileSaveFailed  = NewError(520, lang{zh_cn: "文件保存失败", en: "File save failed"})
+	ErrorFileMoveFailed  = NewError(521, lang{zh_cn: "文件移动失败", en: "File move failed"})
+	ErrorFileReadFailed  = NewError(522, lang{zh_cn: "文件读取失败", en: "File read failed"})
+
+	// 同步相关 (530-539)
+	ErrorSyncConflict    = NewError(530, lang{zh_cn: "同步冲突", en: "Sync conflict"})
+	ErrorSyncMergeFailed = NewError(531, lang{zh_cn: "合并失败", en: "Merge failed"})
 
 	ErrorUserRegister                = NewError(400, lang{zh_cn: "用户注册失败", en: "User registration failed"})
 	ErrorUserOldPasswordFailed       = NewError(401, lang{zh_cn: "当前密码验证错误", en: "Current password verification error"})
