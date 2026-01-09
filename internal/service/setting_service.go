@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -43,8 +42,8 @@ type SettingService interface {
 	// Cleanup 清理过期的软删除配置
 	Cleanup(ctx context.Context, uid int64) error
 
-	// CleanupAll 清理所有用户的过期软删除配置
-	CleanupAll(ctx context.Context) error
+	// CleanupByTime 按截止时间清理所有用户的过期软删除配置
+	CleanupByTime(ctx context.Context, cutoffTime int64) error
 }
 
 // SettingDTO 配置数据传输对象
@@ -68,10 +67,6 @@ type settingService struct {
 	vaultService VaultService
 	sf           *singleflight.Group
 	config       *ServiceConfig
-
-	// 清理相关
-	lastCleanupTime time.Time
-	cleanupMutex    sync.Mutex
 }
 
 // NewSettingService 创建 SettingService 实例
@@ -302,49 +297,9 @@ func (s *settingService) Cleanup(ctx context.Context, uid int64) error {
 	return s.settingRepo.DeletePhysicalByTime(ctx, cutoffTime, uid)
 }
 
-// CleanupAll 清理所有用户的过期软删除配置
-func (s *settingService) CleanupAll(ctx context.Context) error {
-	if s.config == nil {
-		return nil
-	}
-	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
-	if retentionTimeStr == "" || retentionTimeStr == "0" {
-		return nil
-	}
-
-	retentionDuration, err := util.ParseDuration(retentionTimeStr)
-	if err != nil {
-		return err
-	}
-
-	if retentionDuration <= 0 {
-		return nil
-	}
-
-	s.cleanupMutex.Lock()
-	defer s.cleanupMutex.Unlock()
-
-	// 动态计算检查间隔
-	var checkInterval time.Duration
-	if retentionDuration < time.Hour {
-		checkInterval = time.Minute
-	} else {
-		checkInterval = retentionDuration / 10
-		if checkInterval > time.Hour {
-			checkInterval = time.Hour
-		}
-		if checkInterval < time.Minute {
-			checkInterval = time.Minute
-		}
-	}
-
-	// 如果距离上次清理时间不足检查间隔，则跳过
-	if time.Since(s.lastCleanupTime) < checkInterval {
-		return nil
-	}
-
-	s.lastCleanupTime = time.Now()
-	return nil
+// CleanupByTime 按截止时间清理所有用户的过期软删除配置
+func (s *settingService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
+	return s.settingRepo.DeletePhysicalByTimeAll(ctx, cutoffTime)
 }
 
 // 确保 settingService 实现了 SettingService 接口

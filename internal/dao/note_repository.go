@@ -397,6 +397,24 @@ func (r *noteRepository) DeletePhysicalByTime(ctx context.Context, timestamp, ui
 	})
 }
 
+// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的笔记
+func (r *noteRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error {
+	// 获取所有用户 UID
+	uids, err := r.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	// 逐用户执行清理
+	for _, uid := range uids {
+		if err := r.DeletePhysicalByTime(ctx, timestamp, uid); err != nil {
+			// 记录错误但继续处理其他用户
+			continue
+		}
+	}
+	return nil
+}
+
 // List 分页获取笔记列表
 func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool) ([]*domain.Note, error) {
 	u := r.note(uid).Note

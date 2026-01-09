@@ -41,6 +41,9 @@ type NoteRepository interface {
 	// DeletePhysicalByTime 根据时间物理删除已标记删除的笔记
 	DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error
 
+	// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的笔记
+	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
+
 	// List 分页获取笔记列表
 	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool) ([]*Note, error)
 
@@ -131,6 +134,9 @@ type FileRepository interface {
 	// DeletePhysicalByTime 根据时间物理删除已标记删除的文件
 	DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error
 
+	// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的文件
+	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
+
 	// List 分页获取文件列表
 	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64) ([]*File, error)
 
@@ -167,6 +173,9 @@ type SettingRepository interface {
 
 	// DeletePhysicalByTime 根据时间物理删除已标记删除的配置
 	DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error
+
+	// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的配置
+	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Setting, error)

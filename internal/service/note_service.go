@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -60,8 +59,8 @@ type NoteService interface {
 	// Cleanup 清理过期的软删除笔记
 	Cleanup(ctx context.Context, uid int64) error
 
-	// CleanupAll 清理所有用户的过期软删除笔记
-	CleanupAll(ctx context.Context) error
+	// CleanupByTime 按截止时间清理所有用户的过期软删除笔记
+	CleanupByTime(ctx context.Context, cutoffTime int64) error
 
 	// ListNeedSnapshot 获取需要快照的笔记
 	ListNeedSnapshot(ctx context.Context, uid int64) ([]*NoteDTO, error)
@@ -115,10 +114,6 @@ type noteService struct {
 	clientName   string
 	clientVer    string
 	config       *ServiceConfig
-
-	// 清理相关
-	lastCleanupTime time.Time
-	cleanupMutex    sync.Mutex
 }
 
 // NewNoteService 创建 NoteService 实例
@@ -482,52 +477,9 @@ func (s *noteService) Cleanup(ctx context.Context, uid int64) error {
 	return s.noteRepo.DeletePhysicalByTime(ctx, cutoffTime, uid)
 }
 
-// CleanupAll 清理所有用户的过期软删除笔记
-func (s *noteService) CleanupAll(ctx context.Context) error {
-	if s.config == nil {
-		return nil
-	}
-	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
-	if retentionTimeStr == "" || retentionTimeStr == "0" {
-		return nil
-	}
-
-	retentionDuration, err := util.ParseDuration(retentionTimeStr)
-	if err != nil {
-		return err
-	}
-
-	if retentionDuration <= 0 {
-		return nil
-	}
-
-	s.cleanupMutex.Lock()
-	defer s.cleanupMutex.Unlock()
-
-	// 动态计算检查间隔
-	var checkInterval time.Duration
-	if retentionDuration < time.Hour {
-		checkInterval = time.Minute
-	} else {
-		checkInterval = retentionDuration / 10
-		if checkInterval > time.Hour {
-			checkInterval = time.Hour
-		}
-		if checkInterval < time.Minute {
-			checkInterval = time.Minute
-		}
-	}
-
-	// 如果距离上次清理时间不足检查间隔，则跳过
-	if time.Since(s.lastCleanupTime) < checkInterval {
-		return nil
-	}
-
-	// 注意：这里需要获取所有用户 UID，但 NoteService 不应该直接访问 UserRepository
-	// 这个方法应该由上层调用者提供 UID 列表，或者通过其他方式获取
-	// 暂时保留此方法签名，实际实现需要调整架构
-	s.lastCleanupTime = time.Now()
-	return nil
+// CleanupByTime 按截止时间清理所有用户的过期软删除笔记
+func (s *noteService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
+	return s.noteRepo.DeletePhysicalByTimeAll(ctx, cutoffTime)
 }
 
 // ListNeedSnapshot 获取需要快照的笔记
