@@ -66,9 +66,9 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "SettingModify", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingModify", params.Path, params.Vault)
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
@@ -124,9 +124,9 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "SettingModifyCheck", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingModifyCheck", params.Path, params.Vault)
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
@@ -167,9 +167,9 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "SettingDelete", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingDelete", params.Path, params.Vault)
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
@@ -193,9 +193,9 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "SettingSync", "", params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingSync", "", params.Vault)
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 

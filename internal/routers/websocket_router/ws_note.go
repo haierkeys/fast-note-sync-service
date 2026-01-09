@@ -102,10 +102,9 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	pkgapp.NoteModifyLog(c.User.UID, "NoteModify", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteModify", params.Path, params.Vault)
 
-	ctx := c.Ctx.Request.Context()
-
+	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
 
@@ -238,12 +237,11 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
-
+	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
 
-	pkgapp.NoteModifyLog(c.User.UID, "NoteModifyCheck", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteModifyCheck", params.Path, params.Vault)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -297,15 +295,14 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	pkgapp.NoteModifyLog(c.User.UID, "NoteDelete", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteDelete", params.Path, params.Vault)
 
 	h.handleNoteDelete(c, params)
 }
 
 func (h *NoteWSHandler) handleNoteDelete(c *pkgapp.WebsocketClient, params *dto.NoteDeleteRequest) {
 
-	ctx := c.Ctx.Request.Context()
-
+	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
 
@@ -346,7 +343,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	pkgapp.NoteModifyLog(c.User.UID, "NoteRename", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRename", params.Path, params.Vault)
 
 	h.handleNoteDelete(c, &dto.NoteDeleteRequest{
 		Vault:    params.Vault,
@@ -354,8 +351,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		PathHash: params.OldPathHash,
 	})
 
-	ctx := c.Ctx.Request.Context()
-
+	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
 
@@ -395,12 +391,11 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
-
+	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
 
-	pkgapp.NoteModifyLog(c.User.UID, "NoteSync", "", params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteSync", "", params.Vault)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -601,7 +596,8 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 //   - error: 查询过程中的错误（若有）。
 func (h *NoteWSHandler) UserInfo(c *pkgapp.WebsocketClient, uid int64) (*pkgapp.UserSelectEntity, error) {
 
-	ctx := c.Ctx.Request.Context()
+	// 使用 WebSocket 连接的长生命周期 context
+	ctx := c.Context()
 	user, err := h.App.UserService.GetInfo(ctx, uid)
 
 	var userEntity *pkgapp.UserSelectEntity

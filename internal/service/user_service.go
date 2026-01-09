@@ -12,6 +12,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -210,6 +211,10 @@ func (s *userService) GetInfo(ctx context.Context, uid int64) (*UserDTO, error) 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
+		global.Logger.Error("UserService.GetInfo failed",
+			zap.Int64("uid", uid),
+			zap.Error(err),
+		)
 		return nil, code.ErrorDBQuery
 	}
 	return s.domainToDTO(user), nil
