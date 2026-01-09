@@ -15,7 +15,7 @@ var (
 )
 
 type config struct {
-	File     string
+	File     string          `yaml:"-"`
 	Server   server          `yaml:"server"`
 	Log      LogConfig       `yaml:"log"`
 	Database Database        `yaml:"database"`
@@ -53,7 +53,6 @@ type server struct {
 }
 
 type security struct {
-	AuthToken    string `yaml:"auth-token"`
 	AuthTokenKey string `yaml:"auth-token-key"`
 }
 
@@ -89,6 +88,7 @@ type Database struct {
 type user struct {
 	// 注册是否启用
 	RegisterIsEnable bool `yaml:"register-is-enable"`
+	AdminUID         int  `yaml:"admin-uid"`
 }
 
 type app struct {
@@ -98,10 +98,6 @@ type app struct {
 	MaxPageSize int `yaml:"max-page-size"`
 	// 默认上下文超时时间
 	DefaultContextTimeout int `yaml:"default-context-timeout"`
-	// 日志保存路径
-	LogSavePath string `yaml:"log-save-fileurl"`
-	// 日志文件名
-	LogFile string `yaml:"log-file"`
 
 	// 上传临时路径
 	TempPath string `yaml:"temp-path"`
@@ -120,17 +116,6 @@ type app struct {
 
 	// 文件分片大小(支持单位: MB, KB, B), 默认 512KB
 	FileChunkSize string `yaml:"file-chunk-size"`
-}
-
-type email struct {
-	ErrorReportEnable bool     `yaml:"error-report-enable"`
-	Host              string   `yaml:"host"`
-	Port              int      `yaml:"port"`
-	UserName          string   `yaml:"username"`
-	Password          string   `yaml:"password"`
-	IsSSL             bool     `yaml:"is-ssl"`
-	From              string   `yaml:"from"`
-	To                []string `yaml:"to"`
 }
 
 type webGUI struct {
