@@ -111,6 +111,9 @@ func NewRouter(frontendFiles embed.FS) *gin.Engine {
 		api.GET("/version", api_router.NewVersion().ServerVersion)
 		api.GET("/webgui/config", api_router.NewWebGUI().Config)
 
+		api.Use(middleware.UserAuthToken()).GET("/admin/config", api_router.NewWebGUI().GetConfig)
+		api.Use(middleware.UserAuthToken()).POST("/admin/config", api_router.NewWebGUI().UpdateConfig)
+
 		api.Use(middleware.UserAuthToken()).POST("/user/change_password", api_router.NewUser().UserChangePassword)
 		api.Use(middleware.UserAuthToken()).GET("/user/info", api_router.NewUser().UserInfo)
 		api.Use(middleware.UserAuthToken()).GET("/vault", api_router.NewVault().List)
