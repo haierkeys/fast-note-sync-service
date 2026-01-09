@@ -78,8 +78,9 @@ type WebSocketMessage struct {
 }
 
 type ClientInfoMessage struct {
-	Name    string `json:"name"`    // 客户端名称
-	Version string `json:"version"` // 客户端版本
+	Name                string `json:"name"`                // 客户端名称
+	Version             string `json:"version"`             // 客户端版本
+	OfflineSyncStrategy string `json:"offlineSyncStrategy"` // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 }
 
 type WSConfig struct {
@@ -439,6 +440,8 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 
 	c.ClientName = info.Name
 	c.ClientVersion = info.Version
+	c.OfflineSyncStrategy = info.OfflineSyncStrategy
+	c.DiffMergePaths = make(map[string]any)
 
 	log(LogInfo, "WS ClientInfo", zap.String("uid", func() string {
 		if c.User != nil {
@@ -486,7 +489,7 @@ func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	log(LogInfo, "WS Client Connect", zap.Int("Count", len(w.clients)))
-	//_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {

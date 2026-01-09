@@ -32,15 +32,16 @@ func NoteHistoryDelayPush(noteID int64, uid int64) {
 
 // NoteHistory 笔记历史记录展示结构体
 type NoteHistory struct {
-	ID         int64                 `json:"id" form:"id"`
-	NoteID     int64                 `json:"noteId" form:"noteId"`
-	VaultID    int64                 `json:"vaultId" form:"vaultId"`
-	Path       string                `json:"path" form:"path"`
-	Diffs      []diffmatchpatch.Diff `json:"diffs"`
-	Content    string                `json:"content" form:"content"`
-	ClientName string                `json:"clientName" form:"clientName"`
-	Version    int64                 `json:"version" form:"version"`
-	CreatedAt  timex.Time            `json:"createdAt" form:"createdAt"`
+	ID          int64                 `json:"id" form:"id"`
+	NoteID      int64                 `json:"noteId" form:"noteId"`
+	VaultID     int64                 `json:"vaultId" form:"vaultId"`
+	Path        string                `json:"path" form:"path"`
+	Diffs       []diffmatchpatch.Diff `json:"diffs"`
+	Content     string                `json:"content" form:"content"`
+	ContentHash string                `json:"contentHash" form:"contentHash"`
+	ClientName  string                `json:"clientName" form:"clientName"`
+	Version     int64                 `json:"version" form:"version"`
+	CreatedAt   timex.Time            `json:"createdAt" form:"createdAt"`
 }
 
 type NoteHistoryNoContent struct {
@@ -122,15 +123,50 @@ func (svc *Service) NoteHistoryGet(uid int64, id int64) (*NoteHistory, error) {
 	diffResults := dmp.DiffMain(history.Content, restoredNewVersion, false)
 
 	historySvc := &NoteHistory{
-		ID:         history.ID,
-		NoteID:     history.NoteID,
-		VaultID:    history.VaultID,
-		Path:       history.Path,
-		Diffs:      diffResults,
-		Content:    history.Content,
-		ClientName: history.ClientName,
-		Version:    history.Version,
-		CreatedAt:  history.CreatedAt,
+		ID:          history.ID,
+		NoteID:      history.NoteID,
+		VaultID:     history.VaultID,
+		Path:        history.Path,
+		Diffs:       diffResults,
+		Content:     history.Content,
+		ContentHash: history.ContentHash,
+		ClientName:  history.ClientName,
+		Version:     history.Version,
+		CreatedAt:   history.CreatedAt,
+	}
+
+	return historySvc, nil
+}
+
+// NoteHistoryGetByNoteIdAndHash 获取指定 NoteID 和 ContentHash 的笔记历史详情
+func (svc *Service) NoteHistoryGetByNoteIdAndHash(uid int64, noteId int64, contentHash string) (*NoteHistory, error) {
+	history, err := svc.dao.NoteHistoryGetByNoteIdAndHash(noteId, contentHash, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	if history == nil {
+		return nil, nil
+	}
+
+	dmp := diffmatchpatch.New()
+
+	parsedPatches, _ := dmp.PatchFromText(history.DiffPatch)
+	restoredNewVersion, _ := dmp.PatchApply(parsedPatches, history.Content)
+
+	diffResults := dmp.DiffMain(history.Content, restoredNewVersion, false)
+
+	historySvc := &NoteHistory{
+		ID:          history.ID,
+		NoteID:      history.NoteID,
+		VaultID:     history.VaultID,
+		Path:        history.Path,
+		Diffs:       diffResults,
+		Content:     history.Content,
+		ContentHash: history.ContentHash,
+		ClientName:  history.ClientName,
+		Version:     history.Version,
+		CreatedAt:   history.CreatedAt,
 	}
 
 	return historySvc, nil

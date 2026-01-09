@@ -12,16 +12,17 @@ import (
 )
 
 type NoteHistory struct {
-	ID         int64      `json:"id" form:"id"`
-	NoteID     int64      `json:"noteId" form:"noteId"`
-	VaultID    int64      `json:"vaultId" form:"vaultId"`
-	Path       string     `json:"path" form:"path"`
-	DiffPatch  string     `json:"diffPatch" form:"diffPatch"`
-	Content    string     `json:"content" form:"content"`
-	ClientName string     `json:"clientName" form:"clientName"`
-	Version    int64      `json:"version" form:"version"`
-	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
-	UpdatedAt  timex.Time `json:"updatedAt" form:"updatedAt"`
+	ID          int64      `json:"id" form:"id"`
+	NoteID      int64      `json:"noteId" form:"noteId"`
+	VaultID     int64      `json:"vaultId" form:"vaultId"`
+	Path        string     `json:"path" form:"path"`
+	DiffPatch   string     `json:"diffPatch" form:"diffPatch"`
+	Content     string     `json:"content" form:"content"`
+	ContentHash string     `json:"contentHash" form:"contentHash"`
+	ClientName  string     `json:"clientName" form:"clientName"`
+	Version     int64      `json:"version" form:"version"`
+	CreatedAt   timex.Time `json:"createdAt" form:"createdAt"`
+	UpdatedAt   timex.Time `json:"updatedAt" form:"updatedAt"`
 }
 
 type NoteHistorySet struct {
@@ -38,7 +39,7 @@ type NoteHistorySet struct {
 }
 
 func (d *Dao) noteHistory(uid int64) *query.Query {
-	key := "user_note_history" + strconv.FormatInt(uid, 10)
+	key := "user_note_history_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
 	}, key+"#noteHistory", key)
@@ -119,6 +120,20 @@ func (d *Dao) NoteHistoryGetLatestVersion(noteId int64, uid int64) (int64, error
 		return 0, err
 	}
 	return m.Version, nil
+}
+
+func (d *Dao) NoteHistoryGetByNoteIdAndHash(noteId int64, contentHash string, uid int64) (*NoteHistory, error) {
+	u := d.noteHistory(uid).NoteHistory
+	m, err := u.WithContext(d.ctx).Where(u.NoteID.Eq(noteId), u.ContentHash.Eq(contentHash)).First()
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
+	d.fillHistoryContent(uid, res)
+	return res, nil
 }
 
 func (d *Dao) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {

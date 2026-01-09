@@ -8,7 +8,7 @@ import (
 
 // lang 类型，用来存储英文和中文文本
 type lang struct {
-	en string // 英文
+	en    string // 英文
 	zh_cn string // 中文
 }
 

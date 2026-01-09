@@ -65,6 +65,9 @@ air:
 fmt:
 	go fmt ./...
 
+update:
+	go get -u ./...
+
 # 更新版本脚本调用
 ver:
 	@node ./scripts/update-version.js $(filter-out $@,$(MAKECMDGOALS))
