@@ -7,7 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UserAuthToken() gin.HandlerFunc {
+// UserAuthTokenWithConfig 用户 Token 认证中间件（使用注入的密钥）
+func UserAuthTokenWithConfig(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var token string
 		response := app.NewResponse(c)
@@ -33,15 +34,23 @@ func UserAuthToken() gin.HandlerFunc {
 		if token == "" {
 			response.ToResponse(code.ErrorNotUserAuthToken)
 			c.Abort()
+			return
+		}
+
+		if user, err := app.ParseTokenWithKey(token, secretKey); err != nil {
+			response.ToResponse(code.ErrorInvalidUserAuthToken)
+			c.Abort()
+			return
 		} else {
-			if user, err := app.ParseToken(token); err != nil {
-				response.ToResponse(code.ErrorInvalidUserAuthToken)
-				c.Abort()
-			} else {
-				c.Set("user_token", user)
-			}
+			c.Set("user_token", user)
 		}
 
 		c.Next()
 	}
+}
+
+// UserAuthToken 用户 Token 认证中间件（无密钥，始终失败）
+// Deprecated: 推荐使用 UserAuthTokenWithConfig
+func UserAuthToken() gin.HandlerFunc {
+	return UserAuthTokenWithConfig("")
 }

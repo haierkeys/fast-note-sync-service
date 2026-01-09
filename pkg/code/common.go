@@ -11,6 +11,7 @@ var (
 
 	ErrorServerInternal       = NewError(500, lang{zh_cn: "服务器内部错误", en: "Server Internal Error"}, true)
 	ErrorDBQuery              = NewError(501, lang{zh_cn: "数据库查询失败", en: "Database query failed"}, true)
+	ErrorServerBusy           = NewError(502, lang{zh_cn: "服务器繁忙，请稍后重试", en: "Server busy, please try again later"}, true)
 	ErrorTooManyRequests      = NewError(503, lang{zh_cn: "请求过多", en: "Too Many Requests"}, true)
 	ErrorNotFoundAPI          = NewError(504, lang{zh_cn: "找不到API", en: "Not Found API"}, true)
 	ErrorInvalidParams        = NewError(505, lang{zh_cn: "参数验证失败", en: "Invalid Params"})

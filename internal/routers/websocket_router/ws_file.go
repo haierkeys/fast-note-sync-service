@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -207,6 +206,14 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 // FileUploadChunkBinary 处理文件分块上传的二进制数据。
 func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []byte) {
+	// 检查 context 是否已取消（连接可能已关闭）
+	select {
+	case <-c.Context().Done():
+		h.logInfo(c, "FileUploadChunkBinary: context cancelled, skipping chunk processing")
+		return
+	default:
+	}
+
 	if len(data) < 40 {
 		h.logError(c, "websocket_router.file.FileUploadChunkBinary", fmt.Errorf("invalid data length: %d", len(data)))
 		return
@@ -402,7 +409,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// 创建下载会话
 	sessionID := uuid.New().String()
-	chunkSize := getChunkSize() // 从配置获取
+	chunkSize := getChunkSizeFromConfig(h.App.Config()) // 从注入的配置获取
 
 	// 计算总分块数
 	totalChunks := util.Ceil(fileSvc.Size, chunkSize)
@@ -431,8 +438,8 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 	// 发送下载准备消息
 	c.ToResponse(code.Success.WithData(fileDownloadMessage), "FileSyncChunkDownload")
 
-	// 启动分片发送,传入超时时间
-	go handleFileChunkDownloadSendChunks(c, session)
+	// 启动分片发送,传入超时时间和 logger
+	go h.handleFileChunkDownloadSendChunks(c, session)
 }
 
 // FileSync 批量检测用户文件是否需要更新。
@@ -533,7 +540,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
 						fileUploadMessage, ferr := h.handleFileUploadSessionCreate(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
 						if ferr != nil {
-							global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
+							h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
 							continue
 						}
 						// 将消息添加到队列而非立即发送
@@ -589,7 +596,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// 创建上传会话并返回 FileUpload 消息
 			fileUploadMessage, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, 0, file.Mtime)
 			if ferr != nil {
-				global.Logger.Error("websocket_router.file.FileSync handleFileUploadSession err", zap.Error(ferr))
+				h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
 				continue
 			}
 			// 将消息添加到队列而非立即发送
@@ -650,7 +657,7 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 		select {
 		case <-timer.C:
 			// 超时触发，清理会话
-			LogWarnWithTrace(c, "startSessionTimeout: session timeout, cleaning up",
+			h.logWarn(c, "startSessionTimeout: session timeout, cleaning up",
 				zap.String("sessionID", sessionID),
 				zap.Duration("timeout", timeout))
 
@@ -668,7 +675,8 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 // handleFileUploadSession 初始化一个文件上传会话并返回上传消息。
 func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient, vault, path, pathHash, contentHash string, size, ctime, mtime int64) (*FileUploadMessage, error) {
 	sessionID := uuid.New().String()
-	tempDir := global.Config.App.TempPath
+	cfg := h.App.Config()
+	tempDir := cfg.App.TempPath
 	if tempDir == "" {
 		tempDir = "storage/temp"
 	}
@@ -707,7 +715,7 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		Size:        size,
 		Ctime:       ctime,
 		Mtime:       mtime,
-		ChunkSize:   getChunkSize(), // 从配置获取
+		ChunkSize:   getChunkSizeFromConfig(cfg), // 从注入的配置获取
 		SavePath:    tempPath,
 		FileHandle:  file,
 		CreatedAt:   time.Now(),
@@ -717,12 +725,12 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 
 	// 配置超时时间
 	var timeout time.Duration
-	if global.Config.App.UploadSessionTimeout != "" && global.Config.App.UploadSessionTimeout != "0" {
+	if cfg.App.UploadSessionTimeout != "" && cfg.App.UploadSessionTimeout != "0" {
 		var err error
-		timeout, err = util.ParseDuration(global.Config.App.UploadSessionTimeout)
+		timeout, err = util.ParseDuration(cfg.App.UploadSessionTimeout)
 		if err != nil {
-			LogWarnWithTrace(c, "handleFileUploadSession: invalid upload-session-timeout config, using default 20m",
-				zap.String("config", global.Config.App.UploadSessionTimeout),
+			h.logWarn(c, "handleFileUploadSession: invalid upload-session-timeout config, using default 20m",
+				zap.String("config", cfg.App.UploadSessionTimeout),
 				zap.Error(err))
 			timeout = 20 * time.Minute
 		}
@@ -745,9 +753,10 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 	}, nil
 }
 
-// sendFileChunks 执行文件分片发送。
+// handleFileChunkDownloadSendChunks 执行文件分片发送。
 // 在独立的 goroutine 中运行,读取文件并通过 WebSocket 发送二进制分片。
-func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileDownloadChunkSession) {
+func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileDownloadChunkSession) {
+	logger := h.App.Logger()
 	// 创建超时上下文，基于 WebSocket 连接的 context
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
 	defer cancel()
@@ -755,16 +764,13 @@ func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileD
 	// 打开文件
 	file, err := os.Open(session.SavePath)
 	if err != nil {
-		global.Logger.Error("sendFileChunks: failed to open file",
-			zap.String("sessionID", session.SessionID),
-			zap.String("path", session.SavePath),
-			zap.Error(err))
+		LogErrorWithLogger(logger, c, "sendFileChunks: failed to open file", err)
 		c.ToResponse(code.ErrorFileGetFailed.WithDetails("failed to open file"))
 		return
 	}
 	defer file.Close()
 
-	global.Logger.Info("sendFileChunks: starting file download",
+	LogInfoWithLogger(logger, c, "sendFileChunks: starting file download",
 		zap.String("sessionID", session.SessionID),
 		zap.String("path", session.Path),
 		zap.Int64("size", session.Size),
@@ -775,7 +781,7 @@ func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileD
 		// 检查超时
 		select {
 		case <-ctx.Done():
-			global.Logger.Warn("sendFileChunks: download timeout",
+			LogWarnWithLogger(logger, c, "sendFileChunks: download timeout",
 				zap.String("sessionID", session.SessionID),
 				zap.Int64("sentChunks", chunkIndex),
 				zap.Int64("totalChunks", session.TotalChunks))
@@ -795,10 +801,7 @@ func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileD
 		chunkData := make([]byte, currentChunkSize)
 		n, err := file.ReadAt(chunkData, chunkStart)
 		if err != nil && err.Error() != "EOF" {
-			global.Logger.Error("sendFileChunks: failed to read chunk",
-				zap.String("sessionID", session.SessionID),
-				zap.Int64("chunkIndex", chunkIndex),
-				zap.Error(err))
+			LogErrorWithLogger(logger, c, "sendFileChunks: failed to read chunk", err)
 			c.ToResponse(code.ErrorFileGetFailed.WithDetails("failed to read file chunk"))
 			return
 		}
@@ -820,33 +823,30 @@ func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileD
 		// 发送二进制消息
 		err = c.SendBinary(VaultFileSync, packet)
 		if err != nil {
-			global.Logger.Error("sendFileChunks: failed to send chunk",
-				zap.String("sessionID", session.SessionID),
-				zap.Int64("chunkIndex", chunkIndex),
-				zap.Error(err))
+			LogErrorWithLogger(logger, c, "sendFileChunks: failed to send chunk", err)
 			return
 		}
 
 		// 每发送 100 个分片记录一次日志
 		if (chunkIndex+1)%100 == 0 || chunkIndex == session.TotalChunks-1 {
-			global.Logger.Info("sendFileChunks: progress",
+			LogInfoWithLogger(logger, c, "sendFileChunks: progress",
 				zap.String("sessionID", session.SessionID),
 				zap.Int64("sent", chunkIndex+1),
 				zap.Int64("total", session.TotalChunks))
 		}
 	}
 
-	global.Logger.Info("sendFileChunks: download completed",
+	LogInfoWithLogger(logger, c, "sendFileChunks: download completed",
 		zap.String("sessionID", session.SessionID),
 		zap.String("path", session.Path),
 		zap.Int64("totalChunks", session.TotalChunks))
 }
 
-// getChunkSize 获取配置的分片大小, 默认为 1MB
-func getChunkSize() int64 {
-	// 从全局配置中读取文件分片大小的设置字符串
-	sizeStr := global.Config.App.FileChunkSize
-	// 如果配置为空，则直接按照默认值 1MB 处理
+// getChunkSizeFromConfig 从注入的配置获取分片大小, 默认为 512KB
+func getChunkSizeFromConfig(cfg *app.AppConfig) int64 {
+	// 从配置中读取文件分片大小的设置字符串
+	sizeStr := cfg.App.FileChunkSize
+	// 如果配置为空，则直接按照默认值 512KB 处理
 	if sizeStr == "" {
 		return 1024 * 512 // 默认 512KB
 	}

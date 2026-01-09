@@ -2,7 +2,6 @@ package api_router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -30,9 +29,10 @@ type webGUIConfig struct {
 // Config 获取 WebGUI 配置
 func (h *WebGUIHandler) Config(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
 	data := webGUIConfig{
-		FontSet:          global.Config.WebGUI.FontSet,
-		RegisterIsEnable: global.Config.User.RegisterIsEnable,
+		FontSet:          cfg.WebGUI.FontSet,
+		RegisterIsEnable: cfg.User.RegisterIsEnable,
 	}
 	response.ToResponse(code.Success.WithData(data))
 }

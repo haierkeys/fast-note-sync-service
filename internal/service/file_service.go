@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -81,6 +80,7 @@ type fileService struct {
 	fileRepo     domain.FileRepository
 	vaultService VaultService
 	sf           *singleflight.Group
+	config       *ServiceConfig
 
 	// 清理相关
 	lastCleanupTime time.Time
@@ -88,11 +88,12 @@ type fileService struct {
 }
 
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, vaultSvc VaultService) FileService {
+func NewFileService(fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) FileService {
 	return &fileService{
 		fileRepo:     fileRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
+		config:       config,
 	}
 }
 
@@ -334,7 +335,10 @@ func (s *fileService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 
 // Cleanup 清理过期的软删除文件
 func (s *fileService) Cleanup(ctx context.Context, uid int64) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}
@@ -354,7 +358,10 @@ func (s *fileService) Cleanup(ctx context.Context, uid int64) error {
 
 // CleanupAll 清理所有用户的过期软删除文件
 func (s *fileService) CleanupAll(ctx context.Context) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}

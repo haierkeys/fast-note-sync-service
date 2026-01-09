@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/haierkeys/fast-note-sync-service/global"
 )
 
 const (
@@ -18,21 +17,23 @@ const (
 	TraceIDKey = "trace_id"
 )
 
-// TraceMiddleware 创建请求追踪中间件
+// TraceMiddlewareWithConfig 创建请求追踪中间件（使用注入的配置）
 // 功能：
 // 1. 从请求头获取或生成唯一的 Trace ID
 // 2. 将 Trace ID 注入到 gin.Context 和 request.Context
 // 3. 在响应头中返回 Trace ID
-func TraceMiddleware() gin.HandlerFunc {
+func TraceMiddlewareWithConfig(enabled bool, headerName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 检查是否启用追踪
-		if global.Config != nil && !global.Config.Tracer.Enabled {
+		if !enabled {
 			c.Next()
 			return
 		}
 
 		// 获取配置的请求头名称
-		headerName := getTraceIDHeader()
+		if headerName == "" {
+			headerName = DefaultTraceIDHeader
+		}
 
 		// 尝试从请求头获取 Trace ID
 		traceID := c.GetHeader(headerName)
@@ -55,6 +56,12 @@ func TraceMiddleware() gin.HandlerFunc {
 	}
 }
 
+// TraceMiddleware 创建请求追踪中间件（默认启用）
+// Deprecated: 推荐使用 TraceMiddlewareWithConfig
+func TraceMiddleware() gin.HandlerFunc {
+	return TraceMiddlewareWithConfig(true, DefaultTraceIDHeader)
+}
+
 // generateTraceID 生成唯一的 Trace ID
 // 格式: {timestamp_nano}-{random_hex}
 func generateTraceID() string {
@@ -68,14 +75,6 @@ func generateTraceID() string {
 	return fmt.Sprintf("%d-%s",
 		time.Now().UnixNano(),
 		hex.EncodeToString(randomBytes)[:8])
-}
-
-// getTraceIDHeader 获取配置的 Trace ID 请求头名称
-func getTraceIDHeader() string {
-	if global.Config != nil && global.Config.Tracer.Header != "" {
-		return global.Config.Tracer.Header
-	}
-	return DefaultTraceIDHeader
 }
 
 // GetTraceID 从 context.Context 获取 Trace ID

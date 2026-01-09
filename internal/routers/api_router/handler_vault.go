@@ -36,7 +36,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("VaultHandler.CreateOrUpdate.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("VaultHandler.CreateOrUpdate.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -44,7 +44,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("VaultHandler.CreateOrUpdate err uid=0")
+		h.App.Logger().Error("VaultHandler.CreateOrUpdate err uid=0")
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
@@ -84,7 +84,7 @@ func (h *VaultHandler) Get(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("VaultHandler.Get.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("VaultHandler.Get.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -112,7 +112,7 @@ func (h *VaultHandler) List(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("VaultHandler.List err uid=0")
+		h.App.Logger().Error("VaultHandler.List err uid=0")
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
@@ -138,7 +138,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("VaultHandler.Delete.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("VaultHandler.Delete.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -146,7 +146,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("VaultHandler.Delete err uid=0")
+		h.App.Logger().Error("VaultHandler.Delete err uid=0")
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
@@ -167,7 +167,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 // logError 记录错误日志，包含 Trace ID
 func (h *VaultHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
-	h.App.Logger.Error(method,
+	h.App.Logger().Error(method,
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)

@@ -123,8 +123,15 @@ func init() {
 			quit1 := make(chan os.Signal, 1)
 			signal.Notify(quit1, syscall.SIGINT, syscall.SIGTERM)
 			<-quit1
+			s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
 			s.sc.SendCloseSignal(nil)
-			s.logger.Info("api service has been shut down.")
+			
+			// 等待所有关闭处理器完成（包括 App Container 的优雅关闭）
+			if err := s.sc.WaitClosed(); err != nil {
+				s.logger.Error("Shutdown completed with error", zap.Error(err))
+			} else {
+				s.logger.Info("Service has been shut down gracefully.")
+			}
 
 		},
 	}

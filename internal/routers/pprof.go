@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 const (
@@ -17,21 +17,22 @@ const (
 	DefaultPrefix = "/debug/pprof"
 )
 
-func NewPrivateRouter() *gin.Engine {
+// NewPrivateRouterWithLogger 创建私有路由（使用注入的日志器）
+func NewPrivateRouterWithLogger(runMode string, logger *zap.Logger) *gin.Engine {
 
 	r := gin.New()
 
-	if global.Config.Server.RunMode == "debug" {
+	if runMode == "debug" {
 		r.Use(gin.Recovery())
 	} else {
-		r.Use(middleware.Recovery())
+		r.Use(middleware.RecoveryWithLogger(logger))
 	}
 
 	// prom监控
 	r.GET("/debug/vars", api_router.Expvar)
 	r.GET("metrics", gin.WrapH(promhttp.Handler()))
 
-	if global.Config.Server.RunMode == "debug" {
+	if runMode == "debug" {
 		p := r.Group("pprof")
 		{
 			p.GET("/", pprofHandler(pprof.Index))
@@ -50,6 +51,18 @@ func NewPrivateRouter() *gin.Engine {
 	}
 
 	return r
+}
+
+// NewPrivateRouterWithConfig 创建私有路由（使用注入的配置，使用 nop logger）
+// Deprecated: 推荐使用 NewPrivateRouterWithLogger
+func NewPrivateRouterWithConfig(runMode string) *gin.Engine {
+	return NewPrivateRouterWithLogger(runMode, zap.NewNop())
+}
+
+// NewPrivateRouter 创建私有路由（使用默认 release 模式）
+// Deprecated: 推荐使用 NewPrivateRouterWithLogger
+func NewPrivateRouter() *gin.Engine {
+	return NewPrivateRouterWithConfig("release")
 }
 
 func pprofHandler(h http.HandlerFunc) gin.HandlerFunc {

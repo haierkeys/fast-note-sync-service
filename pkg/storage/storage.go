@@ -3,7 +3,6 @@ package storage
 import (
 	"io"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/storage/local_fs"
 )
@@ -35,23 +34,23 @@ func NewClient(cType Type, config map[string]any) (Storager, error) {
 	return nil, code.ErrorInvalidStorageType
 }
 
-func IsUserEnabled(cType Type) error {
-
+// IsUserEnabledWithConfig 检查存储类型是否启用（使用注入的配置）
+func IsUserEnabledWithConfig(cType Type, localFSEnabled bool) error {
 	// 检查云存储类型是否有效
 	if !StorageTypeMap[cType] {
 		return code.ErrorInvalidCloudStorageType
 	}
 
-	if cType == LOCAL && !global.Config.LocalFS.IsEnabled {
+	if cType == LOCAL && !localFSEnabled {
 		return code.ErrorUserLocalFSDisabled
 	}
 	return nil
 }
 
-func GetIsUserEnabledStorageTypes() []CloudType {
-
+// GetEnabledStorageTypesWithConfig 获取启用的存储类型（使用注入的配置）
+func GetEnabledStorageTypesWithConfig(localFSEnabled bool) []CloudType {
 	var list []CloudType
-	if global.Config.LocalFS.IsEnabled {
+	if localFSEnabled {
 		list = append(list, LOCAL)
 	}
 	return list

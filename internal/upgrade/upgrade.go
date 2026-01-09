@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
+
 	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 	"gorm.io/gorm"
@@ -31,21 +31,39 @@ func (SchemaVersion) TableName() string {
 type Migration interface {
 	Version() string
 	Description() string
-	Up(db *gorm.DB, ctx context.Context) error
+	Up(db *gorm.DB, ctx context.Context, mc *MigrationContext) error
+}
+
+// MigrationContext 迁移上下文，包含迁移脚本需要的依赖
+type MigrationContext struct {
+	Logger       *zap.Logger
+	DatabasePath string // 数据库文件路径（用于 SQLite）
+	DatabaseType string // 数据库类型
 }
 
 // MigrationManager 升级管理器
 type MigrationManager struct {
 	db         *gorm.DB
 	logger     *zap.Logger
+	version    string // 当前运行版本
+	dbPath     string // 数据库路径
+	dbType     string // 数据库类型
 	migrations []Migration
 }
 
 // NewMigrationManager 创建升级管理器
-func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
+// db: 数据库连接（必须）
+// logger: 日志器（必须）
+// version: 当前运行版本（必须）
+// dbPath: 数据库文件路径（SQLite 需要）
+// dbType: 数据库类型
+func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version, dbPath, dbType string) *MigrationManager {
 	return &MigrationManager{
-		db:     db,
-		logger: logger,
+		db:      db,
+		logger:  logger,
+		version: version,
+		dbPath:  dbPath,
+		dbType:  dbType,
 		migrations: []Migration{
 			// 在这里注册所有的升级脚本
 			&VaultMigrate{},
@@ -57,7 +75,7 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
 // Run 执行升级
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
-	dbUtils := service.NewDBUtils(ctx)
+	dbUtils := service.NewDBUtils(m.db, ctx)
 	err := dbUtils.ExposeAutoMigrate()
 	if err != nil {
 		return fmt.Errorf("dbUtils.ExposeAutoMigrate: %w", err)
@@ -87,14 +105,14 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 
 	m.logger.Info("LastVersion", zap.String("lastVersion", lastVersion))
 
-	// [NEW] 如果当前 global.Version 与 config/lastVersion 一致，则跳过后续检查
+	// 如果当前 version 与 config/lastVersion 一致，则跳过后续检查
 	// 这意味着在当前版本下已经运行过一次升级逻辑(无论是执行了还是跳过了)
 	// 避免每次重启都进行不必要的数据库查询或日志输出
-	runningVersion := global.Version
+	runningVersion := m.version
 	if !strings.HasPrefix(runningVersion, "v") {
 		runningVersion = "v" + runningVersion
 	}
-	// [NEW] 如果 runningVersion <= lastVersion，则跳过
+	// 如果 runningVersion <= lastVersion，则跳过
 	// 意味着当前版本没有比上一次运行的版本更新，不需要执行升级检查
 	if semver.Compare(runningVersion, lastVersion) <= 0 {
 		m.logger.Info("skipping upgrade", zap.String("runningVersion", runningVersion), zap.String("lastVersion", lastVersion))
@@ -135,8 +153,14 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 
 		// 在事务中执行升级
 		if err := m.db.Transaction(func(tx *gorm.DB) error {
+			// 创建迁移上下文
+			mc := &MigrationContext{
+				Logger:       m.logger,
+				DatabasePath: m.dbPath,
+				DatabaseType: m.dbType,
+			}
 			// 执行升级脚本
-			if err := migration.Up(tx, context.Background()); err != nil {
+			if err := migration.Up(tx, context.Background(), mc); err != nil {
 				return fmt.Errorf("migration failed: %w", err)
 			}
 
@@ -165,13 +189,13 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 		m.logger.Info("upgrade completed", zap.Int("migrations_applied", executed))
 	}
 
-	// 无论是否执行了升级，最后将当前 global.Version 写入 config/lastVersion
+	// 无论是否执行了升级，最后将当前 version 写入 config/lastVersion
 	// 作为下一次运行的基准
-	if err := m.saveReferenceVersion(global.Version); err != nil {
+	if err := m.saveReferenceVersion(m.version); err != nil {
 		m.logger.Error("save lastVersion failed", zap.Error(err))
 		// 记录错误但不阻断启动
 	} else {
-		m.logger.Info("save lastVersion success", zap.String("ver", global.Version))
+		m.logger.Info("save lastVersion success", zap.String("ver", m.version))
 	}
 
 	return nil
@@ -224,28 +248,19 @@ func (m *MigrationManager) saveReferenceVersion(version string) error {
 }
 
 // Execute 执行升级(便捷方法)
-func Execute() error {
-	defer func() {
-		if r := recover(); r != nil {
-			if global.Logger != nil {
-				global.Logger.Error("upgrade Execute panic",
-					zap.Any("panic", r),
-					zap.Stack("stack"))
-			} else {
-				fmt.Printf("upgrade Execute panic: %v\n", r)
-			}
-		}
-	}()
-	if global.DBEngine == nil {
+// db: 数据库连接
+// logger: 日志器
+// version: 当前运行版本
+// dbPath: 数据库文件路径
+// dbType: 数据库类型
+func Execute(db *gorm.DB, logger *zap.Logger, version, dbPath, dbType string) error {
+	if db == nil {
 		return fmt.Errorf("database not initialized")
 	}
-
-	if global.Logger == nil {
+	if logger == nil {
 		return fmt.Errorf("logger not initialized")
 	}
 
-	ctx := context.Background()
-
-	manager := NewMigrationManager(global.DBEngine, global.Logger)
-	return manager.Run(ctx)
+	manager := NewMigrationManager(db, logger, version, dbPath, dbType)
+	return manager.Run(context.Background())
 }

@@ -94,60 +94,77 @@ func (r *vaultRepository) GetByName(ctx context.Context, name string, uid int64)
 
 // Create 创建仓库
 func (r *vaultRepository) Create(ctx context.Context, vault *domain.Vault, uid int64) (*domain.Vault, error) {
-	u := r.vault(uid).Vault
-	m := &model.Vault{
-		Vault:     vault.Name,
-		NoteCount: vault.NoteCount,
-		NoteSize:  vault.NoteSize,
-		FileCount: vault.FileCount,
-		FileSize:  vault.FileSize,
-		IsDeleted: 0,
-		CreatedAt: timex.Now(),
-		UpdatedAt: timex.Now(),
-	}
+	var result *domain.Vault
+	var createErr error
 
-	err := u.WithContext(ctx).Create(m)
+	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Vault
+		m := &model.Vault{
+			Vault:     vault.Name,
+			NoteCount: vault.NoteCount,
+			NoteSize:  vault.NoteSize,
+			FileCount: vault.FileCount,
+			FileSize:  vault.FileSize,
+			IsDeleted: 0,
+			CreatedAt: timex.Now(),
+			UpdatedAt: timex.Now(),
+		}
+
+		createErr = u.WithContext(ctx).Create(m)
+		if createErr != nil {
+			return createErr
+		}
+		result = r.toDomain(m)
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m), nil
+	return result, createErr
 }
 
 // Update 更新仓库
 func (r *vaultRepository) Update(ctx context.Context, vault *domain.Vault, uid int64) error {
-	u := r.vault(uid).Vault
-	m := r.toModel(vault)
-	m.UpdatedAt = timex.Now()
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Vault
+		m := r.toModel(vault)
+		m.UpdatedAt = timex.Now()
 
-	return u.WithContext(ctx).Where(u.ID.Eq(vault.ID)).Save(m)
+		return u.WithContext(ctx).Where(u.ID.Eq(vault.ID)).Save(m)
+	})
 }
 
 // UpdateNoteCountSize 更新仓库的笔记数量和大小
 func (r *vaultRepository) UpdateNoteCountSize(ctx context.Context, noteSize, noteCount, vaultID, uid int64) error {
-	u := r.vault(uid).Vault
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Vault
 
-	_, err := u.WithContext(ctx).Where(
-		u.ID.Eq(vaultID),
-	).UpdateSimple(
-		u.NoteSize.Value(noteSize),
-		u.NoteCount.Value(noteCount),
-		u.UpdatedAt.Value(timex.Now()),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(vaultID),
+		).UpdateSimple(
+			u.NoteSize.Value(noteSize),
+			u.NoteCount.Value(noteCount),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
 }
 
 // UpdateFileCountSize 更新仓库的文件数量和大小
 func (r *vaultRepository) UpdateFileCountSize(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error {
-	u := r.vault(uid).Vault
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Vault
 
-	_, err := u.WithContext(ctx).Where(
-		u.ID.Eq(vaultID),
-	).UpdateSimple(
-		u.FileSize.Value(fileSize),
-		u.FileCount.Value(fileCount),
-		u.UpdatedAt.Value(timex.Now()),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(vaultID),
+		).UpdateSimple(
+			u.FileSize.Value(fileSize),
+			u.FileCount.Value(fileCount),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
 }
 
 // List 获取仓库列表
@@ -174,14 +191,16 @@ func (r *vaultRepository) List(ctx context.Context, uid int64) ([]*domain.Vault,
 
 // Delete 删除仓库（软删除）
 func (r *vaultRepository) Delete(ctx context.Context, id, uid int64) error {
-	u := r.vault(uid).Vault
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Vault
 
-	_, err := u.WithContext(ctx).Where(
-		u.ID.Eq(id),
-	).UpdateSimple(
-		u.IsDeleted.Value(1),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.IsDeleted.Value(1),
+		)
+		return err
+	})
 }
 
 // 确保 vaultRepository 实现了 domain.VaultRepository 接口

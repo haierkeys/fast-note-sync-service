@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
@@ -40,7 +39,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("NoteHandler.Get.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("NoteHandler.Get.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -48,7 +47,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("NoteHandler.Get err uid=0")
+		h.App.Logger().Error("NoteHandler.Get err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
@@ -61,7 +60,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(global.WebClientName, "")
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 	note, err := noteSvc.Get(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Get", err)
@@ -72,7 +71,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	// 解析内容中的 ![[ ]] 标签
 	fileLinks, err := h.App.FileService.ResolveEmbedLinks(ctx, uid, params.Vault, note.Content)
 	if err != nil {
-		h.App.Logger.Error("NoteHandler.Get FileResolveEmbedLinks err", zap.Error(err))
+		h.App.Logger().Error("NoteHandler.Get FileResolveEmbedLinks err", zap.Error(err))
 	}
 
 	noteWithLinks := &dto.NoteWithFileLinksResponse{
@@ -101,7 +100,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("NoteHandler.List.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("NoteHandler.List.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -109,7 +108,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("NoteHandler.List err uid=0")
+		h.App.Logger().Error("NoteHandler.List err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
@@ -117,7 +116,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(global.WebClientName, "")
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 	pager := &pkgapp.Pager{Page: pkgapp.GetPage(c), PageSize: pkgapp.GetPageSize(c)}
 
 	notes, count, err := noteSvc.List(ctx, uid, params, pager)
@@ -138,7 +137,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("NoteHandler.CreateOrUpdate.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("NoteHandler.CreateOrUpdate.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -146,7 +145,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("NoteHandler.CreateOrUpdate err uid=0")
+		h.App.Logger().Error("NoteHandler.CreateOrUpdate err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
@@ -172,7 +171,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	ctx := c.Request.Context()
 
 
-	noteSvc := h.App.GetNoteService(global.WebClientName, "")
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
 	// 处理重命名场景
 	if params.SrcPath != "" && params.SrcPath != params.Path {
@@ -260,7 +259,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("NoteHandler.Delete.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("NoteHandler.Delete.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -268,7 +267,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("NoteHandler.Delete err uid=0")
+		h.App.Logger().Error("NoteHandler.Delete err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
@@ -282,7 +281,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	ctx := c.Request.Context()
 
 
-	noteSvc := h.App.GetNoteService(global.WebClientName, "")
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
 	// 检查笔记是否存在
 	noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
@@ -320,7 +319,7 @@ func (h *NoteHandler) GetFileContent(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("NoteHandler.GetFileContent.BindAndValid err", zap.Error(errs))
+		h.App.Logger().Error("NoteHandler.GetFileContent.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -328,7 +327,7 @@ func (h *NoteHandler) GetFileContent(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("NoteHandler.GetFileContent err uid=0")
+		h.App.Logger().Error("NoteHandler.GetFileContent err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
 		return
 	}
@@ -340,7 +339,7 @@ func (h *NoteHandler) GetFileContent(c *gin.Context) {
 	ctx := c.Request.Context()
 
 
-	noteSvc := h.App.GetNoteService(global.WebClientName, "")
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 	content, contentType, mtime, etag, err := noteSvc.GetFileContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.GetFileContent", err)
@@ -369,7 +368,7 @@ func (h *NoteHandler) GetFileContent(c *gin.Context) {
 // logError 记录错误日志，包含 Trace ID
 func (h *NoteHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
-	h.App.Logger.Error(method,
+	h.App.Logger().Error(method,
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)

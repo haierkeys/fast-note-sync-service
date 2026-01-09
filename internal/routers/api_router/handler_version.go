@@ -2,7 +2,6 @@ package api_router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -24,10 +23,10 @@ func NewVersionHandler(a *app.App) *VersionHandler {
 // ServerVersion 获取服务端版本信息
 func (h *VersionHandler) ServerVersion(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	versionInfo := map[string]string{
-		"version":   global.Version,
-		"gitTag":    global.GitTag,
-		"buildTime": global.BuildTime,
-	}
-	response.ToResponse(code.Success.WithData(versionInfo))
+	versionInfo := h.App.Version()
+	response.ToResponse(code.Success.WithData(map[string]string{
+		"version":   versionInfo.Version,
+		"gitTag":    versionInfo.GitTag,
+		"buildTime": versionInfo.BuildTime,
+	}))
 }

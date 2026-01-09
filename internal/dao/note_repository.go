@@ -183,163 +183,193 @@ func (r *noteRepository) GetByPath(ctx context.Context, path string, vaultID, ui
 
 // Create 创建笔记
 func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int64) (*domain.Note, error) {
-	u := r.note(uid).Note
-	m := r.toModel(note)
+	var result *domain.Note
+	var createErr error
 
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.CreatedAt = timex.Now()
-	m.UpdatedAt = timex.Now()
+	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
+		m := r.toModel(note)
 
-	content := m.Content
-	m.Content = ""             // 不在数据库存储内容
-	m.ContentLastSnapshot = "" // 不在数据库存储快照
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.CreatedAt = timex.Now()
+		m.UpdatedAt = timex.Now()
 
-	err := u.WithContext(ctx).Create(m)
+		content := m.Content
+		m.Content = ""             // 不在数据库存储内容
+		m.ContentLastSnapshot = "" // 不在数据库存储快照
+
+		createErr = u.WithContext(ctx).Create(m)
+		if createErr != nil {
+			return createErr
+		}
+
+		// 保存内容到文件
+		folder := r.dao.GetNoteFolderPath(uid, m.ID)
+		_ = r.dao.SaveContentToFile(folder, "content.txt", content)
+
+		result = r.toDomain(m, uid)
+		result.Content = content
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	// 保存内容到文件
-	folder := r.dao.GetNoteFolderPath(uid, m.ID)
-	_ = r.dao.SaveContentToFile(folder, "content.txt", content)
-
-	result := r.toDomain(m, uid)
-	result.Content = content
-	return result, nil
+	return result, createErr
 }
 
 // Update 更新笔记
 func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int64) (*domain.Note, error) {
-	u := r.note(uid).Note
-	m := r.toModel(note)
+	var result *domain.Note
+	var updateErr error
 
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.UpdatedAt = timex.Now()
+	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
+		m := r.toModel(note)
 
-	content := m.Content
-	m.Content = "" // 不在数据库更新内容
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.UpdatedAt = timex.Now()
 
-	err := u.WithContext(ctx).Where(
-		u.ID.Eq(m.ID),
-	).Select(
-		u.ID,
-		u.VaultID,
-		u.Action,
-		u.Rename,
-		u.Path,
-		u.PathHash,
-		u.Content,
-		u.ContentHash,
-		u.ClientName,
-		u.Size,
-		u.Ctime,
-		u.Mtime,
-		u.UpdatedAt,
-		u.UpdatedTimestamp,
-	).Save(m)
+		content := m.Content
+		m.Content = "" // 不在数据库更新内容
+
+		updateErr = u.WithContext(ctx).Where(
+			u.ID.Eq(m.ID),
+		).Select(
+			u.ID,
+			u.VaultID,
+			u.Action,
+			u.Rename,
+			u.Path,
+			u.PathHash,
+			u.Content,
+			u.ContentHash,
+			u.ClientName,
+			u.Size,
+			u.Ctime,
+			u.Mtime,
+			u.UpdatedAt,
+			u.UpdatedTimestamp,
+		).Save(m)
+
+		if updateErr != nil {
+			return updateErr
+		}
+
+		// 保存内容到文件
+		folder := r.dao.GetNoteFolderPath(uid, m.ID)
+		_ = r.dao.SaveContentToFile(folder, "content.txt", content)
+
+		result = r.toDomain(m, uid)
+		result.Content = content
+		return nil
+	})
 
 	if err != nil {
 		return nil, err
 	}
-
-	// 保存内容到文件
-	folder := r.dao.GetNoteFolderPath(uid, m.ID)
-	_ = r.dao.SaveContentToFile(folder, "content.txt", content)
-
-	result := r.toDomain(m, uid)
-	result.Content = content
-	return result, nil
+	return result, updateErr
 }
 
 // UpdateDelete 更新笔记为删除状态
 func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64) error {
-	u := r.note(uid).Note
-	m := &model.Note{
-		ID:               note.ID,
-		Action:           string(note.Action),
-		Rename:           note.Rename,
-		ClientName:       note.ClientName,
-		UpdatedTimestamp: timex.Now().UnixMilli(),
-	}
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
+		m := &model.Note{
+			ID:               note.ID,
+			Action:           string(note.Action),
+			Rename:           note.Rename,
+			ClientName:       note.ClientName,
+			UpdatedTimestamp: timex.Now().UnixMilli(),
+		}
 
-	return u.WithContext(ctx).Where(
-		u.ID.Eq(m.ID),
-	).Select(
-		u.ID,
-		u.Action,
-		u.Rename,
-		u.ClientName,
-		u.UpdatedTimestamp,
-	).Save(m)
+		return u.WithContext(ctx).Where(
+			u.ID.Eq(m.ID),
+		).Select(
+			u.ID,
+			u.Action,
+			u.Rename,
+			u.ClientName,
+			u.UpdatedTimestamp,
+		).Save(m)
+	})
 }
 
 // UpdateMtime 更新笔记修改时间
 func (r *noteRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
-	u := r.note(uid).Note
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
 
-	_, err := u.WithContext(ctx).Where(
-		u.ID.Eq(id),
-	).UpdateSimple(
-		u.Mtime.Value(mtime),
-		u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
-		u.UpdatedAt.Value(timex.Now()),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
 }
 
 // UpdateSnapshot 更新笔记快照
 func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error {
-	u := r.note(uid).Note
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
 
-	// 保存快照到文件
-	folder := r.dao.GetNoteFolderPath(uid, id)
-	_ = r.dao.SaveContentToFile(folder, "snapshot.txt", snapshot)
+		// 保存快照到文件
+		folder := r.dao.GetNoteFolderPath(uid, id)
+		_ = r.dao.SaveContentToFile(folder, "snapshot.txt", snapshot)
 
-	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
-		u.ContentLastSnapshot.Value(""),
-		u.ContentLastSnapshotHash.Value(snapshotHash),
-		u.Version.Value(version),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
+			u.ContentLastSnapshot.Value(""),
+			u.ContentLastSnapshotHash.Value(snapshotHash),
+			u.Version.Value(version),
+		)
+		return err
+	})
 }
 
 // Delete 物理删除笔记
 func (r *noteRepository) Delete(ctx context.Context, id, uid int64) error {
-	u := r.note(uid).Note
-	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
-	if err != nil {
-		return err
-	}
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
+		if err != nil {
+			return err
+		}
 
-	// 删除物理文件
-	folder := r.dao.GetNoteFolderPath(uid, id)
-	_ = r.dao.RemoveContentFolder(folder)
+		// 删除物理文件
+		folder := r.dao.GetNoteFolderPath(uid, id)
+		_ = r.dao.RemoveContentFolder(folder)
 
-	return nil
+		return nil
+	})
 }
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的笔记
 func (r *noteRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
-	u := r.note(uid).Note
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).Note
 
-	// 先找到要删除的 ID
-	list, _ := u.WithContext(ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Select(u.ID).Find()
+		// 先找到要删除的 ID
+		list, _ := u.WithContext(ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Select(u.ID).Find()
 
-	_, err := u.WithContext(ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Delete()
+		_, err := u.WithContext(ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Delete()
 
-	if err == nil {
-		for _, m := range list {
-			folder := r.dao.GetNoteFolderPath(uid, m.ID)
-			_ = r.dao.RemoveContentFolder(folder)
+		if err == nil {
+			for _, m := range list {
+				folder := r.dao.GetNoteFolderPath(uid, m.ID)
+				_ = r.dao.RemoveContentFolder(folder)
+			}
 		}
-	}
-	return err
+		return err
+	})
 }
 
 // List 分页获取笔记列表

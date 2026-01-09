@@ -3,13 +3,12 @@ package middleware
 import (
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func AccessLog() gin.HandlerFunc {
+// AccessLogWithLogger 创建带日志器的访问日志中间件（支持依赖注入）
+func AccessLogWithLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		path := c.Request.URL.Path
@@ -20,7 +19,7 @@ func AccessLog() gin.HandlerFunc {
 
 		timeCost := time.Since(startTime)
 
-		global.Log().Info(path,
+		logger.Info(path,
 			zap.String("method", c.Request.Method),
 			zap.String("url", path+"?"+query),
 			zap.String("start-time", startTime.Format("2006-01-02 15:04:05")),

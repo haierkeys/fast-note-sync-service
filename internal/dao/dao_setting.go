@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
@@ -63,71 +64,95 @@ func (d *Dao) SettingGetByPathHash(hash string, vaultID int64, uid int64) (*Sett
 
 // SettingCreate 创建配置记录
 func (d *Dao) SettingCreate(params *SettingSet, uid int64) (*Setting, error) {
-	u := d.setting(uid).Setting
-	m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
+	var result *Setting
+	var createErr error
 
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.CreatedAt = timex.Now()
-	m.UpdatedAt = timex.Now()
+	err := d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).Setting
+		m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
 
-	content := m.Content
-	m.Content = "" // 不在数据库存储内容
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.CreatedAt = timex.Now()
+		m.UpdatedAt = timex.Now()
 
-	err := u.WithContext(d.ctx).Create(m)
+		content := m.Content
+		m.Content = "" // 不在数据库存储内容
+
+		createErr = u.WithContext(d.ctx).Create(m)
+		if createErr != nil {
+			return createErr
+		}
+
+		// 异步保存到文件存储
+		folderPath := d.GetSettingFolderPath(uid, m.ID)
+		_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+
+		res := convert.StructAssign(m, &Setting{}).(*Setting)
+		res.Content = content
+		result = res
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	// 异步保存到文件存储
-	folderPath := d.GetSettingFolderPath(uid, m.ID)
-	_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
-
-	res := convert.StructAssign(m, &Setting{}).(*Setting)
-	res.Content = content
-	return res, nil
+	return result, createErr
 }
 
 // SettingUpdate 更新配置记录
 func (d *Dao) SettingUpdate(params *SettingSet, id int64, uid int64) (*Setting, error) {
-	u := d.setting(uid).Setting
-	m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.UpdatedAt = timex.Now()
-	m.ID = id
+	var result *Setting
+	var updateErr error
 
-	content := m.Content
-	m.Content = "" // 不在数据库更新内容
+	err := d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).Setting
+		m := convert.StructAssign(params, &model.Setting{}).(*model.Setting)
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.UpdatedAt = timex.Now()
+		m.ID = id
 
-	err := u.WithContext(d.ctx).Where(
-		u.ID.Eq(id),
-	).Save(m)
+		content := m.Content
+		m.Content = "" // 不在数据库更新内容
+
+		updateErr = u.WithContext(d.ctx).Where(
+			u.ID.Eq(id),
+		).Save(m)
+
+		if updateErr != nil {
+			return updateErr
+		}
+
+		// 异步保存到文件存储
+		folderPath := d.GetSettingFolderPath(uid, id)
+		_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
+
+		res := convert.StructAssign(m, &Setting{}).(*Setting)
+		res.Content = content
+		result = res
+		return nil
+	})
 
 	if err != nil {
 		return nil, err
 	}
-
-	// 异步保存到文件存储
-	folderPath := d.GetSettingFolderPath(uid, id)
-	_ = d.SaveContentToFile(folderPath, "content.txt", params.Content)
-
-	res := convert.StructAssign(m, &Setting{}).(*Setting)
-	res.Content = content
-	return res, nil
+	return result, updateErr
 }
 
 // SettingUpdateMtime 更新配置的修改时间
 func (d *Dao) SettingUpdateMtime(mtime int64, id int64, uid int64) error {
-	u := d.setting(uid).Setting
+	return d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).Setting
 
-	_, err := u.WithContext(d.ctx).Where(
-		u.ID.Eq(id),
-	).UpdateSimple(
-		u.Mtime.Value(mtime),
-		u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
-		u.UpdatedAt.Value(timex.Now()),
-	)
+		_, err := u.WithContext(d.ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
 
-	return err
+		return err
+	})
 }
 
 // SettingListByUpdatedTimestamp 根据更新时间戳获取配置列表
@@ -154,27 +179,29 @@ func (d *Dao) SettingListByUpdatedTimestamp(timestamp int64, vaultID int64, uid 
 
 // SettingDeletePhysicalByTime 根据时间物理删除配置记录
 func (d *Dao) SettingDeletePhysicalByTime(timestamp int64, uid int64) error {
-	u := d.setting(uid).Setting
+	return d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).Setting
 
-	// 查找待物理删除的记录，清理文件
-	mList, err := u.WithContext(d.ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Find()
+		// 查找待物理删除的记录，清理文件
+		mList, err := u.WithContext(d.ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Find()
 
-	if err == nil {
-		for _, m := range mList {
-			folder := d.GetSettingFolderPath(uid, m.ID)
-			_ = d.RemoveContentFolder(folder)
+		if err == nil {
+			for _, m := range mList {
+				folder := d.GetSettingFolderPath(uid, m.ID)
+				_ = d.RemoveContentFolder(folder)
+			}
 		}
-	}
 
-	_, err = u.WithContext(d.ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Delete()
+		_, err = u.WithContext(d.ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Delete()
 
-	return err
+		return err
+	})
 }
 
 // fillSettingContent 填充配置内容

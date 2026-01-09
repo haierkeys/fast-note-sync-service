@@ -5,7 +5,6 @@ import (
 	"log"
 	"runtime/debug"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
@@ -13,7 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func Recovery() gin.HandlerFunc {
+// RecoveryWithLogger 创建带日志器的 Recovery 中间件（支持依赖注入）
+func RecoveryWithLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
@@ -25,7 +25,7 @@ func Recovery() gin.HandlerFunc {
 					errorMsg = err.(string)
 				case error:
 					// 记录 error 类型的错误
-					global.Log().Error("Recovered from panic",
+					logger.Error("Recovered from panic",
 						zap.Int("status", c.Writer.Status()),
 						zap.String("router", path),
 						zap.String("method", c.Request.Method),
@@ -40,7 +40,7 @@ func Recovery() gin.HandlerFunc {
 					errorMsg = err.(error).Error()
 				default:
 					// 如果是其它类型的 panic（如非错误类型的 panic）
-					global.Log().Error("Recovered from unknown panic",
+					logger.Error("Recovered from unknown panic",
 						zap.Int("status", c.Writer.Status()),
 						zap.String("router", path),
 						zap.String("method", c.Request.Method),

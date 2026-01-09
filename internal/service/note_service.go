@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -112,6 +111,7 @@ type noteService struct {
 	sf           *singleflight.Group
 	clientName   string
 	clientVer    string
+	config       *ServiceConfig
 
 	// 清理相关
 	lastCleanupTime time.Time
@@ -119,12 +119,13 @@ type noteService struct {
 }
 
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) NoteService {
 	return &noteService{
 		noteRepo:     noteRepo,
 		fileRepo:     fileRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
+		config:       config,
 	}
 }
 
@@ -137,6 +138,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		sf:           s.sf,
 		clientName:   name,
 		clientVer:    version,
+		config:       s.config,
 	}
 }
 
@@ -447,7 +449,10 @@ func (s *noteService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 
 // Cleanup 清理过期的软删除笔记
 func (s *noteService) Cleanup(ctx context.Context, uid int64) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}
@@ -467,7 +472,10 @@ func (s *noteService) Cleanup(ctx context.Context, uid int64) error {
 
 // CleanupAll 清理所有用户的过期软删除笔记
 func (s *noteService) CleanupAll(ctx context.Context) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}

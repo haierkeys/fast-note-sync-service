@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -49,13 +48,17 @@ type UserDTO struct {
 type userService struct {
 	userRepo     domain.UserRepository
 	tokenManager app.TokenManager
+	logger       *zap.Logger
+	config       *ServiceConfig
 }
 
 // NewUserService 创建 UserService 实例
-func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager) UserService {
+func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager, logger *zap.Logger, config *ServiceConfig) UserService {
 	return &userService{
 		userRepo:     userRepo,
 		tokenManager: tokenManager,
+		logger:       logger,
+		config:       config,
 	}
 }
 
@@ -78,7 +81,7 @@ func (s *userService) domainToDTO(user *domain.User) *UserDTO {
 // Register 用户注册
 func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest) (*UserDTO, error) {
 	// 检查注册是否启用
-	if !global.Config.User.RegisterIsEnable {
+	if s.config == nil || !s.config.User.RegisterIsEnable {
 		return nil, code.ErrorUserRegisterIsDisable
 	}
 
@@ -211,10 +214,12 @@ func (s *userService) GetInfo(ctx context.Context, uid int64) (*UserDTO, error) 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		global.Logger.Error("UserService.GetInfo failed",
-			zap.Int64("uid", uid),
-			zap.Error(err),
-		)
+		if s.logger != nil {
+			s.logger.Error("UserService.GetInfo failed",
+				zap.Int64("uid", uid),
+				zap.Error(err),
+			)
+		}
 		return nil, code.ErrorDBQuery
 	}
 	return s.domainToDTO(user), nil
