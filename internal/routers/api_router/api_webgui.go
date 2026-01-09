@@ -17,9 +17,9 @@ func NewWebGUI() *WebGUI {
 type webGUI struct {
 	FontSet                 string `json:"fontSet" form:"fontSet"`
 	RegisterIsEnable        bool   `json:"registerIsEnable" form:"registerIsEnable"`
-	FileChunkSize           string `json:"fileChunkSize" form:"fileChunkSize"`
-	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime" form:"softDeleteRetentionTime"`
-	UploadSessionTimeout    string `json:"uploadSessionTimeout" form:"uploadSessionTimeout"`
+	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`
+	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"`
+	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`
 	AdminUID                int    `json:"adminUid" form:"adminUid"`
 }
 
