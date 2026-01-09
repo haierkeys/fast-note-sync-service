@@ -6,11 +6,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -99,14 +102,30 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
 	if content, exists, _ := r.dao.LoadContentFromFile(folder, "content.txt"); exists {
 		n.Content = content
 	} else if n.Content != "" {
-		_ = r.dao.SaveContentToFile(folder, "content.txt", n.Content)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := r.dao.SaveContentToFile(folder, "content.txt", n.Content); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for note content",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("noteId", n.ID),
+				zap.String(logger.FieldMethod, "noteRepository.fillNoteContent"),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// 加载快照
 	if snapshot, exists, _ := r.dao.LoadContentFromFile(folder, "snapshot.txt"); exists {
 		n.ContentLastSnapshot = snapshot
 	} else if n.ContentLastSnapshot != "" {
-		_ = r.dao.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := r.dao.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for note snapshot",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("noteId", n.ID),
+				zap.String(logger.FieldMethod, "noteRepository.fillNoteContent"),
+				zap.Error(err),
+			)
+		}
 	}
 }
 
@@ -205,7 +224,9 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 
 		// 保存内容到文件
 		folder := r.dao.GetNoteFolderPath(uid, m.ID)
-		_ = r.dao.SaveContentToFile(folder, "content.txt", content)
+		if err := r.dao.SaveContentToFile(folder, "content.txt", content); err != nil {
+			return err
+		}
 
 		result = r.toDomain(m, uid)
 		result.Content = content
@@ -258,7 +279,9 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 
 		// 保存内容到文件
 		folder := r.dao.GetNoteFolderPath(uid, m.ID)
-		_ = r.dao.SaveContentToFile(folder, "content.txt", content)
+		if err := r.dao.SaveContentToFile(folder, "content.txt", content); err != nil {
+			return err
+		}
 
 		result = r.toDomain(m, uid)
 		result.Content = content
@@ -318,7 +341,9 @@ func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotH
 
 		// 保存快照到文件
 		folder := r.dao.GetNoteFolderPath(uid, id)
-		_ = r.dao.SaveContentToFile(folder, "snapshot.txt", snapshot)
+		if err := r.dao.SaveContentToFile(folder, "snapshot.txt", snapshot); err != nil {
+			return err
+		}
 
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
 			u.ContentLastSnapshot.Value(""),

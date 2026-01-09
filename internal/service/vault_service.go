@@ -141,12 +141,20 @@ func (s *vaultService) MustGetID(ctx context.Context, uid int64, name string) (i
 
 // UpdateNoteStats 更新 Vault 的笔记统计信息
 func (s *vaultService) UpdateNoteStats(ctx context.Context, noteSize, noteCount, vaultID, uid int64) error {
-	return s.repo.UpdateNoteCountSize(ctx, noteSize, noteCount, vaultID, uid)
+	err := s.repo.UpdateNoteCountSize(ctx, noteSize, noteCount, vaultID, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }
 
 // UpdateFileStats 更新 Vault 的文件统计信息
 func (s *vaultService) UpdateFileStats(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error {
-	return s.repo.UpdateFileCountSize(ctx, fileSize, fileCount, vaultID, uid)
+	err := s.repo.UpdateFileCountSize(ctx, fileSize, fileCount, vaultID, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }
 
 // 确保 vaultService 实现了 VaultService 接口
@@ -215,7 +223,11 @@ func (s *vaultService) List(ctx context.Context, uid int64) ([]*VaultDTO, error)
 
 // Delete 删除 Vault
 func (s *vaultService) Delete(ctx context.Context, uid int64, id int64) error {
-	return s.repo.Delete(ctx, id, uid)
+	err := s.repo.Delete(ctx, id, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }
 
 // Update 更新 Vault

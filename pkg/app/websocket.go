@@ -11,6 +11,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
@@ -65,9 +66,23 @@ func extractOrGenerateTraceID(c *gin.Context) string {
 // wsLogger 是 WebSocket 模块使用的日志器（通过 App Container 注入）
 var wsLogger *zap.Logger
 
+// wsProductionMode 标记是否为生产模式（通过 App Container 注入）
+var wsProductionMode bool
+
 // SetWSLogger 设置 WebSocket 模块的日志器
 func SetWSLogger(logger *zap.Logger) {
 	wsLogger = logger
+}
+
+// SetWSProductionMode 设置 WebSocket 模块的生产模式标记
+func SetWSProductionMode(production bool) {
+	wsProductionMode = production
+}
+
+// isDevelopmentMode 检查是否为开发环境
+// 开发环境下会输出彩色控制台日志
+func isDevelopmentMode() bool {
+	return !wsProductionMode
 }
 
 // log 记录日志
@@ -96,7 +111,8 @@ func logWithTraceID(t LogType, traceID string, msg string, fields ...zap.Field) 
 	log(t, msg, fields...)
 }
 
-// NoteModifyLog 打印笔记修改相关的控制台日志内容（由 [WS] 标识），包含 Trace ID
+// NoteModifyLog 记录 WebSocket 操作日志
+// 同时支持结构化日志和开发环境彩色输出
 // traceID: 追踪 ID
 // uid: 用户 ID
 // action: 执行的操作名称
@@ -112,6 +128,26 @@ func NoteModifyLog(traceID string, uid int64, action string, params ...string) {
 		vault = params[1]
 	}
 
+	// 结构化日志输出（用于日志聚合和分析）
+	if wsLogger != nil {
+		wsLogger.Info("WebSocket action",
+			zap.String(logger.FieldTraceID, traceID),
+			zap.Int64(logger.FieldUID, uid),
+			zap.String(logger.FieldAction, action),
+			zap.String(logger.FieldVault, vault),
+			zap.String(logger.FieldPath, path),
+		)
+	}
+
+	// 开发环境保留彩色控制台输出，便于本地调试
+	if isDevelopmentMode() {
+		printColoredLog(uid, action, traceID, vault, path)
+	}
+}
+
+// printColoredLog 输出彩色日志（仅开发环境）
+// 使用 ANSI 转义码实现彩色输出
+func printColoredLog(uid int64, action, traceID, vault, path string) {
 	str := fmt.Sprintf("[WS] | \033[30;43m %d \033[0m\033[97;44m %s \033[0m", uid, action)
 
 	if traceID != "" && len(traceID) >= 8 {
@@ -417,6 +453,8 @@ type AppContainer interface {
 	IsReturnSuccess() bool
 	// GetAuthTokenKey 获取 Token 密钥
 	GetAuthTokenKey() string
+	// IsProductionMode 是否为生产模式
+	IsProductionMode() bool
 }
 
 // VersionInfo 版本信息
@@ -459,6 +497,8 @@ func NewWebsocketServer(c WSConfig, app AppContainer) *WebsocketServer {
 
 	// 设置 WebSocket 模块的日志器
 	SetWSLogger(app.Logger())
+	// 设置 WebSocket 模块的生产模式标记
+	SetWSProductionMode(app.IsProductionMode())
 
 	return &WebsocketServer{
 		app:            app,
@@ -786,7 +826,9 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 
 	// 验证用户是否登录
 	if c.User == nil {
-		fmt.Println(msg.Type, c.User)
+		log(LogWarn, "WS User not authenticated",
+			zap.String("msgType", msg.Type),
+			zap.String("traceId", c.TraceID))
 		c.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}

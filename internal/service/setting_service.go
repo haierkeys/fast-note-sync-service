@@ -6,10 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -117,7 +121,16 @@ func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto
 			if params.Mtime < setting.Mtime {
 				return "UpdateMtime", settingDTO, nil
 			} else if params.Mtime > setting.Mtime {
-				_ = s.settingRepo.UpdateMtime(ctx, params.Mtime, setting.ID, uid)
+				if err := s.settingRepo.UpdateMtime(ctx, params.Mtime, setting.ID, uid); err != nil {
+					// 非关键更新失败，记录警告日志但不阻断流程
+					global.Logger.Warn("UpdateMtime failed for setting",
+						zap.Int64(logger.FieldUID, uid),
+						zap.Int64("settingId", setting.ID),
+						zap.Int64("mtime", params.Mtime),
+						zap.String(logger.FieldMethod, "SettingService.UpdateCheck"),
+						zap.Error(err),
+					)
+				}
 			}
 			return "", settingDTO, nil
 		}
@@ -149,7 +162,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 		if mtimeCheck && setting.Mtime < params.Mtime && setting.ContentHash == params.ContentHash {
 			err := s.settingRepo.UpdateMtime(ctx, params.Mtime, setting.ID, uid)
 			if err != nil {
-				return false, nil, err
+				return false, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			setting.Mtime = params.Mtime
 			return false, s.domainToDTO(setting), nil
@@ -176,7 +189,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 
 		updated, err := s.settingRepo.Update(ctx, setting, uid)
 		if err != nil {
-			return false, nil, err
+			return false, nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
 		return false, s.domainToDTO(updated), nil
@@ -197,7 +210,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 
 	created, err := s.settingRepo.Create(ctx, newSetting, uid)
 	if err != nil {
-		return true, nil, err
+		return true, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	return true, s.domainToDTO(created), nil
@@ -218,7 +231,7 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 
 	setting, err := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 更新为删除状态
@@ -229,7 +242,7 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 
 	updated, err := s.settingRepo.Update(ctx, setting, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	return s.domainToDTO(updated), nil
@@ -245,7 +258,7 @@ func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *
 
 	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, params.LastTime, vaultID, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var results []*SettingDTO

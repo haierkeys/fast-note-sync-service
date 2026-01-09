@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
@@ -72,11 +74,25 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 	defer s.mu.Unlock()
 
 	if s.FileHandle != nil {
-		_ = s.FileHandle.Close()
+		if err := s.FileHandle.Close(); err != nil {
+			global.Logger.Warn("cleanup: failed to close file handle",
+				zap.String(logger.FieldSessionID, s.ID),
+				zap.String(logger.FieldPath, s.Path),
+				zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),
+				zap.Error(err),
+			)
+		}
 		s.FileHandle = nil
 	}
 	if s.SavePath != "" {
-		_ = os.Remove(s.SavePath)
+		if err := os.Remove(s.SavePath); err != nil {
+			global.Logger.Warn("cleanup: failed to remove temp file",
+				zap.String(logger.FieldSessionID, s.ID),
+				zap.String(logger.FieldPath, s.SavePath),
+				zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),
+				zap.Error(err),
+			)
+		}
 		s.SavePath = ""
 	}
 }
@@ -138,8 +154,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	// 绑定并验证参数
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.file.FileUploadCheck.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileUploadCheck.BindAndValid")
 		return
 	}
 
@@ -172,7 +187,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	updateMode, fileSvc, err := h.App.FileService.UploadCheck(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorFileUploadCheckFailed, err, "websocket_router.file.FileUploadCheck.UploadCheck")
 		return
 	}
 
@@ -182,7 +197,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 		fileUploadMessage, err := h.handleFileUploadSessionCreate(c, params.Vault, params.Path, params.PathHash, params.ContentHash, params.Size, params.Ctime, params.Mtime)
 		if err != nil {
-			c.ToResponse(code.ErrorFileUploadCheckFailed.WithDetails(err.Error()))
+			h.respondError(c, code.ErrorFileUploadCheckFailed, err, "websocket_router.file.FileUploadCheck.handleFileUploadSessionCreate")
 			return
 		}
 
@@ -250,10 +265,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
 	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
-		h.logError(c, "websocket_router.file.FileUploadChunkBinary.WriteAt", err)
-		c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
-			"sessionID": sessionID,
-		}).WithDetails(err.Error()))
+		h.respondErrorWithData(c, code.ErrorFileUploadFailed, err, map[string]string{"sessionID": sessionID}, "websocket_router.file.FileUploadChunkBinary.WriteAt")
 		return
 	}
 
@@ -287,10 +299,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 		// 关闭临时文件句柄
 		if err := session.FileHandle.Close(); err != nil {
-			h.logError(c, "FileUploadComplete: failed to close file handle", err)
-			c.ToResponse(code.ErrorFileUploadFailed.WithData(map[string]string{
-				"sessionID": sessionID,
-			}).WithDetails(err.Error()))
+			h.respondErrorWithData(c, code.ErrorFileUploadFailed, err, map[string]string{"sessionID": sessionID}, "websocket_router.file.FileUploadChunkBinary.Close")
 			return
 		}
 		session.FileHandle = nil // 避免再次清理时重复关闭
@@ -315,7 +324,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		_, fileSvc, err := h.App.FileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
-			c.ToResponse(code.ErrorFileModifyOrCreateFailed.WithDetails(err.Error()))
+			h.respondError(c, code.ErrorFileModifyOrCreateFailed, err, "websocket_router.file.FileUploadChunkBinary.UploadComplete")
 			return
 		}
 
@@ -345,8 +354,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.file.FileDelete.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileDelete.BindAndValid")
 		return
 	}
 
@@ -361,7 +369,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	fileSvc, err := h.App.FileService.Delete(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileDeleteFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorFileDeleteFailed, err, "websocket_router.file.FileDelete.Delete")
 		return
 	}
 
@@ -379,8 +387,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.file.FileChunkDownload.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileChunkDownload.BindAndValid")
 		return
 	}
 
@@ -395,15 +402,13 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 	fileSvc, err := h.App.FileService.Get(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileGetFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorFileGetFailed, err, "websocket_router.file.FileChunkDownload.Get")
 		return
 	}
 
 	// 检查文件是否存在于磁盘
 	if _, err := os.Stat(fileSvc.SavePath); os.IsNotExist(err) {
-		h.logError(c, "websocket_router.file.FileChunkDownload",
-			fmt.Errorf("file not found on disk: %s (pathHash: %s)", fileSvc.SavePath, fileSvc.PathHash))
-		c.ToResponse(code.ErrorFileGetFailed.WithDetails("file not found on disk"))
+		h.respondError(c, code.ErrorFileGetFailed, fmt.Errorf("file not found on disk: %s (pathHash: %s)", fileSvc.SavePath, fileSvc.PathHash), "websocket_router.file.FileChunkDownload.Stat")
 		return
 	}
 
@@ -449,8 +454,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.file.FileSync.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileSync.BindAndValid")
 		return
 	}
 
@@ -465,7 +469,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	list, err := h.App.FileService.Sync(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorFileListFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorFileListFailed, err, "websocket_router.file.FileSync.Sync")
 		return
 	}
 

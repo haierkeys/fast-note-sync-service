@@ -4,6 +4,7 @@ package websocket_router
 import (
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"go.uber.org/zap"
 )
 
@@ -51,6 +52,20 @@ func (h *WSHandler) logWarn(c *pkgapp.WebsocketClient, method string, fields ...
 	}
 	allFields := append([]zap.Field{zap.String("traceId", traceID)}, fields...)
 	h.App.Logger().Warn(method, allFields...)
+}
+
+// respondError 统一错误响应方法
+// 记录错误日志并发送包含 Details 的错误响应给客户端
+func (h *WSHandler) respondError(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, method string) {
+	h.logError(c, method, err)
+	c.ToResponse(codeErr.WithDetails(err.Error()))
+}
+
+// respondErrorWithData 带数据的统一错误响应方法
+// 记录错误日志并发送包含 Details 和 Data 的错误响应给客户端
+func (h *WSHandler) respondErrorWithData(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, data interface{}, method string) {
+	h.logError(c, method, err)
+	c.ToResponse(codeErr.WithDetails(err.Error()).WithData(data))
 }
 
 // GetTraceID 从 WebSocket 客户端获取 Trace ID

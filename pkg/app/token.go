@@ -109,6 +109,11 @@ func (t *tokenManager) Validate(token string) error {
 	return err
 }
 
+// GetSecretKey 获取密钥
+func (t *tokenManager) GetSecretKey() string {
+	return t.config.SecretKey
+}
+
 // ParseTokenWithKey 使用指定密钥解析 Token
 func ParseTokenWithKey(tokenString string, secretKey string) (*UserEntity, error) {
 	claims := &UserEntity{}

@@ -81,8 +81,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.note.NoteModify.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModify.BindAndValid")
 		return
 	}
 	if params.PathHash == "" {
@@ -115,7 +114,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	updateMode, nodeCheck, err := noteSvc.UpdateCheck(ctx, c.User.UID, checkParams)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.UpdateCheck")
 		return
 	}
 
@@ -140,7 +139,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				if c.OfflineSyncStrategy == "ignoreTimeMerge" {
 					history, err = h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, params.ContentHash)
 					if err != nil {
-						c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+						h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.GetByNoteIDAndHash")
 						return
 					}
 				}
@@ -152,7 +151,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					if params.BaseHash != params.ContentHash && params.BaseHash != "" {
 						noteHistory, err := h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, params.BaseHash)
 						if err != nil {
-							c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+							h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.GetByNoteIDAndHash")
 							return
 						}
 
@@ -170,7 +169,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 					params.Content, err = diff.MergeTexts(baseContent, clientContent, serverContent, params.Mtime <= nodeCheck.Mtime)
 					if err != nil {
-						c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+						h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.MergeTexts")
 						return
 					}
 					params.ContentHash = util.EncodeHash32(params.Content)
@@ -183,7 +182,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 		_, note, err := noteSvc.ModifyOrCreate(ctx, c.User.UID, params, true)
 		if err != nil {
-			c.ToResponse(code.ErrorNoteModifyOrCreateFailed.WithDetails(err.Error()))
+			h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.ModifyOrCreate")
 			return
 		}
 
@@ -232,8 +231,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.note.NoteModifyCheck.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModifyCheck.BindAndValid")
 		return
 	}
 
@@ -249,7 +247,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	updateMode, nodeCheck, err := noteSvc.UpdateCheck(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteUpdateCheckFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorNoteUpdateCheckFailed, err, "websocket_router.note.NoteModifyCheck.UpdateCheck")
 		return
 	}
 
@@ -290,8 +288,7 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.note.NoteDelete.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteDelete.BindAndValid")
 		return
 	}
 
@@ -312,7 +309,7 @@ func (h *NoteWSHandler) handleNoteDelete(c *pkgapp.WebsocketClient, params *dto.
 	note, err := noteSvc.Delete(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteDeleteFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorNoteDeleteFailed, err, "websocket_router.note.handleNoteDelete.Delete")
 		return
 	}
 
@@ -338,8 +335,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	params := &dto.NoteModifyOrCreateRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.note.NoteRename.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteRename.BindAndValid")
 		return
 	}
 
@@ -364,7 +360,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	})
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteRenameFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorNoteRenameFailed, err, "websocket_router.note.NoteRename.Rename")
 		return
 	}
 	// 相应成功
@@ -386,8 +382,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.logError(c, "websocket_router.note.NoteSync.BindAndValid", errs)
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteSync.BindAndValid")
 		return
 	}
 
@@ -403,7 +398,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	list, err := noteSvc.ListByLastTime(ctx, c.User.UID, params)
 
 	if err != nil {
-		c.ToResponse(code.ErrorNoteListFailed.WithDetails(err.Error()))
+		h.respondError(c, code.ErrorNoteListFailed, err, "websocket_router.note.NoteSync.ListByLastTime")
 		return
 	}
 

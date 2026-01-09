@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -10,6 +9,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/upgrade"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var upgradeCmd = &cobra.Command{
@@ -29,11 +29,11 @@ It is safe to run this command multiple times - already applied migrations will 
 		// 使用 LoadConfig 直接加载配置到 AppConfig
 		appConfig, configRealpath, err := internalApp.LoadConfig(configPath)
 		if err != nil {
-			fmt.Printf("Failed to load config: %v\n", err)
+			bootstrapLogger.Error("Failed to load config", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Printf("Loading config from: %s\n", configRealpath)
+		bootstrapLogger.Info("Loading config", zap.String("path", configRealpath))
 
 		// 初始化日志
 		lg, err := logger.NewLogger(logger.Config{
@@ -42,7 +42,7 @@ It is safe to run this command multiple times - already applied migrations will 
 			Production: appConfig.Log.Production,
 		})
 		if err != nil {
-			fmt.Printf("Failed to init logger: %v\n", err)
+			bootstrapLogger.Error("Failed to init logger", zap.Error(err))
 			os.Exit(1)
 		}
 
@@ -67,11 +67,11 @@ It is safe to run this command multiple times - already applied migrations will 
 
 		db, err := dao.NewDBEngineWithConfig(dbConfig, lg)
 		if err != nil {
-			fmt.Printf("Failed to init database: %v\n", err)
+			bootstrapLogger.Error("Failed to init database", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Starting database upgrade...")
+		bootstrapLogger.Info("Starting database upgrade...")
 
 		// 执行升级
 		if err := upgrade.Execute(
@@ -81,11 +81,11 @@ It is safe to run this command multiple times - already applied migrations will 
 			appConfig.Database.Path,
 			appConfig.Database.Type,
 		); err != nil {
-			fmt.Printf("Upgrade failed: %v\n", err)
+			bootstrapLogger.Error("Upgrade failed", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Database upgrade completed successfully!")
+		bootstrapLogger.Info("Database upgrade completed successfully!")
 	},
 }
 

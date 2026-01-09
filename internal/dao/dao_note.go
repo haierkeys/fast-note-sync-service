@@ -3,11 +3,14 @@ package dao
 import (
 	"strconv"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -176,9 +179,11 @@ func (d *Dao) NoteCreate(params *NoteSet, uid int64) (*Note, error) {
 		return nil, err
 	}
 
-	// 异步保存内容到文件
+	// 保存内容到文件
 	folder := d.GetNoteFolderPath(uid, m.ID)
-	_ = d.SaveContentToFile(folder, "content.txt", params.Content)
+	if err := d.SaveContentToFile(folder, "content.txt", params.Content); err != nil {
+		return nil, err
+	}
 
 	res := convert.StructAssign(m, &Note{}).(*Note)
 	res.Content = content
@@ -232,9 +237,11 @@ func (d *Dao) NoteUpdate(params *NoteSet, id int64, uid int64) (*Note, error) {
 		return nil, err
 	}
 
-	// 异步保存内容到文件
+	// 保存内容到文件
 	folder := d.GetNoteFolderPath(uid, id)
-	_ = d.SaveContentToFile(folder, "content.txt", params.Content)
+	if err := d.SaveContentToFile(folder, "content.txt", params.Content); err != nil {
+		return nil, err
+	}
 
 	res := convert.StructAssign(m, &Note{}).(*Note)
 	res.Content = content
@@ -293,9 +300,11 @@ func (d *Dao) NoteUpdateMtime(mtime int64, id int64, uid int64) error {
 func (d *Dao) NoteUpdateSnapshot(snapshot string, snapshotHash string, version int64, id int64, uid int64) error {
 	u := d.note(uid).Note
 
-	// 异步保存快照
+	// 保存快照到文件
 	folder := d.GetNoteFolderPath(uid, id)
-	_ = d.SaveContentToFile(folder, "snapshot.txt", snapshot)
+	if err := d.SaveContentToFile(folder, "snapshot.txt", snapshot); err != nil {
+		return err
+	}
 
 	// 使用 UpdateSimple 更新多个字段
 	_, err := u.WithContext(d.ctx).Where(u.ID.Eq(id)).UpdateSimple(
@@ -575,13 +584,29 @@ func (d *Dao) fillNoteContent(uid int64, n *Note) {
 		n.Content = content
 	} else if n.Content != "" {
 		// 懒迁移: 保存到文件 (由于此处是读取，暂不写回数据库清空，交给下次 Update)
-		_ = d.SaveContentToFile(folder, "content.txt", n.Content)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := d.SaveContentToFile(folder, "content.txt", n.Content); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for note content",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("noteId", n.ID),
+				zap.String(logger.FieldMethod, "Dao.fillNoteContent"),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// 加载快照
 	if snapshot, exists, _ := d.LoadContentFromFile(folder, "snapshot.txt"); exists {
 		n.ContentLastSnapshot = snapshot
 	} else if n.ContentLastSnapshot != "" {
-		_ = d.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := d.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for note snapshot",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("noteId", n.ID),
+				zap.String(logger.FieldMethod, "Dao.fillNoteContent"),
+				zap.Error(err),
+			)
+		}
 	}
 }

@@ -4,11 +4,14 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -69,8 +72,12 @@ func (d *Dao) NoteHistoryCreate(params *NoteHistorySet, uid int64) (*NoteHistory
 
 		// 保存到文件
 		folder := d.GetNoteHistoryFolderPath(uid, m.ID)
-		_ = d.SaveContentToFile(folder, "diff.patch", diffPatch)
-		_ = d.SaveContentToFile(folder, "content.txt", content)
+		if err := d.SaveContentToFile(folder, "diff.patch", diffPatch); err != nil {
+			return err
+		}
+		if err := d.SaveContentToFile(folder, "content.txt", content); err != nil {
+			return err
+		}
 
 		res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
 		res.DiffPatch = diffPatch
@@ -167,15 +174,29 @@ func (d *Dao) fillHistoryContent(uid int64, h *NoteHistory) {
 	if patch, exists, _ := d.LoadContentFromFile(folder, "diff.patch"); exists {
 		h.DiffPatch = patch
 	} else if h.DiffPatch != "" {
-		// 懒迁移
-		_ = d.SaveContentToFile(folder, "diff.patch", h.DiffPatch)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := d.SaveContentToFile(folder, "diff.patch", h.DiffPatch); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for history diff patch",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("historyId", h.ID),
+				zap.String(logger.FieldMethod, "Dao.fillHistoryContent"),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// 加载内容
 	if content, exists, _ := d.LoadContentFromFile(folder, "content.txt"); exists {
 		h.Content = content
 	} else if h.Content != "" {
-		// 懒迁移
-		_ = d.SaveContentToFile(folder, "content.txt", h.Content)
+		// 懒迁移失败记录警告日志但不阻断流程
+		if err := d.SaveContentToFile(folder, "content.txt", h.Content); err != nil {
+			global.Logger.Warn("lazy migration: SaveContentToFile failed for history content",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("historyId", h.ID),
+				zap.String(logger.FieldMethod, "Dao.fillHistoryContent"),
+				zap.Error(err),
+			)
+		}
 	}
 }
