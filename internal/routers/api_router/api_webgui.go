@@ -20,6 +20,7 @@ type webGUI struct {
 	FileChunkSize           string `json:"fileChunkSize" form:"fileChunkSize"`
 	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime" form:"softDeleteRetentionTime"`
 	UploadSessionTimeout    string `json:"uploadSessionTimeout" form:"uploadSessionTimeout"`
+	AdminUID                int    `json:"adminUid" form:"adminUid"`
 }
 
 func (w *WebGUI) Config(c *gin.Context) {
@@ -27,6 +28,7 @@ func (w *WebGUI) Config(c *gin.Context) {
 	data := webGUI{
 		FontSet:          global.Config.WebGUI.FontSet,
 		RegisterIsEnable: global.Config.User.RegisterIsEnable,
+		AdminUID:         global.Config.User.AdminUID,
 	}
 	response.ToResponse(code.Success.WithData(data))
 }
@@ -52,6 +54,7 @@ func (w *WebGUI) GetConfig(c *gin.Context) {
 		FileChunkSize:           global.Config.App.FileChunkSize,
 		SoftDeleteRetentionTime: global.Config.App.SoftDeleteRetentionTime,
 		UploadSessionTimeout:    global.Config.App.UploadSessionTimeout,
+		AdminUID:                global.Config.User.AdminUID,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -79,11 +82,14 @@ func (w *WebGUI) UpdateConfig(c *gin.Context) {
 		return
 	}
 
+	global.Dump(params)
+
 	global.Config.WebGUI.FontSet = params.FontSet
 	global.Config.User.RegisterIsEnable = params.RegisterIsEnable
 	global.Config.App.FileChunkSize = params.FileChunkSize
 	global.Config.App.SoftDeleteRetentionTime = params.SoftDeleteRetentionTime
 	global.Config.App.UploadSessionTimeout = params.UploadSessionTimeout
+	global.Config.User.AdminUID = params.AdminUID
 	response.ToResponse(code.Success.WithData(params))
 	global.Config.Save()
 
