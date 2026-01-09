@@ -56,6 +56,8 @@ user:
   # 是否开启注册功能
   # Whether to enable registration
   register-is-enable: true
+  # 管理员 UID, 0 表示不显示设置访问
+  # Admin UID, 0 means not display setting access
   admin-uid: 0
 
 
