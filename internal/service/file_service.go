@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
@@ -55,8 +54,8 @@ type FileService interface {
 	// Cleanup 清理过期的软删除文件
 	Cleanup(ctx context.Context, uid int64) error
 
-	// CleanupAll 清理所有用户的过期软删除文件
-	CleanupAll(ctx context.Context) error
+	// CleanupByTime 按截止时间清理所有用户的过期软删除文件
+	CleanupByTime(ctx context.Context, cutoffTime int64) error
 
 	// ResolveEmbedLinks 解析内容中的嵌入链接
 	ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, content string) (map[string]string, error)
@@ -84,10 +83,6 @@ type fileService struct {
 	vaultService VaultService
 	sf           *singleflight.Group
 	config       *ServiceConfig
-
-	// 清理相关
-	lastCleanupTime time.Time
-	cleanupMutex    sync.Mutex
 }
 
 // NewFileService 创建 FileService 实例
@@ -368,49 +363,9 @@ func (s *fileService) Cleanup(ctx context.Context, uid int64) error {
 	return s.fileRepo.DeletePhysicalByTime(ctx, cutoffTime, uid)
 }
 
-// CleanupAll 清理所有用户的过期软删除文件
-func (s *fileService) CleanupAll(ctx context.Context) error {
-	if s.config == nil {
-		return nil
-	}
-	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
-	if retentionTimeStr == "" || retentionTimeStr == "0" {
-		return nil
-	}
-
-	retentionDuration, err := util.ParseDuration(retentionTimeStr)
-	if err != nil {
-		return err
-	}
-
-	if retentionDuration <= 0 {
-		return nil
-	}
-
-	s.cleanupMutex.Lock()
-	defer s.cleanupMutex.Unlock()
-
-	// 动态计算检查间隔
-	var checkInterval time.Duration
-	if retentionDuration < time.Hour {
-		checkInterval = time.Minute
-	} else {
-		checkInterval = retentionDuration / 10
-		if checkInterval > time.Hour {
-			checkInterval = time.Hour
-		}
-		if checkInterval < time.Minute {
-			checkInterval = time.Minute
-		}
-	}
-
-	// 如果距离上次清理时间不足检查间隔，则跳过
-	if time.Since(s.lastCleanupTime) < checkInterval {
-		return nil
-	}
-
-	s.lastCleanupTime = time.Now()
-	return nil
+// CleanupByTime 按截止时间清理所有用户的过期软删除文件
+func (s *fileService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
+	return s.fileRepo.DeletePhysicalByTimeAll(ctx, cutoffTime)
 }
 
 // ResolveEmbedLinks 解析内容中的嵌入链接

@@ -11,8 +11,9 @@ import (
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
-	app    *app.App
-	logger *zap.Logger
+	app               *app.App
+	logger            *zap.Logger
+	retentionDuration time.Duration
 }
 
 // Name 返回任务名称
@@ -32,44 +33,51 @@ func (t *DbCleanTask) IsStartupRun() bool {
 
 // Run 执行清理任务
 func (t *DbCleanTask) Run(ctx context.Context) error {
-	// 执行所有清理任务
+	// 计算截止时间
+	cutoffTime := time.Now().Add(-t.retentionDuration).UnixMilli()
+
 	var errs []error
 
-	if err := t.app.NoteService.CleanupAll(ctx); err != nil {
+	// 调用各 Service 的 CleanupByTime 方法
+	if err := t.app.NoteService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		t.logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "NoteCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "NoteService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteService"))
 	}
 
-	if err := t.app.FileService.CleanupAll(ctx); err != nil {
+	if err := t.app.FileService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		t.logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "FileCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "FileService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "FileService"))
 	}
 
-	if err := t.app.SettingService.CleanupAll(ctx); err != nil {
+	if err := t.app.SettingService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		t.logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "SettingCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "SettingService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "SettingService"))
 	}
 
 	if len(errs) > 0 {
 		return errs[0] // 返回第一个错误
 	}
-
-	t.logger.Info("task log",
-		zap.String("task", t.Name()),
-		zap.String("type", "loopRun"),
-		zap.String("msg", "success"))
 
 	return nil
 }
@@ -89,10 +97,10 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 		return nil, nil
 	}
 
-	// 每分钟执行一次检查
 	return &DbCleanTask{
-		app:    appContainer,
-		logger: appContainer.Logger(),
+		app:               appContainer,
+		logger:            appContainer.Logger(),
+		retentionDuration: duration,
 	}, nil
 }
 

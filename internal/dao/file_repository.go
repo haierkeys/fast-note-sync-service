@@ -287,6 +287,24 @@ func (r *fileRepository) DeletePhysicalByTime(ctx context.Context, timestamp, ui
 	})
 }
 
+// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的文件
+func (r *fileRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error {
+	// 获取所有用户 UID
+	uids, err := r.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	// 逐用户执行清理
+	for _, uid := range uids {
+		if err := r.DeletePhysicalByTime(ctx, timestamp, uid); err != nil {
+			// 记录错误但继续处理其他用户
+			continue
+		}
+	}
+	return nil
+}
+
 // List 分页获取文件列表
 func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64) ([]*domain.File, error) {
 	u := r.file(uid).File

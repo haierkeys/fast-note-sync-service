@@ -129,6 +129,24 @@ func (r *settingRepository) DeletePhysicalByTime(ctx context.Context, timestamp,
 	return r.dao.SettingDeletePhysicalByTime(timestamp, uid)
 }
 
+// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的配置
+func (r *settingRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error {
+	// 获取所有用户 UID
+	uids, err := r.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	// 逐用户执行清理
+	for _, uid := range uids {
+		if err := r.DeletePhysicalByTime(ctx, timestamp, uid); err != nil {
+			// 记录错误但继续处理其他用户
+			continue
+		}
+	}
+	return nil
+}
+
 // ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 func (r *settingRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Setting, error) {
 	settings, err := r.dao.SettingListByUpdatedTimestamp(timestamp, vaultID, uid)
