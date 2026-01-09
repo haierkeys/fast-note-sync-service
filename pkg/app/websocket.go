@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"golang.org/x/sync/singleflight"
@@ -29,26 +31,69 @@ const (
 	LogWarn        LogType = "warn"
 )
 
-func log(t LogType, msg string, fields ...zap.Field) {
+// traceIDKeyType 用于在 context 中存储 Trace ID
+type traceIDKeyType struct{}
 
+// TraceIDKey 是 context 中存储 Trace ID 的 key
+var TraceIDKey = traceIDKeyType{}
+
+// GetTraceID 从 context 中获取 Trace ID
+func GetTraceID(ctx context.Context) string {
+	if traceID, ok := ctx.Value(TraceIDKey).(string); ok {
+		return traceID
+	}
+	return ""
+}
+
+// generateTraceID 生成新的 Trace ID
+func generateTraceID() string {
+	return uuid.New().String()
+}
+
+// extractOrGenerateTraceID 从 HTTP 请求中提取或生成 Trace ID
+func extractOrGenerateTraceID(c *gin.Context) string {
+	// 尝试从 Header 中获取
+	if traceID := c.GetHeader("X-Trace-ID"); traceID != "" {
+		return traceID
+	}
+	if traceID := c.GetHeader("X-Request-ID"); traceID != "" {
+		return traceID
+	}
+	// 生成新的 Trace ID
+	return generateTraceID()
+}
+
+// log 记录日志，支持可选的 traceID 参数
+// t: 日志类型
+// msg: 日志消息
+// fields: zap 日志字段
+func log(t LogType, msg string, fields ...zap.Field) {
 	if global.Logger == nil {
 		return
 	}
-	if t == "error" {
+	if t == LogError {
 		global.Logger.Error(msg, fields...)
-	} else if t == "warn" {
+	} else if t == LogWarn {
 		global.Logger.Warn(msg, fields...)
-	} else if t == "info" {
+	} else if t == LogInfo {
 		global.Logger.Info(msg, fields...)
-
 	}
 }
 
-// NoteModifyLog 打印笔记修改相关的控制台日志内容（由 [WS] 标识）
+// logWithTraceID 记录日志，包含 Trace ID
+func logWithTraceID(t LogType, traceID string, msg string, fields ...zap.Field) {
+	if traceID != "" {
+		fields = append([]zap.Field{zap.String("traceId", traceID)}, fields...)
+	}
+	log(t, msg, fields...)
+}
+
+// NoteModifyLog 打印笔记修改相关的控制台日志内容（由 [WS] 标识），包含 Trace ID
+// traceID: 追踪 ID
 // uid: 用户 ID
 // action: 执行的操作名称
 // params: 可变参数，通常第一个为 Path，第二个为 Vault
-func NoteModifyLog(uid int64, action string, params ...string) {
+func NoteModifyLog(traceID string, uid int64, action string, params ...string) {
 	var path, vault string
 
 	if len(params) > 0 {
@@ -60,6 +105,10 @@ func NoteModifyLog(uid int64, action string, params ...string) {
 	}
 
 	str := fmt.Sprintf("[WS] | \033[30;43m %d \033[0m\033[97;44m %s \033[0m", uid, action)
+
+	if traceID != "" && len(traceID) >= 8 {
+		str += fmt.Sprintf("\033[90m[%s]\033[0m ", traceID[:8]) // 只显示前8位以保持简洁
+	}
 
 	if vault != "" {
 		str += fmt.Sprintf("\033[32m %s \033[0m", vault)
@@ -96,20 +145,55 @@ type SessionCleaner interface {
 
 // WebsocketClient 结构体来存储每个 WebSocket 连接及其相关状态
 type WebsocketClient struct {
-	conn                *gws.Conn           // WebSocket 底层连接句柄
-	done                chan struct{}       // 关闭信号通道，用于优雅关闭读/写协程
-	Ctx                 *gin.Context        // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
-	User                *UserEntity         // 已认证用户信息，通常在握手阶段绑定
-	UserClients         *ConnStorage        // 用户连接池，支持多设备在线时广播或单点通信
-	SF                  *singleflight.Group // 并发控制：相同 key 的请求只执行一次，其余等待结果
-	BinaryMu            sync.Mutex          // 二进制分块会话的互斥锁，防止并发冲突
-	BinaryChunkSessions map[string]any      // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
-	ClientName          string              // 客户端名称 (例如 "Mac", "Windows", "iPhone")
-	ClientVersion       string              // 客户端版本号 (例如 "1.2.4")
-	IsFirstSync         bool                // 是否是第一次同步过
-	DiffMergePaths      map[string]any      // 需要合并的文件路径
-	DiffMergePathsMu    sync.RWMutex        // 互斥锁，防止并发冲突
-	OfflineSyncStrategy string              // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
+	conn                *gws.Conn            // WebSocket 底层连接句柄
+	done                chan struct{}        // 关闭信号通道，用于优雅关闭读/写协程
+	Ctx                 *gin.Context         // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
+	WsCtx               context.Context      // WebSocket 连接的长生命周期 context
+	WsCancel            context.CancelFunc   // 用于取消 WsCtx
+	TraceID             string               // 连接的追踪 ID
+	User                *UserEntity          // 已认证用户信息，通常在握手阶段绑定
+	UserClients         *ConnStorage         // 用户连接池，支持多设备在线时广播或单点通信
+	SF                  *singleflight.Group  // 并发控制：相同 key 的请求只执行一次，其余等待结果
+	BinaryMu            sync.Mutex           // 二进制分块会话的互斥锁，防止并发冲突
+	BinaryChunkSessions map[string]any       // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
+	ClientName          string               // 客户端名称 (例如 "Mac", "Windows", "iPhone")
+	ClientVersion       string               // 客户端版本号 (例如 "1.2.4")
+	IsFirstSync         bool                 // 是否是第一次同步过
+	DiffMergePaths      map[string]any       // 需要合并的文件路径
+	DiffMergePathsMu    sync.RWMutex         // 互斥锁，防止并发冲突
+	OfflineSyncStrategy string               // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
+}
+
+// initContext 初始化 WebSocket 连接的 context
+// 在连接建立时调用
+func (c *WebsocketClient) initContext(traceID string) {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, TraceIDKey, traceID)
+	c.WsCtx, c.WsCancel = context.WithCancel(ctx)
+	c.TraceID = traceID
+}
+
+// cancelContext 取消 WebSocket 连接的 context
+// 在连接关闭时调用
+func (c *WebsocketClient) cancelContext() {
+	if c.WsCancel != nil {
+		c.WsCancel()
+	}
+}
+
+// Context 返回 WebSocket 连接的 context
+// 用于所有需要 context 的操作（数据库查询、外部调用等）
+func (c *WebsocketClient) Context() context.Context {
+	if c.WsCtx == nil {
+		panic("WebsocketClient.WsCtx is not initialized")
+	}
+	return c.WsCtx
+}
+
+// WithTimeout 创建带超时的子 context
+// 用于需要超时控制的操作
+func (c *WebsocketClient) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(c.WsCtx, timeout)
 }
 
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
@@ -350,9 +434,17 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 			log(LogError, "WS Start err", zap.Error(err))
 			return
 		}
+
+		// 从 HTTP 请求中提取或生成 Trace ID
+		traceID := extractOrGenerateTraceID(c)
+
 		client := &WebsocketClient{conn: socket, done: make(chan struct{}), Ctx: c, SF: new(singleflight.Group)}
+
+		// 初始化 WebSocket 连接的长生命周期 context
+		client.initContext(traceID)
+
 		w.AddClient(client)
-		log(LogInfo, "WS Start", zap.String("type", "ReadLoop"))
+		log(LogInfo, "WS Start", zap.String("type", "ReadLoop"), zap.String("traceID", traceID))
 		go socket.ReadLoop()
 	}
 }
@@ -496,6 +588,10 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		return
 	}
 
+	// 首先取消 WebSocket 连接的 context，通知所有正在进行的操作停止
+	// 这必须在清理其他资源之前执行，以确保所有依赖 context 的操作能够收到取消信号
+	c.cancelContext()
+
 	w.RemoveClient(conn)
 
 	if c.User != nil {
@@ -503,10 +599,10 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		case c.done <- struct{}{}:
 		default:
 		}
-		log(LogInfo, "WS User Leave", zap.String("uid", c.User.ID), zap.Error(err))
+		log(LogInfo, "WS User Leave", zap.String("uid", c.User.ID), zap.String("traceID", c.TraceID), zap.Error(err))
 		w.RemoveUserClient(c)
 	} else {
-		log(LogInfo, "WS Client Leave (Unauth)", zap.Error(err))
+		log(LogInfo, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
 	}
 
 	// 清理所有未完成的上传会话
@@ -525,11 +621,12 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 		if sessionCount > 0 {
 			log(LogWarn, "OnClose: cleared upload sessions on disconnect",
-				zap.Int("sessionCount", sessionCount))
+				zap.Int("sessionCount", sessionCount),
+				zap.String("traceID", c.TraceID))
 		}
 	}
 
-	log(LogInfo, "WS Client Leave", zap.Int("Count", len(w.clients)))
+	log(LogInfo, "WS Client Leave", zap.Int("Count", len(w.clients)), zap.String("traceID", c.TraceID))
 
 }
 

@@ -162,9 +162,9 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "FileUploadCheck", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileUploadCheck", params.Path, params.Vault)
 
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -288,7 +288,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		}
 		session.FileHandle = nil // 避免再次清理时重复关闭
 
-		ctx := c.Ctx.Request.Context()
+		ctx := c.Context()
 
 		// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 		h.App.VaultService.GetOrCreate(ctx, c.User.UID, session.Vault)
@@ -343,9 +343,9 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "FileDelete", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileDelete", params.Path, params.Vault)
 
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -377,9 +377,9 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "FileChunkDownload", params.Path, params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileChunkDownload", params.Path, params.Vault)
 
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -447,9 +447,9 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		return
 	}
 
-	ctx := c.Ctx.Request.Context()
+	ctx := c.Context()
 
-	pkgapp.NoteModifyLog(c.User.UID, "FileSync", "", params.Vault)
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileSync", "", params.Vault)
 
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
@@ -641,7 +641,7 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(c.Context())
 
 	go func() {
 		timer := time.NewTimer(timeout)
@@ -748,8 +748,8 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 // sendFileChunks 执行文件分片发送。
 // 在独立的 goroutine 中运行,读取文件并通过 WebSocket 发送二进制分片。
 func handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileDownloadChunkSession) {
-	// 创建超时上下文
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// 创建超时上下文，基于 WebSocket 连接的 context
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
 	defer cancel()
 
 	// 打开文件

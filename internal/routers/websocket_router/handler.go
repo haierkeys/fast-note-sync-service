@@ -4,7 +4,6 @@ package websocket_router
 import (
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
-	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"go.uber.org/zap"
 )
@@ -21,10 +20,11 @@ func NewWSHandler(a *app.App) *WSHandler {
 }
 
 // logError 记录错误日志，包含 Trace ID
+// 直接使用 WebsocketClient.TraceID 字段，避免从可能失效的 HTTP context 获取
 func (h *WSHandler) logError(c *pkgapp.WebsocketClient, method string, err error) {
 	traceID := ""
-	if c != nil && c.Ctx != nil {
-		traceID = middleware.GetTraceID(c.Ctx.Request.Context())
+	if c != nil {
+		traceID = c.TraceID
 	}
 	h.App.Logger.Error(method,
 		zap.Error(err),
@@ -33,21 +33,23 @@ func (h *WSHandler) logError(c *pkgapp.WebsocketClient, method string, err error
 }
 
 // logInfo 记录信息日志，包含 Trace ID
+// 直接使用 WebsocketClient.TraceID 字段，避免从可能失效的 HTTP context 获取
 func (h *WSHandler) logInfo(c *pkgapp.WebsocketClient, method string, fields ...zap.Field) {
 	traceID := ""
-	if c != nil && c.Ctx != nil {
-		traceID = middleware.GetTraceID(c.Ctx.Request.Context())
+	if c != nil {
+		traceID = c.TraceID
 	}
 	allFields := append([]zap.Field{zap.String("traceId", traceID)}, fields...)
 	h.App.Logger.Info(method, allFields...)
 }
 
 // GetTraceID 从 WebSocket 客户端获取 Trace ID
+// 直接使用 WebsocketClient.TraceID 字段，避免从可能失效的 HTTP context 获取
 func GetTraceID(c *pkgapp.WebsocketClient) string {
-	if c == nil || c.Ctx == nil {
+	if c == nil {
 		return ""
 	}
-	return middleware.GetTraceID(c.Ctx.Request.Context())
+	return c.TraceID
 }
 
 // ============================================
