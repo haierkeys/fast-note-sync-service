@@ -5,13 +5,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"go.uber.org/zap"
 )
 
 // FileSessionTempCleanTask 临时文件清理任务
 type FileSessionTempCleanTask struct {
 	firstRun bool
+	app      *app.App
+	logger   *zap.Logger
+	tempPath string
 }
 
 // Name 任务名称
@@ -33,7 +36,7 @@ func (t *FileSessionTempCleanTask) IsStartupRun() bool {
 func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 	t.firstRun = false
 
-	tempDir := global.Config.App.TempPath
+	tempDir := t.tempPath
 	if tempDir == "" {
 		tempDir = "storage/temp"
 	}
@@ -43,7 +46,7 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 	// 检查目录是否存在，不存在则创建并直接返回成功
 	if _, err = os.Stat(tempDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(tempDir, 0754); err != nil {
-			global.Logger.Error("task log",
+			t.logger.Error("task log",
 				zap.String("task", t.Name()),
 				zap.String("path", tempDir),
 				zap.Error(err))
@@ -54,7 +57,7 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 
 	// 删除整个目录
 	if err = os.RemoveAll(tempDir); err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("type", "startupRun"),
 			zap.String("path", tempDir),
@@ -65,7 +68,7 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 
 	// 重新创建目录
 	if err = os.MkdirAll(tempDir, 0754); err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("type", "startupRun"),
 			zap.String("path", tempDir),
@@ -74,7 +77,7 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 		return err
 	}
 
-	global.Logger.Info("task log",
+	t.logger.Info("task log",
 		zap.String("task", t.Name()),
 		zap.String("type", "startupRun"),
 		zap.String("msg", "success"))
@@ -83,12 +86,17 @@ func (t *FileSessionTempCleanTask) Run(ctx context.Context) error {
 }
 
 // NewFileSessionTempCleanTask 创建临时文件清理任务
-func NewFileSessionTempCleanTask() (Task, error) {
+func NewFileSessionTempCleanTask(appContainer *app.App) (Task, error) {
 	return &FileSessionTempCleanTask{
 		firstRun: true,
+		app:      appContainer,
+		logger:   appContainer.Logger(),
+		tempPath: appContainer.Config().App.TempPath,
 	}, nil
 }
 
 func init() {
-	Register(NewFileSessionTempCleanTask)
+	RegisterWithApp(func(appContainer *app.App) (Task, error) {
+		return NewFileSessionTempCleanTask(appContainer)
+	})
 }

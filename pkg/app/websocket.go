@@ -10,13 +10,12 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/google/uuid"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
+	validatorV10 "github.com/go-playground/validator/v10"
 	"github.com/lxzan/gws"
 	"go.uber.org/zap"
 )
@@ -63,20 +62,29 @@ func extractOrGenerateTraceID(c *gin.Context) string {
 	return generateTraceID()
 }
 
-// log 记录日志，支持可选的 traceID 参数
+// wsLogger 是 WebSocket 模块使用的日志器（通过 App Container 注入）
+var wsLogger *zap.Logger
+
+// SetWSLogger 设置 WebSocket 模块的日志器
+func SetWSLogger(logger *zap.Logger) {
+	wsLogger = logger
+}
+
+// log 记录日志
 // t: 日志类型
 // msg: 日志消息
 // fields: zap 日志字段
 func log(t LogType, msg string, fields ...zap.Field) {
-	if global.Logger == nil {
+	if wsLogger == nil {
 		return
 	}
-	if t == LogError {
-		global.Logger.Error(msg, fields...)
-	} else if t == LogWarn {
-		global.Logger.Warn(msg, fields...)
-	} else if t == LogInfo {
-		global.Logger.Info(msg, fields...)
+	switch t {
+	case LogError:
+		wsLogger.Error(msg, fields...)
+	case LogWarn:
+		wsLogger.Warn(msg, fields...)
+	case LogInfo:
+		wsLogger.Info(msg, fields...)
 	}
 }
 
@@ -147,6 +155,7 @@ type SessionCleaner interface {
 type WebsocketClient struct {
 	conn                *gws.Conn            // WebSocket 底层连接句柄
 	done                chan struct{}        // 关闭信号通道，用于优雅关闭读/写协程
+	app                 AppContainer         // App Container 引用
 	Ctx                 *gin.Context         // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
 	WsCtx               context.Context      // WebSocket 连接的长生命周期 context
 	WsCancel            context.CancelFunc   // 用于取消 WsCtx
@@ -211,13 +220,13 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 	}
 
 	// Step 2: 参数验证
-	if global.Validator == nil {
+	validator := c.app.Validator()
+	if validator == nil {
 		return true, nil
 	}
-	if err := global.Validator.Validate.Struct(obj); err != nil {
-
+	if err := validator.ValidateStruct(obj); err != nil {
 		// 如果验证失败，检查错误类型
-		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+		if validationErrors, ok := err.(validatorV10.ValidationErrors); ok {
 			// 获取翻译器
 			v := c.Ctx.Value("trans")
 			trans := v.(ut.Translator)
@@ -292,7 +301,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
 	}
 
-	if global.Config.App.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
+	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
 		c.send(responseBytes, false, false)
 	}
 }
@@ -391,33 +400,79 @@ func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
 
 type ConnStorage = map[*gws.Conn]*WebsocketClient
 
-type WebsocketServer struct {
-	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
-	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	// binaryHandler     func(*WebsocketClient, []byte) // Deprecated: replaced by binaryHandlers
-	binaryHandlers map[string]func(*WebsocketClient, []byte) // 二进制消息处理器映射 prefix -> handler
-	clients        ConnStorage
-	userClients    map[string]ConnStorage
-	mu             sync.Mutex
-	up             *gws.Upgrader
-	config         *WSConfig
+// AppContainer 定义 App Container 接口，用于解耦 pkg/app 和 internal/app
+// 这个接口允许 WebsocketServer 使用 App Container 的功能而不产生循环依赖
+type AppContainer interface {
+	// Logger 获取日志器
+	Logger() *zap.Logger
+	// SubmitTask 提交任务到 Worker Pool
+	SubmitTask(ctx context.Context, task func(context.Context) error) error
+	// SubmitTaskAsync 异步提交任务到 Worker Pool（不等待结果）
+	SubmitTaskAsync(ctx context.Context, task func(context.Context) error) error
+	// Version 获取版本信息
+	Version() VersionInfo
+	// Validator 获取验证器（可能为 nil）
+	Validator() ValidatorInterface
+	// IsReturnSuccess 是否返回成功响应
+	IsReturnSuccess() bool
+	// GetAuthTokenKey 获取 Token 密钥
+	GetAuthTokenKey() string
 }
 
-func NewWebsocketServer(c WSConfig) *WebsocketServer {
+// VersionInfo 版本信息
+type VersionInfo struct {
+	Version   string
+	GitTag    string
+	BuildTime string
+}
+
+// ValidatorInterface 验证器接口
+type ValidatorInterface interface {
+	ValidateStruct(obj interface{}) error
+}
+
+type WebsocketServer struct {
+	app               AppContainer // App Container（必须）
+	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
+	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	binaryHandlers    map[string]func(*WebsocketClient, []byte) // 二进制消息处理器映射 prefix -> handler
+	clients           ConnStorage
+	userClients       map[string]ConnStorage
+	mu                sync.Mutex
+	up                *gws.Upgrader
+	config            *WSConfig
+}
+
+// NewWebsocketServer 创建 WebSocket 服务器实例
+// c: WebSocket 配置
+// app: App Container（必须）
+func NewWebsocketServer(c WSConfig, app AppContainer) *WebsocketServer {
+	if app == nil {
+		panic("AppContainer is required for WebsocketServer")
+	}
 	if c.PingInterval == 0 {
 		c.PingInterval = WSPingInterval
 	}
 	if c.PingWait == 0 {
 		c.PingWait = WSPingWait
 	}
-	wss := WebsocketServer{
+
+	// 设置 WebSocket 模块的日志器
+	SetWSLogger(app.Logger())
+
+	return &WebsocketServer{
+		app:            app,
 		handlers:       make(map[string]func(*WebsocketClient, *WebSocketMessage)),
 		binaryHandlers: make(map[string]func(*WebsocketClient, []byte)),
 		clients:        make(ConnStorage),
 		userClients:    make(map[string]ConnStorage),
 		config:         &c,
 	}
-	return &wss
+}
+
+// App 获取 App Container
+func (w *WebsocketServer) App() AppContainer {
+	return w.app
 }
 
 func (w *WebsocketServer) Upgrade() {
@@ -438,7 +493,13 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		// 从 HTTP 请求中提取或生成 Trace ID
 		traceID := extractOrGenerateTraceID(c)
 
-		client := &WebsocketClient{conn: socket, done: make(chan struct{}), Ctx: c, SF: new(singleflight.Group)}
+		client := &WebsocketClient{
+			conn: socket,
+			done: make(chan struct{}),
+			app:  w.app,
+			Ctx:  c,
+			SF:   new(singleflight.Group),
+		}
 
 		// 初始化 WebSocket 连接的长生命周期 context
 		client.initContext(traceID)
@@ -466,7 +527,8 @@ func (w *WebsocketServer) UseBinary(prefix string, handler func(*WebsocketClient
 
 func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessage) {
 
-	if user, err := ParseToken(string(msg.Data)); err != nil {
+	secretKey := w.app.GetAuthTokenKey()
+	if user, err := ParseTokenWithKey(string(msg.Data), secretKey); err != nil {
 		log(LogError, "WS Authorization FAILD", zap.Error(err))
 		c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
 		time.Sleep(2 * time.Second)
@@ -507,13 +569,13 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		c.UserClients = &userClients
 
-		versionInfo := map[string]string{
-			"version":   global.Version,
-			"gitTag":    global.GitTag,
-			"buildTime": global.BuildTime,
-		}
+		versionInfo := w.app.Version()
 
-		c.ToResponse(code.Success.WithData(versionInfo), "Authorization")
+		c.ToResponse(code.Success.WithData(map[string]string{
+			"version":   versionInfo.Version,
+			"gitTag":    versionInfo.GitTag,
+			"buildTime": versionInfo.BuildTime,
+		}), "Authorization")
 		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(userClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}
@@ -671,7 +733,26 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		copy(payloadCopy, payload)
 
 		if handler, ok := w.binaryHandlers[prefix]; ok {
-			go handler(c, payloadCopy)
+			// 通过 Worker Pool 提交任务
+			err := w.app.SubmitTaskAsync(c.Context(), func(ctx context.Context) error {
+				// 检查 context 是否已取消
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+				}
+				handler(c, payloadCopy)
+				return nil
+			})
+			if err != nil {
+				// Worker Pool 满载或已关闭，记录错误并返回错误响应
+				log(LogError, "WS OnMessage Worker Pool error",
+					zap.String("prefix", prefix),
+					zap.String("uid", c.User.ID),
+					zap.Error(err))
+				c.ToResponse(code.ErrorServerBusy)
+				return
+			}
 		} else {
 			log(LogWarn, "WS OnMessage Unknown Binary Prefix", zap.String("prefix", prefix))
 		}

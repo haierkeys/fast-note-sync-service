@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
@@ -12,7 +11,8 @@ import (
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
-	app *app.App
+	app    *app.App
+	logger *zap.Logger
 }
 
 // Name 返回任务名称
@@ -37,7 +37,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 
 	if err := t.app.NoteService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("sub_task", "NoteCleanup"),
 			zap.String("msg", "failed"),
@@ -46,7 +46,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 
 	if err := t.app.FileService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("sub_task", "FileCleanup"),
 			zap.String("msg", "failed"),
@@ -55,7 +55,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 
 	if err := t.app.SettingService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("sub_task", "SettingCleanup"),
 			zap.String("msg", "failed"),
@@ -66,7 +66,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 		return errs[0] // 返回第一个错误
 	}
 
-	global.Logger.Info("task log",
+	t.logger.Info("task log",
 		zap.String("task", t.Name()),
 		zap.String("type", "loopRun"),
 		zap.String("msg", "success"))
@@ -76,7 +76,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 
 // NewDbCleanTask 创建清理任务
 func NewDbCleanTask(appContainer *app.App) (Task, error) {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	retentionTimeStr := appContainer.Config().App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" {
 		return nil, nil
 	}
@@ -90,7 +90,10 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 	}
 
 	// 每分钟执行一次检查
-	return &DbCleanTask{app: appContainer}, nil
+	return &DbCleanTask{
+		app:    appContainer,
+		logger: appContainer.Logger(),
+	}, nil
 }
 
 // init 自动注册清理任务

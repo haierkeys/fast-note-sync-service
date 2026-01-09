@@ -15,6 +15,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/limiter"
 
+	ut "github.com/go-playground/universal-translator"
 	"github.com/gin-gonic/gin"
 	"github.com/lxzan/gws"
 )
@@ -28,7 +29,10 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 	},
 )
 
-func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
+func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalTranslator) *gin.Engine {
+
+	// 获取配置
+	cfg := appContainer.Config()
 
 	var wss = pkgapp.NewWebsocketServer(pkgapp.WSConfig{
 		GWSOption: gws.ServerOption{
@@ -40,7 +44,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 			ReadMaxPayloadSize:  1024 * 1024 * 64, // 设置最大读取缓冲区大小 64MB
 			WriteMaxPayloadSize: 1024 * 1024 * 64, // 设置最大写入缓冲区大小 64MB
 		},
-	})
+	}, appContainer)
 
 	// 创建 WebSocket Handlers（注入 App Container）
 	noteWSHandler := websocket_router.NewNoteWSHandler(appContainer)
@@ -76,8 +80,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	//附件上传分块
 	wss.UseBinary(websocket_router.VaultFileSync, fileWSHandler.FileUploadChunkBinary)
 
-	// WebGUI 配置
-	wss.Use("WebGUIConfigGet", websocket_router.WebGUIConfigGet)
+	// WebGUI 配置（使用注入的配置）
+	webGUIWSHandler := websocket_router.NewWebGUIWSHandler(appContainer)
+	wss.Use("WebGUIConfigGet", webGUIWSHandler.WebGUIConfigGet)
 
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 
@@ -101,15 +106,15 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.Use(middleware.AppInfo())
+		api.Use(middleware.AppInfoWithConfig(global.Name, appContainer.Version().Version))
 		api.Use(gin.Logger())
-		api.Use(middleware.TraceMiddleware()) // Trace ID 中间件
+		api.Use(middleware.TraceMiddlewareWithConfig(cfg.Tracer.Enabled, cfg.Tracer.Header)) // Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))
-		api.Use(middleware.ContextTimeout(time.Duration(global.Config.App.DefaultContextTimeout) * time.Second))
+		api.Use(middleware.ContextTimeout(time.Duration(cfg.App.DefaultContextTimeout) * time.Second))
 		api.Use(middleware.Cors())
-		api.Use(middleware.Lang())
-		api.Use(middleware.AccessLog())
-		api.Use(middleware.Recovery())
+		api.Use(middleware.LangWithTranslator(uni))
+		api.Use(middleware.AccessLogWithLogger(appContainer.Logger()))
+		api.Use(middleware.RecoveryWithLogger(appContainer.Logger()))
 
 		// 创建 Handlers（注入 App Container）
 		userHandler := api_router.NewUserHandler(appContainer)
@@ -127,24 +132,24 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/webgui/config", webGUIHandler.Config)
 
-		api.Use(middleware.UserAuthToken()).POST("/user/change_password", userHandler.UserChangePassword)
-		api.Use(middleware.UserAuthToken()).GET("/user/info", userHandler.UserInfo)
-		api.Use(middleware.UserAuthToken()).GET("/vault", vaultHandler.List)
-		api.Use(middleware.UserAuthToken()).POST("/vault", vaultHandler.CreateOrUpdate)
-		api.Use(middleware.UserAuthToken()).DELETE("/vault", vaultHandler.Delete)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/user/change_password", userHandler.UserChangePassword)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/user/info", userHandler.UserInfo)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/vault", vaultHandler.List)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/vault", vaultHandler.CreateOrUpdate)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).DELETE("/vault", vaultHandler.Delete)
 
-		api.Use(middleware.UserAuthToken()).GET("/note", noteHandler.Get)
-		api.Use(middleware.UserAuthToken()).GET("/note/file", noteHandler.GetFileContent)
-		api.Use(middleware.UserAuthToken()).POST("/note", noteHandler.CreateOrUpdate)
-		api.Use(middleware.UserAuthToken()).DELETE("/note", noteHandler.Delete)
-		api.Use(middleware.UserAuthToken()).GET("/notes", noteHandler.List)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note", noteHandler.Get)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/file", noteHandler.GetFileContent)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/note", noteHandler.CreateOrUpdate)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).DELETE("/note", noteHandler.Delete)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/notes", noteHandler.List)
 
-		api.Use(middleware.UserAuthToken()).GET("/note/history", noteHistoryHandler.Get)
-		api.Use(middleware.UserAuthToken()).GET("/note/histories", noteHistoryHandler.List)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/history", noteHistoryHandler.Get)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/histories", noteHistoryHandler.List)
 	}
 
-	if global.Config.App.UploadSavePath != "" {
-		r.StaticFS(global.Config.App.UploadSavePath, http.Dir(global.Config.App.UploadSavePath))
+	if cfg.App.UploadSavePath != "" {
+		r.StaticFS(cfg.App.UploadSavePath, http.Dir(cfg.App.UploadSavePath))
 	}
 	r.Use(middleware.Cors())
 	r.NoRoute(middleware.NoFound())

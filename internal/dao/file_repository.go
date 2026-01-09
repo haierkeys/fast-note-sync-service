@@ -148,115 +148,143 @@ func (r *fileRepository) GetByPathLike(ctx context.Context, path string, vaultID
 
 // Create 创建文件
 func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int64) (*domain.File, error) {
-	u := r.file(uid).File
-	m := r.toModel(file)
+	var result *domain.File
+	var createErr error
 
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.CreatedAt = timex.Now()
-	m.UpdatedAt = timex.Now()
+	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).File
+		m := r.toModel(file)
 
-	tempSavePath := m.SavePath
-	m.SavePath = "" // 不在数据库中保存路径
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.CreatedAt = timex.Now()
+		m.UpdatedAt = timex.Now()
 
-	err := u.WithContext(ctx).Create(m)
+		tempSavePath := m.SavePath
+		m.SavePath = "" // 不在数据库中保存路径
+
+		createErr = u.WithContext(ctx).Create(m)
+		if createErr != nil {
+			return createErr
+		}
+
+		// 移动文件到 Vault 目录，固定命名为 file.dat
+		if tempSavePath != "" {
+			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
+			_ = os.MkdirAll(folderPath, 0755)
+			finalPath := filepath.Join(folderPath, "file.dat")
+
+			if err := os.Rename(tempSavePath, finalPath); err != nil {
+				_ = os.Rename(tempSavePath, finalPath)
+			}
+		}
+
+		result = r.toDomain(m, uid)
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	// 移动文件到 Vault 目录，固定命名为 file.dat
-	if tempSavePath != "" {
-		folderPath := r.dao.GetFileFolderPath(uid, m.ID)
-		_ = os.MkdirAll(folderPath, 0755)
-		finalPath := filepath.Join(folderPath, "file.dat")
-
-		if err := os.Rename(tempSavePath, finalPath); err != nil {
-			_ = os.Rename(tempSavePath, finalPath)
-		}
-	}
-
-	return r.toDomain(m, uid), nil
+	return result, createErr
 }
 
 // Update 更新文件
 func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int64) (*domain.File, error) {
-	u := r.file(uid).File
-	m := r.toModel(file)
+	var result *domain.File
+	var updateErr error
 
-	m.UpdatedTimestamp = timex.Now().UnixMilli()
-	m.UpdatedAt = timex.Now()
+	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).File
+		m := r.toModel(file)
 
-	tempSavePath := m.SavePath
-	m.SavePath = "" // 不在数据库中更新路径
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
+		m.UpdatedAt = timex.Now()
 
-	// 如果提供了新的临时路径，则移动到固定的 file.dat
-	if tempSavePath != "" {
-		folderPath := r.dao.GetFileFolderPath(uid, m.ID)
-		_ = os.MkdirAll(folderPath, 0755)
-		finalPath := filepath.Join(folderPath, "file.dat")
-		_ = os.Rename(tempSavePath, finalPath)
-	}
+		tempSavePath := m.SavePath
+		m.SavePath = "" // 不在数据库中更新路径
 
-	err := u.WithContext(ctx).Where(
-		u.ID.Eq(m.ID),
-	).Save(m)
+		// 如果提供了新的临时路径，则移动到固定的 file.dat
+		if tempSavePath != "" {
+			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
+			_ = os.MkdirAll(folderPath, 0755)
+			finalPath := filepath.Join(folderPath, "file.dat")
+			_ = os.Rename(tempSavePath, finalPath)
+		}
+
+		updateErr = u.WithContext(ctx).Where(
+			u.ID.Eq(m.ID),
+		).Save(m)
+
+		if updateErr != nil {
+			return updateErr
+		}
+		result = r.toDomain(m, uid)
+		return nil
+	})
 
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return result, updateErr
 }
 
 // UpdateMtime 更新文件修改时间
 func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
-	u := r.file(uid).File
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).File
 
-	_, err := u.WithContext(ctx).Where(
-		u.ID.Eq(id),
-	).UpdateSimple(
-		u.Mtime.Value(mtime),
-		u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
-		u.UpdatedAt.Value(timex.Now()),
-	)
-	return err
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
 }
 
 // Delete 物理删除文件
 func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
-	u := r.file(uid).File
-	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
-	if err != nil {
-		return err
-	}
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).File
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
+		if err != nil {
+			return err
+		}
 
-	// 删除物理文件
-	folderPath := r.dao.GetFileFolderPath(uid, id)
-	_ = r.dao.RemoveContentFolder(folderPath)
+		// 删除物理文件
+		folderPath := r.dao.GetFileFolderPath(uid, id)
+		_ = r.dao.RemoveContentFolder(folderPath)
 
-	return nil
+		return nil
+	})
 }
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的文件
 func (r *fileRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
-	u := r.file(uid).File
+	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+		u := query.Use(db).File
 
-	// 查找待删除的记录，以便删除文件系统中的文件夹
-	mList, err := u.WithContext(ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Find()
+		// 查找待删除的记录，以便删除文件系统中的文件夹
+		mList, err := u.WithContext(ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Find()
 
-	if err == nil {
-		for _, m := range mList {
-			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
-			_ = r.dao.RemoveContentFolder(folderPath)
+		if err == nil {
+			for _, m := range mList {
+				folderPath := r.dao.GetFileFolderPath(uid, m.ID)
+				_ = r.dao.RemoveContentFolder(folderPath)
+			}
 		}
-	}
 
-	_, err = u.WithContext(ctx).Where(
-		u.Action.Eq("delete"),
-		u.UpdatedTimestamp.Lt(timestamp),
-	).Delete()
-	return err
+		_, err = u.WithContext(ctx).Where(
+			u.Action.Eq("delete"),
+			u.UpdatedTimestamp.Lt(timestamp),
+		).Delete()
+		return err
+	})
 }
 
 // List 分页获取文件列表

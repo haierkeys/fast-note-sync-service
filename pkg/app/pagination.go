@@ -1,11 +1,22 @@
 package app
 
 import (
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 
 	"github.com/gin-gonic/gin"
 )
+
+// PaginationConfig 分页配置
+type PaginationConfig struct {
+	DefaultPageSize int
+	MaxPageSize     int
+}
+
+// DefaultPaginationConfig 默认分页配置
+var DefaultPaginationConfig = PaginationConfig{
+	DefaultPageSize: 10,
+	MaxPageSize:     100,
+}
 
 func GetPage(c *gin.Context) int {
 
@@ -24,8 +35,8 @@ func GetPage(c *gin.Context) int {
 	return page
 }
 
-func GetPageSize(c *gin.Context) int {
-
+// GetPageSizeWithConfig 获取分页大小（使用注入的配置）
+func GetPageSizeWithConfig(c *gin.Context, cfg PaginationConfig) int {
 	var pageSize int
 
 	if s, exist := c.GetQuery("pageSize"); exist {
@@ -35,13 +46,18 @@ func GetPageSize(c *gin.Context) int {
 	}
 
 	if pageSize <= 0 {
-		return global.Config.App.DefaultPageSize
+		return cfg.DefaultPageSize
 	}
-	if pageSize > global.Config.App.MaxPageSize {
-		return global.Config.App.MaxPageSize
+	if pageSize > cfg.MaxPageSize {
+		return cfg.MaxPageSize
 	}
 
 	return pageSize
+}
+
+// GetPageSize 获取分页大小（使用默认配置）
+func GetPageSize(c *gin.Context) int {
+	return GetPageSizeWithConfig(c, DefaultPaginationConfig)
 }
 
 func GetPageOffset(page, pageSize int) int {

@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
@@ -46,31 +47,42 @@ func (d *Dao) noteHistory(uid int64) *query.Query {
 }
 
 func (d *Dao) NoteHistoryCreate(params *NoteHistorySet, uid int64) (*NoteHistory, error) {
-	u := d.noteHistory(uid).NoteHistory
-	m := convert.StructAssign(params, &model.NoteHistory{}).(*model.NoteHistory)
+	var result *NoteHistory
+	var createErr error
 
-	// 暂存内容用于写文件
-	diffPatch := m.DiffPatch
-	content := m.Content
+	err := d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).NoteHistory
+		m := convert.StructAssign(params, &model.NoteHistory{}).(*model.NoteHistory)
 
-	// 不在数据库中保存大数据
-	m.DiffPatch = ""
-	m.Content = ""
+		// 暂存内容用于写文件
+		diffPatch := m.DiffPatch
+		content := m.Content
 
-	err := u.WithContext(d.ctx).Create(m)
+		// 不在数据库中保存大数据
+		m.DiffPatch = ""
+		m.Content = ""
+
+		createErr = u.WithContext(d.ctx).Create(m)
+		if createErr != nil {
+			return createErr
+		}
+
+		// 保存到文件
+		folder := d.GetNoteHistoryFolderPath(uid, m.ID)
+		_ = d.SaveContentToFile(folder, "diff.patch", diffPatch)
+		_ = d.SaveContentToFile(folder, "content.txt", content)
+
+		res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
+		res.DiffPatch = diffPatch
+		res.Content = content
+		result = res
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	// 保存到文件
-	folder := d.GetNoteHistoryFolderPath(uid, m.ID)
-	_ = d.SaveContentToFile(folder, "diff.patch", diffPatch)
-	_ = d.SaveContentToFile(folder, "content.txt", content)
-
-	res := convert.StructAssign(m, &NoteHistory{}).(*NoteHistory)
-	res.DiffPatch = diffPatch
-	res.Content = content
-	return res, nil
+	return result, createErr
 }
 
 func (d *Dao) NoteHistoryGetById(id int64, uid int64) (*NoteHistory, error) {
@@ -137,9 +149,11 @@ func (d *Dao) NoteHistoryGetByNoteIdAndHash(noteId int64, contentHash string, ui
 }
 
 func (d *Dao) NoteHistoryMigrate(oldNoteID, newNoteID int64, uid int64) error {
-	u := d.noteHistory(uid).NoteHistory
-	_, err := u.WithContext(d.ctx).Where(u.NoteID.Eq(oldNoteID)).Update(u.NoteID, newNoteID)
-	return err
+	return d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).NoteHistory
+		_, err := u.WithContext(d.ctx).Where(u.NoteID.Eq(oldNoteID)).Update(u.NoteID, newNoteID)
+		return err
+	})
 }
 
 // fillHistoryContent 填充历史记录内容及补丁

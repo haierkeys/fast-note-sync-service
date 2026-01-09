@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
@@ -64,6 +63,7 @@ type settingService struct {
 	settingRepo  domain.SettingRepository
 	vaultService VaultService
 	sf           *singleflight.Group
+	config       *ServiceConfig
 
 	// 清理相关
 	lastCleanupTime time.Time
@@ -71,11 +71,12 @@ type settingService struct {
 }
 
 // NewSettingService 创建 SettingService 实例
-func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultService) SettingService {
+func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultService, config *ServiceConfig) SettingService {
 	return &settingService{
 		settingRepo:  settingRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
+		config:       config,
 	}
 }
 
@@ -267,7 +268,10 @@ func (s *settingService) Sync(ctx context.Context, uid int64, params *dto.Settin
 
 // Cleanup 清理过期的软删除配置
 func (s *settingService) Cleanup(ctx context.Context, uid int64) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}
@@ -287,7 +291,10 @@ func (s *settingService) Cleanup(ctx context.Context, uid int64) error {
 
 // CleanupAll 清理所有用户的过期软删除配置
 func (s *settingService) CleanupAll(ctx context.Context) error {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+	if s.config == nil {
+		return nil
+	}
+	retentionTimeStr := s.config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" || retentionTimeStr == "0" {
 		return nil
 	}

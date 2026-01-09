@@ -3,13 +3,14 @@ package middleware
 import (
 	"strings"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
+	ut "github.com/go-playground/universal-translator"
 	"github.com/gin-gonic/gin"
 )
 
-func Lang() gin.HandlerFunc {
+// LangWithTranslator 创建带翻译器的语言中间件（支持依赖注入）
+func LangWithTranslator(uni *ut.UniversalTranslator) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
@@ -23,12 +24,12 @@ func Lang() gin.HandlerFunc {
 
 		lang = strings.ToLower(strings.ReplaceAll(lang, "-", "_"))
 
-		trans, found := global.Ut.GetTranslator(lang)
+		trans, found := uni.GetTranslator(lang)
 
 		if found {
 			c.Set("trans", trans)
 		} else {
-			trans, _ := global.Ut.GetTranslator("en")
+			trans, _ := uni.GetTranslator("en")
 			c.Set("trans", trans)
 		}
 

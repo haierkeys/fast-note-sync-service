@@ -35,7 +35,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("UserHandler.Register.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("UserHandler.Register.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -63,7 +63,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("UserHandler.Login.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("UserHandler.Login.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -92,7 +92,7 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
-		h.App.Logger.Error("UserHandler.UserChangePassword.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("UserHandler.UserChangePassword.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -100,7 +100,7 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("UserHandler.UserChangePassword err uid=0")
+		h.App.Logger().Error("UserHandler.UserChangePassword err uid=0")
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
@@ -127,7 +127,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
-		h.App.Logger.Error("UserHandler.UserInfo err uid=0")
+		h.App.Logger().Error("UserHandler.UserInfo err uid=0")
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
@@ -149,7 +149,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 // logError 记录错误日志，包含 Trace ID
 func (h *UserHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
-	h.App.Logger.Error(method,
+	h.App.Logger().Error(method,
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)

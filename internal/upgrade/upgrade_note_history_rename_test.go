@@ -2,12 +2,10 @@ package upgrade
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"go.uber.org/zap"
 )
 
@@ -28,24 +26,17 @@ func TestNoteHistoryRenameMigrate_Up(t *testing.T) {
 	_ = os.WriteFile(unrelatedFile, []byte("dummy4"), 0644)
 	_ = os.WriteFile(unrelatedUserFile, []byte("dummy5"), 0644)
 
-	// 2. Mock global config using ConfigLoad
-	configContent := fmt.Sprintf(`
-database:
-  type: sqlite
-  path: %s
-`, filepath.ToSlash(filepath.Join(dbDir, "db.sqlite3")))
-	configPath := filepath.Join(dbDir, "config.yaml")
-	_ = os.WriteFile(configPath, []byte(configContent), 0644)
-
-	_, err := global.ConfigLoad(configPath)
-	if err != nil {
-		t.Fatalf("ConfigLoad failed: %v", err)
+	// 2. Create MigrationContext
+	logger, _ := zap.NewDevelopment()
+	mc := &MigrationContext{
+		Logger:       logger,
+		DatabasePath: filepath.Join(dbDir, "db.sqlite3"),
+		DatabaseType: "sqlite",
 	}
-	global.Logger, _ = zap.NewDevelopment()
 
 	// 3. Run migration logic
 	migrate := &NoteHistoryRenameMigrate{}
-	err = migrate.Up(nil, context.Background())
+	err := migrate.Up(nil, context.Background(), mc)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}

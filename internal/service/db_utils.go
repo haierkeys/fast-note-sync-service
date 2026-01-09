@@ -4,8 +4,9 @@ package service
 import (
 	"context"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+
+	"gorm.io/gorm"
 )
 
 // DBUtils 数据库工具服务，提供数据库迁移和 SQL 执行功能
@@ -15,9 +16,12 @@ type DBUtils struct {
 }
 
 // NewDBUtils 创建 DBUtils 实例
-func NewDBUtils(ctx context.Context) *DBUtils {
+// db: 数据库连接（必须）
+// ctx: 上下文
+// opts: Dao 配置选项
+func NewDBUtils(db *gorm.DB, ctx context.Context, opts ...dao.DaoOption) *DBUtils {
 	return &DBUtils{
-		dao: dao.New(global.DBEngine, ctx),
+		dao: dao.New(db, ctx, opts...),
 	}
 }
 
