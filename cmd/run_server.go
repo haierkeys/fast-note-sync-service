@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
+	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
 	"github.com/haierkeys/fast-note-sync-service/internal/task"
@@ -30,11 +31,48 @@ import (
 	"go.uber.org/zap"
 )
 
+// defaultSecretKeys 定义需要检测的默认密钥列表
+var defaultSecretKeys = []string{
+	"6666",
+	"fast-note-sync-Auth-Token",
+	"",
+}
+
 type Server struct {
 	logger            *zap.Logger // non-nil logger.
 	httpServer        *http.Server
 	privateHttpServer *http.Server
 	sc                *safe_close.SafeClose
+	app               *internalApp.App // App Container
+}
+
+// checkSecurityConfig 检查安全配置，如果使用默认密钥则输出警告
+func checkSecurityConfig() {
+	isDefault := false
+	for _, key := range defaultSecretKeys {
+		if global.Config.Security.AuthTokenKey == key {
+			isDefault = true
+			break
+		}
+	}
+
+	if isDefault {
+		// 输出到控制台
+		fmt.Println()
+		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println("⚠️  SECURITY WARNING: Using default secret key!")
+		fmt.Println()
+		fmt.Println("Please modify 'security.auth-token-key' in config.yaml")
+		fmt.Println("Generate a secure key with:")
+		fmt.Println("  openssl rand -base64 32")
+		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println()
+
+		// 记录到日志
+		if global.Logger != nil {
+			global.Logger.Warn("Using default secret key - please change security.auth-token-key in config.yaml")
+		}
+	}
 }
 
 func NewServer(runEnv *runFlags) (*Server, error) {
@@ -62,6 +100,9 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	// Init logger.
 	initLogger(s)
 
+	// 检查安全配置（默认密钥检测）
+	checkSecurityConfig()
+
 	// 初始化存储目录
 	if err := initStorage(); err != nil {
 		return nil, fmt.Errorf("initStorage: %w", err)
@@ -70,6 +111,13 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	if err := initDatabase(); err != nil {
 		return nil, fmt.Errorf("initDatabase: %w", err)
 	}
+
+	// 初始化 App Container
+	app, err := internalApp.NewApp(s.logger, global.DBEngine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create app container: %w", err)
+	}
+	s.app = app
 
 	// 自动执行迁移任务
 	if err := upgrade.Execute(); err != nil {
@@ -99,7 +147,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		s.logger.Warn("api_router", zap.String("config.server.HttpPort", global.Config.Server.HttpPort))
 		s.httpServer = &http.Server{
 			Addr:           global.Config.Server.HttpPort,
-			Handler:        routers.NewRouter(frontendFiles),
+			Handler:        routers.NewRouter(frontendFiles, s.app),
 			ReadTimeout:    time.Duration(global.Config.Server.ReadTimeout) * time.Second,
 			WriteTimeout:   time.Duration(global.Config.Server.WriteTimeout) * time.Second,
 			MaxHeaderBytes: 1 << 20,
@@ -165,12 +213,25 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		})
 	}
 
+	// 注册 App Container 的优雅关闭
+	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+		defer done()
+		<-closeSignal
+		if s.app != nil {
+			if err := s.app.Close(); err != nil {
+				s.logger.Error("failed to close app container", zap.Error(err))
+			} else {
+				s.logger.Info("App container closed gracefully")
+			}
+		}
+	})
+
 	return s, nil
 }
 
 func initScheduler(s *Server) {
 	// 创建任务管理器
-	manager := task.NewManager(s.logger, s.sc)
+	manager := task.NewManager(s.logger, s.sc, s.app)
 
 	// 注册所有任务(业务层控制)
 	if err := manager.RegisterTasks(); err != nil {
@@ -259,4 +320,9 @@ func initStorage() error {
 		}
 	}
 	return nil
+}
+
+// GetApp 获取 App Container
+func (s *Server) GetApp() *internalApp.App {
+	return s.app
 }

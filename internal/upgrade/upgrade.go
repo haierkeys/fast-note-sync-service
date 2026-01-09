@@ -57,10 +57,10 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger) *MigrationManager {
 // Run 执行升级
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
-	svc := service.NewBackground(ctx)
-	err := svc.ExposeAutoMigrate()
+	dbUtils := service.NewDBUtils(ctx)
+	err := dbUtils.ExposeAutoMigrate()
 	if err != nil {
-		return fmt.Errorf("svc.ExposeAutoMigrate: %w", err)
+		return fmt.Errorf("dbUtils.ExposeAutoMigrate: %w", err)
 	}
 
 	// 确保 schema_version 表存在

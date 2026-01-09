@@ -211,7 +211,6 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if global.Config.App.IsReturnSussess || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
 		c.send(responseBytes, false, false)
 	}
-	code.Reset()
 }
 
 // BroadcastResponse 将结果转换为 JSON 格式并广播给当前用户的所有连接客户端
@@ -261,8 +260,6 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 	}
 
 	c.send(responseBytes, true, options[0].(bool))
-
-	code.Reset()
 }
 
 func (c *WebsocketClient) send(responseBytes []byte, isBroadcast bool, isExcludeSelf bool) {
@@ -667,5 +664,4 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 		}
 		_ = b.Broadcast(uc.conn)
 	}
-	code.Reset()
 }

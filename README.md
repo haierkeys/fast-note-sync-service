@@ -155,6 +155,32 @@ The default configuration file is `config.yaml`, the program will automatically 
 
 View full configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
 
+### Key Configuration Options
+
+| Section | Option | Description | Default |
+|---------|--------|-------------|---------|
+| `security` | `auth-token-key` | JWT signing key (⚠️ **Must change from default!**) | - |
+| `security` | `token-expiry` | Token expiration time (e.g., `7d`, `24h`, `30m`) | `7d` |
+| `database` | `max-open-conns` | Maximum open database connections | `100` |
+| `database` | `max-idle-conns` | Maximum idle database connections | `10` |
+| `database` | `conn-max-lifetime` | Connection max lifetime (e.g., `30m`, `1h`) | `30m` |
+| `database` | `conn-max-idle-time` | Idle connection max lifetime | `10m` |
+| `tracer` | `enabled` | Enable request tracing | `true` |
+| `tracer` | `header` | Trace ID header name | `X-Trace-ID` |
+
+> ⚠️ **Security Warning**: The system will warn you if using default secret keys. Please generate a secure key with: `openssl rand -base64 32`
+
+## 📐 Architecture
+
+This service follows Clean Architecture principles with clear separation of concerns:
+
+- **Transport Layer**: HTTP/WebSocket handlers
+- **Application Layer**: Business logic orchestration
+- **Domain Layer**: Core entities and repository interfaces
+- **Infrastructure Layer**: Database implementations
+
+For detailed architecture documentation, see: [docs/ARCHITECTURE.md](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/ARCHITECTURE.md)
+
 
 ## 🔗 Related Resources
 

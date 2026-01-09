@@ -15,7 +15,7 @@ var (
 )
 
 type config struct {
-	File     string
+	File     string          `yaml:"-"` // 配置文件路径，不序列化
 	Server   server          `yaml:"server"`
 	Log      LogConfig       `yaml:"log"`
 	Database Database        `yaml:"database"`
@@ -24,6 +24,7 @@ type config struct {
 	Security security        `yaml:"security"`
 	LocalFS  local_fs.Config `yaml:"local-fs"`
 	WebGUI   webGUI          `yaml:"webgui"`
+	Tracer   TracerConfig    `yaml:"tracer"`
 }
 
 type LogConfig struct {
@@ -55,6 +56,7 @@ type server struct {
 type security struct {
 	AuthToken    string `yaml:"auth-token"`
 	AuthTokenKey string `yaml:"auth-token-key"`
+	TokenExpiry  string `yaml:"token-expiry"` // Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟）
 }
 
 type Database struct {
@@ -80,10 +82,14 @@ type Database struct {
 	Charset string `yaml:"charset"`
 	// 是否解析时间
 	ParseTime bool `yaml:"parse-time"`
-	// 最大闲置连接数
+	// 最大闲置连接数，默认 10
 	MaxIdleConns int `yaml:"max-idle-conns"`
-	// 最大打开连接数
+	// 最大打开连接数，默认 100
 	MaxOpenConns int `yaml:"max-open-conns"`
+	// 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
+	ConnMaxLifetime string `yaml:"conn-max-lifetime"`
+	// 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
+	ConnMaxIdleTime string `yaml:"conn-max-idle-time"`
 }
 
 type user struct {
@@ -135,6 +141,14 @@ type email struct {
 
 type webGUI struct {
 	FontSet string `yaml:"font-set" json:"fontSet"`
+}
+
+// TracerConfig 请求追踪配置
+type TracerConfig struct {
+	// 是否启用追踪
+	Enabled bool `yaml:"enabled"`
+	// 追踪 ID 请求头名称，默认 X-Trace-ID
+	Header string `yaml:"header"`
 }
 
 // ConfigLoad 初始化

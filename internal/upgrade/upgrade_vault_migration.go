@@ -61,7 +61,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 	global.Logger.Info("Step 0: Database files renamed successfully")
 
 	global.Logger.Info("VaultMigrate Up - Starting vault table migration")
-	svc := service.NewBackground(ctx)
+	dbUtils := service.NewDBUtils(ctx)
 
 	// SQLite 不支持直接 ALTER COLUMN,需要重建表
 	// 1. 创建新表
@@ -78,7 +78,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 			updated_at DATETIME DEFAULT NULL
 		)
 	`
-	if err := svc.UserExecuteSQL(createNewTable); err != nil {
+	if err := dbUtils.UserExecuteSQL(createNewTable); err != nil {
 		global.Logger.Error("Step 1 failed", zap.Error(err))
 		return err
 	}
@@ -91,7 +91,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 		SELECT id, vault, note_count, size as note_size, file_count, file_size, created_at, updated_at
 		FROM vault
 	`
-	if err := svc.UserExecuteSQL(copyData); err != nil {
+	if err := dbUtils.UserExecuteSQL(copyData); err != nil {
 		global.Logger.Error("Step 2 failed", zap.Error(err))
 		return err
 	}
@@ -99,7 +99,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 
 	// 3. 删除旧表
 	global.Logger.Info("Step 3: Dropping old vault table")
-	if err := svc.UserExecuteSQL("DROP TABLE vault"); err != nil {
+	if err := dbUtils.UserExecuteSQL("DROP TABLE vault"); err != nil {
 		global.Logger.Error("Step 3 failed", zap.Error(err))
 		return err
 	}
@@ -108,7 +108,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 
 	// 4. 重命名新表
 	global.Logger.Info("Step 4: Renaming vault_new to vault")
-	if err := svc.UserExecuteSQL("ALTER TABLE vault_new RENAME TO vault"); err != nil {
+	if err := dbUtils.UserExecuteSQL("ALTER TABLE vault_new RENAME TO vault"); err != nil {
 		global.Logger.Error("Step 4 failed", zap.Error(err))
 		return err
 	}
@@ -117,7 +117,7 @@ func (m *VaultMigrate) Up(db *gorm.DB, ctx context.Context) error {
 	// 5. 重建索引
 	global.Logger.Info("Step 5: Recreating index idx_vault_uid")
 	createIndex := `CREATE INDEX idx_vault_uid ON vault (vault ASC)`
-	if err := svc.UserExecuteSQL(createIndex); err != nil {
+	if err := dbUtils.UserExecuteSQL(createIndex); err != nil {
 		global.Logger.Error("Step 5 failed", zap.Error(err))
 		return err
 	}

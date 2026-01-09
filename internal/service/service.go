@@ -1,109 +1,27 @@
+// Package service 实现业务逻辑层
+// 本文件保留包级别的通道和消息类型定义
 package service
 
-import (
-	"context"
+// NoteMigrateChannel 迁移任务通道
+var NoteMigrateChannel = make(chan NoteMigrateMsg, 1000)
 
-	"github.com/haierkeys/fast-note-sync-service/global"
-	"github.com/haierkeys/fast-note-sync-service/internal/dao"
-	"golang.org/x/sync/singleflight"
-
-	"github.com/gin-gonic/gin"
-)
-
-type Service struct {
-	ctx           *gin.Context
-	dao           *dao.Dao
-	SF            *singleflight.Group
-	ClientName    string
-	ClientVersion string
+// NoteMigrateMsg 笔记迁移消息
+type NoteMigrateMsg struct {
+	OldNoteID int64
+	NewNoteID int64
+	UID       int64
 }
 
-func New(ctx *gin.Context) *Service {
-
-	svc := Service{ctx: ctx}
-	svc.dao = dao.New(global.DBEngine, ctx)
-	svc.SF = &singleflight.Group{}
-
-	// svc.dao = dao.New(otgorm.WithContext(svc.ctx, global.DBEngine))
-
-	return &svc
+// NoteHistoryMsg 笔记历史记录延时处理消息
+type NoteHistoryMsg struct {
+	NoteID int64
+	UID    int64
 }
 
-// NewBackground 创建一个用于后台任务 / 升级脚本 的 Service 实例 (ctx 为 nil)
-func NewBackground(ctx context.Context) *Service {
-	svc := Service{ctx: nil}
-	svc.dao = dao.New(global.DBEngine, ctx)
-	svc.SF = &singleflight.Group{}
-	return &svc
-}
+// NoteHistoryChannel 延时任务通道，后台 task 会监听此通道
+var NoteHistoryChannel = make(chan NoteHistoryMsg, 1000)
 
-func (svc *Service) WithClientName(clientName string) *Service {
-	svc.ClientName = clientName
-	return svc
-}
-
-func (svc *Service) WithClientVersion(clientVersion string) *Service {
-	svc.ClientVersion = clientVersion
-	return svc
-}
-
-func (svc *Service) WithSF(sf *singleflight.Group) *Service {
-	svc.SF = sf
-	return svc
-}
-
-func (svc *Service) Ctx() *gin.Context {
-	return svc.ctx
-}
-
-// ExposeAutoMigrate 暴露自动迁移接口
-func (svc *Service) ExposeAutoMigrate() error {
-
-	//先迁移
-	err := svc.dao.AutoMigrate(0, "User")
-	if err != nil {
-		return err
-	}
-	uids, err := svc.dao.GetAllUserUIDs()
-	if err != nil {
-		return err
-	}
-
-	for _, uid := range uids {
-		err = svc.dao.AutoMigrate(uid, "")
-		if err != nil {
-			break
-		}
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ExecuteSQL 执行 SQL 接口
-func (svc *Service) ExecuteSQL(sql string) error {
-	db := svc.dao.UseKey()
-	if db != nil {
-		db.Exec(sql)
-	}
-	return nil
-}
-
-// UserExecuteSQL 用户执行 SQL 接口
-func (svc *Service) UserExecuteSQL(sql string) error {
-	uids, err := svc.dao.GetAllUserUIDs()
-	if err != nil {
-		return err
-	}
-	for _, uid := range uids {
-		// 忽略单个用户的清理错误，继续清理下一个
-		db := svc.dao.UserDB(uid)
-		if db != nil {
-			db.Exec(sql)
-		}
-	}
-	return nil
+// NoteHistoryDelayPush 将笔记推送至延时处理队列
+func NoteHistoryDelayPush(noteID int64, uid int64) {
+	NoteHistoryChannel <- NoteHistoryMsg{NoteID: noteID, UID: uid}
 }

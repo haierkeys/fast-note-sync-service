@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
-	"github.com/haierkeys/fast-note-sync-service/internal/service"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
+	app *app.App
 }
 
 // Name 返回任务名称
@@ -31,12 +32,10 @@ func (t *DbCleanTask) IsStartupRun() bool {
 
 // Run 执行清理任务
 func (t *DbCleanTask) Run(ctx context.Context) error {
-	svc := service.NewBackground(ctx)
-
 	// 执行所有清理任务
 	var errs []error
 
-	if err := svc.NoteCleanupAll(); err != nil {
+	if err := t.app.NoteService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
 		global.Logger.Error("task log",
 			zap.String("task", t.Name()),
@@ -45,7 +44,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.Error(err))
 	}
 
-	if err := svc.FileCleanupAll(); err != nil {
+	if err := t.app.FileService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
 		global.Logger.Error("task log",
 			zap.String("task", t.Name()),
@@ -54,7 +53,7 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.Error(err))
 	}
 
-	if err := svc.SettingCleanupAll(); err != nil {
+	if err := t.app.SettingService.CleanupAll(ctx); err != nil {
 		errs = append(errs, err)
 		global.Logger.Error("task log",
 			zap.String("task", t.Name()),
@@ -75,8 +74,8 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 	return nil
 }
 
-// NewDbNoteDbCleanTask 创建清理任务
-func NewDbCleanTask() (Task, error) {
+// NewDbCleanTask 创建清理任务
+func NewDbCleanTask(appContainer *app.App) (Task, error) {
 	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" {
 		return nil, nil
@@ -91,10 +90,12 @@ func NewDbCleanTask() (Task, error) {
 	}
 
 	// 每分钟执行一次检查
-	return &DbCleanTask{}, nil
+	return &DbCleanTask{app: appContainer}, nil
 }
 
 // init 自动注册清理任务
 func init() {
-	Register(NewDbCleanTask)
+	RegisterWithApp(func(appContainer *app.App) (Task, error) {
+		return NewDbCleanTask(appContainer)
+	})
 }
