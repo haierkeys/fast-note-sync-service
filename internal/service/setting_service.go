@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -118,7 +117,7 @@ func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto
 			} else if params.Mtime > setting.Mtime {
 				if err := s.settingRepo.UpdateMtime(ctx, params.Mtime, setting.ID, uid); err != nil {
 					// 非关键更新失败，记录警告日志但不阻断流程
-					global.Logger.Warn("UpdateMtime failed for setting",
+					zap.L().Warn("UpdateMtime failed for setting",
 						zap.Int64(logger.FieldUID, uid),
 						zap.Int64("settingId", setting.ID),
 						zap.Int64("mtime", params.Mtime),

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	_ "github.com/haierkeys/fast-note-sync-service/docs"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
@@ -106,7 +105,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	api := r.Group("/api")
 	{
-		api.Use(middleware.AppInfoWithConfig(global.Name, appContainer.Version().Version))
+		api.Use(middleware.AppInfoWithConfig(app.Name, appContainer.Version().Version))
 		api.Use(gin.Logger())
 		api.Use(middleware.TraceMiddlewareWithConfig(cfg.Tracer.Enabled, cfg.Tracer.Header)) // Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))

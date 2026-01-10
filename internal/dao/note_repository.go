@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
@@ -104,7 +103,7 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
 	} else if n.Content != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
 		if err := r.dao.SaveContentToFile(folder, "content.txt", n.Content); err != nil {
-			global.Logger.Warn("lazy migration: SaveContentToFile failed for note content",
+			r.dao.Logger().Warn("lazy migration: SaveContentToFile failed for note content",
 				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("noteId", n.ID),
 				zap.String(logger.FieldMethod, "noteRepository.fillNoteContent"),
@@ -119,7 +118,7 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
 	} else if n.ContentLastSnapshot != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
 		if err := r.dao.SaveContentToFile(folder, "snapshot.txt", n.ContentLastSnapshot); err != nil {
-			global.Logger.Warn("lazy migration: SaveContentToFile failed for note snapshot",
+			r.dao.Logger().Warn("lazy migration: SaveContentToFile failed for note snapshot",
 				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("noteId", n.ID),
 				zap.String(logger.FieldMethod, "noteRepository.fillNoteContent"),
