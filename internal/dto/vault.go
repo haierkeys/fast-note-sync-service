@@ -11,3 +11,14 @@ type VaultPostRequest struct {
 type VaultGetRequest struct {
 	ID int64 `form:"id" binding:"required,gte=1"`
 }
+
+// VaultDTO Vault 数据传输对象
+type VaultDTO struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"vault"`
+	NoteCount int64  `json:"noteCount"`
+	NoteSize  int64  `json:"noteSize"`
+	FileCount int64  `json:"fileCount"`
+	FileSize  int64  `json:"fileSize"`
+	Size      int64  `json:"size"`
+}

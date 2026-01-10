@@ -1,6 +1,8 @@
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
+import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
+
 // FileUpdateCheckRequest 客户端用于检查是否需要更新的请求参数
 type FileUpdateCheckRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
@@ -62,4 +64,21 @@ type FileGetRequest struct {
 // FileListRequest 获取文件列表的分页参数
 type FileListRequest struct {
 	Vault string `json:"vault" form:"vault" binding:"required"`
+}
+
+
+// FileDTO 文件数据传输对象
+type FileDTO struct {
+	ID               int64      `json:"id" form:"id"`
+	Action           string     `json:"-" form:"action"`
+	Path             string     `json:"path" form:"path"`
+	PathHash         string     `json:"pathHash" form:"pathHash"`
+	ContentHash      string     `json:"contentHash" form:"contentHash"`
+	SavePath         string     `json:"savePath" form:"savePath"`
+	Size             int64      `json:"size" form:"size"`
+	Ctime            int64      `json:"ctime" form:"ctime"`
+	Mtime            int64      `json:"mtime" form:"mtime"`
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
+	UpdatedAt        timex.Time `json:"-"`
+	CreatedAt        timex.Time `json:"-"`
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
-	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
@@ -217,8 +216,8 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		}
 	}
 
-	var noteNew *service.NoteDTO
-	var noteOld *service.NoteDTO
+	var noteNew *dto.NoteDTO
+	var noteOld *dto.NoteDTO
 
 	// 如果路径发生变化，删除旧笔记
 	if params.SrcPath != "" && params.SrcPath != params.Path {

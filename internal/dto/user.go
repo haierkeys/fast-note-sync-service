@@ -1,6 +1,8 @@
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
+import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
+
 // UserCreateRequest 用户注册请求参数
 type UserCreateRequest struct {
 	Email           string `json:"email" form:"email" binding:"required,email"`
@@ -25,4 +27,15 @@ type UserChangePasswordRequest struct {
 	OldPassword     string `json:"oldPassword" form:"oldPassword" binding:"required"`
 	Password        string `json:"password" form:"password" binding:"required"`
 	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required"`
+}
+
+// UserDTO 用户数据传输对象
+type UserDTO struct {
+	UID       int64      `json:"uid"`
+	Email     string     `json:"email"`
+	Username  string     `json:"username"`
+	Token     string     `json:"token"`
+	Avatar    string     `json:"avatar"`
+	UpdatedAt timex.Time `json:"updatedAt"`
+	CreatedAt timex.Time `json:"createdAt"`
 }

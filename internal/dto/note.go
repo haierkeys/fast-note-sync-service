@@ -1,6 +1,41 @@
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
+import (
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/sergi/go-diff/diffmatchpatch"
+)
+
+// NoteDTO 笔记数据传输对象
+type NoteDTO struct {
+	ID               int64      `json:"id" form:"id"`
+	Action           string     `json:"-" form:"action"`
+	Path             string     `json:"path" form:"path"`
+	PathHash         string     `json:"pathHash" form:"pathHash"`
+	Content          string     `json:"content" form:"content"`
+	ContentHash      string     `json:"contentHash" form:"contentHash"`
+	Version          int64      `json:"version" form:"version"`
+	Ctime            int64      `json:"ctime" form:"ctime"`
+	Mtime            int64      `json:"mtime" form:"mtime"`
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
+	UpdatedAt        timex.Time `json:"-"`
+	CreatedAt        timex.Time `json:"-"`
+}
+
+// NoteNoContentDTO 不包含内容的笔记 DTO
+type NoteNoContentDTO struct {
+	ID               int64      `json:"id" form:"id"`
+	Action           string     `json:"action" form:"action"`
+	Path             string     `json:"path" form:"path"`
+	PathHash         string     `json:"pathHash" form:"pathHash"`
+	Version          int64      `json:"version" form:"version"`
+	Ctime            int64      `json:"ctime" form:"ctime"`
+	Mtime            int64      `json:"mtime" form:"mtime"`
+	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"`
+	UpdatedAt        timex.Time `json:"updatedAt"`
+	CreatedAt        timex.Time `json:"createdAt"`
+}
+
 // NoteUpdateCheckRequest 客户端用于检查是否需要更新的请求参数
 type NoteUpdateCheckRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
@@ -86,9 +121,13 @@ type NoteRenameRequest struct {
 
 // NoteListRequest 获取笔记列表的分页参数
 type NoteListRequest struct {
-	Vault     string `json:"vault" form:"vault" binding:"required"`
-	Keyword   string `json:"keyword" form:"keyword"`
-	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
+	Vault         string `json:"vault" form:"vault" binding:"required"`
+	Keyword       string `json:"keyword" form:"keyword"`
+	IsRecycle     bool   `json:"isRecycle" form:"isRecycle"`
+	SearchMode    string `json:"searchMode" form:"searchMode"`       // 搜索模式: path(默认), content, regex
+	SearchContent bool   `json:"searchContent" form:"searchContent"` // 是否搜索内容
+	SortBy        string `json:"sortBy" form:"sortBy"`               // 排序字段: mtime(默认), ctime, path
+	SortOrder     string `json:"sortOrder" form:"sortOrder"`         // 排序方向: desc(默认), asc
 }
 
 // NoteWithFileLinksResponse 带有文件链接的笔记响应结构体
@@ -113,4 +152,29 @@ type NoteHistoryListRequest struct {
 	Path      string `json:"path" form:"path" binding:"required"`
 	PathHash  string `json:"pathHash" form:"pathHash"`
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
+}
+
+// NoteHistoryDTO 笔记历史数据传输对象
+type NoteHistoryDTO struct {
+	ID          int64                 `json:"id" form:"id"`
+	NoteID      int64                 `json:"noteId" form:"noteId"`
+	VaultID     int64                 `json:"vaultId" form:"vaultId"`
+	Path        string                `json:"path" form:"path"`
+	Diffs       []diffmatchpatch.Diff `json:"diffs"`
+	Content     string                `json:"content" form:"content"`
+	ContentHash string                `json:"contentHash" form:"contentHash"`
+	ClientName  string                `json:"clientName" form:"clientName"`
+	Version     int64                 `json:"version" form:"version"`
+	CreatedAt   timex.Time            `json:"createdAt" form:"createdAt"`
+}
+
+// NoteHistoryNoContentDTO 不包含内容的笔记历史 DTO
+type NoteHistoryNoContentDTO struct {
+	ID         int64      `json:"id" form:"id"`
+	NoteID     int64      `json:"noteId" form:"noteId"`
+	VaultID    int64      `json:"vaultId" form:"vaultId"`
+	Path       string     `json:"path" form:"path"`
+	ClientName string     `json:"clientName" form:"clientName"`
+	Version    int64      `json:"version" form:"version"`
+	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
 }

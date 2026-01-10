@@ -26,28 +26,28 @@ import (
 // NoteService 定义笔记业务服务接口
 type NoteService interface {
 	// Get 获取单条笔记
-	Get(ctx context.Context, uid int64, params *dto.NoteGetRequest) (*NoteDTO, error)
+	Get(ctx context.Context, uid int64, params *dto.NoteGetRequest) (*dto.NoteDTO, error)
 
 	// UpdateCheck 检查笔记是否需要更新
-	UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *NoteDTO, error)
+	UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error)
 
 	// ModifyOrCreate 创建或修改笔记
-	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *NoteDTO, error)
+	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error)
 
 	// Delete 删除笔记
-	Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*NoteDTO, error)
+	Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error)
 
 	// Rename 重命名笔记
 	Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) error
 
 	// List 获取笔记列表
-	List(ctx context.Context, uid int64, params *dto.NoteListRequest, pager *app.Pager) ([]*NoteNoContentDTO, int, error)
+	List(ctx context.Context, uid int64, params *dto.NoteListRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, int, error)
 
 	// ListByLastTime 获取在 lastTime 之后更新的笔记
-	ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*NoteDTO, error)
+	ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
 
 	// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
-	Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*NoteDTO, error)
+	Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
 
 	// GetFileContent 获取笔记或附件文件的原始内容
 	GetFileContent(ctx context.Context, uid int64, params *dto.NoteGetRequest) ([]byte, string, int64, string, error)
@@ -62,7 +62,7 @@ type NoteService interface {
 	CleanupByTime(ctx context.Context, cutoffTime int64) error
 
 	// ListNeedSnapshot 获取需要快照的笔记
-	ListNeedSnapshot(ctx context.Context, uid int64) ([]*NoteDTO, error)
+	ListNeedSnapshot(ctx context.Context, uid int64) ([]*dto.NoteDTO, error)
 
 	// Migrate 迁移笔记历史记录
 	Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error
@@ -72,36 +72,6 @@ type NoteService interface {
 
 	// WithClient 设置客户端信息
 	WithClient(name, version string) NoteService
-}
-
-// NoteDTO 笔记数据传输对象
-type NoteDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"-" form:"action"`
-	Path             string     `json:"path" form:"path"`
-	PathHash         string     `json:"pathHash" form:"pathHash"`
-	Content          string     `json:"content" form:"content"`
-	ContentHash      string     `json:"contentHash" form:"contentHash"`
-	Version          int64      `json:"version" form:"version"`
-	Ctime            int64      `json:"ctime" form:"ctime"`
-	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
-}
-
-// NoteNoContentDTO 不包含内容的笔记 DTO
-type NoteNoContentDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"action" form:"action"`
-	Path             string     `json:"path" form:"path"`
-	PathHash         string     `json:"pathHash" form:"pathHash"`
-	Version          int64      `json:"version" form:"version"`
-	Ctime            int64      `json:"ctime" form:"ctime"`
-	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"updatedAt"`
-	CreatedAt        timex.Time `json:"createdAt"`
 }
 
 // noteService 实现 NoteService 接口
@@ -140,11 +110,11 @@ func (s *noteService) WithClient(name, version string) NoteService {
 }
 
 // domainToDTO 将领域模型转换为 DTO
-func (s *noteService) domainToDTO(note *domain.Note) *NoteDTO {
+func (s *noteService) domainToDTO(note *domain.Note) *dto.NoteDTO {
 	if note == nil {
 		return nil
 	}
-	return &NoteDTO{
+	return &dto.NoteDTO{
 		ID:               note.ID,
 		Action:           string(note.Action),
 		Path:             note.Path,
@@ -161,11 +131,11 @@ func (s *noteService) domainToDTO(note *domain.Note) *NoteDTO {
 }
 
 // domainToNoContentDTO 将领域模型转换为不含内容的 DTO
-func (s *noteService) domainToNoContentDTO(note *domain.Note) *NoteNoContentDTO {
+func (s *noteService) domainToNoContentDTO(note *domain.Note) *dto.NoteNoContentDTO {
 	if note == nil {
 		return nil
 	}
-	return &NoteNoContentDTO{
+	return &dto.NoteNoContentDTO{
 		ID:               note.ID,
 		Action:           string(note.Action),
 		Path:             note.Path,
@@ -180,7 +150,7 @@ func (s *noteService) domainToNoContentDTO(note *domain.Note) *NoteNoContentDTO 
 }
 
 // Get 获取单条笔记
-func (s *noteService) Get(ctx context.Context, uid int64, params *dto.NoteGetRequest) (*NoteDTO, error) {
+func (s *noteService) Get(ctx context.Context, uid int64, params *dto.NoteGetRequest) (*dto.NoteDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -199,7 +169,7 @@ func (s *noteService) Get(ctx context.Context, uid int64, params *dto.NoteGetReq
 }
 
 // UpdateCheck 检查笔记是否需要更新
-func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *NoteDTO, error) {
+func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -234,7 +204,7 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 }
 
 // ModifyOrCreate 创建或修改笔记
-func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *NoteDTO, error) {
+func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error) {
 	var isNew bool
 
 	// 使用 VaultService.MustGetID 获取 VaultID
@@ -285,7 +255,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
-		go s.CountSizeSum(ctx, vaultID, uid)
+		go s.CountSizeSum(context.Background(), vaultID, uid)
 		NoteHistoryDelayPush(updated.ID, uid)
 
 		return isNew, s.domainToDTO(updated), nil
@@ -311,14 +281,14 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	go s.CountSizeSum(ctx, vaultID, uid)
+	go s.CountSizeSum(context.Background(), vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
 
 	return isNew, s.domainToDTO(created), nil
 }
 
 // Delete 删除笔记
-func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*NoteDTO, error) {
+func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -349,7 +319,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	go s.CountSizeSum(ctx, vaultID, uid)
+	go s.CountSizeSum(context.Background(), vaultID, uid)
 	NoteHistoryDelayPush(updated.ID, uid)
 
 	return s.domainToDTO(updated), nil
@@ -389,24 +359,24 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 }
 
 // List 获取笔记列表
-func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListRequest, pager *app.Pager) ([]*NoteNoContentDTO, int, error) {
+func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, int, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	notes, err := s.noteRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle)
+	notes, err := s.noteRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.noteRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle)
+	count, err := s.noteRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var result []*NoteNoContentDTO
+	var result []*dto.NoteNoContentDTO
 	for _, n := range notes {
 		result = append(result, s.domainToNoContentDTO(n))
 	}
@@ -415,7 +385,7 @@ func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListR
 }
 
 // ListByLastTime 获取在 lastTime 之后更新的笔记
-func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*NoteDTO, error) {
+func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -427,7 +397,7 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var results []*NoteDTO
+	var results []*dto.NoteDTO
 	cacheList := make(map[string]bool)
 	for _, note := range notes {
 		if cacheList[note.PathHash] {
@@ -482,13 +452,13 @@ func (s *noteService) CleanupByTime(ctx context.Context, cutoffTime int64) error
 }
 
 // ListNeedSnapshot 获取需要快照的笔记
-func (s *noteService) ListNeedSnapshot(ctx context.Context, uid int64) ([]*NoteDTO, error) {
+func (s *noteService) ListNeedSnapshot(ctx context.Context, uid int64) ([]*dto.NoteDTO, error) {
 	list, err := s.noteRepo.ListContentUnchanged(ctx, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var result []*NoteDTO
+	var result []*dto.NoteDTO
 	for _, n := range list {
 		result = append(result, s.domainToDTO(n))
 	}
@@ -518,7 +488,7 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	go s.CountSizeSum(ctx, oldNote.VaultID, uid)
+	go s.CountSizeSum(context.Background(), oldNote.VaultID, uid)
 	return nil
 }
 
@@ -532,7 +502,7 @@ func (s *noteService) MigratePush(oldNoteID, newNoteID int64, uid int64) {
 }
 
 // Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
-func (s *noteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*NoteDTO, error) {
+func (s *noteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
 }
 

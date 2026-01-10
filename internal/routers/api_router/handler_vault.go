@@ -7,7 +7,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
-	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
@@ -52,7 +51,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	var vault *service.VaultDTO
+	var vault *dto.VaultDTO
 	var err error
 
 	if params.ID > 0 {
