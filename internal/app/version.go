@@ -3,7 +3,7 @@ package app
 
 // 版本信息变量，由构建时注入
 var (
-	Version   string = "1.7.1"
+	Version   string = "1.7.3"
 	GitTag    string = "2000.01.01.release"
 	BuildTime string = "2000-01-01T00:00:00+0800"
 )
