@@ -79,4 +79,6 @@ var (
 	ErrorSettingUpdateCheckFailed    = NewError(442, lang{zh_cn: "配置更新检查失败", en: "Setting update check failed"})
 	ErrorSettingListFailed           = NewError(443, lang{zh_cn: "配置列表获取失败", en: "Setting list get failed"})
 	ErrorUserLocalFSDisabled         = NewError(444, lang{zh_cn: "用户本地文件系统已禁用", en: "User local file system is disabled"})
+	ErrorUserIsNotAdmin              = NewError(445, lang{zh_cn: "此操作需要管理员权限", en: "This operation requires administrator privileges"})
+	ErrorConfigSaveFailed            = NewError(446, lang{zh_cn: "配置保存失败", en: "Config save failed"})
 )

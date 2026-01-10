@@ -97,6 +97,8 @@ type DatabaseConfig struct {
 type UserConfig struct {
 	// RegisterIsEnable 注册是否启用
 	RegisterIsEnable bool `yaml:"register-is-enable"`
+	// AdminUID 管理员 UID，0 表示不限制管理员访问
+	AdminUID int `yaml:"admin-uid"`
 }
 
 // AppSettings 应用设置

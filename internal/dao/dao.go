@@ -142,24 +142,41 @@ func (d *Dao) WriteQueueManager() *writequeue.Manager {
 
 func (d *Dao) UseQueryWithFunc(f func(*gorm.DB), key ...string) *query.Query {
 	db := d.UseKey(key...)
-	if db != nil {
-		f(db)
+	if db == nil {
+		keyName := "default"
+		if len(key) > 0 {
+			keyName = key[0]
+		}
+		panic(fmt.Sprintf("数据库实例为 nil (key=%s),请检查数据库配置和连接", keyName))
 	}
+	f(db)
 	return query.Use(db)
 }
 
 func (d *Dao) UseQueryWithOnceFunc(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
 	db := d.UseKey(key...)
-	if db != nil {
-		if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
-			f(db)
+	if db == nil {
+		keyName := "default"
+		if len(key) > 0 {
+			keyName = key[0]
 		}
+		panic(fmt.Sprintf("数据库实例为 nil (key=%s, onceKey=%s),请检查数据库配置和连接", keyName, onceKey))
+	}
+	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
+		f(db)
 	}
 	return query.Use(db)
 }
 
 func (d *Dao) UseQuery(key ...string) *query.Query {
 	db := d.UseKey(key...)
+	if db == nil {
+		keyName := "default"
+		if len(key) > 0 {
+			keyName = key[0]
+		}
+		panic(fmt.Sprintf("数据库实例为 nil (key=%s),请检查数据库配置和连接", keyName))
+	}
 	return query.Use(db)
 }
 

@@ -131,6 +131,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/webgui/config", webGUIHandler.Config)
 
+		// 管理员配置接口
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/admin/config", webGUIHandler.GetConfig)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/admin/config", webGUIHandler.UpdateConfig)
+
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/user/change_password", userHandler.UserChangePassword)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/user/info", userHandler.UserInfo)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/vault", vaultHandler.List)

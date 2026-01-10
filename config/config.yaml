@@ -56,6 +56,9 @@ user:
   # 是否开启注册功能
   # Whether to enable registration
   register-is-enable: true
+  # 管理员 UID, 0 表示不显示设置访问
+  # Admin UID, 0 means not display setting access
+  admin-uid: 0
 
 
 log:
@@ -70,12 +73,8 @@ log:
   production: true
 
 security:
-  # auth-token
-  # 单服务网关 Token 加密混淆 Key
-  # Single-service gateway Token encryption and obfuscation key
-  auth-token: 6666
-  # 多用户开放网关 Token 加密混淆 Key
-  # Multi-user open gateway Token encryption and obfuscation key
+  # 用户令牌加密混淆 Key
+  # User token encryption and obfuscation key
   auth-token-key: fast-note-sync-Auth-Token
   # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 7d
   # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 7d
