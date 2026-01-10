@@ -7,7 +7,7 @@ on:
     branches:
       - "master"
     paths:
-      - "global/version.go"
+      - "internal/app/version.go"
 
 # 权限配置：允许脚本写入仓库内容（用于发布 Release）
 permissions:
@@ -32,16 +32,16 @@ jobs:
       - name: Check Version
         id: check
         run: |
-          # 从 global/version.go (HEAD) 读取当前版本
+          # 从 internal/app/version.go (HEAD) 读取当前版本
           # 预期格式: var Version string = "0.0.1"
-          CURRENT_VERSION=$(grep 'var Version string' global/version.go | awk -F '"' '{print $2}')
+          CURRENT_VERSION=$(grep 'var Version string' internal/app/version.go | awk -F '"' '{print $2}')
           echo "当前版本 (HEAD): $CURRENT_VERSION"
 
-          # 从 global/version.go (HEAD~1) 获取上一个版本
+          # 从 internal/app/version.go (HEAD~1) 获取上一个版本
           # 使用 git show 获取上一次提交的文件内容
           # 注意: 我们将其包裹在一个块中以处理 HEAD~1 可能不存在的情况 (例如: 初始提交)
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-             PREV_FILE_CONTENT=$(git show HEAD~1:global/version.go)
+             PREV_FILE_CONTENT=$(git show HEAD~1:internal/app/version.go)
              PREV_VERSION=$(echo "$PREV_FILE_CONTENT" | grep 'var Version string' | awk -F '"' '{print $2}')
           else
              PREV_VERSION="0.0.0"

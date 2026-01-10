@@ -28,7 +28,7 @@ GitVersionDesc  = $(shell git log -1 --format=%s)
 BuildTime       = $(shell date +%FT%T%z)
 
 # LDFLAGS: 注入版本信息到二进制
-LDFLAGS = -ldflags '-X ${REPO}/global.Version=$(GitTag) -X "${REPO}/global.GitTag=$(GitVersion)" -X ${REPO}/global.BuildTime=$(BuildTime)'
+LDFLAGS = -ldflags '-X ${REPO}/internal/app.Version=$(GitTag) -X "${REPO}/internal/app.GitTag=$(GitVersion)" -X ${REPO}/internal/app.BuildTime=$(BuildTime)'
 
 # go 命令封装
 gob = go build ${LDFLAGS}
