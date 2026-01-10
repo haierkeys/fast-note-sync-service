@@ -20,46 +20,31 @@ import (
 // SettingService 定义配置业务服务接口
 type SettingService interface {
 	// UpdateCheck 检查配置是否需要更新
-	UpdateCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *SettingDTO, error)
+	UpdateCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *dto.SettingDTO, error)
 
 	// ModifyCheck 检查配置修改（UpdateCheck 的别名）
-	ModifyCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *SettingDTO, error)
+	ModifyCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *dto.SettingDTO, error)
 
 	// ModifyOrCreate 创建或修改配置
-	ModifyOrCreate(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest, mtimeCheck bool) (bool, *SettingDTO, error)
+	ModifyOrCreate(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.SettingDTO, error)
 
 	// Modify 修改配置（ModifyOrCreate 的别名）
-	Modify(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest) (bool, *SettingDTO, error)
+	Modify(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest) (bool, *dto.SettingDTO, error)
 
 	// Delete 删除配置
-	Delete(ctx context.Context, uid int64, params *dto.SettingDeleteRequest) (*SettingDTO, error)
+	Delete(ctx context.Context, uid int64, params *dto.SettingDeleteRequest) (*dto.SettingDTO, error)
 
 	// ListByLastTime 获取在 lastTime 之后更新的配置
-	ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*SettingDTO, error)
+	ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
 
 	// Sync 同步配置（ListByLastTime 的别名）
-	Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*SettingDTO, error)
+	Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
 
 	// Cleanup 清理过期的软删除配置
 	Cleanup(ctx context.Context, uid int64) error
 
 	// CleanupByTime 按截止时间清理所有用户的过期软删除配置
 	CleanupByTime(ctx context.Context, cutoffTime int64) error
-}
-
-// SettingDTO 配置数据传输对象
-type SettingDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"-" form:"action"`
-	Path             string     `json:"path" form:"path"`
-	PathHash         string     `json:"pathHash" form:"pathHash"`
-	Content          string     `json:"content" form:"content"`
-	ContentHash      string     `json:"contentHash" form:"contentHash"`
-	Ctime            int64      `json:"ctime" form:"ctime"`
-	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
 }
 
 // settingService 实现 SettingService 接口
@@ -81,11 +66,11 @@ func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultServi
 }
 
 // domainToDTO 将领域模型转换为 DTO
-func (s *settingService) domainToDTO(setting *domain.Setting) *SettingDTO {
+func (s *settingService) domainToDTO(setting *domain.Setting) *dto.SettingDTO {
 	if setting == nil {
 		return nil
 	}
-	return &SettingDTO{
+	return &dto.SettingDTO{
 		ID:               setting.ID,
 		Action:           string(setting.Action),
 		Path:             setting.Path,
@@ -101,7 +86,7 @@ func (s *settingService) domainToDTO(setting *domain.Setting) *SettingDTO {
 }
 
 // UpdateCheck 检查配置是否需要更新
-func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *SettingDTO, error) {
+func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *dto.SettingDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -136,12 +121,12 @@ func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto
 }
 
 // ModifyCheck 检查配置修改（UpdateCheck 的别名）
-func (s *settingService) ModifyCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *SettingDTO, error) {
+func (s *settingService) ModifyCheck(ctx context.Context, uid int64, params *dto.SettingUpdateCheckRequest) (string, *dto.SettingDTO, error) {
 	return s.UpdateCheck(ctx, uid, params)
 }
 
 // ModifyOrCreate 创建或修改配置
-func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest, mtimeCheck bool) (bool, *SettingDTO, error) {
+func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.SettingDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -213,12 +198,12 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 }
 
 // Modify 修改配置（ModifyOrCreate 的别名）
-func (s *settingService) Modify(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest) (bool, *SettingDTO, error) {
+func (s *settingService) Modify(ctx context.Context, uid int64, params *dto.SettingModifyOrCreateRequest) (bool, *dto.SettingDTO, error) {
 	return s.ModifyOrCreate(ctx, uid, params, true)
 }
 
 // Delete 删除配置
-func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.SettingDeleteRequest) (*SettingDTO, error) {
+func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.SettingDeleteRequest) (*dto.SettingDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -248,7 +233,7 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 }
 
 // ListByLastTime 获取在 lastTime 之后更新的配置
-func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*SettingDTO, error) {
+func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -260,7 +245,7 @@ func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var results []*SettingDTO
+	var results []*dto.SettingDTO
 	cacheList := make(map[string]bool)
 	for _, setting := range settings {
 		if cacheList[setting.PathHash] {
@@ -274,7 +259,7 @@ func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *
 }
 
 // Sync 同步配置（ListByLastTime 的别名）
-func (s *settingService) Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*SettingDTO, error) {
+func (s *settingService) Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
 }
 

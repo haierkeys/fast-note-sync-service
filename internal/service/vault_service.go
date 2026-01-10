@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
+	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
@@ -26,16 +27,16 @@ type VaultService interface {
 	MustGetID(ctx context.Context, uid int64, name string) (int64, error)
 
 	// Create 创建 Vault
-	Create(ctx context.Context, uid int64, name string) (*VaultDTO, error)
+	Create(ctx context.Context, uid int64, name string) (*dto.VaultDTO, error)
 
 	// Update 更新 Vault
-	Update(ctx context.Context, uid int64, id int64, name string) (*VaultDTO, error)
+	Update(ctx context.Context, uid int64, id int64, name string) (*dto.VaultDTO, error)
 
 	// Get 根据 ID 获取 Vault
-	Get(ctx context.Context, uid int64, id int64) (*VaultDTO, error)
+	Get(ctx context.Context, uid int64, id int64) (*dto.VaultDTO, error)
 
 	// List 获取用户的 Vault 列表
-	List(ctx context.Context, uid int64) ([]*VaultDTO, error)
+	List(ctx context.Context, uid int64) ([]*dto.VaultDTO, error)
 
 	// Delete 删除 Vault
 	Delete(ctx context.Context, uid int64, id int64) error
@@ -45,17 +46,6 @@ type VaultService interface {
 
 	// UpdateFileStats 更新 Vault 的文件统计信息
 	UpdateFileStats(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error
-}
-
-// VaultDTO Vault 数据传输对象
-type VaultDTO struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"vault"`
-	NoteCount int64  `json:"noteCount"`
-	NoteSize  int64  `json:"noteSize"`
-	FileCount int64  `json:"fileCount"`
-	FileSize  int64  `json:"fileSize"`
-	Size      int64  `json:"size"`
 }
 
 // vaultService 实现 VaultService 接口
@@ -161,11 +151,11 @@ func (s *vaultService) UpdateFileStats(ctx context.Context, fileSize, fileCount,
 var _ VaultService = (*vaultService)(nil)
 
 // domainToDTO 将领域模型转换为 DTO
-func (s *vaultService) domainToDTO(vault *domain.Vault) *VaultDTO {
+func (s *vaultService) domainToDTO(vault *domain.Vault) *dto.VaultDTO {
 	if vault == nil {
 		return nil
 	}
-	return &VaultDTO{
+	return &dto.VaultDTO{
 		ID:        vault.ID,
 		Name:      vault.Name,
 		NoteCount: vault.NoteCount,
@@ -177,7 +167,7 @@ func (s *vaultService) domainToDTO(vault *domain.Vault) *VaultDTO {
 }
 
 // Create 创建 Vault
-func (s *vaultService) Create(ctx context.Context, uid int64, name string) (*VaultDTO, error) {
+func (s *vaultService) Create(ctx context.Context, uid int64, name string) (*dto.VaultDTO, error) {
 	// 检查是否已存在
 	existing, err := s.repo.GetByName(ctx, name, uid)
 	if err == nil && existing != nil {
@@ -196,7 +186,7 @@ func (s *vaultService) Create(ctx context.Context, uid int64, name string) (*Vau
 }
 
 // Get 根据 ID 获取 Vault
-func (s *vaultService) Get(ctx context.Context, uid int64, id int64) (*VaultDTO, error) {
+func (s *vaultService) Get(ctx context.Context, uid int64, id int64) (*dto.VaultDTO, error) {
 	vault, err := s.repo.GetByID(ctx, id, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -208,13 +198,13 @@ func (s *vaultService) Get(ctx context.Context, uid int64, id int64) (*VaultDTO,
 }
 
 // List 获取用户的 Vault 列表
-func (s *vaultService) List(ctx context.Context, uid int64) ([]*VaultDTO, error) {
+func (s *vaultService) List(ctx context.Context, uid int64) ([]*dto.VaultDTO, error) {
 	vaults, err := s.repo.List(ctx, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var results []*VaultDTO
+	var results []*dto.VaultDTO
 	for _, vault := range vaults {
 		results = append(results, s.domainToDTO(vault))
 	}
@@ -231,7 +221,7 @@ func (s *vaultService) Delete(ctx context.Context, uid int64, id int64) error {
 }
 
 // Update 更新 Vault
-func (s *vaultService) Update(ctx context.Context, uid int64, id int64, name string) (*VaultDTO, error) {
+func (s *vaultService) Update(ctx context.Context, uid int64, id int64, name string) (*dto.VaultDTO, error) {
 	// 获取现有 Vault
 	vault, err := s.repo.GetByID(ctx, id, uid)
 	if err != nil {

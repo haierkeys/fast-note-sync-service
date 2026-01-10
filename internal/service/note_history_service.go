@@ -21,13 +21,13 @@ import (
 // NoteHistoryService 定义笔记历史业务服务接口
 type NoteHistoryService interface {
 	// Get 获取指定 ID 的笔记历史详情
-	Get(ctx context.Context, uid int64, id int64) (*NoteHistoryDTO, error)
+	Get(ctx context.Context, uid int64, id int64) (*dto.NoteHistoryDTO, error)
 
 	// GetByNoteIDAndHash 根据笔记ID和内容哈希获取历史记录
-	GetByNoteIDAndHash(ctx context.Context, uid int64, noteID int64, contentHash string) (*NoteHistoryDTO, error)
+	GetByNoteIDAndHash(ctx context.Context, uid int64, noteID int64, contentHash string) (*dto.NoteHistoryDTO, error)
 
 	// List 获取指定笔记的历史版本列表
-	List(ctx context.Context, uid int64, params *dto.NoteHistoryListRequest, pager *app.Pager) ([]*NoteHistoryNoContentDTO, int64, error)
+	List(ctx context.Context, uid int64, params *dto.NoteHistoryListRequest, pager *app.Pager) ([]*dto.NoteHistoryNoContentDTO, int64, error)
 
 	// ProcessDelay 延时处理笔记历史（计算 diff 并保存补丁版本）
 	ProcessDelay(ctx context.Context, noteID int64, uid int64) error
@@ -37,31 +37,6 @@ type NoteHistoryService interface {
 
 	// CleanupByTime 按截止时间清理历史记录，保留每个笔记最近 N 个版本
 	CleanupByTime(ctx context.Context, cutoffTime int64, keepVersions int) error
-}
-
-// NoteHistoryDTO 笔记历史数据传输对象
-type NoteHistoryDTO struct {
-	ID          int64                 `json:"id" form:"id"`
-	NoteID      int64                 `json:"noteId" form:"noteId"`
-	VaultID     int64                 `json:"vaultId" form:"vaultId"`
-	Path        string                `json:"path" form:"path"`
-	Diffs       []diffmatchpatch.Diff `json:"diffs"`
-	Content     string                `json:"content" form:"content"`
-	ContentHash string                `json:"contentHash" form:"contentHash"`
-	ClientName  string                `json:"clientName" form:"clientName"`
-	Version     int64                 `json:"version" form:"version"`
-	CreatedAt   timex.Time            `json:"createdAt" form:"createdAt"`
-}
-
-// NoteHistoryNoContentDTO 不包含内容的笔记历史 DTO
-type NoteHistoryNoContentDTO struct {
-	ID         int64      `json:"id" form:"id"`
-	NoteID     int64      `json:"noteId" form:"noteId"`
-	VaultID    int64      `json:"vaultId" form:"vaultId"`
-	Path       string     `json:"path" form:"path"`
-	ClientName string     `json:"clientName" form:"clientName"`
-	Version    int64      `json:"version" form:"version"`
-	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
 }
 
 // noteHistoryService 实现 NoteHistoryService 接口
@@ -87,7 +62,7 @@ func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo do
 }
 
 // domainToDTO 将领域模型转换为 DTO（包含 diff 计算）
-func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *NoteHistoryDTO {
+func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *dto.NoteHistoryDTO {
 	if history == nil {
 		return nil
 	}
@@ -97,7 +72,7 @@ func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *NoteHisto
 	restoredNewVersion, _ := dmp.PatchApply(parsedPatches, history.Content)
 	diffResults := dmp.DiffMain(history.Content, restoredNewVersion, false)
 
-	return &NoteHistoryDTO{
+	return &dto.NoteHistoryDTO{
 		ID:          history.ID,
 		NoteID:      history.NoteID,
 		VaultID:     history.VaultID,
@@ -112,11 +87,11 @@ func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *NoteHisto
 }
 
 // domainToNoContentDTO 将领域模型转换为不含内容的 DTO
-func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *NoteHistoryNoContentDTO {
+func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *dto.NoteHistoryNoContentDTO {
 	if history == nil {
 		return nil
 	}
-	return &NoteHistoryNoContentDTO{
+	return &dto.NoteHistoryNoContentDTO{
 		ID:         history.ID,
 		NoteID:     history.NoteID,
 		VaultID:    history.VaultID,
@@ -128,7 +103,7 @@ func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *
 }
 
 // Get 获取指定 ID 的笔记历史详情
-func (s *noteHistoryService) Get(ctx context.Context, uid int64, id int64) (*NoteHistoryDTO, error) {
+func (s *noteHistoryService) Get(ctx context.Context, uid int64, id int64) (*dto.NoteHistoryDTO, error) {
 	history, err := s.historyRepo.GetByID(ctx, id, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -140,7 +115,7 @@ func (s *noteHistoryService) Get(ctx context.Context, uid int64, id int64) (*Not
 }
 
 // GetByNoteIDAndHash 根据笔记ID和内容哈希获取历史记录
-func (s *noteHistoryService) GetByNoteIDAndHash(ctx context.Context, uid int64, noteID int64, contentHash string) (*NoteHistoryDTO, error) {
+func (s *noteHistoryService) GetByNoteIDAndHash(ctx context.Context, uid int64, noteID int64, contentHash string) (*dto.NoteHistoryDTO, error) {
 	history, err := s.historyRepo.GetByNoteIDAndHash(ctx, noteID, contentHash, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -152,7 +127,7 @@ func (s *noteHistoryService) GetByNoteIDAndHash(ctx context.Context, uid int64, 
 }
 
 // List 获取指定笔记的历史版本列表
-func (s *noteHistoryService) List(ctx context.Context, uid int64, params *dto.NoteHistoryListRequest, pager *app.Pager) ([]*NoteHistoryNoContentDTO, int64, error) {
+func (s *noteHistoryService) List(ctx context.Context, uid int64, params *dto.NoteHistoryListRequest, pager *app.Pager) ([]*dto.NoteHistoryNoContentDTO, int64, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -179,7 +154,7 @@ func (s *noteHistoryService) List(ctx context.Context, uid int64, params *dto.No
 		return nil, 0, err
 	}
 
-	var results []*NoteHistoryNoContentDTO
+	var results []*dto.NoteHistoryNoContentDTO
 	for _, h := range histories {
 		results = append(results, s.domainToNoContentDTO(h))
 	}

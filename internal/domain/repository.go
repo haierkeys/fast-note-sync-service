@@ -45,10 +45,14 @@ type NoteRepository interface {
 	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
 
 	// List 分页获取笔记列表
-	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool) ([]*Note, error)
+	// searchMode: path(默认), content, regex
+	// sortBy: mtime(默认), ctime, path
+	// sortOrder: desc(默认), asc
+	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool, sortBy string, sortOrder string) ([]*Note, error)
 
 	// ListCount 获取笔记数量
-	ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool) (int64, error)
+	// searchMode: path(默认), content, regex
+	ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool) (int64, error)
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取笔记列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Note, error)

@@ -12,7 +12,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
-	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
@@ -21,31 +20,31 @@ import (
 // FileService 定义文件业务服务接口
 type FileService interface {
 	// Get 获取单条文件
-	Get(ctx context.Context, uid int64, params *dto.FileGetRequest) (*FileDTO, error)
+	Get(ctx context.Context, uid int64, params *dto.FileGetRequest) (*dto.FileDTO, error)
 
 	// UpdateCheck 检查文件是否需要更新
-	UpdateCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *FileDTO, error)
+	UpdateCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *dto.FileDTO, error)
 
 	// UploadCheck 检查文件上传（UpdateCheck 的别名，用于 WebSocket 上传检查）
-	UploadCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *FileDTO, error)
+	UploadCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *dto.FileDTO, error)
 
 	// UpdateOrCreate 创建或修改文件
-	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *FileDTO, error)
+	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *dto.FileDTO, error)
 
 	// UploadComplete 完成文件上传（UpdateOrCreate 的别名，用于 WebSocket 上传完成）
-	UploadComplete(ctx context.Context, uid int64, params *dto.FileUpdateRequest) (bool, *FileDTO, error)
+	UploadComplete(ctx context.Context, uid int64, params *dto.FileUpdateRequest) (bool, *dto.FileDTO, error)
 
 	// Delete 删除文件
-	Delete(ctx context.Context, uid int64, params *dto.FileDeleteRequest) (*FileDTO, error)
+	Delete(ctx context.Context, uid int64, params *dto.FileDeleteRequest) (*dto.FileDTO, error)
 
 	// List 获取文件列表
-	List(ctx context.Context, uid int64, params *dto.FileListRequest, pager *app.Pager) ([]*FileDTO, int, error)
+	List(ctx context.Context, uid int64, params *dto.FileListRequest, pager *app.Pager) ([]*dto.FileDTO, int, error)
 
 	// ListByLastTime 获取在 lastTime 之后更新的文件
-	ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*FileDTO, error)
+	ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error)
 
 	// Sync 同步文件（ListByLastTime 的别名，用于 WebSocket 同步）
-	Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*FileDTO, error)
+	Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error)
 
 	// CountSizeSum 统计 vault 中文件总数与总大小
 	CountSizeSum(ctx context.Context, vaultID int64, uid int64) error
@@ -58,22 +57,6 @@ type FileService interface {
 
 	// ResolveEmbedLinks 解析内容中的嵌入链接
 	ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, content string) (map[string]string, error)
-}
-
-// FileDTO 文件数据传输对象
-type FileDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"-" form:"action"`
-	Path             string     `json:"path" form:"path"`
-	PathHash         string     `json:"pathHash" form:"pathHash"`
-	ContentHash      string     `json:"contentHash" form:"contentHash"`
-	SavePath         string     `json:"savePath" form:"savePath"`
-	Size             int64      `json:"size" form:"size"`
-	Ctime            int64      `json:"ctime" form:"ctime"`
-	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
 }
 
 // fileService 实现 FileService 接口
@@ -95,11 +78,11 @@ func NewFileService(fileRepo domain.FileRepository, vaultSvc VaultService, confi
 }
 
 // domainToDTO 将领域模型转换为 DTO
-func (s *fileService) domainToDTO(file *domain.File) *FileDTO {
+func (s *fileService) domainToDTO(file *domain.File) *dto.FileDTO {
 	if file == nil {
 		return nil
 	}
-	return &FileDTO{
+	return &dto.FileDTO{
 		ID:               file.ID,
 		Action:           string(file.Action),
 		Path:             file.Path,
@@ -110,13 +93,11 @@ func (s *fileService) domainToDTO(file *domain.File) *FileDTO {
 		Ctime:            file.Ctime,
 		Mtime:            file.Mtime,
 		UpdatedTimestamp: file.UpdatedTimestamp,
-		UpdatedAt:        timex.Time(file.UpdatedAt),
-		CreatedAt:        timex.Time(file.CreatedAt),
 	}
 }
 
 // Get 获取单条文件
-func (s *fileService) Get(ctx context.Context, uid int64, params *dto.FileGetRequest) (*FileDTO, error) {
+func (s *fileService) Get(ctx context.Context, uid int64, params *dto.FileGetRequest) (*dto.FileDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -132,7 +113,7 @@ func (s *fileService) Get(ctx context.Context, uid int64, params *dto.FileGetReq
 }
 
 // UpdateCheck 检查文件是否需要更新
-func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *FileDTO, error) {
+func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *dto.FileDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -167,7 +148,7 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 }
 
 // UpdateOrCreate 创建或修改文件
-func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *FileDTO, error) {
+func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *dto.FileDTO, error) {
 	var isNew bool
 
 	// 使用 VaultService.MustGetID 获取 VaultID
@@ -217,7 +198,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			return isNew, nil, err
 		}
 
-		go s.CountSizeSum(ctx, vaultID, uid)
+		go s.CountSizeSum(context.Background(), vaultID, uid)
 		return isNew, s.domainToDTO(updated), nil
 	}
 
@@ -240,12 +221,12 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		return isNew, nil, err
 	}
 
-	go s.CountSizeSum(ctx, vaultID, uid)
+	go s.CountSizeSum(context.Background(), vaultID, uid)
 	return isNew, s.domainToDTO(created), nil
 }
 
 // Delete 删除文件
-func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDeleteRequest) (*FileDTO, error) {
+func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDeleteRequest) (*dto.FileDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -270,12 +251,12 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 		return nil, err
 	}
 
-	go s.CountSizeSum(ctx, vaultID, uid)
+	go s.CountSizeSum(context.Background(), vaultID, uid)
 	return s.domainToDTO(updated), nil
 }
 
 // List 获取文件列表
-func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListRequest, pager *app.Pager) ([]*FileDTO, int, error) {
+func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListRequest, pager *app.Pager) ([]*dto.FileDTO, int, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -292,7 +273,7 @@ func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListR
 		return nil, 0, err
 	}
 
-	var result []*FileDTO
+	var result []*dto.FileDTO
 	for _, f := range files {
 		result = append(result, s.domainToDTO(f))
 	}
@@ -301,7 +282,7 @@ func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListR
 }
 
 // ListByLastTime 获取在 lastTime 之后更新的文件
-func (s *fileService) ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*FileDTO, error) {
+func (s *fileService) ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -313,7 +294,7 @@ func (s *fileService) ListByLastTime(ctx context.Context, uid int64, params *dto
 		return nil, err
 	}
 
-	var results []*FileDTO
+	var results []*dto.FileDTO
 	cacheList := make(map[string]bool)
 	for _, file := range files {
 		if cacheList[file.PathHash] {
@@ -416,16 +397,16 @@ func (s *fileService) ResolveEmbedLinks(ctx context.Context, uid int64, vaultNam
 var _ FileService = (*fileService)(nil)
 
 // UploadCheck 检查文件上传（UpdateCheck 的别名，用于 WebSocket 上传检查）
-func (s *fileService) UploadCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *FileDTO, error) {
+func (s *fileService) UploadCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *dto.FileDTO, error) {
 	return s.UpdateCheck(ctx, uid, params)
 }
 
 // UploadComplete 完成文件上传（UpdateOrCreate 的别名，用于 WebSocket 上传完成）
-func (s *fileService) UploadComplete(ctx context.Context, uid int64, params *dto.FileUpdateRequest) (bool, *FileDTO, error) {
+func (s *fileService) UploadComplete(ctx context.Context, uid int64, params *dto.FileUpdateRequest) (bool, *dto.FileDTO, error) {
 	return s.UpdateOrCreate(ctx, uid, params, true)
 }
 
 // Sync 同步文件（ListByLastTime 的别名，用于 WebSocket 同步）
-func (s *fileService) Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*FileDTO, error) {
+func (s *fileService) Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
 }
