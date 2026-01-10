@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -13,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 )
 
 // SettingService 定义配置业务服务接口
@@ -225,6 +227,9 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 
 	setting, err := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorSettingNotFound
+		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
