@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
+	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/upgrade"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var upgradeCmd = &cobra.Command{
@@ -25,42 +25,66 @@ It is safe to run this command multiple times - already applied migrations will 
 			configPath = "config/config.yaml"
 		}
 
-		configRealpath, err := global.ConfigLoad(configPath)
+		// 使用 LoadConfig 直接加载配置到 AppConfig
+		appConfig, configRealpath, err := internalApp.LoadConfig(configPath)
 		if err != nil {
-			fmt.Printf("Failed to load config: %v\n", err)
+			bootstrapLogger.Error("Failed to load config", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Printf("Loading config from: %s\n", configRealpath)
+		bootstrapLogger.Info("Loading config", zap.String("path", configRealpath))
 
 		// 初始化日志
 		lg, err := logger.NewLogger(logger.Config{
-			Level:      global.Config.Log.Level,
-			File:       global.Config.Log.File,
-			Production: global.Config.Log.Production,
+			Level:      appConfig.Log.Level,
+			File:       appConfig.Log.File,
+			Production: appConfig.Log.Production,
 		})
 		if err != nil {
-			fmt.Printf("Failed to init logger: %v\n", err)
+			bootstrapLogger.Error("Failed to init logger", zap.Error(err))
 			os.Exit(1)
 		}
-		global.Logger = lg
 
-		// 初始化数据库
-		global.DBEngine, err = dao.NewDBEngine(global.Config.Database)
+		// 初始化数据库（使用注入的配置）
+		dbConfig := dao.DatabaseConfig{
+			Type:            appConfig.Database.Type,
+			Path:            appConfig.Database.Path,
+			UserName:        appConfig.Database.UserName,
+			Password:        appConfig.Database.Password,
+			Host:            appConfig.Database.Host,
+			Name:            appConfig.Database.Name,
+			TablePrefix:     appConfig.Database.TablePrefix,
+			AutoMigrate:     appConfig.Database.AutoMigrate,
+			Charset:         appConfig.Database.Charset,
+			ParseTime:       appConfig.Database.ParseTime,
+			MaxIdleConns:    appConfig.Database.MaxIdleConns,
+			MaxOpenConns:    appConfig.Database.MaxOpenConns,
+			ConnMaxLifetime: appConfig.Database.ConnMaxLifetime,
+			ConnMaxIdleTime: appConfig.Database.ConnMaxIdleTime,
+			RunMode:         appConfig.Server.RunMode,
+		}
+
+		db, err := dao.NewDBEngineWithConfig(dbConfig, lg)
 		if err != nil {
-			fmt.Printf("Failed to init database: %v\n", err)
+			bootstrapLogger.Error("Failed to init database", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Starting database upgrade...")
+		bootstrapLogger.Info("Starting database upgrade...")
 
 		// 执行升级
-		if err := upgrade.Execute(); err != nil {
-			fmt.Printf("Upgrade failed: %v\n", err)
+		if err := upgrade.Execute(
+			db,
+			lg,
+			internalApp.Version,
+			appConfig.Database.Path,
+			appConfig.Database.Type,
+		); err != nil {
+			bootstrapLogger.Error("Upgrade failed", zap.Error(err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Database upgrade completed successfully!")
+		bootstrapLogger.Info("Database upgrade completed successfully!")
 	},
 }
 

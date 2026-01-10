@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+// Code 是一个不可变的错误码对象
+// 所有 With* 方法都返回新实例，不修改原对象
 type Code struct {
 	// 状态码
 	code int
@@ -32,10 +34,6 @@ type Code struct {
 
 var codes = map[int]string{}
 var maxcode = 0
-
-func CodeReset() {
-
-}
 
 func NewError(code int, l lang, reset ...bool) *Code {
 	if _, ok := codes[code]; ok {
@@ -75,38 +73,6 @@ func NewSuss(code int, l lang) *Code {
 	}
 
 	return &Code{code: code, status: true, Lang: l}
-}
-
-func (e *Code) Reset() *Code {
-	e.data = nil
-	e.haveDetails = false
-	e.haveData = false
-	e.details = []string{}
-	e.haveVault = false
-	e.vault = ""
-	e.haveContext = false
-	e.context = ""
-	return e
-}
-
-// Clone 创建一个新的 Code 副本
-func (e *Code) Clone() *Code {
-	// 创建一个新的副本,而不是修改原对象
-	return &Code{
-		code:   e.code,
-		status: e.status,
-		Lang:   e.Lang,
-		msg:    e.msg,
-		// 其他字段保持默认零值
-		data:        nil,
-		vault:       "",
-		haveVault:   false,
-		haveData:    false,
-		details:     []string{},
-		haveDetails: false,
-		context:     "",
-		haveContext: false,
-	}
 }
 
 func (e *Code) Error() string {
@@ -168,31 +134,84 @@ func (e *Code) HaveContext() bool {
 	return e.haveContext
 }
 
+// WithData 返回一个包含指定数据的新 Code 实例
+// 原对象不会被修改（不可变设计）
 func (e *Code) WithData(data interface{}) *Code {
-	e.haveData = true
-	e.data = data
-	return e
+	return &Code{
+		code:        e.code,
+		status:      e.status,
+		Lang:        e.Lang,
+		msg:         e.msg,
+		data:        data,
+		haveData:    true,
+		vault:       e.vault,
+		haveVault:   e.haveVault,
+		details:     e.details,
+		haveDetails: e.haveDetails,
+		context:     e.context,
+		haveContext: e.haveContext,
+	}
 }
 
+// WithVault 返回一个包含指定 vault 的新 Code 实例
+// 原对象不会被修改（不可变设计）
 func (e *Code) WithVault(vault string) *Code {
-	e.haveVault = true
-	e.vault = vault
-	return e
+	return &Code{
+		code:        e.code,
+		status:      e.status,
+		Lang:        e.Lang,
+		msg:         e.msg,
+		data:        e.data,
+		haveData:    e.haveData,
+		vault:       vault,
+		haveVault:   true,
+		details:     e.details,
+		haveDetails: e.haveDetails,
+		context:     e.context,
+		haveContext: e.haveContext,
+	}
 }
 
+// WithDetails 返回一个包含指定详情的新 Code 实例
+// 原对象不会被修改（不可变设计）
 func (e *Code) WithDetails(details ...string) *Code {
-	e.haveDetails = true
-	e.details = []string{}
+	// 创建 details 的副本，避免共享底层数组
+	newDetails := make([]string, len(details))
+	copy(newDetails, details)
 
-	e.details = append(e.details, details...)
-
-	return e
+	return &Code{
+		code:        e.code,
+		status:      e.status,
+		Lang:        e.Lang,
+		msg:         e.msg,
+		data:        e.data,
+		haveData:    e.haveData,
+		vault:       e.vault,
+		haveVault:   e.haveVault,
+		details:     newDetails,
+		haveDetails: true,
+		context:     e.context,
+		haveContext: e.haveContext,
+	}
 }
 
+// WithContext 返回一个包含指定上下文的新 Code 实例
+// 原对象不会被修改（不可变设计）
 func (e *Code) WithContext(context string) *Code {
-	e.haveContext = true
-	e.context = context
-	return e
+	return &Code{
+		code:        e.code,
+		status:      e.status,
+		Lang:        e.Lang,
+		msg:         e.msg,
+		data:        e.data,
+		haveData:    e.haveData,
+		vault:       e.vault,
+		haveVault:   e.haveVault,
+		details:     e.details,
+		haveDetails: e.haveDetails,
+		context:     context,
+		haveContext: true,
+	}
 }
 
 func (e *Code) StatusCode() int {

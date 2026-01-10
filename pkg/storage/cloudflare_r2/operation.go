@@ -3,16 +3,17 @@ package cloudflare_r2
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 // UploadByFile 上传文件
@@ -54,7 +55,10 @@ func (p *R2) PutContent(fileKey string, content []byte) (string, error) {
 	if err != nil {
 		var noBucket *types.NoSuchBucket
 		if errors.As(err, &noBucket) {
-			fmt.Printf("Bucket %s does not exist.\n", bucket)
+			p.logger.Warn("Bucket does not exist",
+				zap.String(logger.FieldBucket, bucket),
+				zap.Error(err),
+			)
 			err = noBucket
 		}
 	} else {
@@ -63,7 +67,11 @@ func (p *R2) PutContent(fileKey string, content []byte) (string, error) {
 			Key:    aws.String(fileKey),
 		}, time.Minute)
 		if err != nil {
-			fmt.Printf("Failed attempt to wait for object %s to exist in %s.\n", fileKey, bucket)
+			p.logger.Warn("Failed attempt to wait for object to exist",
+				zap.String(logger.FieldFileKey, fileKey),
+				zap.String(logger.FieldBucket, bucket),
+				zap.Error(err),
+			)
 		} else {
 			_ = *output.Key
 		}
@@ -81,7 +89,7 @@ func (w *R2) DeleteFile(fileKey string) error {
 		Key:    aws.String(fileKey),
 	})
 	if err != nil {
-		return fmt.Errorf("删除文件失败: %v", err)
+		return errors.Wrap(err, "cloudflare_r2: 删除文件失败")
 	}
 	return nil
 }

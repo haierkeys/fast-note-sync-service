@@ -70,7 +70,7 @@ func ParseDuration(s string) (time.Duration, error) {
 		}
 		return time.Duration(days) * 24 * time.Hour, nil
 	}
-	// 如果是纯数字，默认为秒 (兼容旧配置)
+	// 如果是纯数字，默认为秒
 	if _, err := strconv.Atoi(s); err == nil {
 		s += "s"
 	}

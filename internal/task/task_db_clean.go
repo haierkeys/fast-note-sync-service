@@ -4,14 +4,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
-	"github.com/haierkeys/fast-note-sync-service/internal/service"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
+	app                 *app.App
+	logger              *zap.Logger
+	retentionDuration   time.Duration
+	historyKeepVersions int
 }
 
 // Name 返回任务名称
@@ -31,53 +34,71 @@ func (t *DbCleanTask) IsStartupRun() bool {
 
 // Run 执行清理任务
 func (t *DbCleanTask) Run(ctx context.Context) error {
-	svc := service.NewBackground(ctx)
+	// 计算截止时间
+	cutoffTime := time.Now().Add(-t.retentionDuration).UnixMilli()
 
-	// 执行所有清理任务
 	var errs []error
 
-	if err := svc.NoteCleanupAll(); err != nil {
+	// 调用各 Service 的 CleanupByTime 方法
+	if err := t.app.NoteService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "NoteCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "NoteService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteService"))
 	}
 
-	if err := svc.FileCleanupAll(); err != nil {
+	if err := t.app.FileService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "FileCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "FileService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "FileService"))
 	}
 
-	if err := svc.SettingCleanupAll(); err != nil {
+	if err := t.app.SettingService.CleanupByTime(ctx, cutoffTime); err != nil {
 		errs = append(errs, err)
-		global.Logger.Error("task log",
+		t.logger.Error("cleanup failed",
 			zap.String("task", t.Name()),
-			zap.String("sub_task", "SettingCleanup"),
-			zap.String("msg", "failed"),
+			zap.String("service", "SettingService"),
 			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "SettingService"))
+	}
+
+	// 清理 NoteHistory
+	if err := t.app.NoteHistoryService.CleanupByTime(ctx, cutoffTime, t.historyKeepVersions); err != nil {
+		errs = append(errs, err)
+		t.logger.Error("cleanup failed",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteHistoryService"),
+			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteHistoryService"))
 	}
 
 	if len(errs) > 0 {
 		return errs[0] // 返回第一个错误
 	}
 
-	global.Logger.Info("task log",
-		zap.String("task", t.Name()),
-		zap.String("type", "loopRun"),
-		zap.String("msg", "success"))
-
 	return nil
 }
 
-// NewDbNoteDbCleanTask 创建清理任务
-func NewDbCleanTask() (Task, error) {
-	retentionTimeStr := global.Config.App.SoftDeleteRetentionTime
+// NewDbCleanTask 创建清理任务
+func NewDbCleanTask(appContainer *app.App) (Task, error) {
+	retentionTimeStr := appContainer.Config().App.SoftDeleteRetentionTime
 	if retentionTimeStr == "" {
 		return nil, nil
 	}
@@ -90,11 +111,23 @@ func NewDbCleanTask() (Task, error) {
 		return nil, nil
 	}
 
-	// 每分钟执行一次检查
-	return &DbCleanTask{}, nil
+	// 获取历史记录保留版本数，默认 10
+	historyKeepVersions := appContainer.Config().App.HistoryKeepVersions
+	if historyKeepVersions <= 0 {
+		historyKeepVersions = 10
+	}
+
+	return &DbCleanTask{
+		app:                 appContainer,
+		logger:              appContainer.Logger(),
+		retentionDuration:   duration,
+		historyKeepVersions: historyKeepVersions,
+	}, nil
 }
 
 // init 自动注册清理任务
 func init() {
-	Register(NewDbCleanTask)
+	RegisterWithApp(func(appContainer *app.App) (Task, error) {
+		return NewDbCleanTask(appContainer)
+	})
 }

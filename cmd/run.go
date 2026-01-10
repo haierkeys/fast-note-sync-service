@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,9 +30,9 @@ func init() {
 			if len(runEnv.dir) > 0 {
 				err := os.Chdir(runEnv.dir)
 				if err != nil {
-					log.Println("failed to change the current working directory, ", err)
+					bootstrapLogger.Error("failed to change the current working directory", zap.Error(err))
 				}
-				log.Println("working directory changed", zap.String("fileurl", runEnv.dir).String)
+				bootstrapLogger.Info("working directory changed", zap.String("dir", runEnv.dir))
 			}
 
 			if len(runEnv.config) <= 0 {
@@ -45,33 +44,33 @@ func init() {
 					runEnv.config = "config/config.yaml"
 				} else {
 
-					log.Println("config file not found")
+					bootstrapLogger.Warn("config file not found, creating default config")
 					runEnv.config = "config/config.yaml"
 
 					if err := fileurl.CreatePath(runEnv.config, os.ModePerm); err != nil {
-						log.Println("config file auto create error:", err)
+						bootstrapLogger.Error("config file auto create error", zap.Error(err))
 						return
 					}
 
 					file, err := os.OpenFile(runEnv.config, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 					if err != nil {
-						log.Println("config file auto create error:", err)
+						bootstrapLogger.Error("config file auto create error", zap.Error(err))
 						return
 					}
 					defer file.Close()
 					_, err = file.WriteString(configDefault)
 					if err != nil {
-						log.Println("config file auto create writing error:", err)
+						bootstrapLogger.Error("config file auto create writing error", zap.Error(err))
 						return
 					}
-					log.Println("config file auto create successfully")
+					bootstrapLogger.Info("config file auto create successfully", zap.String("path", runEnv.config))
 
 				}
 			}
 
 			s, err := NewServer(runEnv)
 			if err != nil {
-				log.Println("api service start err: ", err)
+				bootstrapLogger.Error("api service start err", zap.Error(err))
 				return
 			}
 
@@ -97,14 +96,14 @@ func init() {
 							// 重新初始化 server
 							s, err = NewServer(runEnv)
 							if err != nil {
-								log.Println("service start err: ", err)
+								bootstrapLogger.Error("service start err", zap.Error(err))
 								continue
 							}
 
 						case err := <-w.Error:
 							s.logger.Error("config watcher error", zap.Error(err))
 						case <-w.Closed:
-							log.Println("config watcher closed")
+							bootstrapLogger.Info("config watcher closed")
 						}
 					}
 				}()
@@ -123,8 +122,15 @@ func init() {
 			quit1 := make(chan os.Signal, 1)
 			signal.Notify(quit1, syscall.SIGINT, syscall.SIGTERM)
 			<-quit1
+			s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
 			s.sc.SendCloseSignal(nil)
-			s.logger.Info("api service has been shut down.")
+			
+			// 等待所有关闭处理器完成（包括 App Container 的优雅关闭）
+			if err := s.sc.WaitClosed(); err != nil {
+				s.logger.Error("Shutdown completed with error", zap.Error(err))
+			} else {
+				s.logger.Info("Service has been shut down gracefully.")
+			}
 
 		},
 	}

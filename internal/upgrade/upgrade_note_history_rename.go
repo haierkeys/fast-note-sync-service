@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -28,27 +27,29 @@ func (m *NoteHistoryRenameMigrate) Description() string {
 }
 
 // Up 执行升级
-func (m *NoteHistoryRenameMigrate) Up(db *gorm.DB, ctx context.Context) error {
-	if global.Config.Database.Type != "sqlite" {
-		global.Logger.Info("NoteHistoryRenameMigrate: Not using SQLite, skipping file rename")
+func (m *NoteHistoryRenameMigrate) Up(db *gorm.DB, ctx context.Context, mc *MigrationContext) error {
+	logger := mc.Logger
+
+	if mc.DatabaseType != "sqlite" {
+		logger.Info("NoteHistoryRenameMigrate: Not using SQLite, skipping file rename")
 		return nil
 	}
 
-	dbPath := global.Config.Database.Path
+	dbPath := mc.DatabasePath
 	dbDir := filepath.Dir(dbPath)
 	ext := filepath.Ext(dbPath)
 	baseName := strings.TrimSuffix(filepath.Base(dbPath), ext)
 
 	files, err := os.ReadDir(dbDir)
 	if err != nil {
-		global.Logger.Error("NoteHistoryRenameMigrate: Failed to read database directory", zap.Error(err))
+		logger.Error("NoteHistoryRenameMigrate: Failed to read database directory", zap.Error(err))
 		return err
 	}
 
 	// 匹配模式: (baseName)_user_note_history(数字)(扩展名)
 	// Pattern: (baseName)_user_note_history(digits)(ext)
 	// 且不包含下划线分隔数字
-	re := regexp.MustCompile(fmt.Sprintf(`^%s_user_note_history(\d+)%s$`, regexp.QuoteMeta(baseName), regexp.QuoteMeta(ext)))
+	re := regexp.MustCompile(fmt.Sprintf(`^%s_user_note_history(\d+)%s`, regexp.QuoteMeta(baseName), regexp.QuoteMeta(ext)))
 
 	for _, file := range files {
 		if file.IsDir() {
@@ -62,12 +63,12 @@ func (m *NoteHistoryRenameMigrate) Up(db *gorm.DB, ctx context.Context) error {
 			newName := fmt.Sprintf("%s_user_note_history_%s%s", baseName, uid, ext)
 			newPath := filepath.Join(dbDir, newName)
 
-			global.Logger.Info("Renaming user_note_history database file",
+			logger.Info("Renaming user_note_history database file",
 				zap.String("old", name),
 				zap.String("new", newName))
 
 			if err := os.Rename(oldPath, newPath); err != nil {
-				global.Logger.Error("NoteHistoryRenameMigrate: Failed to rename file",
+				logger.Error("NoteHistoryRenameMigrate: Failed to rename file",
 					zap.String("old", oldPath),
 					zap.String("new", newPath),
 					zap.Error(err))

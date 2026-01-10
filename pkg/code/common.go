@@ -11,6 +11,7 @@ var (
 
 	ErrorServerInternal       = NewError(500, lang{zh_cn: "服务器内部错误", en: "Server Internal Error"}, true)
 	ErrorDBQuery              = NewError(501, lang{zh_cn: "数据库查询失败", en: "Database query failed"}, true)
+	ErrorServerBusy           = NewError(502, lang{zh_cn: "服务器繁忙，请稍后重试", en: "Server busy, please try again later"}, true)
 	ErrorTooManyRequests      = NewError(503, lang{zh_cn: "请求过多", en: "Too Many Requests"}, true)
 	ErrorNotFoundAPI          = NewError(504, lang{zh_cn: "找不到API", en: "Not Found API"}, true)
 	ErrorInvalidParams        = NewError(505, lang{zh_cn: "参数验证失败", en: "Invalid Params"})
@@ -19,6 +20,19 @@ var (
 	ErrorInvalidUserAuthToken = NewError(508, lang{zh_cn: "登录状态失效,请重新登录", en: "Session expired, please log in again."})
 	ErrorInvalidToken         = NewError(509, lang{zh_cn: "您的访问缺少用户令牌", en: "Your access is missing a user token"})
 	ErrorTokenExpired         = NewError(510, lang{zh_cn: "用户令牌已过期", en: "User token has expired"})
+	ErrorTokenGenerate        = NewError(511, lang{zh_cn: "令牌生成失败", en: "Token generation failed"})
+
+	// 文件操作相关 (520-529)
+	ErrorFileSaveFailed  = NewError(520, lang{zh_cn: "文件保存失败", en: "File save failed"})
+	ErrorFileMoveFailed  = NewError(521, lang{zh_cn: "文件移动失败", en: "File move failed"})
+	ErrorFileReadFailed  = NewError(522, lang{zh_cn: "文件读取失败", en: "File read failed"})
+
+	// 同步相关 (530-539)
+	ErrorSyncConflict        = NewError(530, lang{zh_cn: "同步冲突", en: "Sync conflict"})
+	ErrorSyncMergeFailed     = NewError(531, lang{zh_cn: "合并失败", en: "Merge failed"})
+	ErrorMergeConflict       = NewError(532, lang{zh_cn: "合并冲突，需要手动解决", en: "Merge conflict detected, manual resolution required"})
+	ErrorConflictFileCreated = NewError(533, lang{zh_cn: "已创建冲突文件", en: "Conflict file created"})
+	ErrorHistoryNotFound     = NewError(534, lang{zh_cn: "历史记录未找到", en: "History record not found"})
 
 	ErrorUserRegister                = NewError(400, lang{zh_cn: "用户注册失败", en: "User registration failed"})
 	ErrorUserOldPasswordFailed       = NewError(401, lang{zh_cn: "当前密码验证错误", en: "Current password verification error"})
@@ -66,4 +80,5 @@ var (
 	ErrorSettingListFailed           = NewError(443, lang{zh_cn: "配置列表获取失败", en: "Setting list get failed"})
 	ErrorUserLocalFSDisabled         = NewError(444, lang{zh_cn: "用户本地文件系统已禁用", en: "User local file system is disabled"})
 	ErrorUserIsNotAdmin              = NewError(445, lang{zh_cn: "此操作需要管理员权限", en: "This operation requires administrator privileges"})
+	ErrorConfigSaveFailed            = NewError(446, lang{zh_cn: "配置保存失败", en: "Config save failed"})
 )

@@ -2,7 +2,6 @@ package convert
 
 import (
 	"bytes"
-	"log"
 	"strconv"
 	"strings"
 	"unicode"
@@ -87,7 +86,9 @@ func (b *Buffer) Append(i interface{}) *Buffer {
 func (b *Buffer) append(s string) *Buffer {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("*****内存不够了！******")
+			// 内存不足时的 panic 恢复，此处无法使用注入的 logger
+			// 因为这是底层工具函数，保持静默恢复
+			_ = err
 		}
 	}()
 	b.WriteString(s)
