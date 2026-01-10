@@ -1,41 +1,102 @@
 package middleware
 
-//
-//import "C"
-//import (
-//	"github.com/gin-gonic/gin"
-//)
-//
-//func Tracing() func(c *gin.Context) {
-//	return func(c *gin.Context) {
-//		//var newCtx context.Context
-//		//var span opentracing.Span
-//		//spanCtx, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(c.Request.Header))
-//		//if err != nil {
-//		//	span, newCtx = opentracing.StartSpanFromContextWithTracer(c.Request.Context(), global.Tracer, c.Request.URL.Path)
-//		//} else {
-//		//	span, newCtx = opentracing.StartSpanFromContextWithTracer(
-//		//		c.Request.Context(),
-//		//		global.Tracer,
-//		//		c.Request.URL.Path,
-//		//		opentracing.ChildOf(spanCtx),
-//		//		opentracing.Tag{Key: string(ext.Component), Value: "HTTP"},
-//		//	)
-//		//}
-//		//defer span.Finish()
-//		//
-//		//var traceID string
-//		//var spanID string
-//		//var spanContext = span.Context()
-//		//switch spanContext.(type) {
-//		//case jaeger.SpanContext:
-//		//	jaegerContext := spanContext.(jaeger.SpanContext)
-//		//	traceID = jaegerContext.TraceID().String()
-//		//	spanID = jaegerContext.SpanID().String()
-//		//}
-//		//c.Set("X-Trace-ID", traceID)
-//		//c.Set("X-Span-ID", spanID)
-//		//c.Request = c.Request.WithContext(newCtx)
-//		//c.Next()
-//	}
-//}
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	// DefaultTraceIDHeader 默认的 Trace ID 请求头名称
+	DefaultTraceIDHeader = "X-Trace-ID"
+	// TraceIDKey Context 中存储 Trace ID 的键
+	TraceIDKey = "trace_id"
+)
+
+// TraceMiddlewareWithConfig 创建请求追踪中间件（使用注入的配置）
+// 功能：
+// 1. 从请求头获取或生成唯一的 Trace ID
+// 2. 将 Trace ID 注入到 gin.Context 和 request.Context
+// 3. 在响应头中返回 Trace ID
+func TraceMiddlewareWithConfig(enabled bool, headerName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 检查是否启用追踪
+		if !enabled {
+			c.Next()
+			return
+		}
+
+		// 获取配置的请求头名称
+		if headerName == "" {
+			headerName = DefaultTraceIDHeader
+		}
+
+		// 尝试从请求头获取 Trace ID
+		traceID := c.GetHeader(headerName)
+		if traceID == "" {
+			// 生成新的 Trace ID
+			traceID = generateTraceID()
+		}
+
+		// 存储到 gin.Context
+		c.Set(TraceIDKey, traceID)
+
+		// 注入到 request.Context
+		ctx := context.WithValue(c.Request.Context(), TraceIDKey, traceID)
+		c.Request = c.Request.WithContext(ctx)
+
+		// 添加到响应头
+		c.Header(headerName, traceID)
+
+		c.Next()
+	}
+}
+
+// TraceMiddleware 创建请求追踪中间件（默认启用）
+// Deprecated: 推荐使用 TraceMiddlewareWithConfig
+func TraceMiddleware() gin.HandlerFunc {
+	return TraceMiddlewareWithConfig(true, DefaultTraceIDHeader)
+}
+
+// generateTraceID 生成唯一的 Trace ID
+// 格式: {timestamp_nano}-{random_hex}
+func generateTraceID() string {
+	// 生成 8 字节随机数
+	randomBytes := make([]byte, 8)
+	if _, err := rand.Read(randomBytes); err != nil {
+		// 如果随机数生成失败，使用时间戳作为后备
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+
+	return fmt.Sprintf("%d-%s",
+		time.Now().UnixNano(),
+		hex.EncodeToString(randomBytes)[:8])
+}
+
+// GetTraceID 从 context.Context 获取 Trace ID
+func GetTraceID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if id, ok := ctx.Value(TraceIDKey).(string); ok {
+		return id
+	}
+	return ""
+}
+
+// GetTraceIDFromGin 从 gin.Context 获取 Trace ID
+func GetTraceIDFromGin(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	if id, exists := c.Get(TraceIDKey); exists {
+		if traceID, ok := id.(string); ok {
+			return traceID
+		}
+	}
+	return ""
+}

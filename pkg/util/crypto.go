@@ -113,7 +113,6 @@ func AuthDzCodeEncrypt(str, operation, key string, expiry int64) (string, error)
 
 		strByte, err := base64.StdEncoding.DecodeString(str[ckeyLength:])
 		if err != nil {
-			fmt.Println(err)
 			return "", err
 		}
 		str = string(strByte)

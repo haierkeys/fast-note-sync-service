@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"go.uber.org/zap"
 )
@@ -16,6 +16,8 @@ import (
 type NoteHistoryTask struct {
 	timers map[string]*time.Timer
 	mu     sync.Mutex
+	app    *app.App
+	logger *zap.Logger
 }
 
 // Name 返回任务名称
@@ -47,7 +49,7 @@ func (t *NoteHistoryTask) Run(ctx context.Context) error {
 			t.handleNoteRenameMigrate(msg.OldNoteID, msg.NewNoteID, msg.UID)
 		case <-ctx.Done():
 			t.cleanup()
-			global.Logger.Info("task log",
+			t.logger.Info("task log",
 				zap.String("task", t.Name()),
 				zap.String("type", "startupRun"),
 				zap.String("event", "stopped"),
@@ -103,11 +105,11 @@ func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string
 	delete(t.timers, key)
 	t.mu.Unlock()
 
-	// 使用背景上下文创建服务
-	svc := service.NewBackground(context.Background())
-	err := svc.NoteHistoryProcessDelay(noteID, uid)
+	// 使用 App Container 中的 NoteHistoryService
+	ctx := context.Background()
+	err := t.app.NoteHistoryService.ProcessDelay(ctx, noteID, uid)
 	if err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("noteID", noteID),
@@ -116,7 +118,7 @@ func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string
 			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Info("task log",
+		t.logger.Info("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("noteID", noteID),
@@ -128,11 +130,11 @@ func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string
 // handleNoteRenameMigrate 处理笔记重命名迁移
 func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int64) {
 
-	svc := service.NewBackground(context.Background())
+	ctx := context.Background()
 
-	err := svc.NoteMigrate(oldNoteID, newNoteID, uid)
+	err := t.app.NoteService.Migrate(ctx, oldNoteID, newNoteID, uid)
 	if err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
@@ -142,7 +144,7 @@ func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int6
 			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Info("task log",
+		t.logger.Info("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
@@ -152,9 +154,9 @@ func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int6
 			zap.String("msg", "success"))
 	}
 
-	err = svc.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
+	err = t.app.NoteHistoryService.Migrate(ctx, oldNoteID, newNoteID, uid)
 	if err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
@@ -164,7 +166,7 @@ func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int6
 			zap.String("msg", "failed"),
 			zap.Error(err))
 	} else {
-		global.Logger.Info("task log",
+		t.logger.Info("task log",
 			zap.String("task", "NoteHistory"),
 			zap.String("type", "startupRun"),
 			zap.Int64("oldNoteID", oldNoteID),
@@ -177,20 +179,19 @@ func (t *NoteHistoryTask) handleNoteRenameMigrate(oldNoteID, newNoteID, uid int6
 
 // resumeTasks 扫描并恢复中断的任务
 func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
-	svc := service.NewBackground(ctx)
-	uids, err := svc.GetAllUserUIDs()
+	uids, err := t.app.UserService.GetAllUIDs(ctx)
 	if err != nil {
-		global.Logger.Error("task log",
+		t.logger.Error("task log",
 			zap.String("task", t.Name()),
 			zap.String("type", "startupRun"),
-			zap.String("reason", "svc.GetAllUserUIDs"),
+			zap.String("reason", "UserService.GetAllUIDs"),
 			zap.String("msg", "failed"),
 			zap.Error(err))
 		return
 	}
 
 	if len(uids) == 0 {
-		global.Logger.Info("task log",
+		t.logger.Info("task log",
 			zap.String("task", t.Name()),
 			zap.String("type", "startupRun"),
 			zap.Int("resumeNotesCount", 0),
@@ -200,9 +201,9 @@ func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
 
 	y := 0
 	for _, uid := range uids {
-		notes, err := svc.NoteListNeedSnapshot(uid)
+		notes, err := t.app.NoteService.ListNeedSnapshot(ctx, uid)
 		if err != nil {
-			global.Logger.Error("task log",
+			t.logger.Error("task log",
 				zap.String("task", t.Name()),
 				zap.String("type", "startupRun"),
 				zap.String("msg", "failed"),
@@ -221,7 +222,7 @@ func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
 		}
 
 	}
-	global.Logger.Info("task log",
+	t.logger.Info("task log",
 		zap.String("task", t.Name()),
 		zap.Int("resumeNotesCount", y),
 		zap.String("type", "startupRun"),
@@ -229,12 +230,16 @@ func (t *NoteHistoryTask) resumeTasks(ctx context.Context) {
 }
 
 // NewNoteHistoryTask 创建一个新的笔记历史记录任务实例
-func NewNoteHistoryTask() (Task, error) {
+func NewNoteHistoryTask(appContainer *app.App) (Task, error) {
 	return &NoteHistoryTask{
 		timers: make(map[string]*time.Timer),
+		app:    appContainer,
+		logger: appContainer.Logger(),
 	}, nil
 }
 
 func init() {
-	Register(NewNoteHistoryTask)
+	RegisterWithApp(func(appContainer *app.App) (Task, error) {
+		return NewNoteHistoryTask(appContainer)
+	})
 }

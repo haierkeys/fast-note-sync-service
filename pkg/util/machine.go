@@ -1,7 +1,7 @@
 package util
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"os/exec"
 	"runtime"
@@ -41,8 +41,8 @@ func GetMachineID() string {
 		return machineID
 	}
 
-	// 3. 全部失败，打印错误
-	fmt.Println("Failed to get machine ID")
+	// 3. 全部失败，返回空字符串
+	// 调用者应根据返回值判断是否成功获取机器ID
 	return ""
 }
 
@@ -62,9 +62,9 @@ func getMotherboardID() (string, error) {
 		cmd = exec.Command("ioreg", "-l") // 需要配合 grep，复杂一点，这里先简化处理或留空
 		// ioreg -l | grep IOPlatformSerialNumber
 		// 暂不完整实现 macOS 复杂解析，简单返回 error 走 fallback
-		return "", fmt.Errorf("not implemented for darwin")
+		return "", errors.New("not implemented for darwin")
 	default:
-		return "", fmt.Errorf("unsupported os")
+		return "", errors.New("unsupported os")
 	}
 
 	if cmd != nil {
@@ -75,7 +75,7 @@ func getMotherboardID() (string, error) {
 		return parseSerialNumber(string(out)), nil
 	}
 
-	return "", fmt.Errorf("unknown error")
+	return "", errors.New("unknown error")
 }
 
 func parseSerialNumber(output string) string {

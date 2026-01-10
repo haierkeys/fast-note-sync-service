@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -23,11 +24,24 @@ type S3 struct {
 	S3Client  *s3.Client
 	S3Manager *manager.Uploader
 	Config    *Config
+	logger    *zap.Logger
+}
+
+// Option 配置选项函数类型
+type Option func(*S3)
+
+// WithLogger 设置日志器
+func WithLogger(logger *zap.Logger) Option {
+	return func(s *S3) {
+		s.logger = logger
+	}
 }
 
 var clients = make(map[string]*S3)
 
-func NewClient(cf map[string]any) (*S3, error) {
+// NewClient 创建 S3 存储实例
+// opts 可选参数用于配置日志器等选项
+func NewClient(cf map[string]any, opts ...Option) (*S3, error) {
 	// New client
 
 	var IsEnabled bool
@@ -56,6 +70,10 @@ func NewClient(cf map[string]any) (*S3, error) {
 	var accessKeySecret = conf.AccessKeySecret
 
 	if clients[accessKeyId] != nil {
+		// 应用选项到已存在的客户端
+		for _, opt := range opts {
+			opt(clients[accessKeyId])
+		}
 		return clients[accessKeyId], nil
 	}
 
@@ -76,6 +94,11 @@ func NewClient(cf map[string]any) (*S3, error) {
 	clients[accessKeyId] = &S3{
 		S3Client: client,
 		Config:   conf,
+		logger:   zap.NewNop(), // 默认空日志器
+	}
+	// 应用选项
+	for _, opt := range opts {
+		opt(clients[accessKeyId])
 	}
 	return clients[accessKeyId], nil
 }

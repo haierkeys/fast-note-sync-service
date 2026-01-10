@@ -44,6 +44,24 @@ app:
   # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
+  # 历史记录保留版本数，默认 10
+  # Number of history versions to keep, default 10
+  history-keep-versions: 10
+  # Worker Pool 最大并发数，默认 100
+  # Worker Pool maximum concurrent workers, default 100
+  worker-pool-max-workers: 100
+  # Worker Pool 任务队列大小，默认 1000
+  # Worker Pool task queue size, default 1000
+  worker-pool-queue-size: 1000
+  # 每用户写队列容量，默认 100
+  # Per-user write queue capacity, default 100
+  write-queue-capacity: 100
+  # 写操作超时时间，默认 30s
+  # Write operation timeout, default 30s
+  write-queue-timeout: "30s"
+  # 空闲队列清理时间，默认 10m
+  # Idle queue cleanup time, default 10m
+  write-queue-idle-time: "10m"
 
 # webgui
 # WebGUI 设置
@@ -76,6 +94,9 @@ security:
   # 用户令牌加密混淆 Key
   # User token encryption and obfuscation key
   auth-token-key: fast-note-sync-Auth-Token
+  # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 7d
+  # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 7d
+  token-expiry: "7d"
 
 # database
 # 数据库配置
@@ -85,5 +106,28 @@ database:
   path: storage/database/db.sqlite3
   table-prefix:
   auto-migrate: true
+  # 最大打开连接数，默认 100
+  # Maximum number of open connections, default 100
+  max-open-conns: 100
+  # 最大空闲连接数，默认 10
+  # Maximum number of idle connections, default 10
+  max-idle-conns: 10
+  # 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
+  # Connection max lifetime, supports formats: 30m (minutes), 1h (hours), default 30m
+  conn-max-lifetime: "30m"
+  # 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
+  # Idle connection max lifetime, supports formats: 10m (minutes), 1h (hours), default 10m
+  conn-max-idle-time: "10m"
+
+# tracer
+# 请求追踪配置
+# Request tracing configuration
+tracer:
+  # 是否启用追踪
+  # Whether to enable tracing
+  enabled: true
+  # 追踪 ID 请求头名称
+  # Trace ID header name
+  header: "X-Trace-ID"
 
 

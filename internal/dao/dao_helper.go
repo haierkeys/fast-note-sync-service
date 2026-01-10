@@ -18,6 +18,7 @@ func (d *Dao) GetSettingFolderPath(uid int64, settingID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "setting", fmt.Sprintf("s_%d", settingID))
 }
 
+// GetFileFolderPath 获取文件目录路径
 func (d *Dao) GetFileFolderPath(uid int64, fileID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "file", fmt.Sprintf("f_%d", fileID))
 }
