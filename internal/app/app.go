@@ -53,6 +53,7 @@ type App struct {
 	FileService        service.FileService
 	SettingService     service.SettingService
 	NoteHistoryService service.NoteHistoryService
+	ConflictService    service.ConflictService
 
 	// 基础设施组件
 	TokenManager pkgapp.TokenManager
@@ -151,7 +152,8 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
 	a.FileService = service.NewFileService(a.FileRepo, a.VaultService, svcConfig)
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
-	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.VaultService)
+	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, logger)
+	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),

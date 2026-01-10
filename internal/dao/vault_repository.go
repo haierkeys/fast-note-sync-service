@@ -25,7 +25,7 @@ func NewVaultRepository(dao *Dao) domain.VaultRepository {
 
 // vault 获取保险库查询对象
 func (r *vaultRepository) vault(uid int64) *query.Query {
-	key := "user_vault_" + strconv.FormatInt(uid, 10)
+	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Vault")
 	}, key+"#vault", key)

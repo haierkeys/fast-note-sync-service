@@ -102,5 +102,15 @@ func (r *noteHistoryRepository) Migrate(ctx context.Context, oldNoteID, newNoteI
 	return r.dao.NoteHistoryMigrate(oldNoteID, newNoteID, uid)
 }
 
+// GetNoteIDsWithOldHistory 获取有旧历史记录的笔记ID列表
+func (r *noteHistoryRepository) GetNoteIDsWithOldHistory(ctx context.Context, cutoffTime int64, uid int64) ([]int64, error) {
+	return r.dao.NoteHistoryGetNoteIDsWithOldHistory(cutoffTime, uid)
+}
+
+// DeleteOldVersions 删除旧版本历史记录，保留最近 N 个版本
+func (r *noteHistoryRepository) DeleteOldVersions(ctx context.Context, noteID int64, cutoffTime int64, keepVersions int, uid int64) error {
+	return r.dao.NoteHistoryDeleteOldVersions(noteID, cutoffTime, keepVersions, uid)
+}
+
 // 确保 noteHistoryRepository 实现了 domain.NoteHistoryRepository 接口
 var _ domain.NoteHistoryRepository = (*noteHistoryRepository)(nil)

@@ -187,26 +187,32 @@ type SessionCleaner interface {
 	Cleanup()
 }
 
+// DiffMergeEntry 表示 DiffMergePaths 中的条目
+// 包含创建时间戳，用于超时清理机制
+type DiffMergeEntry struct {
+	CreatedAt time.Time // 条目创建时间
+}
+
 // WebsocketClient 结构体来存储每个 WebSocket 连接及其相关状态
 type WebsocketClient struct {
-	conn                *gws.Conn            // WebSocket 底层连接句柄
-	done                chan struct{}        // 关闭信号通道，用于优雅关闭读/写协程
-	app                 AppContainer         // App Container 引用
-	Ctx                 *gin.Context         // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
-	WsCtx               context.Context      // WebSocket 连接的长生命周期 context
-	WsCancel            context.CancelFunc   // 用于取消 WsCtx
-	TraceID             string               // 连接的追踪 ID
-	User                *UserEntity          // 已认证用户信息，通常在握手阶段绑定
-	UserClients         *ConnStorage         // 用户连接池，支持多设备在线时广播或单点通信
-	SF                  *singleflight.Group  // 并发控制：相同 key 的请求只执行一次，其余等待结果
-	BinaryMu            sync.Mutex           // 二进制分块会话的互斥锁，防止并发冲突
-	BinaryChunkSessions map[string]any       // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
-	ClientName          string               // 客户端名称 (例如 "Mac", "Windows", "iPhone")
-	ClientVersion       string               // 客户端版本号 (例如 "1.2.4")
-	IsFirstSync         bool                 // 是否是第一次同步过
-	DiffMergePaths      map[string]any       // 需要合并的文件路径
-	DiffMergePathsMu    sync.RWMutex         // 互斥锁，防止并发冲突
-	OfflineSyncStrategy string               // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
+	conn                *gws.Conn                  // WebSocket 底层连接句柄
+	done                chan struct{}              // 关闭信号通道，用于优雅关闭读/写协程
+	app                 AppContainer               // App Container 引用
+	Ctx                 *gin.Context               // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
+	WsCtx               context.Context            // WebSocket 连接的长生命周期 context
+	WsCancel            context.CancelFunc         // 用于取消 WsCtx
+	TraceID             string                     // 连接的追踪 ID
+	User                *UserEntity                // 已认证用户信息，通常在握手阶段绑定
+	UserClients         *ConnStorage               // 用户连接池，支持多设备在线时广播或单点通信
+	SF                  *singleflight.Group        // 并发控制：相同 key 的请求只执行一次，其余等待结果
+	BinaryMu            sync.Mutex                 // 二进制分块会话的互斥锁，防止并发冲突
+	BinaryChunkSessions map[string]any             // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
+	ClientName          string                     // 客户端名称 (例如 "Mac", "Windows", "iPhone")
+	ClientVersion       string                     // 客户端版本号 (例如 "1.2.4")
+	IsFirstSync         bool                       // 是否是第一次同步过
+	DiffMergePaths      map[string]DiffMergeEntry  // 需要合并的文件路径，包含创建时间用于超时清理
+	DiffMergePathsMu    sync.RWMutex               // 互斥锁，防止并发冲突
+	OfflineSyncStrategy string                     // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 }
 
 // initContext 初始化 WebSocket 连接的 context
@@ -241,6 +247,41 @@ func (c *WebsocketClient) WithTimeout(timeout time.Duration) (context.Context, c
 	return context.WithTimeout(c.WsCtx, timeout)
 }
 
+// CleanupExpiredDiffMergePaths 清理过期的 DiffMergePaths 条目
+// timeout: 超时时间，超过此时间的条目将被删除
+func (c *WebsocketClient) CleanupExpiredDiffMergePaths(timeout time.Duration) int {
+	c.DiffMergePathsMu.Lock()
+	defer c.DiffMergePathsMu.Unlock()
+
+	if c.DiffMergePaths == nil {
+		return 0
+	}
+
+	now := time.Now()
+	cleanedCount := 0
+	for path, entry := range c.DiffMergePaths {
+		if now.Sub(entry.CreatedAt) > timeout {
+			delete(c.DiffMergePaths, path)
+			cleanedCount++
+		}
+	}
+	return cleanedCount
+}
+
+// ClearAllDiffMergePaths 清理所有 DiffMergePaths 条目
+// 在连接关闭时调用
+func (c *WebsocketClient) ClearAllDiffMergePaths() int {
+	c.DiffMergePathsMu.Lock()
+	defer c.DiffMergePathsMu.Unlock()
+
+	if c.DiffMergePaths == nil {
+		return 0
+	}
+
+	count := len(c.DiffMergePaths)
+	c.DiffMergePaths = make(map[string]DiffMergeEntry)
+	return count
+}
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
 func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors) {
 	var errs ValidErrors
@@ -632,14 +673,14 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 	c.ClientName = info.Name
 	c.ClientVersion = info.Version
 	c.OfflineSyncStrategy = info.OfflineSyncStrategy
-	c.DiffMergePaths = make(map[string]any)
+	c.DiffMergePaths = make(map[string]DiffMergeEntry)
 
 	log(LogInfo, "WS ClientInfo", zap.String("uid", func() string {
 		if c.User != nil {
 			return c.User.ID
 		}
 		return "Guest"
-	}()), zap.String("name", c.ClientName), zap.String("version", c.ClientVersion))
+	}()), zap.String("name", c.ClientName), zap.String("version", c.ClientVersion), zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
 
 	c.ToResponse(code.Success, "ClientInfo")
 }
@@ -726,6 +767,13 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 				zap.Int("sessionCount", sessionCount),
 				zap.String("traceID", c.TraceID))
 		}
+	}
+
+	// 清理所有 DiffMergePaths 条目
+	if diffMergeCount := c.ClearAllDiffMergePaths(); diffMergeCount > 0 {
+		log(LogInfo, "OnClose: cleared DiffMergePaths on disconnect",
+			zap.Int("count", diffMergeCount),
+			zap.String("traceID", c.TraceID))
 	}
 
 	log(LogInfo, "WS Client Leave", zap.Int("Count", len(w.clients)), zap.String("traceID", c.TraceID))

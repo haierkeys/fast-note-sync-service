@@ -28,7 +28,7 @@ func NewFileRepository(dao *Dao) domain.FileRepository {
 
 // file 获取文件查询对象
 func (r *fileRepository) file(uid int64) *query.Query {
-	key := "user_file_" + strconv.FormatInt(uid, 10)
+	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "File")
 	}, key+"#file", key)

@@ -11,9 +11,10 @@ import (
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
-	app               *app.App
-	logger            *zap.Logger
-	retentionDuration time.Duration
+	app                 *app.App
+	logger              *zap.Logger
+	retentionDuration   time.Duration
+	historyKeepVersions int
 }
 
 // Name 返回任务名称
@@ -75,6 +76,19 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.String("service", "SettingService"))
 	}
 
+	// 清理 NoteHistory
+	if err := t.app.NoteHistoryService.CleanupByTime(ctx, cutoffTime, t.historyKeepVersions); err != nil {
+		errs = append(errs, err)
+		t.logger.Error("cleanup failed",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteHistoryService"),
+			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteHistoryService"))
+	}
+
 	if len(errs) > 0 {
 		return errs[0] // 返回第一个错误
 	}
@@ -97,10 +111,17 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 		return nil, nil
 	}
 
+	// 获取历史记录保留版本数，默认 10
+	historyKeepVersions := appContainer.Config().App.HistoryKeepVersions
+	if historyKeepVersions <= 0 {
+		historyKeepVersions = 10
+	}
+
 	return &DbCleanTask{
-		app:               appContainer,
-		logger:            appContainer.Logger(),
-		retentionDuration: duration,
+		app:                 appContainer,
+		logger:              appContainer.Logger(),
+		retentionDuration:   duration,
+		historyKeepVersions: historyKeepVersions,
 	}, nil
 }
 

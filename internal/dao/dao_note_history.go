@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
@@ -43,7 +44,7 @@ type NoteHistorySet struct {
 }
 
 func (d *Dao) noteHistory(uid int64) *query.Query {
-	key := "user_note_history_" + strconv.FormatInt(uid, 10)
+	key := "user_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
 	}, key+"#noteHistory", key)
@@ -199,4 +200,97 @@ func (d *Dao) fillHistoryContent(uid int64, h *NoteHistory) {
 			)
 		}
 	}
+}
+
+// NoteHistoryGetNoteIDsWithOldHistory 获取有旧历史记录的笔记ID列表
+// cutoffTime: 截止时间戳（毫秒），返回有早于此时间历史记录的笔记ID
+func (d *Dao) NoteHistoryGetNoteIDsWithOldHistory(cutoffTime int64, uid int64) ([]int64, error) {
+	u := d.noteHistory(uid).NoteHistory
+	// 将毫秒时间戳转换为 timex.Time
+	cutoffTimeValue := timex.Time(time.UnixMilli(cutoffTime))
+	// 查询有早于截止时间历史记录的笔记ID（去重）
+	var noteIDs []int64
+	err := u.WithContext(d.ctx).
+		Where(u.CreatedAt.Lt(cutoffTimeValue)).
+		Distinct(u.NoteID).
+		Pluck(u.NoteID, &noteIDs)
+	if err != nil {
+		return nil, err
+	}
+	return noteIDs, nil
+}
+
+// NoteHistoryDeleteOldVersions 删除旧版本历史记录，保留最近 N 个版本
+// noteID: 笔记ID
+// cutoffTime: 截止时间戳（毫秒），删除早于此时间的记录
+// keepVersions: 保留的最近版本数量
+func (d *Dao) NoteHistoryDeleteOldVersions(noteID int64, cutoffTime int64, keepVersions int, uid int64) error {
+	return d.ExecuteWrite(context.Background(), uid, func(db *gorm.DB) error {
+		u := query.Use(db).NoteHistory
+
+		// 先获取需要保留的最近 N 个版本的最小版本号
+		var minKeepVersion int64 = 0
+		if keepVersions > 0 {
+			histories, err := u.WithContext(d.ctx).
+				Where(u.NoteID.Eq(noteID)).
+				Order(u.Version.Desc()).
+				Limit(keepVersions).
+				Find()
+			if err != nil {
+				return err
+			}
+			if len(histories) > 0 {
+				// 获取保留版本中的最小版本号
+				minKeepVersion = histories[len(histories)-1].Version
+			}
+		}
+
+		// 将毫秒时间戳转换为 timex.Time
+		cutoffTimeValue := timex.Time(time.UnixMilli(cutoffTime))
+
+		// 查询需要删除的历史记录ID（早于截止时间且版本号小于保留的最小版本号）
+		var toDeleteIDs []int64
+		q := u.WithContext(d.ctx).
+			Where(u.NoteID.Eq(noteID)).
+			Where(u.CreatedAt.Lt(cutoffTimeValue))
+
+		if minKeepVersion > 0 {
+			q = q.Where(u.Version.Lt(minKeepVersion))
+		}
+
+		histories, err := q.Find()
+		if err != nil {
+			return err
+		}
+
+		for _, h := range histories {
+			toDeleteIDs = append(toDeleteIDs, h.ID)
+		}
+
+		if len(toDeleteIDs) == 0 {
+			return nil
+		}
+
+		// 删除数据库记录
+		_, err = u.WithContext(d.ctx).Where(u.ID.In(toDeleteIDs...)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除关联的文件
+		for _, id := range toDeleteIDs {
+			folder := d.GetNoteHistoryFolderPath(uid, id)
+			if err := d.RemoveContentFolder(folder); err != nil {
+				// 文件删除失败只记录警告，不影响主流程
+				global.Logger.Warn("failed to delete history folder",
+					zap.Int64(logger.FieldUID, uid),
+					zap.Int64("historyId", id),
+					zap.String("folder", folder),
+					zap.Error(err),
+				)
+			}
+		}
+
+		return nil
+	})
 }

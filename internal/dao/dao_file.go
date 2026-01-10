@@ -76,7 +76,7 @@ func (d *Dao) fillFilePath(uid int64, f *File) {
 // 返回值说明:
 //   - *query.Query: 查询对象
 func (d *Dao) file(uid int64) *query.Query {
-	key := "user_file_" + strconv.FormatInt(uid, 10)
+	key := "user_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "File")
 	}, key+"#file", key)

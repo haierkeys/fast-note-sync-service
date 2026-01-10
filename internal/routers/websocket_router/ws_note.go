@@ -1,15 +1,19 @@
 package websocket_router
 
 import (
+	"time"
+
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
-	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/diff"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+
+	"go.uber.org/zap"
 )
 
 // NoteWSHandler WebSocket 笔记处理器
@@ -123,33 +127,67 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 		var isExcludeSelf bool = true
 
-		if c.OfflineSyncStrategy != "" && nodeCheck != nil && nodeCheck.ContentHash != params.BaseHash && nodeCheck.ContentHash != params.ContentHash {
-			c.DiffMergePathsMu.RLock()
-			_, ok := c.DiffMergePaths[params.Path]
-			c.DiffMergePathsMu.RUnlock()
+		// 冲突检测逻辑优化 - 基于哈希比较而非仅依赖 mtime
+		if nodeCheck != nil {
+			serverHash := nodeCheck.ContentHash
+			baseHash := params.BaseHash
+			contentHash := params.ContentHash
 
-			// 如果是 diff 合并，需要跳过
-			if ok {
+			// Case 1: serverHash == contentHash - 内容相同，跳过更新
+			if serverHash == contentHash {
+				h.App.Logger().Debug("server content equals client content, skipping update",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, params.Path),
+					zap.String("contentHash", contentHash))
+				c.ToResponse(code.SuccessNoUpdate)
+				return
+			}
+
+			// Case 2: serverHash == baseHash - 服务端未变化，直接接受客户端更改
+			if serverHash == baseHash && baseHash != "" {
+				h.App.Logger().Debug("server content unchanged since last sync, accepting client changes directly",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, params.Path),
+					zap.String("baseHash", baseHash))
+				// 直接使用客户端内容，无需合并
+				// isExcludeSelf 保持 true，继续执行 ModifyOrCreate
+			} else if c.OfflineSyncStrategy != "" && serverHash != baseHash && serverHash != contentHash {
+				// Case 3: 真正的冲突 - serverHash 与 baseHash 和 contentHash 都不同
+				h.App.Logger().Info("potential merge conflict detected",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, params.Path),
+					zap.String("serverHash", serverHash),
+					zap.String("baseHash", baseHash),
+					zap.String("contentHash", contentHash),
+					zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
+
+				// 使用单次写锁完成检查和删除操作，消除 TOCTOU 竞态窗口
 				c.DiffMergePathsMu.Lock()
-				delete(c.DiffMergePaths, params.Path)
+				_, ok := c.DiffMergePaths[params.Path]
+				if ok {
+					delete(c.DiffMergePaths, params.Path)
+				}
 				c.DiffMergePathsMu.Unlock()
 
-				var history *service.NoteHistoryDTO
-				// 如果 忽略时间合并， 如果内容在快照中找到 则 忽略掉 插件端更新
-				if c.OfflineSyncStrategy == "ignoreTimeMerge" {
-					history, err = h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, params.ContentHash)
-					if err != nil {
-						h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.GetByNoteIDAndHash")
-						return
-					}
-				}
+				h.App.Logger().Info("DiffMergePaths check result",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String(logger.FieldPath, params.Path),
+					zap.Bool("pathInDiffMergePaths", ok))
 
-				if history == nil {
-
+				// 如果是 diff 合并，需要执行合并逻辑
+				// 注意：已移除基于 contentHash 匹配历史快照跳过合并的逻辑
+				// 原因：该逻辑会导致用户有效修改被静默丢弃（当内容恰好与某个历史快照相同时）
+				if ok {
 					var baseContent string
+					var baseHashNotFound bool
 
-					if params.BaseHash != params.ContentHash && params.BaseHash != "" {
-						noteHistory, err := h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, params.BaseHash)
+					// 查找合并基准版本
+					// 当 baseHash 有效且与 contentHash 不同时，尝试从历史记录中查找
+					if baseHash != contentHash && baseHash != "" && !params.BaseHashMissing {
+						noteHistory, err := h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, baseHash)
 						if err != nil {
 							h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.GetByNoteIDAndHash")
 							return
@@ -158,20 +196,107 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 						if noteHistory != nil {
 							baseContent = noteHistory.Content
 						} else {
-							baseContent = nodeCheck.Content
+							// 历史记录未找到
+							h.App.Logger().Warn("history record not found for baseHash",
+								zap.String(logger.FieldTraceID, c.TraceID),
+								zap.Int64(logger.FieldUID, c.User.UID),
+								zap.String(logger.FieldPath, params.Path),
+								zap.String("baseHash", baseHash))
+							baseHashNotFound = true
 						}
 					} else {
+						// baseHash 为空或客户端标记为不可用
+						if baseHash == "" || params.BaseHashMissing {
+							h.App.Logger().Warn("baseHash is empty or missing",
+								zap.String(logger.FieldTraceID, c.TraceID),
+								zap.Int64(logger.FieldUID, c.User.UID),
+								zap.String(logger.FieldPath, params.Path),
+								zap.Bool("baseHashMissing", params.BaseHashMissing))
+							baseHashNotFound = true
+						}
+					}
+
+					// 当 baseHash 找不到时，使用服务端当前内容作为 base 继续合并
+					// 这种情况通常发生在：历史记录延迟创建（20秒）期间另一设备上线同步
+					// 使用服务端内容作为 base 在大多数场景下能正确合并
+					if baseHashNotFound {
+						h.App.Logger().Warn("baseHash not found, using server content as merge base",
+							zap.String(logger.FieldTraceID, c.TraceID),
+							zap.Int64(logger.FieldUID, c.User.UID),
+							zap.String(logger.FieldPath, params.Path),
+							zap.String("baseHash", baseHash),
+							zap.Bool("baseHashMissing", params.BaseHashMissing))
 						baseContent = nodeCheck.Content
 					}
 
 					clientContent := params.Content
 					serverContent := nodeCheck.Content
 
-					params.Content, err = diff.MergeTexts(baseContent, clientContent, serverContent, params.Mtime <= nodeCheck.Mtime)
+					// 确定 patch 应用顺序
+					// ignoreTimeMerge 策略：忽略时间戳，固定使用客户端优先
+					// 当两边修改不同区域时，结果一致（patch 应用顺序不影响）
+					// 当两边修改同一区域时，hasConflict 会检测到冲突并创建冲突文件
+					var pc1First bool
+					if c.OfflineSyncStrategy == "ignoreTimeMerge" {
+						pc1First = true
+					} else {
+						// 其他策略：使用时间决定优先级
+						pc1First = params.Mtime <= nodeCheck.Mtime
+					}
+
+					mergeResult, err := diff.MergeTexts(baseContent, clientContent, serverContent, pc1First)
 					if err != nil {
 						h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.MergeTexts")
 						return
 					}
+
+					h.App.Logger().Info("merge completed",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, params.Path),
+						zap.Bool("hasConflict", mergeResult.HasConflict),
+						zap.Int("baseLen", len(baseContent)),
+						zap.Int("clientLen", len(clientContent)),
+						zap.Int("serverLen", len(serverContent)),
+						zap.Int("resultLen", len(mergeResult.Content)),
+						zap.Bool("pc1First", pc1First))
+
+					// 检查是否存在冲突，如果有冲突则创建冲突文件
+					if mergeResult.HasConflict {
+						// 创建冲突文件保存客户端内容
+						conflictReq := &dto.ConflictFileRequest{
+							Vault:             params.Vault,
+							OriginalPath:      params.Path,
+							ClientContent:     params.Content,
+							ClientContentHash: params.ContentHash,
+							Ctime:             params.Ctime,
+							Mtime:             params.Mtime,
+						}
+
+						conflictResp, err := h.App.ConflictService.CreateConflictFile(ctx, c.User.UID, conflictReq)
+						if err != nil {
+							h.App.Logger().Error("failed to create conflict file",
+								zap.String(logger.FieldTraceID, c.TraceID),
+								zap.Int64(logger.FieldUID, c.User.UID),
+								zap.String(logger.FieldPath, params.Path),
+								zap.Error(err))
+							h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.CreateConflictFile")
+							return
+						}
+
+						h.App.Logger().Info("merge conflict detected, conflict file created",
+							zap.String(logger.FieldTraceID, c.TraceID),
+							zap.Int64(logger.FieldUID, c.User.UID),
+							zap.String(logger.FieldPath, params.Path),
+							zap.String("conflictPath", conflictResp.ConflictPath),
+							zap.String("conflictInfo", mergeResult.ConflictInfo))
+
+						// 返回冲突文件创建成功的响应
+						c.ToResponse(code.ErrorConflictFileCreated.WithData(conflictResp))
+						return
+					}
+
+					params.Content = mergeResult.Content
 					params.ContentHash = util.EncodeHash32(params.Content)
 					params.Mtime = timex.Now().Unix()
 
@@ -457,7 +582,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						case "ignoreTimeMerge":
 
 							c.DiffMergePathsMu.Lock()
-							c.DiffMergePaths[note.Path] = struct{}{}
+							c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
 							c.DiffMergePathsMu.Unlock()
 
 							noteSyncNeedPushMessage := &NoteSyncNeedPushMessage{
@@ -487,15 +612,18 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 								Action: "NoteSyncModify",
 								Data:   noteMessage,
 							})
-							needModifyCount++
+						needModifyCount++
 						}
 						// 服务端修改时间比客户端新, 通知客户端更新笔记
 
 					} else {
 						// 客户端笔记 比服务端笔记新, 通知客户端上传笔记
-						if c.OfflineSyncStrategy == "ignoreTimeMerge" || c.OfflineSyncStrategy == "newTimeMerge" {
+						// 离线同步策略说明：
+						// - ignoreTimeMerge: 忽略时间戳，始终执行三方合并，需要登记到 DiffMergePaths
+						// - newTimeMerge: 新时间优先，直接接受较新的内容，不需要登记到 DiffMergePaths
+						if c.OfflineSyncStrategy == "ignoreTimeMerge" {
 							c.DiffMergePathsMu.Lock()
-							c.DiffMergePaths[note.Path] = struct{}{}
+							c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
 							c.DiffMergePathsMu.Unlock()
 						}
 
