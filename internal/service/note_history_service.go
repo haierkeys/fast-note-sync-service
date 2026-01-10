@@ -3,16 +3,19 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 )
 
 // NoteHistoryService 定义笔记历史业务服务接口
@@ -128,7 +131,10 @@ func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *
 func (s *noteHistoryService) Get(ctx context.Context, uid int64, id int64) (*NoteHistoryDTO, error) {
 	history, err := s.historyRepo.GetByID(ctx, id, uid)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorHistoryNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return s.domainToDTO(history), nil
 }
@@ -137,10 +143,10 @@ func (s *noteHistoryService) Get(ctx context.Context, uid int64, id int64) (*Not
 func (s *noteHistoryService) GetByNoteIDAndHash(ctx context.Context, uid int64, noteID int64, contentHash string) (*NoteHistoryDTO, error) {
 	history, err := s.historyRepo.GetByNoteIDAndHash(ctx, noteID, contentHash, uid)
 	if err != nil {
-		return nil, err
-	}
-	if history == nil {
-		return nil, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // 记录不存在时返回 nil，调用方会处理
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return s.domainToDTO(history), nil
 }

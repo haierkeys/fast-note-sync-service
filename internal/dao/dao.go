@@ -449,3 +449,24 @@ func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, fn func(*gor
 		})
 	})
 }
+
+// user 获取用户查询对象（内部方法）
+func (d *Dao) user() *query.Query {
+	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
+		model.AutoMigrate(g, "User")
+	}, "user#user")
+}
+
+// GetAllUserUIDs 获取所有用户的UID
+// 返回值说明:
+//   - []int64: 用户UID列表
+//   - error: 出错时返回错误
+func (d *Dao) GetAllUserUIDs() ([]int64, error) {
+	var uids []int64
+	u := d.user().User
+	err := u.WithContext(d.ctx).Select(u.UID).Where(u.IsDeleted.Eq(0)).Scan(&uids)
+	if err != nil {
+		return nil, err
+	}
+	return uids, nil
+}

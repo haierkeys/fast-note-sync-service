@@ -44,6 +44,24 @@ app:
   # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
+  # 历史记录保留版本数，默认 10
+  # Number of history versions to keep, default 10
+  history-keep-versions: 10
+  # Worker Pool 最大并发数，默认 100
+  # Worker Pool maximum concurrent workers, default 100
+  worker-pool-max-workers: 100
+  # Worker Pool 任务队列大小，默认 1000
+  # Worker Pool task queue size, default 1000
+  worker-pool-queue-size: 1000
+  # 每用户写队列容量，默认 100
+  # Per-user write queue capacity, default 100
+  write-queue-capacity: 100
+  # 写操作超时时间，默认 30s
+  # Write operation timeout, default 30s
+  write-queue-timeout: "30s"
+  # 空闲队列清理时间，默认 10m
+  # Idle queue cleanup time, default 10m
+  write-queue-idle-time: "10m"
 
 # webgui
 # WebGUI 设置
