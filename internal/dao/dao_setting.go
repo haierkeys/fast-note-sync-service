@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -224,7 +223,7 @@ func (d *Dao) fillSettingContent(uid int64, s *Setting) {
 	} else if s.Content != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
 		if err := d.SaveContentToFile(folder, "content.txt", s.Content); err != nil {
-			global.Logger.Warn("lazy migration: SaveContentToFile failed for setting content",
+			d.logger.Warn("lazy migration: SaveContentToFile failed for setting content",
 				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("settingId", s.ID),
 				zap.String(logger.FieldMethod, "Dao.fillSettingContent"),

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
+	"github.com/haierkeys/fast-note-sync-service/internal/app"
 
 	"github.com/spf13/cobra"
 )
@@ -12,8 +12,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print out version info and exit.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("v%s ( Git:%s ) BuidTime:%s\n", global.Version, global.GitTag, global.BuildTime)
-
+		fmt.Printf("v%s ( Git:%s ) BuidTime:%s\n", app.Version, app.GitTag, app.BuildTime)
 	},
 }
 

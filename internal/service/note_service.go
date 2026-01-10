@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -218,7 +217,7 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 			} else if params.Mtime > note.Mtime {
 				if err := s.noteRepo.UpdateMtime(ctx, params.Mtime, note.ID, uid); err != nil {
 					// 非关键更新失败，记录警告日志但不阻断流程
-					global.Logger.Warn("UpdateMtime failed for note",
+					zap.L().Warn("UpdateMtime failed for note",
 						zap.Int64(logger.FieldUID, uid),
 						zap.Int64("noteId", note.ID),
 						zap.Int64("mtime", params.Mtime),

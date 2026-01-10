@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -75,7 +74,7 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 
 	if s.FileHandle != nil {
 		if err := s.FileHandle.Close(); err != nil {
-			global.Logger.Warn("cleanup: failed to close file handle",
+			zap.L().Warn("cleanup: failed to close file handle",
 				zap.String(logger.FieldSessionID, s.ID),
 				zap.String(logger.FieldPath, s.Path),
 				zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),
@@ -86,7 +85,7 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 	}
 	if s.SavePath != "" {
 		if err := os.Remove(s.SavePath); err != nil {
-			global.Logger.Warn("cleanup: failed to remove temp file",
+			zap.L().Warn("cleanup: failed to remove temp file",
 				zap.String(logger.FieldSessionID, s.ID),
 				zap.String(logger.FieldPath, s.SavePath),
 				zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),

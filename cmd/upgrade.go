@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/upgrade"
@@ -77,7 +76,7 @@ It is safe to run this command multiple times - already applied migrations will 
 		if err := upgrade.Execute(
 			db,
 			lg,
-			global.Version,
+			internalApp.Version,
 			appConfig.Database.Path,
 			appConfig.Database.Type,
 		); err != nil {

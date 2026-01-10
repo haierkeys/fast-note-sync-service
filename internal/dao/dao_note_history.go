@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -177,7 +176,7 @@ func (d *Dao) fillHistoryContent(uid int64, h *NoteHistory) {
 	} else if h.DiffPatch != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
 		if err := d.SaveContentToFile(folder, "diff.patch", h.DiffPatch); err != nil {
-			global.Logger.Warn("lazy migration: SaveContentToFile failed for history diff patch",
+			d.logger.Warn("lazy migration: SaveContentToFile failed for history diff patch",
 				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("historyId", h.ID),
 				zap.String(logger.FieldMethod, "Dao.fillHistoryContent"),
@@ -192,7 +191,7 @@ func (d *Dao) fillHistoryContent(uid int64, h *NoteHistory) {
 	} else if h.Content != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
 		if err := d.SaveContentToFile(folder, "content.txt", h.Content); err != nil {
-			global.Logger.Warn("lazy migration: SaveContentToFile failed for history content",
+			d.logger.Warn("lazy migration: SaveContentToFile failed for history content",
 				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("historyId", h.ID),
 				zap.String(logger.FieldMethod, "Dao.fillHistoryContent"),
@@ -282,7 +281,7 @@ func (d *Dao) NoteHistoryDeleteOldVersions(noteID int64, cutoffTime int64, keepV
 			folder := d.GetNoteHistoryFolderPath(uid, id)
 			if err := d.RemoveContentFolder(folder); err != nil {
 				// 文件删除失败只记录警告，不影响主流程
-				global.Logger.Warn("failed to delete history folder",
+				d.logger.Warn("failed to delete history folder",
 					zap.Int64(logger.FieldUID, uid),
 					zap.Int64("historyId", id),
 					zap.String("folder", folder),

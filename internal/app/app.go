@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
@@ -202,9 +201,9 @@ func (a *App) SubmitTaskAsync(ctx context.Context, task func(context.Context) er
 // Version 获取版本信息
 func (a *App) Version() pkgapp.VersionInfo {
 	return pkgapp.VersionInfo{
-		Version:   global.Version,
-		GitTag:    global.GitTag,
-		BuildTime: global.BuildTime,
+		Version:   Version,
+		GitTag:    GitTag,
+		BuildTime: BuildTime,
 	}
 }
 

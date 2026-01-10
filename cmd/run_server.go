@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
@@ -138,7 +137,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	if err := upgrade.Execute(
 		db,
 		s.logger,
-		global.Version,
+		internalApp.Version,
 		appConfig.Database.Path,
 		appConfig.Database.Type,
 	); err != nil {
@@ -164,7 +163,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
  / __/ / /_/ (__  ) /_   / /|  / /_/ / /_/  __/   ___/ / /_/ / / / / /__
 /_/    \__,_/____/\__/  /_/ |_/\____/\__/\___/   /____/\__, /_/ /_/\___/
                                                       /____/              `
-	s.logger.Warn(fmt.Sprintf("%s\n\n%s v%s\nGit: %s\nBuildTime: %s\n", banner, global.Name, global.Version, global.GitTag, global.BuildTime))
+	s.logger.Warn(fmt.Sprintf("%s\n\n%s v%s\nGit: %s\nBuildTime: %s\n", banner, internalApp.Name, internalApp.Version, internalApp.GitTag, internalApp.BuildTime))
 
 	s.logger.Warn("config loaded", zap.String("path", configRealpath))
 
