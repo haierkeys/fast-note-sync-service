@@ -201,4 +201,14 @@ type NoteHistoryRepository interface {
 
 	// Migrate 迁移历史记录（更新 NoteID）
 	Migrate(ctx context.Context, oldNoteID, newNoteID, uid int64) error
+
+	// GetNoteIDsWithOldHistory 获取有旧历史记录的笔记ID列表
+	// cutoffTime: 截止时间戳（毫秒），返回有早于此时间历史记录的笔记ID
+	GetNoteIDsWithOldHistory(ctx context.Context, cutoffTime int64, uid int64) ([]int64, error)
+
+	// DeleteOldVersions 删除旧版本历史记录，保留最近 N 个版本
+	// noteID: 笔记ID
+	// cutoffTime: 截止时间戳（毫秒），删除早于此时间的记录
+	// keepVersions: 保留的最近版本数量
+	DeleteOldVersions(ctx context.Context, noteID int64, cutoffTime int64, keepVersions int, uid int64) error
 }

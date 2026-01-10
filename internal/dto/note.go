@@ -13,18 +13,19 @@ type NoteUpdateCheckRequest struct {
 
 // NoteModifyOrCreateRequest 用于创建或修改笔记的请求参数
 type NoteModifyOrCreateRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required"`
-	Path        string `json:"path" form:"path" binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash"`
-	SrcPath     string `json:"srcPath" form:"srcPath"`
-	SrcPathHash string `json:"srcPathHash" form:"srcPathHash"`
-	BaseHash    string `json:"baseHash" form:"baseHash" binding:""`
-	Content     string `json:"content" form:"content" binding:""`
-	ContentHash string `json:"contentHash" form:"contentHash" binding:""`
-	Ctime       int64  `json:"ctime" form:"ctime"`
-	Mtime       int64  `json:"mtime" form:"mtime"`
-	OldPath     string `json:"oldPath" form:"oldPath"`
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`
+	Vault           string `json:"vault" form:"vault" binding:"required"`
+	Path            string `json:"path" form:"path" binding:"required"`
+	PathHash        string `json:"pathHash" form:"pathHash"`
+	SrcPath         string `json:"srcPath" form:"srcPath"`
+	SrcPathHash     string `json:"srcPathHash" form:"srcPathHash"`
+	BaseHash        string `json:"baseHash" form:"baseHash" binding:""`
+	BaseHashMissing bool   `json:"baseHashMissing" form:"baseHashMissing"` // 标记 baseHash 是否不可用
+	Content         string `json:"content" form:"content" binding:""`
+	ContentHash     string `json:"contentHash" form:"contentHash" binding:""`
+	Ctime           int64  `json:"ctime" form:"ctime"`
+	Mtime           int64  `json:"mtime" form:"mtime"`
+	OldPath         string `json:"oldPath" form:"oldPath"`
+	OldPathHash     string `json:"oldPathHash" form:"oldPathHash"`
 }
 
 // ContentModifyRequest 专用于只修改内容的请求参数

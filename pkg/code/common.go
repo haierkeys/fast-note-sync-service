@@ -28,8 +28,11 @@ var (
 	ErrorFileReadFailed  = NewError(522, lang{zh_cn: "文件读取失败", en: "File read failed"})
 
 	// 同步相关 (530-539)
-	ErrorSyncConflict    = NewError(530, lang{zh_cn: "同步冲突", en: "Sync conflict"})
-	ErrorSyncMergeFailed = NewError(531, lang{zh_cn: "合并失败", en: "Merge failed"})
+	ErrorSyncConflict        = NewError(530, lang{zh_cn: "同步冲突", en: "Sync conflict"})
+	ErrorSyncMergeFailed     = NewError(531, lang{zh_cn: "合并失败", en: "Merge failed"})
+	ErrorMergeConflict       = NewError(532, lang{zh_cn: "合并冲突，需要手动解决", en: "Merge conflict detected, manual resolution required"})
+	ErrorConflictFileCreated = NewError(533, lang{zh_cn: "已创建冲突文件", en: "Conflict file created"})
+	ErrorHistoryNotFound     = NewError(534, lang{zh_cn: "历史记录未找到", en: "History record not found"})
 
 	ErrorUserRegister                = NewError(400, lang{zh_cn: "用户注册失败", en: "User registration failed"})
 	ErrorUserOldPasswordFailed       = NewError(401, lang{zh_cn: "当前密码验证错误", en: "Current password verification error"})

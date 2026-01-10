@@ -11,6 +11,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -30,6 +31,9 @@ type NoteHistoryService interface {
 
 	// Migrate 处理笔记历史迁移
 	Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error
+
+	// CleanupByTime 按截止时间清理历史记录，保留每个笔记最近 N 个版本
+	CleanupByTime(ctx context.Context, cutoffTime int64, keepVersions int) error
 }
 
 // NoteHistoryDTO 笔记历史数据传输对象
@@ -61,17 +65,21 @@ type NoteHistoryNoContentDTO struct {
 type noteHistoryService struct {
 	historyRepo  domain.NoteHistoryRepository
 	noteRepo     domain.NoteRepository
+	userRepo     domain.UserRepository
 	vaultService VaultService
 	sf           *singleflight.Group
+	logger       *zap.Logger
 }
 
 // NewNoteHistoryService 创建 NoteHistoryService 实例
-func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, vaultSvc VaultService) NoteHistoryService {
+func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, logger *zap.Logger) NoteHistoryService {
 	return &noteHistoryService{
 		historyRepo:  historyRepo,
 		noteRepo:     noteRepo,
+		userRepo:     userRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
+		logger:       logger,
 	}
 }
 
@@ -217,6 +225,46 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 // Migrate 处理笔记历史迁移
 func (s *noteHistoryService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error {
 	return s.historyRepo.Migrate(ctx, oldNoteID, newNoteID, uid)
+}
+
+// CleanupByTime 按截止时间清理历史记录，保留每个笔记最近 N 个版本
+func (s *noteHistoryService) CleanupByTime(ctx context.Context, cutoffTime int64, keepVersions int) error {
+	// 获取所有用户 UID
+	uids, err := s.userRepo.GetAllUIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all UIDs: %w", err)
+	}
+
+	var totalCleaned int64
+	for _, uid := range uids {
+		// 获取该用户有旧历史记录的笔记 ID
+		noteIDs, err := s.historyRepo.GetNoteIDsWithOldHistory(ctx, cutoffTime, uid)
+		if err != nil {
+			s.logger.Error("failed to get note IDs with old history",
+				zap.Int64("uid", uid),
+				zap.Error(err))
+			continue
+		}
+
+		for _, noteID := range noteIDs {
+			// 删除旧版本，保留最近 N 个版本
+			if err := s.historyRepo.DeleteOldVersions(ctx, noteID, cutoffTime, keepVersions, uid); err != nil {
+				s.logger.Error("failed to cleanup history",
+					zap.Int64("uid", uid),
+					zap.Int64("noteID", noteID),
+					zap.Error(err))
+				continue
+			}
+			totalCleaned++
+		}
+	}
+
+	s.logger.Info("note history cleanup completed",
+		zap.Int64("cutoffTime", cutoffTime),
+		zap.Int("keepVersions", keepVersions),
+		zap.Int64("notesProcessed", totalCleaned))
+
+	return nil
 }
 
 // 确保 noteHistoryService 实现了 NoteHistoryService 接口

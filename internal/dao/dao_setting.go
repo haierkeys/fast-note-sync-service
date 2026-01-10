@@ -44,7 +44,7 @@ type SettingSet struct {
 
 // setting 获取配置查询对象
 func (d *Dao) setting(uid int64) *query.Query {
-	key := "user_setting_" + strconv.FormatInt(uid, 10)
+	key := "user_" + strconv.FormatInt(uid, 10)
 	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Setting")
 	}, key+"#setting", key)
