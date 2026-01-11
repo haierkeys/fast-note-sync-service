@@ -47,10 +47,14 @@ type noteHistoryService struct {
 	vaultService VaultService
 	sf           *singleflight.Group
 	logger       *zap.Logger
+	config       *AppServiceConfig
 }
 
 // NewNoteHistoryService 创建 NoteHistoryService 实例
-func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, logger *zap.Logger) NoteHistoryService {
+func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
+	if config == nil {
+		config = &AppServiceConfig{HistoryKeepVersions: 100}
+	}
 	return &noteHistoryService{
 		historyRepo:  historyRepo,
 		noteRepo:     noteRepo,
@@ -58,6 +62,7 @@ func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo do
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
 		logger:       logger,
+		config:       config,
 	}
 }
 
@@ -200,7 +205,12 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 	}
 
 	// 更新 ContentLastSnapshot
-	return s.noteRepo.UpdateSnapshot(ctx, note.Content, note.ContentHash, latestVersion+1, note.ID, uid)
+	if err := s.noteRepo.UpdateSnapshot(ctx, note.Content, note.ContentHash, latestVersion+1, note.ID, uid); err != nil {
+		return err
+	}
+
+	// 检查版本数量限制，超过限制时删除最旧的版本
+	return s.cleanupExcessVersions(ctx, noteID, uid)
 }
 
 // Migrate 处理笔记历史迁移
@@ -244,6 +254,45 @@ func (s *noteHistoryService) CleanupByTime(ctx context.Context, cutoffTime int64
 		zap.Int64("cutoffTime", cutoffTime),
 		zap.Int("keepVersions", keepVersions),
 		zap.Int64("notesProcessed", totalCleaned))
+
+	return nil
+}
+
+// cleanupExcessVersions 清理超过版本数量限制的历史记录
+// 当笔记的历史版本数超过 HistoryKeepVersions 时，删除最旧的版本
+func (s *noteHistoryService) cleanupExcessVersions(ctx context.Context, noteID int64, uid int64) error {
+	// 获取配置中的版本保留数
+	keepVersions := 100 // 默认值
+	if s.config != nil && s.config.HistoryKeepVersions > 0 {
+		keepVersions = s.config.HistoryKeepVersions
+	}
+
+	// 获取该笔记的所有历史版本
+	histories, _, err := s.historyRepo.ListByNoteID(ctx, noteID, 1, keepVersions+1, uid)
+	if err != nil {
+		s.logger.Warn("failed to list note histories for cleanup",
+			zap.Int64("noteID", noteID),
+			zap.Int64("uid", uid),
+			zap.Error(err))
+		return nil // 不影响主流程
+	}
+
+	// 如果版本数未超过限制，无需清理
+	if len(histories) <= keepVersions {
+		return nil
+	}
+
+	// 删除超出限制的最旧版本
+	// histories 已按 Version DESC 排序，所以最后一个是最旧的
+	oldestHistory := histories[len(histories)-1]
+	if err := s.historyRepo.Delete(ctx, oldestHistory.ID, uid); err != nil {
+		s.logger.Warn("failed to delete excess history version",
+			zap.Int64("noteID", noteID),
+			zap.Int64("historyID", oldestHistory.ID),
+			zap.Int64("uid", uid),
+			zap.Error(err))
+		return nil // 不影响主流程
+	}
 
 	return nil
 }
