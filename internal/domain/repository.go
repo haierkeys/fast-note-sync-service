@@ -215,4 +215,7 @@ type NoteHistoryRepository interface {
 	// cutoffTime: 截止时间戳（毫秒），删除早于此时间的记录
 	// keepVersions: 保留的最近版本数量
 	DeleteOldVersions(ctx context.Context, noteID int64, cutoffTime int64, keepVersions int, uid int64) error
+
+	// Delete 删除指定ID的历史记录
+	Delete(ctx context.Context, id, uid int64) error
 }

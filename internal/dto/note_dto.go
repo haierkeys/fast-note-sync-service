@@ -81,6 +81,13 @@ type NoteDeleteRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
+// NoteRestoreRequest 恢复笔记所需参数
+type NoteRestoreRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
 // NoteSyncCheckRequest 同步检查单条记录的参数
 type NoteSyncCheckRequest struct {
 	Path        string `json:"path" form:"path"`
