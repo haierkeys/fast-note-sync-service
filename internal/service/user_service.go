@@ -140,12 +140,12 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 	if util.IsValidEmail(params.Credentials) {
 		user, err = s.userRepo.GetByEmail(ctx, params.Credentials)
 		if err != nil {
-			return nil, code.ErrorUserNotFound
+			return nil, code.ErrorUserLoginPasswordFailed
 		}
 	} else {
 		user, err = s.userRepo.GetByUsername(ctx, params.Credentials)
 		if err != nil {
-			return nil, code.ErrorUserNotFound
+			return nil, code.ErrorUserLoginPasswordFailed
 		}
 	}
 
