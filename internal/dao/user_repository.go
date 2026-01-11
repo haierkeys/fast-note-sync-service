@@ -22,6 +22,10 @@ func NewUserRepository(dao *Dao) domain.UserRepository {
 	return &userRepository{dao: dao}
 }
 
+func (r *userRepository) GetKey(uid int64) string {
+	return ""
+}
+
 // user 获取用户查询对象
 func (r *userRepository) user() *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {

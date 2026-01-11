@@ -17,17 +17,22 @@ import (
 
 // settingRepository 实现 domain.SettingRepository 接口
 type settingRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewSettingRepository 创建 SettingRepository 实例
 func NewSettingRepository(dao *Dao) domain.SettingRepository {
-	return &settingRepository{dao: dao}
+	return &settingRepository{dao: dao, customPrefixKey: "user_setting_"}
+}
+
+func (r *settingRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // setting 获取配置查询对象
 func (r *settingRepository) setting(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := r.GetKey(uid)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Setting")
 	}, key+"#setting", key)
@@ -96,8 +101,8 @@ func (r *settingRepository) Create(ctx context.Context, setting *domain.Setting,
 	var result *domain.Setting
 	var createErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Setting
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
 		m := &model.Setting{
 			VaultID:          setting.VaultID,
 			Action:           string(setting.Action),
@@ -137,14 +142,13 @@ func (r *settingRepository) Create(ctx context.Context, setting *domain.Setting,
 	return result, nil
 }
 
-
 // Update 更新配置
 func (r *settingRepository) Update(ctx context.Context, setting *domain.Setting, uid int64) (*domain.Setting, error) {
 	var result *domain.Setting
 	var updateErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Setting
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
 		m := &model.Setting{
 			ID:               setting.ID,
 			VaultID:          setting.VaultID,
@@ -186,8 +190,8 @@ func (r *settingRepository) Update(ctx context.Context, setting *domain.Setting,
 
 // UpdateMtime 更新配置修改时间
 func (r *settingRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Setting
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
 			u.Mtime.Value(mtime),
 			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
@@ -205,8 +209,8 @@ func (r *settingRepository) Delete(ctx context.Context, id, uid int64) error {
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的配置
 func (r *settingRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Setting
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
 
 		// 查找待物理删除的记录，清理文件
 		mList, err := u.WithContext(ctx).Where(

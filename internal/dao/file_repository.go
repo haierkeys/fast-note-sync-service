@@ -18,20 +18,24 @@ import (
 
 // fileRepository 实现 domain.FileRepository 接口
 type fileRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewFileRepository 创建 FileRepository 实例
 func NewFileRepository(dao *Dao) domain.FileRepository {
-	return &fileRepository{dao: dao}
+	return &fileRepository{dao: dao, customPrefixKey: "user_file_"}
+}
+
+func (r *fileRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // file 获取文件查询对象
 func (r *fileRepository) file(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "File")
-	}, key+"#file", key)
+	}, r.GetKey(uid)+"#file", r.GetKey(uid))
 }
 
 // toDomain 将数据库模型转换为领域模型
@@ -151,8 +155,8 @@ func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int6
 	var result *domain.File
 	var createErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).File
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
 		m := r.toModel(file)
 
 		m.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -193,8 +197,8 @@ func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int6
 	var result *domain.File
 	var updateErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).File
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
 		m := r.toModel(file)
 
 		m.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -230,8 +234,8 @@ func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int6
 
 // UpdateMtime 更新文件修改时间
 func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).File
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
 
 		_, err := u.WithContext(ctx).Where(
 			u.ID.Eq(id),
@@ -246,8 +250,8 @@ func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid i
 
 // Delete 物理删除文件
 func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).File
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
 		if err != nil {
 			return err
@@ -263,8 +267,8 @@ func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的文件
 func (r *fileRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).File
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
 
 		// 查找待删除的记录，以便删除文件系统中的文件夹
 		mList, err := u.WithContext(ctx).Where(

@@ -15,20 +15,24 @@ import (
 
 // vaultRepository 实现 domain.VaultRepository 接口
 type vaultRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewVaultRepository 创建 VaultRepository 实例
 func NewVaultRepository(dao *Dao) domain.VaultRepository {
-	return &vaultRepository{dao: dao}
+	return &vaultRepository{dao: dao, customPrefixKey: "user_vault_"}
+}
+
+func (r *vaultRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // vault 获取保险库查询对象
 func (r *vaultRepository) vault(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Vault")
-	}, key+"#vault", key)
+	}, r.GetKey(uid)+"#vault", r.GetKey(uid))
 }
 
 // toDomain 将数据库模型转换为领域模型
@@ -97,7 +101,7 @@ func (r *vaultRepository) Create(ctx context.Context, vault *domain.Vault, uid i
 	var result *domain.Vault
 	var createErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := query.Use(db).Vault
 		m := &model.Vault{
 			Vault:     vault.Name,
@@ -126,7 +130,7 @@ func (r *vaultRepository) Create(ctx context.Context, vault *domain.Vault, uid i
 
 // Update 更新仓库
 func (r *vaultRepository) Update(ctx context.Context, vault *domain.Vault, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := query.Use(db).Vault
 		m := r.toModel(vault)
 		m.UpdatedAt = timex.Now()
@@ -137,7 +141,7 @@ func (r *vaultRepository) Update(ctx context.Context, vault *domain.Vault, uid i
 
 // UpdateNoteCountSize 更新仓库的笔记数量和大小
 func (r *vaultRepository) UpdateNoteCountSize(ctx context.Context, noteSize, noteCount, vaultID, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := query.Use(db).Vault
 
 		_, err := u.WithContext(ctx).Where(
@@ -153,7 +157,7 @@ func (r *vaultRepository) UpdateNoteCountSize(ctx context.Context, noteSize, not
 
 // UpdateFileCountSize 更新仓库的文件数量和大小
 func (r *vaultRepository) UpdateFileCountSize(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := query.Use(db).Vault
 
 		_, err := u.WithContext(ctx).Where(
@@ -191,7 +195,7 @@ func (r *vaultRepository) List(ctx context.Context, uid int64) ([]*domain.Vault,
 
 // Delete 删除仓库（软删除）
 func (r *vaultRepository) Delete(ctx context.Context, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := query.Use(db).Vault
 
 		_, err := u.WithContext(ctx).Where(

@@ -22,8 +22,8 @@ const path = require('path');
  */
 function readGoVersion(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
-    // 匹配 var Version string = "x.y.z" 格式
-    const match = content.match(/var\s+Version\s+string\s*=\s*"([^"]+)"/);
+    // 匹配 Version string = "x.y.z" 格式
+    const match = content.match(/Version\s+string\s*=\s*"([^"]+)"/);
     if (!match) {
         throw new Error('无法从文件中解析版本号: ' + filePath);
     }
@@ -39,8 +39,8 @@ function writeGoVersion(filePath, newVersion) {
     let content = fs.readFileSync(filePath, 'utf8');
     // 替换 Version 变量的值
     content = content.replace(
-        /var\s+Version\s+string\s*=\s*"[^"]+"/,
-        `var Version string = "${newVersion}"`
+        /Version\s+string\s*=\s*"[^"]+"/,
+        `Version string = "${newVersion}"`
     );
     fs.writeFileSync(filePath, content, 'utf8');
 }
@@ -141,7 +141,7 @@ function updateFileVersion(filePath, targetVersion, bumpOption) {
     }
 
     const cwd = process.cwd();
-    const versionFile = path.join(cwd, 'global', 'version.go');
+    const versionFile = path.join(cwd, 'internal', 'app', 'version.go');
 
     try {
         const result = updateFileVersion(versionFile, newVersion, bumpOption);
