@@ -145,6 +145,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/file", noteHandler.GetFileContent)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/note", noteHandler.CreateOrUpdate)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).DELETE("/note", noteHandler.Delete)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).PUT("/note/restore", noteHandler.Restore)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/notes", noteHandler.List)
 
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/history", noteHistoryHandler.Get)
