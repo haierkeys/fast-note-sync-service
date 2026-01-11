@@ -37,6 +37,9 @@ type NoteService interface {
 	// Delete 删除笔记
 	Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error)
 
+	// Restore 恢复笔记（从回收站恢复）
+	Restore(ctx context.Context, uid int64, params *dto.NoteRestoreRequest) (*dto.NoteDTO, error)
+
 	// Rename 重命名笔记
 	Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) error
 
@@ -305,6 +308,50 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 
 	// 更新为删除状态
 	note.Action = domain.NoteActionDelete
+	note.ClientName = s.clientName
+	note.Rename = 0
+
+	err = s.noteRepo.UpdateDelete(ctx, note, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 重新获取更新后的笔记
+	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	go s.CountSizeSum(context.Background(), vaultID, uid)
+	NoteHistoryDelayPush(updated.ID, uid)
+
+	return s.domainToDTO(updated), nil
+}
+
+// Restore 恢复笔记（从回收站恢复）
+func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRestoreRequest) (*dto.NoteDTO, error) {
+	// 使用 VaultService.MustGetID 获取 VaultID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err // VaultService 已返回 code.Error
+	}
+
+	// 从回收站获取笔记
+	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, true)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 检查笔记是否已删除
+	if note.Action != domain.NoteActionDelete {
+		return nil, code.ErrorNoteNotFound
+	}
+
+	// 更新为修改状态（恢复）
+	note.Action = domain.NoteActionModify
 	note.ClientName = s.clientName
 	note.Rename = 0
 

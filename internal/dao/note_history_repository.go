@@ -303,5 +303,31 @@ func (r *noteHistoryRepository) DeleteOldVersions(ctx context.Context, noteID in
 	})
 }
 
+// Delete 删除指定ID的历史记录
+func (r *noteHistoryRepository) Delete(ctx context.Context, id, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.noteHistory(uid).NoteHistory
+
+		// 删除数据库记录
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除关联的文件
+		folder := r.dao.GetNoteHistoryFolderPath(uid, id)
+		if err := r.dao.RemoveContentFolder(folder); err != nil {
+			r.dao.Logger().Warn("failed to delete history folder",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("historyId", id),
+				zap.String("folder", folder),
+				zap.Error(err),
+			)
+		}
+
+		return nil
+	})
+}
+
 // 确保 noteHistoryRepository 实现了 domain.NoteHistoryRepository 接口
 var _ domain.NoteHistoryRepository = (*noteHistoryRepository)(nil)

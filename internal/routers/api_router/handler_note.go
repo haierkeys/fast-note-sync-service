@@ -310,6 +310,66 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncDelete")
 }
 
+// Restore 恢复笔记（从回收站恢复）
+func (h *NoteHandler) Restore(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteRestoreRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Restore.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Restore err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+
+	// 检查笔记是否存在于回收站
+	noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
+		Vault:     params.Vault,
+		Path:      params.Path,
+		PathHash:  params.PathHash,
+		IsRecycle: true,
+	})
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Restore.NoteGet", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+	if noteSrc == nil || noteSrc.Action != "delete" {
+		response.ToResponse(code.ErrorNoteNotFound)
+		return
+	}
+
+	// 执行恢复
+	note, err := noteSvc.Restore(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Restore.NoteRestore", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note))
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncRestore")
+}
+
 // GetFileContent 获取文件或笔记的原始内容
 func (h *NoteHandler) GetFileContent(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
