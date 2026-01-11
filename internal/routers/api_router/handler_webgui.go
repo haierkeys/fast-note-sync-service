@@ -35,6 +35,7 @@ type webGUIAdminConfig struct {
 	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`
 	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"`
 	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`
+	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`
 	AdminUID                int    `json:"adminUid" form:"adminUid"`
 }
 
@@ -75,6 +76,7 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 		FileChunkSize:           cfg.App.FileChunkSize,
 		SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
 		UploadSessionTimeout:    cfg.App.UploadSessionTimeout,
+		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 		AdminUID:                cfg.User.AdminUID,
 	}
 
@@ -108,12 +110,21 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 		return
 	}
 
+	// 验证 historyKeepVersions 不能小于 100
+	if params.HistoryKeepVersions > 0 && params.HistoryKeepVersions < 100 {
+		logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historyKeepVersions",
+			zap.Int("value", params.HistoryKeepVersions))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("historyKeepVersions must be at least 100"))
+		return
+	}
+
 	// 更新配置
 	cfg.WebGUI.FontSet = params.FontSet
 	cfg.User.RegisterIsEnable = params.RegisterIsEnable
 	cfg.App.FileChunkSize = params.FileChunkSize
 	cfg.App.SoftDeleteRetentionTime = params.SoftDeleteRetentionTime
 	cfg.App.UploadSessionTimeout = params.UploadSessionTimeout
+	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
 	cfg.User.AdminUID = params.AdminUID
 
 	// 保存配置到文件

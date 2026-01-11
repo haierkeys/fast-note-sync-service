@@ -121,7 +121,7 @@ type AppSettings struct {
 	IsReturnSussess bool `yaml:"is-return-sussess"`
 	// SoftDeleteRetentionTime 软删除笔记保留时间
 	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time"`
-	// HistoryKeepVersions 历史记录保留版本数，默认 10
+	// HistoryKeepVersions 历史记录保留版本数，默认 100
 	HistoryKeepVersions int `yaml:"history-keep-versions"`
 	// UploadSessionTimeout 文件上传会话超时时间
 	UploadSessionTimeout string `yaml:"upload-session-timeout"`

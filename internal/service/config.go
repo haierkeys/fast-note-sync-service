@@ -21,4 +21,6 @@ type AppServiceConfig struct {
 	// SoftDeleteRetentionTime 软删除保留时间
 	// 支持格式：7d（天）、24h（小时）、30m（分钟）、0 或空表示不自动清理
 	SoftDeleteRetentionTime string
+	// HistoryKeepVersions 历史记录保留版本数
+	HistoryKeepVersions int
 }
