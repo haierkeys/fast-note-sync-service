@@ -18,20 +18,24 @@ import (
 
 // noteHistoryRepository 实现 domain.NoteHistoryRepository 接口
 type noteHistoryRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewNoteHistoryRepository 创建 NoteHistoryRepository 实例
 func NewNoteHistoryRepository(dao *Dao) domain.NoteHistoryRepository {
-	return &noteHistoryRepository{dao: dao}
+	return &noteHistoryRepository{dao: dao, customPrefixKey: "user_note_history_"}
+}
+
+func (r *noteHistoryRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // noteHistory 获取笔记历史查询对象
 func (r *noteHistoryRepository) noteHistory(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
-	}, key+"#noteHistory", key)
+	}, r.GetKey(uid)+"#noteHistory", r.GetKey(uid))
 }
 
 // toDomain 将数据库模型转换为领域模型
@@ -119,8 +123,8 @@ func (r *noteHistoryRepository) Create(ctx context.Context, history *domain.Note
 	var result *domain.NoteHistory
 	var createErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).NoteHistory
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.noteHistory(uid).NoteHistory
 		m := &model.NoteHistory{
 			NoteID:      history.NoteID,
 			VaultID:     history.VaultID,
@@ -208,8 +212,8 @@ func (r *noteHistoryRepository) GetLatestVersion(ctx context.Context, noteID, ui
 
 // Migrate 迁移历史记录（更新 NoteID）
 func (r *noteHistoryRepository) Migrate(ctx context.Context, oldNoteID, newNoteID, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).NoteHistory
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.noteHistory(uid).NoteHistory
 		_, err := u.WithContext(ctx).Where(u.NoteID.Eq(oldNoteID)).Update(u.NoteID, newNoteID)
 		return err
 	})
@@ -232,8 +236,8 @@ func (r *noteHistoryRepository) GetNoteIDsWithOldHistory(ctx context.Context, cu
 
 // DeleteOldVersions 删除旧版本历史记录，保留最近 N 个版本
 func (r *noteHistoryRepository) DeleteOldVersions(ctx context.Context, noteID int64, cutoffTime int64, keepVersions int, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).NoteHistory
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.noteHistory(uid).NoteHistory
 
 		// 先获取需要保留的最近 N 个版本的最小版本号
 		var minKeepVersion int64 = 0

@@ -18,34 +18,38 @@ import (
 
 // noteRepository 实现 domain.NoteRepository 接口
 type noteRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewNoteRepository 创建 NoteRepository 实例
 func NewNoteRepository(dao *Dao) domain.NoteRepository {
-	return &noteRepository{dao: dao}
+	return &noteRepository{dao: dao, customPrefixKey: "user_"}
+}
+
+func (r *noteRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // note 获取笔记查询对象
 func (r *noteRepository) note(uid int64) *query.Query {
-	key := "user_" + strconv.FormatInt(uid, 10)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Note")
 		// 初始化 FTS5 全文搜索表并检查是否需要重建索引
 		_ = model.CreateNoteFTSTable(g)
-	}, key+"#note", key)
+	}, r.GetKey(uid)+"#note", r.GetKey(uid))
 }
 
 // EnsureFTSIndex 确保 FTS 索引存在（公开方法，可手动调用）
 func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := r.GetKey(uid)
 	ftsKey := key + "#fts_indexed"
-	
+
 	// 使用 onceKeys 确保每个用户只检查一次
 	if _, loaded := r.dao.onceKeys.LoadOrStore(ftsKey, true); loaded {
 		return nil // 已检查过
 	}
-	
+
 	db := r.dao.UseKey(key)
 	if db == nil {
 		return nil
@@ -253,8 +257,8 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 	var result *domain.Note
 	var createErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 		m := r.toModel(note)
 
 		m.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -295,8 +299,8 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 	var result *domain.Note
 	var updateErr error
 
-	err := r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 		m := r.toModel(note)
 
 		m.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -350,8 +354,8 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 
 // UpdateDelete 更新笔记为删除状态
 func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 		m := &model.Note{
 			ID:               note.ID,
 			Action:           string(note.Action),
@@ -374,8 +378,8 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 
 // UpdateMtime 更新笔记修改时间
 func (r *noteRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 
 		_, err := u.WithContext(ctx).Where(
 			u.ID.Eq(id),
@@ -390,8 +394,8 @@ func (r *noteRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid i
 
 // UpdateSnapshot 更新笔记快照
 func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 
 		// 保存快照到文件
 		folder := r.dao.GetNoteFolderPath(uid, id)
@@ -410,8 +414,8 @@ func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotH
 
 // Delete 物理删除笔记
 func (r *noteRepository) Delete(ctx context.Context, id, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
 		if err != nil {
 			return err
@@ -427,8 +431,8 @@ func (r *noteRepository) Delete(ctx context.Context, id, uid int64) error {
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的笔记
 func (r *noteRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
-		u := query.Use(db).Note
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
 
 		// 先找到要删除的 ID
 		list, _ := u.WithContext(ctx).Where(
@@ -492,10 +496,10 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 		// 内容搜索模式：使用 FTS5 全文搜索
 		if searchMode == "content" {
 			db := q.UnderlyingDB()
-			
+
 			// 确保 FTS 索引存在
 			r.EnsureFTSIndex(ctx, uid)
-			
+
 			noteIDs, ftsErr := r.searchFTS(db, keyword, vaultID, isRecycle, sortBy, sortOrder, pageSize, app.GetPageOffset(page, pageSize))
 			if ftsErr != nil {
 				return nil, ftsErr
@@ -714,7 +718,7 @@ func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, i
 
 	// 使用 FTS5 MATCH 查询
 	sql := `
-		SELECT f.note_id 
+		SELECT f.note_id
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
 		WHERE note_fts MATCH ?
@@ -725,12 +729,12 @@ func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, i
 	`
 
 	err := db.Raw(sql, searchTerm, vaultID, limit, offset).Scan(&noteIDs).Error
-	
+
 	// 如果 FTS 查询失败或无结果，降级到 LIKE 查询
 	if err != nil || len(noteIDs) == 0 {
 		return r.searchFTSFallback(db, keyword, vaultID, isRecycle, sortBy, sortOrder, limit, offset)
 	}
-	
+
 	return noteIDs, nil
 }
 
@@ -747,7 +751,7 @@ func (r *noteRepository) searchFTSFallback(db *gorm.DB, keyword string, vaultID 
 	orderClause := "n." + buildOrderClause(sortBy, sortOrder)
 
 	sql := `
-		SELECT f.note_id 
+		SELECT f.note_id
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
 		WHERE (f.content LIKE ? OR f.path LIKE ?)
@@ -774,7 +778,7 @@ func (r *noteRepository) searchFTSCount(db *gorm.DB, keyword string, vaultID int
 	searchTerm := buildFTSSearchTerm(keyword)
 
 	sql := `
-		SELECT COUNT(*) 
+		SELECT COUNT(*)
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
 		WHERE note_fts MATCH ?
@@ -782,12 +786,12 @@ func (r *noteRepository) searchFTSCount(db *gorm.DB, keyword string, vaultID int
 		AND ` + actionCond
 
 	err := db.Raw(sql, searchTerm, vaultID).Scan(&count).Error
-	
+
 	// 如果 FTS 查询失败，降级到 LIKE 查询
 	if err != nil || count == 0 {
 		return r.searchFTSCountFallback(db, keyword, vaultID, isRecycle)
 	}
-	
+
 	return count, nil
 }
 
@@ -801,7 +805,7 @@ func (r *noteRepository) searchFTSCountFallback(db *gorm.DB, keyword string, vau
 	}
 
 	sql := `
-		SELECT COUNT(*) 
+		SELECT COUNT(*)
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
 		WHERE (f.content LIKE ? OR f.path LIKE ?)

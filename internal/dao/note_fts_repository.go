@@ -25,17 +25,22 @@ type NoteFTSRepository interface {
 
 // noteFTSRepository 实现 NoteFTSRepository 接口
 type noteFTSRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewNoteFTSRepository 创建 NoteFTSRepository 实例
 func NewNoteFTSRepository(dao *Dao) NoteFTSRepository {
-	return &noteFTSRepository{dao: dao}
+	return &noteFTSRepository{dao: dao, customPrefixKey: "user_note_history_"}
+}
+
+func (r *noteFTSRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // ensureFTSTable 确保 FTS 表存在
 func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
-	key := "user_" + strconv.FormatInt(uid, 10)
+	key := r.GetKey(uid)
 	db := r.dao.UseKey(key)
 	if db == nil {
 		return nil
@@ -52,7 +57,7 @@ func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 
 // Upsert 插入或更新 FTS 索引
 func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		// 确保 FTS 表存在
 		_ = model.CreateNoteFTSTable(db)
 
@@ -69,7 +74,7 @@ func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, cont
 
 // Delete 删除 FTS 索引
 func (r *noteFTSRepository) Delete(ctx context.Context, noteID int64, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		return db.Exec("DELETE FROM note_fts WHERE note_id = ?", noteID).Error
 	})
 }
@@ -86,10 +91,10 @@ func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID,
 	// FTS5 MATCH 查询
 	// 使用子查询关联 note 表过滤 vault_id 和 action
 	sql := `
-		SELECT f.note_id 
+		SELECT f.note_id
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
-		WHERE note_fts MATCH ? 
+		WHERE note_fts MATCH ?
 		AND n.vault_id = ?
 		AND n.action != 'delete'
 		ORDER BY rank
@@ -117,10 +122,10 @@ func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vau
 	var count int64
 
 	sql := `
-		SELECT COUNT(*) 
+		SELECT COUNT(*)
 		FROM note_fts f
 		INNER JOIN note n ON f.note_id = n.id
-		WHERE note_fts MATCH ? 
+		WHERE note_fts MATCH ?
 		AND n.vault_id = ?
 		AND n.action != 'delete'
 	`
@@ -137,7 +142,7 @@ func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vau
 
 // RebuildIndex 重建索引
 func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		// 删除并重建 FTS 表
 		if err := model.DropNoteFTSTable(db); err != nil {
 			return err

@@ -98,6 +98,10 @@ func WithWriteQueueManager(wqm *writequeue.Manager) DaoOption {
 	}
 }
 
+type daoDBCustomKey interface {
+	GetKey(uid int64) string
+}
+
 // New 创建 Dao 实例（支持依赖注入）
 // db: 主数据库连接
 // ctx: 上下文
@@ -365,20 +369,6 @@ func useDiaWithConfig(c DatabaseConfig) gorm.Dialector {
 
 }
 
-func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
-	var b *gorm.DB
-	if uid > 0 {
-		key := "user_" + strconv.FormatInt(uid, 10)
-		b = d.UseKey(key)
-	} else {
-		b = d.Db
-	}
-	if b == nil {
-		return fmt.Errorf("database connection is nil (uid=%d)", uid)
-	}
-	return model.AutoMigrate(b, modelKey)
-}
-
 // WithRetry 封装数据库操作的重试逻辑，主要用于解决 SQLite "database is locked" 问题
 func (d *Dao) WithRetry(fn func() error) error {
 	maxRetries := 5
@@ -408,13 +398,13 @@ func (d *Dao) WithRetry(fn func() error) error {
 // fn: 写操作函数，接收用户数据库连接
 // 返回值: 写操作的错误
 // 注意: 必须通过 WithWriteQueueManager 注入写队列管理器
-func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, fn func(*gorm.DB) error) error {
+func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
 	if d.writeQueueMgr == nil {
 		return fmt.Errorf("writeQueueMgr is nil, must inject via WithWriteQueueManager")
 	}
 
 	return d.writeQueueMgr.Execute(ctx, uid, func() error {
-		db := d.UserDB(uid)
+		db := d.UseKey(r.GetKey(uid))
 		if db == nil {
 			return fmt.Errorf("database connection is nil (uid=%d)", uid)
 		}
@@ -428,8 +418,8 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, fn func(*gorm.DB) err
 // uid: 用户 ID，用于获取用户数据库连接
 // fn: 读操作函数，接收用户数据库连接
 // 返回值: 读操作的错误
-func (d *Dao) ExecuteRead(ctx context.Context, uid int64, fn func(*gorm.DB) error) error {
-	db := d.UserDB(uid)
+func (d *Dao) ExecuteRead(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
+	db := d.UseKey(r.GetKey(uid))
 	if db == nil {
 		return fmt.Errorf("database connection is nil (uid=%d)", uid)
 	}
@@ -442,12 +432,57 @@ func (d *Dao) ExecuteRead(ctx context.Context, uid int64, fn func(*gorm.DB) erro
 // uid: 用户 ID，用于确定写队列
 // fn: 写操作函数，接收用户数据库连接
 // 返回值: 写操作的错误
-func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, fn func(*gorm.DB) error) error {
-	return d.ExecuteWrite(ctx, uid, func(db *gorm.DB) error {
+func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
+	return d.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		return d.WithRetry(func() error {
 			return fn(db)
 		})
 	})
+}
+
+// getDbKeyByModel 根据模型名称获取对应的数据库连接 Key
+func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
+	if uid <= 0 {
+		return "" // 主数据库
+	}
+
+	switch modelKey {
+	case "User":
+		return "" // 用户表在主库
+	case "Note":
+		return NewNoteRepository(d).(daoDBCustomKey).GetKey(uid)
+	case "File":
+		return NewFileRepository(d).(daoDBCustomKey).GetKey(uid)
+	case "Setting":
+		return NewSettingRepository(d).(daoDBCustomKey).GetKey(uid)
+	case "NoteHistory":
+		return NewNoteHistoryRepository(d).(daoDBCustomKey).GetKey(uid)
+	case "Vault":
+		return NewVaultRepository(d).(daoDBCustomKey).GetKey(uid)
+	default:
+		return ""
+	}
+}
+
+func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
+	// 1. 如果 modelKey 为空，说明是“全量迁移”，按模型分别路由迁移
+	if modelKey == "" {
+		models := []string{"User", "Note", "File", "Setting", "NoteHistory", "Vault"}
+		for _, m := range models {
+			if err := d.AutoMigrate(uid, m); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	dbKey := d.getDbKeyByModelName(uid, modelKey)
+	b := d.UseKey(dbKey)
+
+	if b == nil {
+		return fmt.Errorf("database connection is nil for model %s (uid=%d, dbKey=%s)", modelKey, uid, dbKey)
+	}
+	return model.AutoMigrate(b, modelKey)
 }
 
 // user 获取用户查询对象（内部方法）
