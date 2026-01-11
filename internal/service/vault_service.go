@@ -163,6 +163,8 @@ func (s *vaultService) domainToDTO(vault *domain.Vault) *dto.VaultDTO {
 		FileCount: vault.FileCount,
 		FileSize:  vault.FileSize,
 		Size:      vault.NoteSize + vault.FileSize,
+		CreatedAt: vault.CreatedAt.Format("2006-01-02 15:04"),
+		UpdatedAt: vault.UpdatedAt.Format("2006-01-02 15:04"),
 	}
 }
 

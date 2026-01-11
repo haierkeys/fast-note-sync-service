@@ -140,12 +140,14 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 	if util.IsValidEmail(params.Credentials) {
 		user, err = s.userRepo.GetByEmail(ctx, params.Credentials)
 		if err != nil {
-			return nil, code.ErrorUserNotFound
+			// 安全考虑：不暴露用户是否存在，统一返回用户名或密码错误
+			return nil, code.ErrorUserLoginPasswordFailed
 		}
 	} else {
 		user, err = s.userRepo.GetByUsername(ctx, params.Credentials)
 		if err != nil {
-			return nil, code.ErrorUserNotFound
+			// 安全考虑：不暴露用户是否存在，统一返回用户名或密码错误
+			return nil, code.ErrorUserLoginPasswordFailed
 		}
 	}
 

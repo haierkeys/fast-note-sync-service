@@ -21,4 +21,6 @@ type VaultDTO struct {
 	FileCount int64  `json:"fileCount"`
 	FileSize  int64  `json:"fileSize"`
 	Size      int64  `json:"size"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
