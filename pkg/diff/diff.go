@@ -1,6 +1,8 @@
 package diff
 
 import (
+	"errors"
+
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -26,27 +28,27 @@ type insertInfo struct {
 // MergeTexts 三方合并文本
 // 重构后保留删除操作，检测删除-修改冲突
 func MergeTexts(base, pc1, pc2 string, pc1First bool) (MergeResult, error) {
-	// 快速路径：如果两端修改结果相同，直接返回
-	if pc1 == pc2 {
-		return MergeResult{
-			Content:     pc1,
-			HasConflict: false,
-		}, nil
-	}
+	// 方法内不做 业务内容判断。。避免导致一端直接覆盖另外一端
+	// if pc1 == pc2 {
+	// 	return MergeResult{
+	// 		Content:     pc1,
+	// 		HasConflict: false,
+	// 	}, nil
+	// }
 
-	// 快速路径：如果一端没有修改，直接返回另一端
-	if pc1 == base {
-		return MergeResult{
-			Content:     pc2,
-			HasConflict: false,
-		}, nil
-	}
-	if pc2 == base {
-		return MergeResult{
-			Content:     pc1,
-			HasConflict: false,
-		}, nil
-	}
+	// // 快速路径：如果一端没有修改，直接返回另一端
+	// if pc1 == base {
+	// 	return MergeResult{
+	// 		Content:     pc2,
+	// 		HasConflict: false,
+	// 	}, nil
+	// }
+	// if pc2 == base {
+	// 	return MergeResult{
+	// 		Content:     pc1,
+	// 		HasConflict: false,
+	// 	}, nil
+	// }
 
 	dmp := diffmatchpatch.New()
 
@@ -106,6 +108,60 @@ func MergeTexts(base, pc1, pc2 string, pc1First bool) (MergeResult, error) {
 	}, nil
 }
 
+// MergeTextsIgnoreConflictIgnoreDelete 合并文本，忽略冲突和删除, 保留PC1 PC2基于base的全部文本
+// PC1 为  clientContent,  PC2 为 serverContent
+func MergeTextsIgnoreConflictIgnoreDelete(base, pc1, pc2 string, pc1First bool) (merged string, err error) {
+	dmp := diffmatchpatch.New()
+
+	// 计算 PC1 相对于 base 的 diff,并过滤删除操作
+	pc1Diffs := dmp.DiffMain(base, pc1, false)
+	pc1DiffsNoDelete := make([]diffmatchpatch.Diff, 0)
+	for _, diff := range pc1Diffs {
+		if diff.Type != diffmatchpatch.DiffDelete {
+			pc1DiffsNoDelete = append(pc1DiffsNoDelete, diff)
+		}
+	}
+	pc1Patches := dmp.PatchMake(base, pc1DiffsNoDelete)
+
+	// 计算 PC2 相对于 base 的 diff,并过滤删除操作
+	pc2Diffs := dmp.DiffMain(base, pc2, false)
+	pc2DiffsNoDelete := make([]diffmatchpatch.Diff, 0)
+	for _, diff := range pc2Diffs {
+		if diff.Type != diffmatchpatch.DiffDelete {
+			pc2DiffsNoDelete = append(pc2DiffsNoDelete, diff)
+		}
+	}
+	pc2Patches := dmp.PatchMake(base, pc2DiffsNoDelete)
+
+	// 根据 pc1First 参数决定应用顺序
+	var step1Result string
+	var step1Success []bool
+	var step2Success []bool
+
+	if pc1First {
+		// 先应用 PC1,再应用 PC2
+		step1Result, step1Success = dmp.PatchApply(pc1Patches, base)
+		merged, step2Success = dmp.PatchApply(pc2Patches, step1Result)
+	} else {
+		// 先应用 PC2,再应用 PC1
+		step1Result, step1Success = dmp.PatchApply(pc2Patches, base)
+		merged, step2Success = dmp.PatchApply(pc1Patches, step1Result)
+	}
+
+	// 检查是否所有补丁都成功应用
+	for _, s := range step1Success {
+		if !s {
+			return merged, errors.New("failed to apply patches from first step")
+		}
+	}
+	for _, s := range step2Success {
+		if !s {
+			return merged, errors.New("failed to apply patches from second step")
+		}
+	}
+
+	return merged, nil
+}
 
 // hasConflict 检测合并冲突
 // 采用基于行的冲突检测策略，更符合文本编辑的语义
