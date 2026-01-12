@@ -169,7 +169,6 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
 	// 处理重命名场景
@@ -278,7 +277,6 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 
 	// 获取请求上下文
 	ctx := c.Request.Context()
-
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
@@ -396,7 +394,6 @@ func (h *NoteHandler) GetFileContent(c *gin.Context) {
 
 	// 获取请求上下文
 	ctx := c.Request.Context()
-
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 	content, contentType, mtime, etag, err := noteSvc.GetFileContent(ctx, uid, params)

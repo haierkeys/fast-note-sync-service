@@ -76,13 +76,13 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version, dbPath, dbTyp
 // Run 执行升级
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
-	
+
 	// 创建数据库配置，用于 UseDb 创建用户数据库
 	dbConfig := &dao.DatabaseConfig{
 		Type: m.dbType,
 		Path: m.dbPath,
 	}
-	
+
 	dbUtils := service.NewDBUtils(m.db, ctx, dao.WithConfig(dbConfig), dao.WithLogger(m.logger))
 	err := dbUtils.ExposeAutoMigrate()
 	if err != nil {

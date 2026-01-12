@@ -14,8 +14,8 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/limiter"
 
-	ut "github.com/go-playground/universal-translator"
 	"github.com/gin-gonic/gin"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/lxzan/gws"
 )
 

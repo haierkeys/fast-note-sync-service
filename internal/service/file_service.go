@@ -123,6 +123,12 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 	file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if file != nil {
 		fileDTO := s.domainToDTO(file)
+
+		// 检查文件是否已删除
+		if file.Action == domain.FileActionDelete {
+			return "Create", nil, nil
+		}
+
 		// 检查内容是否一致
 		if file.ContentHash == params.ContentHash {
 			// 当用户 mtime 小于服务端 mtime 时，通知用户更新 mtime
@@ -160,8 +166,8 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 	file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if file != nil {
 		isNew = false
-		// 检查内容是否一致
-		if mtimeCheck && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
+		// 检查内容是否一致,排除掉已被标记删除的文件
+		if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
 			return isNew, nil, nil
 		}
 		// 检查内容是否一致但修改时间不同，则只更新修改时间

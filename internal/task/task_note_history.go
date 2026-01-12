@@ -71,7 +71,7 @@ func (t *NoteHistoryTask) cleanup() {
 
 // handleNoteHistory 处理笔记历史记录
 func (t *NoteHistoryTask) handleNoteHistory(msg service.NoteHistoryMsg) {
-	t.handleNoteHistoryWithDelay(msg, 20*time.Second)
+	t.handleNoteHistoryWithDelay(msg, 10*time.Second)
 }
 
 // handleNoteHistoryWithDelay 处理笔记历史记录并设置自定义定时器延迟

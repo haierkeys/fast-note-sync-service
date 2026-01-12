@@ -60,7 +60,6 @@ type userWriteQueue struct {
 	stopCh chan struct{}
 }
 
-
 // Manager 管理所有用户的写队列
 type Manager struct {
 	config Config
@@ -180,7 +179,6 @@ func (m *Manager) Execute(ctx context.Context, uid int64, fn func() error) error
 	}
 }
 
-
 // getOrCreateQueue 获取或创建用户写队列（懒加载）
 func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 	// 先尝试获取已存在的队列
@@ -298,7 +296,6 @@ func (m *Manager) drainQueue(queue *userWriteQueue) {
 		}
 	}
 }
-
 
 // cleanupIdleQueues 定期清理空闲队列
 func (m *Manager) cleanupIdleQueues() {

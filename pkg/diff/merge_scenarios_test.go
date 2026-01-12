@@ -118,18 +118,18 @@ func TestScenario_CodeSnippetEditing(t *testing.T) {
 		description  string
 	}{
 		{
-			name: "添加不同函数-无冲突",
-			base: "```go\npackage main\n\nfunc main() {\n}\n```",
-			device1: "```go\npackage main\n\nfunc hello() {\n\tprintln(\"hello\")\n}\n\nfunc main() {\n}\n```",
-			device2: "```go\npackage main\n\nfunc main() {\n\thello()\n}\n```",
+			name:         "添加不同函数-无冲突",
+			base:         "```go\npackage main\n\nfunc main() {\n}\n```",
+			device1:      "```go\npackage main\n\nfunc hello() {\n\tprintln(\"hello\")\n}\n\nfunc main() {\n}\n```",
+			device2:      "```go\npackage main\n\nfunc main() {\n\thello()\n}\n```",
 			wantConflict: false,
 			description:  "一端添加函数定义，另一端修改main函数，应该能合并",
 		},
 		{
-			name: "修改同一行代码-冲突",
-			base: "```python\ndef calculate(x):\n    return x * 2\n```",
-			device1: "```python\ndef calculate(x):\n    return x * 3\n```",
-			device2: "```python\ndef calculate(x):\n    return x + 2\n```",
+			name:         "修改同一行代码-冲突",
+			base:         "```python\ndef calculate(x):\n    return x * 2\n```",
+			device1:      "```python\ndef calculate(x):\n    return x * 3\n```",
+			device2:      "```python\ndef calculate(x):\n    return x + 2\n```",
 			wantConflict: true,
 			description:  "两端都修改了计算逻辑，应该冲突",
 		},

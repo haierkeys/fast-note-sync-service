@@ -168,8 +168,12 @@ func (h *NoteWSHandler) handleNoteModify(c *pkgapp.WebsocketClient, params *dto.
 
 				//执行合并操作
 				// case 1: baseHash 为空时，插件端 新创建笔记, 服务端存在同名笔记
-				// case 2: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源
-				// case 3: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源
+				// case 2: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间大于插件端
+				// case 3: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间小于插件端
+				// case 4: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间大于插件端
+				// case 5: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间小于插件端
+				// 问题1. 某编辑内容和服务器笔记快照一致 但是时间维度不一致 不应该将他们识别为同一版本
+				// 问题2. 因为历史快照是 30s 才生成一份.. 导致插件端的basehash 有很大概率找不到 basehash, 又不能每次变更都生成一个快照.. 太浪费了
 			} else {
 
 				h.App.Logger().Info("potential merge conflict detected",
@@ -265,26 +269,29 @@ func (h *NoteWSHandler) handleNoteModify(c *pkgapp.WebsocketClient, params *dto.
 						pc1First = params.Mtime <= nodeCheck.Mtime
 					}
 
-					//使用带冲突检测的文本检测
-					mergeResult, err := diff.MergeTexts(baseContent, clientContent, serverContent, pc1First)
-					if err != nil {
-						h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.MergeTexts")
-						return
+					var mergeResult diff.MergeResult
+					if !baseHashNotFound {
+						//使用带冲突检测的文本检测
+						mergeResult, err = diff.MergeTexts(baseContent, clientContent, serverContent, pc1First)
+						if err != nil {
+							h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.MergeTexts")
+							return
+						}
+
+						h.App.Logger().Info("merge completed",
+							zap.String(logger.FieldTraceID, c.TraceID),
+							zap.Int64(logger.FieldUID, c.User.UID),
+							zap.String(logger.FieldPath, params.Path),
+							zap.Bool("hasConflict", mergeResult.HasConflict),
+							zap.Int("baseLen", len(baseContent)),
+							zap.Int("clientLen", len(clientContent)),
+							zap.Int("serverLen", len(serverContent)),
+							zap.Int("resultLen", len(mergeResult.Content)),
+							zap.Bool("pc1First", pc1First))
 					}
 
-					h.App.Logger().Info("merge completed",
-						zap.String(logger.FieldTraceID, c.TraceID),
-						zap.Int64(logger.FieldUID, c.User.UID),
-						zap.String(logger.FieldPath, params.Path),
-						zap.Bool("hasConflict", mergeResult.HasConflict),
-						zap.Int("baseLen", len(baseContent)),
-						zap.Int("clientLen", len(clientContent)),
-						zap.Int("serverLen", len(serverContent)),
-						zap.Int("resultLen", len(mergeResult.Content)),
-						zap.Bool("pc1First", pc1First))
-
 					// 检查是否存在冲突， 执行进一步合并操作
-					if mergeResult.HasConflict {
+					if mergeResult.HasConflict || baseHashNotFound {
 
 						// 通知用户出现合并冲突, 需要处理笔记冗余内容
 						c.ToResponse(code.ErrorSyncConflict.WithData(&NoteOnlyPathMessage{
@@ -526,6 +533,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	//先创建
 	h.handleNoteModify(c, params)
+
 	// 删除笔记
 	h.handleNoteDelete(c, &dto.NoteDeleteRequest{
 		Vault:    params.Vault,

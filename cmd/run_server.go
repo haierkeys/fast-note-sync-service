@@ -42,10 +42,10 @@ var defaultSecretKeys = []string{
 const DefaultShutdownTimeout = 30 * time.Second
 
 type Server struct {
-	logger            *zap.Logger                // non-nil logger.
-	config            *internalApp.AppConfig     // 应用配置（注入的依赖）
-	db                *gorm.DB                   // 数据库连接
-	ut                *ut.UniversalTranslator    // 翻译器
+	logger            *zap.Logger             // non-nil logger.
+	config            *internalApp.AppConfig  // 应用配置（注入的依赖）
+	db                *gorm.DB                // 数据库连接
+	ut                *ut.UniversalTranslator // 翻译器
 	httpServer        *http.Server
 	privateHttpServer *http.Server
 	sc                *safe_close.SafeClose

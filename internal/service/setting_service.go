@@ -96,6 +96,12 @@ func (s *settingService) UpdateCheck(ctx context.Context, uid int64, params *dto
 	setting, _ := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if setting != nil {
 		settingDTO := s.domainToDTO(setting)
+
+		// 检查设置是否已删除
+		if setting.Action == domain.SettingActionDelete {
+			return "Create", nil, nil
+		}
+
 		// 检查内容是否一致
 		if setting.ContentHash == params.ContentHash {
 			// 当用户 mtime 小于服务端 mtime 时，通知用户更新 mtime
@@ -135,8 +141,8 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 
 	setting, _ := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if setting != nil {
-		// 检查内容是否一致
-		if mtimeCheck && setting.Mtime == params.Mtime && setting.ContentHash == params.ContentHash {
+		// 检查内容是否一致,排除掉已被标记删除的设置
+		if mtimeCheck && setting.Action != domain.SettingActionDelete && setting.Mtime == params.Mtime && setting.ContentHash == params.ContentHash {
 			return false, nil, nil
 		}
 		// 检查内容是否一致但修改时间不同，则只更新修改时间

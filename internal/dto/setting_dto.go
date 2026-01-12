@@ -47,7 +47,6 @@ type SettingSyncCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
-
 // SettingDTO 配置数据传输对象
 type SettingDTO struct {
 	ID               int64      `json:"id" form:"id"`

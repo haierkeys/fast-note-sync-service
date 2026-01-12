@@ -180,9 +180,13 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 	}
 
 	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+
 	if note != nil {
 		noteDTO := s.domainToDTO(note)
 		// 检查内容是否一致
+		if note.Action == "delete" {
+			return "Create", nil, nil
+		}
 		if note.ContentHash == params.ContentHash {
 			// 当用户 mtime 小于服务端 mtime 时，通知用户更新 mtime
 			if params.Mtime < note.Mtime {
@@ -217,15 +221,17 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	}
 
 	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+
 	if note != nil {
 		isNew = false
-		// 检查内容是否一致
-		if mtimeCheck && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
+
+		// 检查内容是否一致,排除掉已被标记删除的笔记
+		if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
 			return isNew, nil, nil
 		}
 		// 检查内容是否一致但修改时间不同，则只更新修改时间
 		if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
-			err := s.noteRepo.UpdateMtime(ctx, params.Mtime, note.ID, uid)
+			err := s.noteRepo.UpdateActionMtime(ctx, domain.NoteActionModify, params.Mtime, note.ID, uid)
 			if err != nil {
 				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
@@ -252,6 +258,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		note.Mtime = params.Mtime
 		note.Ctime = params.Ctime
 		note.Action = action
+		note.Rename = 0
 
 		updated, err := s.noteRepo.Update(ctx, note, uid)
 		if err != nil {
@@ -388,13 +395,13 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 	}
 
 	// 获取旧笔记
-	oldNote, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.OldPathHash, vaultID, uid, true)
+	oldNote, err := s.noteRepo.GetAllByPathHash(ctx, params.OldPathHash, vaultID, uid)
 	if err != nil {
 		return fmt.Errorf("old note not found: %w", err)
 	}
 
 	// 获取新笔记
-	newNote, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
+	newNote, err := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		return fmt.Errorf("new note not found: %w", err)
 	}

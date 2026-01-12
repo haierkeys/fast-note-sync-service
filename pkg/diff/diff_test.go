@@ -79,7 +79,7 @@ func TestProperty5_DeleteModifyConflictDetection(t *testing.T) {
 			// 使用多行文本，确保行级别的删除-修改冲突
 			lineToModify := fmt.Sprintf("Line_%d_content", id)
 			base := "Line1\n" + lineToModify + "\nLine3"
-			pc1 := "Line1\nLine3"                                    // PC1 删除中间行
+			pc1 := "Line1\nLine3"                                     // PC1 删除中间行
 			pc2 := "Line1\n" + lineToModify + "_modified" + "\nLine3" // PC2 修改中间行
 
 			result, err := MergeTexts(base, pc1, pc2, true)
@@ -96,69 +96,68 @@ func TestProperty5_DeleteModifyConflictDetection(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-
 // 单元测试: 基本合并场景
 func TestMergeTexts_BasicScenarios(t *testing.T) {
 	tests := []struct {
-		name        string
-		base        string
-		pc1         string
-		pc2         string
-		pc1First    bool
-		wantConflict bool
-		wantContains string
+		name            string
+		base            string
+		pc1             string
+		pc2             string
+		pc1First        bool
+		wantConflict    bool
+		wantContains    string
 		wantNotContains string
 	}{
 		{
-			name:        "no changes",
-			base:        "Hello World",
-			pc1:         "Hello World",
-			pc2:         "Hello World",
-			pc1First:    true,
+			name:         "no changes",
+			base:         "Hello World",
+			pc1:          "Hello World",
+			pc2:          "Hello World",
+			pc1First:     true,
 			wantConflict: false,
 			wantContains: "Hello World",
 		},
 		{
-			name:        "pc1 only change",
-			base:        "Hello",
-			pc1:         "Hello World",
-			pc2:         "Hello",
-			pc1First:    true,
+			name:         "pc1 only change",
+			base:         "Hello",
+			pc1:          "Hello World",
+			pc2:          "Hello",
+			pc1First:     true,
 			wantConflict: false,
 			wantContains: "World",
 		},
 		{
-			name:        "pc2 only change",
-			base:        "Hello",
-			pc1:         "Hello",
-			pc2:         "Hello Kiro",
-			pc1First:    true,
+			name:         "pc2 only change",
+			base:         "Hello",
+			pc1:          "Hello",
+			pc2:          "Hello Kiro",
+			pc1First:     true,
 			wantConflict: false,
 			wantContains: "Kiro",
 		},
 		{
-			name:        "both add different content",
-			base:        "Hello",
-			pc1:         "Hello World",
-			pc2:         "Hello Kiro",
-			pc1First:    true,
+			name:         "both add different content",
+			base:         "Hello",
+			pc1:          "Hello World",
+			pc2:          "Hello Kiro",
+			pc1First:     true,
 			wantConflict: true, // 单行文件，两端在末尾追加不同内容，视为冲突
 		},
 		{
-			name:        "pc1 delete paragraph",
-			base:        "Line1\nLine2\nLine3",
-			pc1:         "Line1\nLine3",
-			pc2:         "Line1\nLine2\nLine3",
-			pc1First:    true,
-			wantConflict: false,
+			name:            "pc1 delete paragraph",
+			base:            "Line1\nLine2\nLine3",
+			pc1:             "Line1\nLine3",
+			pc2:             "Line1\nLine2\nLine3",
+			pc1First:        true,
+			wantConflict:    false,
 			wantNotContains: "Line2",
 		},
 		{
-			name:        "delete-modify conflict",
-			base:        "Line1\nLine2\nLine3",
-			pc1:         "Line1\nLine3",           // 删除 Line2
-			pc2:         "Line1\nLine2 Modified\nLine3",  // 修改 Line2
-			pc1First:    true,
+			name:         "delete-modify conflict",
+			base:         "Line1\nLine2\nLine3",
+			pc1:          "Line1\nLine3",                 // 删除 Line2
+			pc2:          "Line1\nLine2 Modified\nLine3", // 修改 Line2
+			pc1First:     true,
 			wantConflict: true,
 		},
 	}

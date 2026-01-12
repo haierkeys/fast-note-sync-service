@@ -70,7 +70,6 @@ type Pool struct {
 	closed bool
 }
 
-
 // New 创建新的 Worker Pool
 // cfg: 配置，如果为 nil 则使用默认配置
 // logger: zap 日志器，如果为 nil 则使用 nop logger
@@ -179,7 +178,6 @@ func (p *Pool) checkWarningThreshold() {
 			zap.Float64("usagePercent", float64(active)/float64(p.config.MaxWorkers)*100))
 	}
 }
-
 
 // Submit 提交任务并等待完成
 // 返回任务执行结果或错误（池满/已关闭）
