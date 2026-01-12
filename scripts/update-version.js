@@ -37,10 +37,10 @@ function readGoVersion(filePath) {
  */
 function writeGoVersion(filePath, newVersion) {
     let content = fs.readFileSync(filePath, 'utf8');
-    // 替换 Version 变量的值
+    // 替换 Version 变量的值,保留原有的空格格式
     content = content.replace(
-        /Version\s+string\s*=\s*"[^"]+"/,
-        `Version string = "${newVersion}"`
+        /(Version\s+string\s*=\s*)"[^"]+"/,
+        `$1"${newVersion}"`
     );
     fs.writeFileSync(filePath, content, 'utf8');
 }
