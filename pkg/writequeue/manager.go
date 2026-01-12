@@ -55,7 +55,7 @@ type userWriteQueue struct {
 	lastUsed atomic.Int64
 	closed   atomic.Bool
 	workerWg sync.WaitGroup
-	
+
 	// 用于通知 worker 停止
 	stopCh chan struct{}
 }

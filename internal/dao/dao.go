@@ -223,8 +223,10 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 	if c.Type == "mysql" {
 		c.Name = c.Name + "_" + key
 	} else if c.Type == "sqlite" {
-		ext := filepath.Ext(c.Path)
-		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
+		if key != "" {
+			ext := filepath.Ext(c.Path)
+			c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
+		}
 	}
 
 	dbNew, err := NewDBEngineWithConfig(c, d.Logger())
