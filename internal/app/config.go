@@ -53,7 +53,6 @@ type ServerConfig struct {
 	PrivateHttpListen string `yaml:"private-http-listen"`
 }
 
-
 // SecurityConfig 安全配置
 type SecurityConfig struct {
 	AuthToken    string `yaml:"auth-token"`
@@ -150,7 +149,6 @@ type TracerConfig struct {
 	// Header 追踪 ID 请求头名称，默认 X-Trace-ID
 	Header string `yaml:"header"`
 }
-
 
 // LoadConfig 从文件加载配置
 // 返回配置实例和配置文件的绝对路径

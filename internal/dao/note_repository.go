@@ -392,6 +392,23 @@ func (r *noteRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid i
 	})
 }
 
+// UpdateActionMtime 更新笔记修改时间
+func (r *noteRepository) UpdateActionMtime(ctx context.Context, action domain.NoteAction, mtime int64, id, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
+
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Action.Value(string(action)),
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
+}
+
 // UpdateSnapshot 更新笔记快照
 func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {

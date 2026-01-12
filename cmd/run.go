@@ -124,7 +124,7 @@ func init() {
 			<-quit1
 			s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
 			s.sc.SendCloseSignal(nil)
-			
+
 			// 等待所有关闭处理器完成（包括 App Container 的优雅关闭）
 			if err := s.sc.WaitClosed(); err != nil {
 				s.logger.Error("Shutdown completed with error", zap.Error(err))

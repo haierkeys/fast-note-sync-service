@@ -66,7 +66,6 @@ type FileListRequest struct {
 	Vault string `json:"vault" form:"vault" binding:"required"`
 }
 
-
 // FileDTO 文件数据传输对象
 type FileDTO struct {
 	ID               int64      `json:"id" form:"id"`

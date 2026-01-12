@@ -5,8 +5,8 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
-	ut "github.com/go-playground/universal-translator"
 	"github.com/gin-gonic/gin"
+	ut "github.com/go-playground/universal-translator"
 )
 
 // LangWithTranslator 创建带翻译器的语言中间件（支持依赖注入）

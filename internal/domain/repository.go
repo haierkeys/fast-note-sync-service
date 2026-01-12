@@ -32,6 +32,9 @@ type NoteRepository interface {
 	// UpdateMtime 更新笔记修改时间
 	UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error
 
+	// UpdateActionMtime 更新笔记类型并修改时间
+	UpdateActionMtime(ctx context.Context, action NoteAction, mtime int64, id, uid int64) error
+
 	// UpdateSnapshot 更新笔记快照
 	UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error
 
@@ -157,7 +160,6 @@ type FileRepository interface {
 	CountSizeSum(ctx context.Context, vaultID, uid int64) (*CountSizeResult, error)
 }
 
-
 // SettingRepository 配置仓储接口
 type SettingRepository interface {
 	// GetByPathHash 根据路径哈希获取配置
@@ -184,7 +186,6 @@ type SettingRepository interface {
 	// ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Setting, error)
 }
-
 
 // NoteHistoryRepository 笔记历史仓储接口
 type NoteHistoryRepository interface {
