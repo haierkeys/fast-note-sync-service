@@ -1,10 +1,13 @@
 package api_router
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
@@ -36,6 +39,7 @@ type webGUIAdminConfig struct {
 	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"`
 	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`
 	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`
+	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`
 	AdminUID                int    `json:"adminUid" form:"adminUid"`
 }
 
@@ -77,6 +81,7 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 		SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
 		UploadSessionTimeout:    cfg.App.UploadSessionTimeout,
 		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
+		HistorySaveDelay:        cfg.App.HistorySaveDelay,
 		AdminUID:                cfg.User.AdminUID,
 	}
 
@@ -118,6 +123,23 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 		return
 	}
 
+	// 验证 historySaveDelay 不能小于 10 秒
+	if params.HistorySaveDelay != "" {
+		delay, err := util.ParseDuration(params.HistorySaveDelay)
+		if err != nil {
+			logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historySaveDelay format",
+				zap.String("value", params.HistorySaveDelay))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay format invalid, e.g. 10s, 1m"))
+			return
+		}
+		if delay < 10*time.Second {
+			logger.Warn("apiRouter.WebGUI.UpdateConfig historySaveDelay too small",
+				zap.String("value", params.HistorySaveDelay))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay must be at least 10s"))
+			return
+		}
+	}
+
 	// 更新配置
 	cfg.WebGUI.FontSet = params.FontSet
 	cfg.User.RegisterIsEnable = params.RegisterIsEnable
@@ -125,6 +147,7 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 	cfg.App.SoftDeleteRetentionTime = params.SoftDeleteRetentionTime
 	cfg.App.UploadSessionTimeout = params.UploadSessionTimeout
 	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
+	cfg.App.HistorySaveDelay = params.HistorySaveDelay
 	cfg.User.AdminUID = params.AdminUID
 
 	// 保存配置到文件

@@ -485,9 +485,39 @@ GET /api/note/history
 
 ---
 
+#### 18. 从历史版本恢复笔记
+```
+PUT /api/note/history/restore
+```
+
+**请求参数** (JSON):
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| vault | string | ✓ | 仓库名称 |
+| historyId | number | ✓ | 历史记录ID |
+
+**响应 Data**:
+```typescript
+{
+  id: number;
+  path: string;
+  pathHash: string;
+  content: string;
+  contentHash: string;
+  version: number;
+  ctime: number;
+  mtime: number;
+  lastTime: number;  // updatedTimestamp
+}
+```
+
+**说明**: 将笔记内容恢复到指定的历史版本。恢复操作会自动保存当前内容为新的历史版本。
+
+---
+
 ### Admin (管理员) 相关
 
-#### 18. 获取管理配置
+#### 19. 获取管理配置
 ```
 GET /api/admin/config
 ```
@@ -509,7 +539,7 @@ GET /api/admin/config
 
 ---
 
-#### 19. 更新管理配置
+#### 20. 更新管理配置
 ```
 POST /api/admin/config
 ```
@@ -552,6 +582,7 @@ POST /api/admin/config
 | GET | /api/note/file | ✓ | 获取文件内容 |
 | GET | /api/note/histories | ✓ | 获取历史列表 |
 | GET | /api/note/history | ✓ | 获取历史详情 |
+| PUT | /api/note/history/restore | ✓ | 从历史版本恢复 |
 | GET | /api/admin/config | ✓ | 获取管理配置 |
 | POST | /api/admin/config | ✓ | 更新管理配置 |
 
