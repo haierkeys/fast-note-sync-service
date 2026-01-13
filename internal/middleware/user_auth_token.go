@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
@@ -8,27 +10,21 @@ import (
 )
 
 // UserAuthTokenWithConfig 用户 Token 认证中间件（使用注入的密钥）
+// 支持 Authorization: Bearer <token> 格式和 URL 参数 token（用于图片等资源请求）
 func UserAuthTokenWithConfig(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var token string
 		response := app.NewResponse(c)
+		var token string
 
-		if s, exist := c.GetQuery("authorization"); exist {
-			token = s
-		} else if s, exist := c.GetQuery("Authorization"); exist {
-			token = s
-		} else if s := c.GetHeader("authorization"); len(s) != 0 {
-			token = s
-		} else if s := c.GetHeader("Authorization"); len(s) != 0 {
-			token = s
-		} else if s, exist := c.GetQuery("token"); exist {
-			token = s
-		} else if s, exist := c.GetQuery("Token"); exist {
-			token = s
-		} else if s = c.GetHeader("token"); len(s) != 0 {
-			token = s
-		} else if s = c.GetHeader("Token"); len(s) != 0 {
-			token = s
+		// 优先从 Authorization header 获取（标准 Bearer 格式）
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// 如果 header 中没有，尝试从 URL 参数获取（用于图片等资源请求）
+		if token == "" {
+			token = c.Query("token")
 		}
 
 		if token == "" {
@@ -37,14 +33,14 @@ func UserAuthTokenWithConfig(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		if user, err := app.ParseTokenWithKey(token, secretKey); err != nil {
+		user, err := app.ParseTokenWithKey(token, secretKey)
+		if err != nil {
 			response.ToResponse(code.ErrorInvalidUserAuthToken)
 			c.Abort()
 			return
-		} else {
-			c.Set("user_token", user)
 		}
 
+		c.Set("user_token", user)
 		c.Next()
 	}
 }
