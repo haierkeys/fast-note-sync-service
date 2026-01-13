@@ -23,4 +23,7 @@ type AppServiceConfig struct {
 	SoftDeleteRetentionTime string
 	// HistoryKeepVersions 历史记录保留版本数
 	HistoryKeepVersions int
+	// HistorySaveDelay 历史记录保存延迟时间
+	// 支持格式：10s（秒）、1m（分钟），默认 10s
+	HistorySaveDelay string
 }

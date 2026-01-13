@@ -185,3 +185,9 @@ type NoteHistoryNoContentDTO struct {
 	Version    int64      `json:"version" form:"version"`
 	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
 }
+
+// NoteHistoryRestoreRequest 历史版本恢复请求参数
+type NoteHistoryRestoreRequest struct {
+	Vault     string `json:"vault" form:"vault" binding:"required"`
+	HistoryID int64  `json:"historyId" form:"historyId" binding:"required"`
+}
