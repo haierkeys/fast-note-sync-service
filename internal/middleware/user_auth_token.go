@@ -22,6 +22,17 @@ func UserAuthTokenWithConfig(secretKey string) gin.HandlerFunc {
 			token = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 
+		if token == "" {
+			authHeader := c.GetHeader("Token")
+			if authHeader != "" {
+				token = authHeader
+			}
+			authHeader = c.GetHeader("token")
+			if authHeader != "" {
+				token = authHeader
+			}
+		}
+
 		// 如果 header 中没有，尝试从 URL 参数获取（用于图片等资源请求）
 		if token == "" {
 			token = c.Query("token")
