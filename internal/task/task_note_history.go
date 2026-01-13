@@ -9,6 +9,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
@@ -69,9 +70,20 @@ func (t *NoteHistoryTask) cleanup() {
 	t.timers = make(map[string]*time.Timer)
 }
 
+// getBaseDelay 动态获取配置的基础延迟时间
+func (t *NoteHistoryTask) getBaseDelay() time.Duration {
+	baseDelay := 10 * time.Second
+	if delayStr := t.app.Config().App.HistorySaveDelay; delayStr != "" {
+		if d, err := util.ParseDuration(delayStr); err == nil && d > 0 {
+			baseDelay = d
+		}
+	}
+	return baseDelay
+}
+
 // handleNoteHistory 处理笔记历史记录
 func (t *NoteHistoryTask) handleNoteHistory(msg service.NoteHistoryMsg) {
-	t.handleNoteHistoryWithDelay(msg, 10*time.Second)
+	t.handleNoteHistoryWithDelay(msg, t.getBaseDelay())
 }
 
 // handleNoteHistoryWithDelay 处理笔记历史记录并设置自定义定时器延迟

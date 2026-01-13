@@ -29,6 +29,9 @@ type NoteHistoryService interface {
 	// List 获取指定笔记的历史版本列表
 	List(ctx context.Context, uid int64, params *dto.NoteHistoryListRequest, pager *app.Pager) ([]*dto.NoteHistoryNoContentDTO, int64, error)
 
+	// RestoreFromHistory 从历史版本恢复笔记内容
+	RestoreFromHistory(ctx context.Context, uid int64, historyID int64) (*dto.NoteDTO, error)
+
 	// ProcessDelay 延时处理笔记历史（计算 diff 并保存补丁版本）
 	ProcessDelay(ctx context.Context, noteID int64, uid int64) error
 
@@ -216,6 +219,81 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 // Migrate 处理笔记历史迁移
 func (s *noteHistoryService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error {
 	return s.historyRepo.Migrate(ctx, oldNoteID, newNoteID, uid)
+}
+
+// RestoreFromHistory 从历史版本恢复笔记内容
+// 恢复到该历史版本修改后的内容
+func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, historyID int64) (*dto.NoteDTO, error) {
+	// 1. 获取历史记录
+	history, err := s.historyRepo.GetByID(ctx, historyID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorHistoryNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 2. 获取当前笔记
+	note, err := s.noteRepo.GetByID(ctx, history.NoteID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 3. 计算该历史版本修改后的内容
+	// history.Content 是该版本修改前的快照（即上一版本的内容）
+	// history.DiffPatch 是从修改前到修改后的差异补丁
+	// 应用补丁得到该版本修改后的完整内容
+	dmp := diffmatchpatch.New()
+	parsedPatches, _ := dmp.PatchFromText(history.DiffPatch)
+	restoredContent, _ := dmp.PatchApply(parsedPatches, history.Content)
+
+	// 4. 计算恢复内容的哈希
+	restoredContentHash := util.EncodeHash32(restoredContent)
+
+	// 调试日志
+	s.logger.Info("RestoreFromHistory",
+		zap.Int64("historyID", historyID),
+		zap.Int64("version", history.Version),
+		zap.Int("beforeContentLen", len(history.Content)),
+		zap.Int("afterContentLen", len(restoredContent)),
+	)
+
+	// 5. 使用恢复的内容更新笔记
+	note.Content = restoredContent
+	note.ContentHash = restoredContentHash
+	note.Action = domain.NoteActionModify
+
+	// 6. 更新笔记
+	updated, err := s.noteRepo.Update(ctx, note, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 7. 立即保存历史记录（恢复操作不走延迟队列，直接创建历史版本）
+	if err := s.ProcessDelay(ctx, updated.ID, uid); err != nil {
+		s.logger.Warn("RestoreFromHistory: failed to create history",
+			zap.Int64("noteID", updated.ID),
+			zap.Error(err))
+	}
+
+	// 8. 返回更新后的笔记 DTO
+	return &dto.NoteDTO{
+		ID:               updated.ID,
+		Action:           string(updated.Action),
+		Path:             updated.Path,
+		PathHash:         updated.PathHash,
+		Content:          updated.Content,
+		ContentHash:      updated.ContentHash,
+		Version:          updated.Version,
+		Ctime:            updated.Ctime,
+		Mtime:            updated.Mtime,
+		UpdatedTimestamp: updated.UpdatedTimestamp,
+		UpdatedAt:        timex.Time(updated.UpdatedAt),
+		CreatedAt:        timex.Time(updated.CreatedAt),
+	}, nil
 }
 
 // CleanupByTime 按截止时间清理历史记录，保留每个笔记最近 N 个版本

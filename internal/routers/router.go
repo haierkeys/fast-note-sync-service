@@ -119,7 +119,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		userHandler := api_router.NewUserHandler(appContainer)
 		vaultHandler := api_router.NewVaultHandler(appContainer)
 		noteHandler := api_router.NewNoteHandler(appContainer, wss)
-		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer)
+		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
 		webGUIHandler := api_router.NewWebGUIHandler(appContainer)
 
@@ -150,6 +150,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/history", noteHistoryHandler.Get)
 		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/histories", noteHistoryHandler.List)
+		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).PUT("/note/history/restore", noteHistoryHandler.Restore)
 	}
 
 	if cfg.App.UploadSavePath != "" {

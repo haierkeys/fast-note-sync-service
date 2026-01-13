@@ -32,7 +32,8 @@ var (
 	// ErrorSyncMergeFailed     = NewError(531, lang{zh_cn: "合并失败", en: "Merge failed"})
 	// ErrorMergeConflict       = NewError(532, lang{zh_cn: "合并冲突，需要手动解决", en: "Merge conflict detected, manual resolution required"})
 	// ErrorConflictFileCreated = NewError(533, lang{zh_cn: "已创建冲突文件", en: "Conflict file created"})
-	ErrorHistoryNotFound = NewError(534, lang{zh_cn: "历史记录未找到", en: "History record not found"})
+	ErrorHistoryNotFound        = NewError(534, lang{zh_cn: "历史记录未找到", en: "History record not found"})
+	ErrorHistoryRestoreFailed   = NewError(535, lang{zh_cn: "历史版本恢复失败", en: "History restore failed"})
 
 	ErrorUserRegister                = NewError(400, lang{zh_cn: "用户注册失败", en: "User registration failed"})
 	ErrorUserOldPasswordFailed       = NewError(401, lang{zh_cn: "当前密码验证错误", en: "Current password verification error"})

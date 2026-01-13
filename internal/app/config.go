@@ -122,6 +122,8 @@ type AppSettings struct {
 	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time"`
 	// HistoryKeepVersions 历史记录保留版本数，默认 100
 	HistoryKeepVersions int `yaml:"history-keep-versions"`
+	// HistorySaveDelay 历史记录保存延迟时间，支持格式：10s（秒）、1m（分钟），默认 10s
+	HistorySaveDelay string `yaml:"history-save-delay"`
 	// UploadSessionTimeout 文件上传会话超时时间
 	UploadSessionTimeout string `yaml:"upload-session-timeout"`
 	// FileChunkSize 文件分片大小

@@ -143,6 +143,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 		App: service.AppServiceConfig{
 			SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
 			HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
+			HistorySaveDelay:        cfg.App.HistorySaveDelay,
 		},
 	}
 

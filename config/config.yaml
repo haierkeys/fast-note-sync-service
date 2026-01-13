@@ -44,9 +44,12 @@ app:
   # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
-  # 历史记录保留版本数，默认 10
-  # Number of history versions to keep, default 10
-  history-keep-versions: 10
+  # 历史记录保留版本数，默认 100
+  # Number of history versions to keep, default 100
+  history-keep-versions: 100
+  # 历史记录保存延迟时间，支持格式：10s（秒）、1m（分钟），默认 10s
+  # History save delay time, supports formats: 10s (seconds), 1m (minutes), default 10s
+  history-save-delay: "10s"
   # Worker Pool 最大并发数，默认 100
   # Worker Pool maximum concurrent workers, default 100
   worker-pool-max-workers: 100
@@ -129,5 +132,22 @@ tracer:
   # 追踪 ID 请求头名称
   # Trace ID header name
   header: "X-Trace-ID"
+
+# local-fs
+# 本地文件系统存储配置
+# Local file system storage configuration
+local-fs:
+  # 是否启用本地文件系统存储
+  # Whether to enable local file system storage
+  is-enable: true
+  # 是否启用 HTTP 文件服务
+  # Whether to enable HTTP file service
+  httpfs-is-enable: true
+  # 文件保存路径
+  # File save path
+  save-path: "storage/uploads"
+  # 自定义路径（可选）
+  # Custom path (optional)
+  custom-path: ""
 
 

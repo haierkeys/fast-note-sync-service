@@ -21,9 +21,9 @@ type NoteHistoryHandler struct {
 }
 
 // NewNoteHistoryHandler 创建 NoteHistoryHandler 实例
-func NewNoteHistoryHandler(a *app.App) *NoteHistoryHandler {
+func NewNoteHistoryHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHistoryHandler {
 	return &NoteHistoryHandler{
-		Handler: NewHandler(a),
+		Handler: NewHandlerWithWSS(a, wss),
 	}
 }
 
@@ -113,4 +113,42 @@ func (h *NoteHistoryHandler) logError(ctx context.Context, method string, err er
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)
+}
+
+// Restore 从历史版本恢复笔记内容
+func (h *NoteHistoryHandler) Restore(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteHistoryRestoreRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHistoryHandler.Restore.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHistoryHandler.Restore err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	// 执行恢复
+	note, err := h.App.NoteHistoryService.RestoreFromHistory(ctx, uid, params.HistoryID)
+	if err != nil {
+		h.logError(ctx, "NoteHistoryHandler.Restore", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note).WithVault(params.Vault))
+
+	// 广播恢复事件到其他客户端
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncHistoryRestore")
 }
