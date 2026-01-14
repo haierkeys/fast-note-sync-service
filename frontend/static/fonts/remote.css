@@ -1,0 +1,24 @@
+@font-face {
+  font-family: "CustomFont";
+  src: url("https://ik.imagekit.io/haierkeys/LXGWWenKai-Light.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-sans: "CustomFont", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans) !important;
+}
+
+/* 确保 Vditor 编辑器各模式也应用该字体 */
+.vditor-reset,
+.vditor-ir,
+.vditor-wysiwyg,
+.vditor-sv,
+.vditor-preview {
+  font-family: var(--font-sans) !important;
+}

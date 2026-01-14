@@ -55,7 +55,6 @@ type ServerConfig struct {
 
 // SecurityConfig 安全配置
 type SecurityConfig struct {
-	AuthToken    string `yaml:"auth-token"`
 	AuthTokenKey string `yaml:"auth-token-key"`
 	TokenExpiry  string `yaml:"token-expiry"` // Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟）
 }

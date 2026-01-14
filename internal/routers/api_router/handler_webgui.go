@@ -41,6 +41,7 @@ type webGUIAdminConfig struct {
 	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`
 	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`
 	AdminUID                int    `json:"adminUid" form:"adminUid"`
+	AuthTokenKey            string `json:"authTokenKey" form:"authTokenKey"`
 }
 
 // Config 获取 WebGUI 配置（公开接口，无需认证）
@@ -83,6 +84,7 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 		HistorySaveDelay:        cfg.App.HistorySaveDelay,
 		AdminUID:                cfg.User.AdminUID,
+		AuthTokenKey:            cfg.Security.AuthTokenKey,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -149,6 +151,7 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
 	cfg.App.HistorySaveDelay = params.HistorySaveDelay
 	cfg.User.AdminUID = params.AdminUID
+	cfg.Security.AuthTokenKey = params.AuthTokenKey
 
 	// 保存配置到文件
 	if err := cfg.Save(); err != nil {
