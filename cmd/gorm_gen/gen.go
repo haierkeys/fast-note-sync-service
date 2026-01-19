@@ -78,54 +78,52 @@ func useDia(dsn string, dbType string) gorm.Dialector {
 	return nil
 }
 
-// getFieldDefaultValueTags 获取所有字段的 GORM tag 配置（自动注入默认值以解决 SQLite 迁移限制）
-func getFieldDefaultValueTags(db *gorm.DB, tables []string) []gen.ModelOpt {
+// getTableDefaultValueTags 获取指定表的 GORM tag 配置（自动注入默认值以解决 SQLite 迁移限制）
+func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 	var opts []gen.ModelOpt
 
-	for _, table := range tables {
-		if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {
+	if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {
+		return opts
+	}
+
+	// 获取表的所有列信息
+	columnTypes, err := db.Migrator().ColumnTypes(table)
+	if err != nil {
+		return opts
+	}
+
+	for _, col := range columnTypes {
+		// 跳过主键字段
+		if isPrimaryKey(col) {
 			continue
 		}
 
-		// 获取表的所有列信息
-		columnTypes, err := db.Migrator().ColumnTypes(table)
-		if err != nil {
+		fieldName := col.Name()
+		dbType := strings.ToLower(col.DatabaseTypeName())
+		defaultValue, ok := col.DefaultValue()
+
+		// 如果数据库中已经有默认值，则使用数据库的默认值
+		if ok && defaultValue != "" {
+			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+				tag.Set("default", defaultValue)
+				return tag
+			}))
 			continue
 		}
 
-		for _, col := range columnTypes {
-			// 跳过主键字段
-			if isPrimaryKey(col) {
-				continue
-			}
+		// 根据类型自动注入默认值（主要解决 SQLite Add Column 时 NOT NULL 冲突）
+		var autoDefault string
+		if dbType == "integer" || dbType == "int" || dbType == "bigint" {
+			autoDefault = "0"
+		} else if dbType == "text" || strings.Contains(dbType, "char") {
+			autoDefault = "''"
+		}
 
-			fieldName := col.Name()
-			dbType := strings.ToLower(col.DatabaseTypeName())
-			defaultValue, ok := col.DefaultValue()
-
-			// 如果数据库中已经有默认值，则使用数据库的默认值
-			if ok && defaultValue != "" {
-				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-					tag.Set("default", defaultValue)
-					return tag
-				}))
-				continue
-			}
-
-			// 根据类型自动注入默认值（主要解决 SQLite Add Column 时 NOT NULL 冲突）
-			var autoDefault string
-			if dbType == "integer" || dbType == "int" || dbType == "bigint" {
-				autoDefault = "0"
-			} else if dbType == "text" || strings.Contains(dbType, "char") {
-				autoDefault = "''"
-			}
-
-			if autoDefault != "" {
-				opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-					tag.Set("default", autoDefault)
-					return tag
-				}))
-			}
+		if autoDefault != "" {
+			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+				tag.Set("default", autoDefault)
+				return tag
+			}))
 		}
 	}
 
@@ -202,7 +200,7 @@ func main() {
 		}),
 		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("type", "datetime")
-			tag.Set("default", "0")
+			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("mtime", func(tag field.GormTag) field.GormTag {
@@ -219,15 +217,16 @@ func main() {
 		}),
 	}
 
-	// 自动为字段添加 GORM default 标签
-	fieldOpts := getFieldDefaultValueTags(db, tableList)
-	opts = append(opts, fieldOpts...)
-
 	for _, table := range tableList {
 		if table == "sqlite_sequence" || table == "schema_version" || strings.HasPrefix(table, "sqlite_") {
 			continue
 		}
-		g.ApplyBasic(g.GenerateModel(table, opts...))
+
+		// 组合基础选项和表特有选项
+		tableOpts := append([]gen.ModelOpt{}, opts...)
+		tableOpts = append(tableOpts, getTableDefaultValueTags(db, table)...)
+
+		g.ApplyBasic(g.GenerateModel(table, tableOpts...))
 	}
 	g.Execute()
 

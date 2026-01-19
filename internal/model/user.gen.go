@@ -10,7 +10,7 @@ const TableNameUser = "user"
 
 // User mapped from table <user>
 type User struct {
-	UID       int64      `gorm:"column:uid;primaryKey;default:0" json:"uid" form:"uid"`
+	UID       int64      `gorm:"column:uid;primaryKey" json:"uid" form:"uid"`
 	Email     string     `gorm:"column:email;index:idx_pre_user_email,priority:1;default:''" json:"email" form:"email"`
 	Username  string     `gorm:"column:username;default:''" json:"username" form:"username"`
 	Password  string     `gorm:"column:password;default:''" json:"password" form:"password"`
@@ -20,7 +20,7 @@ type User struct {
 	IsDeleted int64      `gorm:"column:is_deleted;default:0" json:"isDeleted" form:"isDeleted"`
 	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;default:2025-12-26 00:00:00" json:"deletedAt" form:"deletedAt"`
+	DeletedAt timex.Time `gorm:"column:deleted_at;type:datetime;default:NULL" json:"deletedAt" form:"deletedAt"`
 }
 
 // TableName User's table name
