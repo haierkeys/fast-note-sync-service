@@ -1491,7 +1491,16 @@ const docTemplate = `{
                 "registerIsEnable": {
                     "type": "boolean"
                 },
+                "shareTokenExpiry": {
+                    "type": "string"
+                },
+                "shareTokenKey": {
+                    "type": "string"
+                },
                 "softDeleteRetentionTime": {
+                    "type": "string"
+                },
+                "tokenExpiry": {
                     "type": "string"
                 },
                 "uploadSessionTimeout": {
