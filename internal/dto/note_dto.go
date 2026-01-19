@@ -8,7 +8,7 @@ import (
 
 // NoteDTO 笔记数据传输对象
 type NoteDTO struct {
-	ID               int64      `json:"id" form:"id"`
+	ID               int64      `json:"-" form:"id"`
 	Action           string     `json:"-" form:"action"`
 	Path             string     `json:"path" form:"path"`
 	PathHash         string     `json:"pathHash" form:"pathHash"`

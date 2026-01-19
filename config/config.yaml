@@ -66,6 +66,7 @@ app:
   # Idle queue cleanup time, default 10m
   write-queue-idle-time: "10m"
 
+
 # webgui
 # WebGUI 设置
 webgui:
@@ -97,10 +98,15 @@ security:
   # 用户令牌加密混淆 Key
   # User token encryption and obfuscation key
   auth-token-key: fast-note-sync-Auth-Token
-  # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 7d
-  # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 7d
-  token-expiry: "7d"
-
+  # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 365d
+  # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 365d
+  token-expiry: "365d"
+  # 用户分享令牌加密混淆 Key
+  # User share token encryption and obfuscation key
+  share-token-key: fns
+  # 分享 Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 30d
+  # Share token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 30d
+  share-token-expiry: "30d"
 # database
 # 数据库配置
 # Database configuration

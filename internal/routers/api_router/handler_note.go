@@ -1,9 +1,7 @@
 package api_router
 
 import (
-	"bytes"
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +29,15 @@ func NewNoteHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHandler {
 }
 
 // Get 获取单条笔记详情
+// @Summary 获取笔记详情
+// @Description 根据路径或路径哈希获取单条笔记的具体内容和元数据
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteGetRequest true "获取参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteWithFileLinksResponse} "成功"
+// @Router /api/note [get]
 func (h *NoteHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteGetRequest{}
@@ -91,7 +98,26 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(noteWithLinks))
 }
 
+// GetShared 获取分享的单条笔记详情
+// @Summary 获取被分享的笔记详情
+// @Description 通过分享 Token 授权后，获取特定笔记内容（受限只读访问）
+// @Tags 笔记
+// @Security ShareAuthToken
+// @Param Share-Token header string true "认证 Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/share/note [get]
+
 // List 获取笔记列表
+// @Summary 获取笔记列表
+// @Description 分页获取当前用户的笔记列表
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteListRequest true "查询参数"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "成功"
+// @Router /api/notes [get]
 func (h *NoteHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteListRequest{}
@@ -129,6 +155,16 @@ func (h *NoteHandler) List(c *gin.Context) {
 }
 
 // CreateOrUpdate 创建或更新笔记
+// @Summary 创建或更新笔记
+// @Description 处理笔记的新增、修改或重命名（通过路径变化识别）
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteModifyOrCreateRequest true "笔记内容"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note [post]
 func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteModifyOrCreateRequest{}
@@ -250,6 +286,15 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 }
 
 // Delete 删除笔记
+// @Summary 删除笔记
+// @Description 将笔记移至回收站
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteDeleteRequest true "删除参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note [delete]
 func (h *NoteHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteDeleteRequest{}
@@ -309,6 +354,15 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 }
 
 // Restore 恢复笔记（从回收站恢复）
+// @Summary 恢复笔记
+// @Description 从回收站恢复被删除的笔记
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params body dto.NoteRestoreRequest true "恢复参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/restore [put]
 func (h *NoteHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteRestoreRequest{}
@@ -366,59 +420,6 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 
 	response.ToResponse(code.Success.WithData(note))
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncRestore")
-}
-
-// GetFileContent 获取文件或笔记的原始内容
-func (h *NoteHandler) GetFileContent(c *gin.Context) {
-	response := pkgapp.NewResponse(c)
-	params := &dto.NoteGetRequest{}
-
-	// 参数绑定和验证
-	valid, errs := pkgapp.BindAndValid(c, params)
-	if !valid {
-		h.App.Logger().Error("NoteHandler.GetFileContent.BindAndValid err", zap.Error(errs))
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	// 获取用户 ID
-	uid := pkgapp.GetUID(c)
-	if uid == 0 {
-		h.App.Logger().Error("NoteHandler.GetFileContent err uid=0")
-		response.ToResponse(code.ErrorInvalidUserAuthToken)
-		return
-	}
-
-	// 计算 PathHash
-	params.PathHash = util.EncodeHash32(params.Path)
-
-	// 获取请求上下文
-	ctx := c.Request.Context()
-
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
-	content, contentType, mtime, etag, err := noteSvc.GetFileContent(ctx, uid, params)
-	if err != nil {
-		h.logError(ctx, "NoteHandler.GetFileContent", err)
-		response.ToResponse(code.Failed.WithDetails(err.Error()))
-		return
-	}
-
-	// 如果内容为 nil, 表示资源未找到或已删除, 返回 404
-	if content == nil {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
-
-	// 设置响应头
-	if contentType != "" {
-		c.Header("Content-Type", contentType)
-	}
-	c.Header("Cache-Control", "public, s-maxage=31536000, max-age=31536000, must-revalidate")
-	if etag != "" {
-		c.Header("ETag", etag)
-	}
-
-	http.ServeContent(c.Writer, c.Request, params.Path, time.UnixMilli(mtime), bytes.NewReader(content))
 }
 
 // logError 记录错误日志，包含 Trace ID

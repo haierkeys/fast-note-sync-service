@@ -27,7 +27,16 @@ func NewVaultHandler(a *app.App) *VaultHandler {
 }
 
 // CreateOrUpdate 创建或更新仓库
-// 根据请求参数中的 ID 判断是创建还是更新操作
+// @Summary 创建或更新仓库
+// @Description 根据请求参数中的 ID 判断是创建新仓库还是更新已有仓库配置
+// @Tags 仓库
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.VaultPostRequest true "仓库参数"
+// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "成功"
+// @Router /api/vault [post]
 func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultPostRequest{}
@@ -76,6 +85,15 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 }
 
 // Get 获取仓库详情
+// @Summary 获取仓库详情
+// @Description 根据仓库 ID 获取特定仓库的配置详情
+// @Tags 仓库
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param id query int64 true "仓库 ID"
+// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "成功"
+// @Router /api/vault/get [get]
 func (h *VaultHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultGetRequest{}
@@ -105,6 +123,14 @@ func (h *VaultHandler) Get(c *gin.Context) {
 }
 
 // List 获取仓库列表
+// @Summary 获取仓库列表
+// @Description 获取当前用户所有的笔记仓库清单
+// @Tags 仓库
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=[]dto.VaultDTO} "成功"
+// @Router /api/vault [get]
 func (h *VaultHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 
@@ -130,6 +156,15 @@ func (h *VaultHandler) List(c *gin.Context) {
 }
 
 // Delete 删除仓库
+// @Summary 删除仓库
+// @Description 永久删除指定的笔记仓库及其关联的所有笔记和附件
+// @Tags 仓库
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.VaultGetRequest true "删除参数"
+// @Success 200 {object} pkgapp.Res "成功"
+// @Router /api/vault [delete]
 func (h *VaultHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultGetRequest{}

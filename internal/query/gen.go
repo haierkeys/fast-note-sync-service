@@ -23,6 +23,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		NoteHistory: newNoteHistory(db, opts...),
 		Setting:     newSetting(db, opts...),
 		User:        newUser(db, opts...),
+		UserShare:   newUserShare(db, opts...),
 		Vault:       newVault(db, opts...),
 	}
 }
@@ -35,6 +36,7 @@ type Query struct {
 	NoteHistory noteHistory
 	Setting     setting
 	User        user
+	UserShare   userShare
 	Vault       vault
 }
 
@@ -48,6 +50,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		NoteHistory: q.NoteHistory.clone(db),
 		Setting:     q.Setting.clone(db),
 		User:        q.User.clone(db),
+		UserShare:   q.UserShare.clone(db),
 		Vault:       q.Vault.clone(db),
 	}
 }
@@ -68,6 +71,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		NoteHistory: q.NoteHistory.replaceDB(db),
 		Setting:     q.Setting.replaceDB(db),
 		User:        q.User.replaceDB(db),
+		UserShare:   q.UserShare.replaceDB(db),
 		Vault:       q.Vault.replaceDB(db),
 	}
 }
@@ -78,6 +82,7 @@ type queryCtx struct {
 	NoteHistory INoteHistoryDo
 	Setting     ISettingDo
 	User        IUserDo
+	UserShare   IUserShareDo
 	Vault       IVaultDo
 }
 
@@ -88,6 +93,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		NoteHistory: q.NoteHistory.WithContext(ctx),
 		Setting:     q.Setting.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
+		UserShare:   q.UserShare.WithContext(ctx),
 		Vault:       q.Vault.WithContext(ctx),
 	}
 }

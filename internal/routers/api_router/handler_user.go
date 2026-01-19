@@ -27,7 +27,15 @@ func NewUserHandler(a *app.App) *UserHandler {
 }
 
 // Register 用户注册
-// 处理用户注册的 HTTP 请求，验证参数并调用 UserService
+// @Summary 用户注册
+// @Description 处理用户注册的 HTTP 请求，验证参数并调用 UserService
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Param params body dto.UserCreateRequest true "注册参数"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
+// @Failure 400 {object} pkgapp.Res "参数错误"
+// @Router /api/user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserCreateRequest{}
@@ -55,7 +63,15 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 // Login 用户登录
-// 处理用户登录的 HTTP 请求，验证参数并返回认证 Token
+// @Summary 用户登录
+// @Description 处理用户登录的 HTTP 请求，验证参数并返回认证 Token
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Param params body dto.UserLoginRequest true "登录参数"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
+// @Failure 400 {object} pkgapp.Res "参数错误"
+// @Router /api/user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserLoginRequest{}
@@ -84,7 +100,16 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 // UserChangePassword 修改用户密码
-// 处理修改用户密码的 HTTP 请求
+// @Summary 修改用户密码
+// @Description 处理当前登录用户修改密码的请求，验证旧密码并更新新密码
+// @Tags 用户
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.UserChangePasswordRequest true "修改密码参数"
+// @Success 200 {object} pkgapp.Res "成功"
+// @Router /api/user/change_password [post]
 func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserChangePasswordRequest{}
@@ -120,7 +145,16 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 }
 
 // UserInfo 获取用户信息
-// 处理获取当前用户信息的 HTTP 请求
+// @Summary 获取用户信息
+// @Description 处理获取当前用户信息的 HTTP 请求
+// @Tags 用户
+// @Accept json
+// @Produce json
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
+// @Failure 401 {object} pkgapp.Res "未授权"
+// @Router /api/user/info [get]
 func (h *UserHandler) UserInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 

@@ -5,10 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mime"
-	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -51,9 +47,6 @@ type NoteService interface {
 
 	// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
 	Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
-
-	// GetFileContent 获取笔记或附件文件的原始内容
-	GetFileContent(ctx context.Context, uid int64, params *dto.NoteGetRequest) ([]byte, string, int64, string, error)
 
 	// CountSizeSum 统计 vault 中笔记总数与总大小
 	CountSizeSum(ctx context.Context, vaultID int64, uid int64) error
@@ -397,13 +390,19 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 	// 获取旧笔记
 	oldNote, err := s.noteRepo.GetAllByPathHash(ctx, params.OldPathHash, vaultID, uid)
 	if err != nil {
-		return fmt.Errorf("old note not found: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return code.ErrorNoteNotFound
+		}
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 获取新笔记
 	newNote, err := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
-		return fmt.Errorf("new note not found: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return code.ErrorNoteNotFound
+		}
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 触发历史记录迁移
@@ -489,7 +488,7 @@ func (s *noteService) Cleanup(ctx context.Context, uid int64) error {
 
 	retentionDuration, err := util.ParseDuration(retentionTimeStr)
 	if err != nil {
-		return err
+		return code.ErrorInvalidParams.WithDetails("invalid SoftDeleteRetentionTime")
 	}
 
 	if retentionDuration <= 0 {
@@ -497,7 +496,11 @@ func (s *noteService) Cleanup(ctx context.Context, uid int64) error {
 	}
 
 	cutoffTime := time.Now().Add(-retentionDuration).UnixMilli()
-	return s.noteRepo.DeletePhysicalByTime(ctx, cutoffTime, uid)
+	err = s.noteRepo.DeletePhysicalByTime(ctx, cutoffTime, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }
 
 // CleanupByTime 按截止时间清理所有用户的过期软删除笔记
@@ -558,61 +561,6 @@ func (s *noteService) MigratePush(oldNoteID, newNoteID int64, uid int64) {
 // Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
 func (s *noteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
-}
-
-// GetFileContent 获取笔记或附件文件的原始内容
-// 返回值说明:
-//   - []byte: 文件原始数据
-//   - string: MIME 类型 (Content-Type)
-//   - int64: mtime (Last-Modified)
-//   - string: etag (Content-Hash)
-//   - error: 出错时返回错误
-func (s *noteService) GetFileContent(ctx context.Context, uid int64, params *dto.NoteGetRequest) ([]byte, string, int64, string, error) {
-	// 1. 获取仓库 ID
-	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
-	if err != nil {
-		return nil, "", 0, "", err
-	}
-
-	// 2. 确认路径哈希
-	pathHash := params.PathHash
-	if pathHash == "" {
-		pathHash = util.EncodeHash32(params.Path)
-	}
-
-	// 3. 优先尝试从 Note 表获取 (笔记/文本内容)
-	note, err := s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
-	if err == nil && note != nil {
-		// 笔记内容固定识别为 markdown
-		return []byte(note.Content), "text/markdown; charset=utf-8", note.Mtime, note.ContentHash, nil
-	}
-
-	// 4. 尝试从 File 表获取 (附件/二进制文件)
-	if s.fileRepo != nil {
-		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil && file != nil && file.Action != domain.FileActionDelete {
-			// 读取物理文件内容
-			content, err := os.ReadFile(file.SavePath)
-			if err != nil {
-				return nil, "", 0, "", fmt.Errorf("读取物理文件失败: %w", err)
-			}
-
-			// 识别文件 MIME 类型
-			ext := filepath.Ext(params.Path)
-			contentType := mime.TypeByExtension(ext)
-			if contentType == "" {
-				// 如果扩展名识别不到, 进行内容嗅探
-				contentType = http.DetectContentType(content)
-			}
-
-			// File 表没有 ContentHash 或不确定, 实时计算
-			etag := util.EncodeHash32(string(content))
-
-			return content, contentType, file.Mtime, etag, nil
-		}
-	}
-
-	return nil, "", 0, "", code.ErrorNoteNotFound
 }
 
 // 确保 noteService 实现了 NoteService 接口

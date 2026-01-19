@@ -43,9 +43,11 @@ buildDir = $(rootDir)/build
 # -------------------------
 # PHONY 目标
 # -------------------------
-.PHONY: all dev ver build-all run test clean push-online push-dev \
+.PHONY: all  build-all run test clean \
+        push-online push-dev \
         build-macos-amd64 build-macos-arm64 build-linux-amd64 \
-        build-linux-arm64 build-windows-amd64 gen gox-linux gox-all old-gen
+        build-linux-arm64 build-windows-amd64 gox-linux gox-all \
+		docs fmt update air dev ver gen
 
 # 默认目标
 all: test build-all
@@ -79,6 +81,9 @@ ver:
 gen:
 	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db.sqlite3
 	go run -v ./cmd/model_gen/gen.go
+
+docs:
+	go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -o ./docs --parseDependency --parseInternal
 
 # 运行
 run:

@@ -45,6 +45,12 @@ type webGUIAdminConfig struct {
 }
 
 // Config 获取 WebGUI 配置（公开接口，无需认证）
+// @Summary 获取 WebGUI 基础配置
+// @Description 获取前端展示所需的非敏感配置，如字体设置、是否开放注册等
+// @Tags 配置
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=webGUIConfig} "成功"
+// @Router /api/webgui/config [get]
 func (h *WebGUIHandler) Config(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
@@ -57,6 +63,15 @@ func (h *WebGUIHandler) Config(c *gin.Context) {
 }
 
 // GetConfig 获取管理员配置（需要管理员权限）
+// @Summary 获取管理员全量配置
+// @Description 获取系统底层的全量配置信息，需要管理员权限
+// @Tags 配置
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=webGUIAdminConfig} "成功"
+// @Failure 403 {object} pkgapp.Res "权限不足"
+// @Router /api/admin/config [get]
 func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
@@ -91,6 +106,17 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 }
 
 // UpdateConfig 更新管理员配置（需要管理员权限）
+// @Summary 更新管理员配置
+// @Description 修改系统底层的全量配置信息，需要管理员权限
+// @Tags 配置
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body webGUIAdminConfig true "配置参数"
+// @Success 200 {object} pkgapp.Res{data=webGUIAdminConfig} "成功"
+// @Failure 403 {object} pkgapp.Res "权限不足"
+// @Router /api/admin/config [post]
 func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 	params := &webGUIAdminConfig{}
 	response := pkgapp.NewResponse(c)

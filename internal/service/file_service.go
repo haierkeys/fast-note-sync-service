@@ -4,6 +4,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -11,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
@@ -57,20 +62,30 @@ type FileService interface {
 
 	// ResolveEmbedLinks 解析内容中的嵌入链接
 	ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, content string) (map[string]string, error)
+
+	// GetContent 获取笔记或附件文件的原始内容
+	GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error)
+
+	// WithClient 设置客户端信息
+	WithClient(name, version string) FileService
 }
 
 // fileService 实现 FileService 接口
 type fileService struct {
 	fileRepo     domain.FileRepository
+	noteRepo     domain.NoteRepository
 	vaultService VaultService
 	sf           *singleflight.Group
+	clientName   string
+	clientVer    string
 	config       *ServiceConfig
 }
 
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) FileService {
+func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, config *ServiceConfig) FileService {
 	return &fileService{
 		fileRepo:     fileRepo,
+		noteRepo:     noteRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
 		config:       config,
@@ -174,7 +189,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
 			err := s.fileRepo.UpdateMtime(ctx, params.Mtime, file.ID, uid)
 			if err != nil {
-				return isNew, nil, err
+				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			file.Mtime = params.Mtime
 			return isNew, s.domainToDTO(file), nil
@@ -201,7 +216,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 		updated, err := s.fileRepo.Update(ctx, file, uid)
 		if err != nil {
-			return isNew, nil, err
+			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -224,7 +239,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 	created, err := s.fileRepo.Create(ctx, newFile, uid)
 	if err != nil {
-		return isNew, nil, err
+		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -254,7 +269,7 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -269,14 +284,14 @@ func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListR
 		return nil, 0, err
 	}
 
-	files, err := s.fileRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid)
+	files, err := s.fileRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle, params.SortBy, params.SortOrder)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.fileRepo.ListCount(ctx, vaultID, uid)
+	count, err := s.fileRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var result []*dto.FileDTO
@@ -297,7 +312,7 @@ func (s *fileService) ListByLastTime(ctx context.Context, uid int64, params *dto
 
 	files, err := s.fileRepo.ListByUpdatedTimestamp(ctx, params.LastTime, vaultID, uid)
 	if err != nil {
-		return nil, err
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var results []*dto.FileDTO
@@ -319,7 +334,7 @@ func (s *fileService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 	_, err, _ := s.sf.Do(key, func() (any, error) {
 		result, err := s.fileRepo.CountSizeSum(ctx, vaultID, uid)
 		if err != nil {
-			return nil, err
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 		return nil, s.vaultService.UpdateFileStats(ctx, result.Size, result.Count, vaultID, uid)
 	})
@@ -352,6 +367,63 @@ func (s *fileService) Cleanup(ctx context.Context, uid int64) error {
 // CleanupByTime 按截止时间清理所有用户的过期软删除文件
 func (s *fileService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
 	return s.fileRepo.DeletePhysicalByTimeAll(ctx, cutoffTime)
+}
+
+// GetContent 获取笔记或附件文件的原始内容
+// 返回值说明:
+//   - []byte: 文件原始数据
+//   - string: MIME 类型 (Content-Type)
+//   - int64: mtime (Last-Modified)
+//   - string: etag (Content-Hash)
+//   - error: 出错时返回错误
+func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error) {
+	// 1. 获取仓库 ID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, "", 0, "", err
+	}
+
+	// 2. 确认路径哈希
+	pathHash := params.PathHash
+	if pathHash == "" {
+		pathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 3. 优先尝试从 Note 表获取 (笔记/文本内容)
+	if s.noteRepo != nil {
+		note, err := s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil && note != nil {
+			// 笔记内容固定识别为 markdown
+			return []byte(note.Content), "text/markdown; charset=utf-8", note.Mtime, note.ContentHash, nil
+		}
+	}
+
+	// 4. 尝试从 File 表获取 (附件/二进制文件)
+	if s.fileRepo != nil {
+		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil && file != nil && file.Action != domain.FileActionDelete {
+			// 读取物理文件内容
+			content, err := os.ReadFile(file.SavePath)
+			if err != nil {
+				return nil, "", 0, "", code.ErrorFileReadFailed.WithDetails(err.Error())
+			}
+
+			// 识别文件 MIME 类型
+			ext := filepath.Ext(params.Path)
+			contentType := mime.TypeByExtension(ext)
+			if contentType == "" {
+				// 如果扩展名识别不到, 进行内容嗅探
+				contentType = http.DetectContentType(content)
+			}
+
+			// File 表没有 ContentHash 或不确定, 实时计算
+			etag := util.EncodeHash32(string(content))
+
+			return content, contentType, file.Mtime, etag, nil
+		}
+	}
+
+	return nil, "", 0, "", code.ErrorNoteNotFound
 }
 
 // ResolveEmbedLinks 解析内容中的嵌入链接
@@ -399,8 +471,10 @@ func (s *fileService) ResolveEmbedLinks(ctx context.Context, uid int64, vaultNam
 	return resultMap, nil
 }
 
-// 确保 fileService 实现了 FileService 接口
-var _ FileService = (*fileService)(nil)
+// Sync 同步文件（ListByLastTime 的别名，用于 WebSocket 同步）
+func (s *fileService) Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error) {
+	return s.ListByLastTime(ctx, uid, params)
+}
 
 // UploadCheck 检查文件上传（UpdateCheck 的别名，用于 WebSocket 上传检查）
 func (s *fileService) UploadCheck(ctx context.Context, uid int64, params *dto.FileUpdateCheckRequest) (string, *dto.FileDTO, error) {
@@ -412,7 +486,18 @@ func (s *fileService) UploadComplete(ctx context.Context, uid int64, params *dto
 	return s.UpdateOrCreate(ctx, uid, params, true)
 }
 
-// Sync 同步文件（ListByLastTime 的别名，用于 WebSocket 同步）
-func (s *fileService) Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error) {
-	return s.ListByLastTime(ctx, uid, params)
+// WithClient 设置客户端信息，返回新的 FileService 实例
+func (s *fileService) WithClient(name, version string) FileService {
+	return &fileService{
+		fileRepo:     s.fileRepo,
+		noteRepo:     s.noteRepo,
+		vaultService: s.vaultService,
+		sf:           s.sf,
+		clientName:   name,
+		clientVer:    version,
+		config:       s.config,
+	}
 }
+
+// 确保 fileService 实现了 FileService 接口
+var _ FileService = (*fileService)(nil)

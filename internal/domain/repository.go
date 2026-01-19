@@ -117,6 +117,9 @@ type UserRepository interface {
 
 // FileRepository 文件仓储接口
 type FileRepository interface {
+	// GetByID 根据 ID 获取文件
+	GetByID(ctx context.Context, id, uid int64) (*File, error)
+
 	// GetByPathHash 根据路径哈希获取文件
 	GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*File, error)
 
@@ -145,10 +148,10 @@ type FileRepository interface {
 	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
 
 	// List 分页获取文件列表
-	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64) ([]*File, error)
+	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, sortBy string, sortOrder string) ([]*File, error)
 
 	// ListCount 获取文件数量
-	ListCount(ctx context.Context, vaultID, uid int64) (int64, error)
+	ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool) (int64, error)
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取文件列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*File, error)

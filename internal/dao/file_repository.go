@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -13,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -108,6 +110,16 @@ func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 		}
 	}
 	f.SavePath = standardPath
+}
+
+// GetByID 根据 ID 获取文件
+func (r *fileRepository) GetByID(ctx context.Context, id, uid int64) (*domain.File, error) {
+	u := r.file(uid).File
+	m, err := u.WithContext(ctx).Where(u.ID.Eq(id)).First()
+	if err != nil {
+		return nil, err
+	}
+	return r.toDomain(m, uid), nil
 }
 
 // GetByPathHash 根据路径哈希获取文件
@@ -310,12 +322,48 @@ func (r *fileRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp 
 }
 
 // List 分页获取文件列表
-func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64) ([]*domain.File, error) {
+func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, sortBy string, sortOrder string) ([]*domain.File, error) {
 	u := r.file(uid).File
-	modelList, err := u.WithContext(ctx).Where(
+	q := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
-		u.Action.Neq("delete"),
-	).Order(u.Path.Desc(), u.CreatedAt.Desc()).
+	)
+
+	if isRecycle {
+		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)))
+	} else {
+		q = q.Where(u.Action.Neq(string(domain.FileActionDelete)))
+	}
+
+	if keyword != "" {
+		q = q.Where(u.Path.Like("%" + keyword + "%"))
+	}
+
+	// 排序
+	var sortField field.OrderExpr
+	switch sortBy {
+	case "ctime":
+		sortField = u.Ctime
+	case "path":
+		sortField = u.Path
+	case "mtime":
+		fallthrough
+	default:
+		sortField = u.Mtime
+	}
+
+	var orderExpr field.Expr
+	if strings.ToLower(sortOrder) == "asc" {
+		orderExpr = sortField
+	} else {
+		orderExpr = sortField.Desc()
+	}
+
+	orderExprs := []field.Expr{orderExpr}
+	if sortBy != "path" {
+		orderExprs = append(orderExprs, u.Path)
+	}
+
+	modelList, err := q.Order(orderExprs...).
 		Limit(pageSize).
 		Offset(app.GetPageOffset(page, pageSize)).
 		Find()
@@ -332,14 +380,23 @@ func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize
 }
 
 // ListCount 获取文件数量
-func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64) (int64, error) {
+func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool) (int64, error) {
 	u := r.file(uid).File
-	count, err := u.WithContext(ctx).Where(
+	q := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
-		u.Action.Neq("delete"),
-	).Order(u.CreatedAt).
-		Count()
+	)
 
+	if isRecycle {
+		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)))
+	} else {
+		q = q.Where(u.Action.Neq(string(domain.FileActionDelete)))
+	}
+
+	if keyword != "" {
+		q = q.Where(u.Path.Like("%" + keyword + "%"))
+	}
+
+	count, err := q.Count()
 	if err != nil {
 		return 0, err
 	}
