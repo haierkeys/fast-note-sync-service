@@ -93,6 +93,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	r := gin.New()
 	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/webgui")
+	})
+	r.GET("/webgui/", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendIndexContent)
 	})
 

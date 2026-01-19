@@ -1,9 +1,9 @@
 package local_fs
 
 type Config struct {
-	IsEnabled      bool   `yaml:"is-enable"`
-	HttpfsIsEnable bool   `yaml:"httpfs-is-enable"`
-	SavePath       string `yaml:"save-path"`
+	IsEnabled      bool   `yaml:"is-enable" default:"true"`
+	HttpfsIsEnable bool   `yaml:"httpfs-is-enable" default:"true"`
+	SavePath       string `yaml:"save-path" default:"storage/uploads"`
 	CustomPath     string `yaml:"custom-path"`
 }
 
