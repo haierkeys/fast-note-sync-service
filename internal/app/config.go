@@ -144,7 +144,7 @@ type AppSettings struct {
 
 // WebGUIConfig Web GUI 配置
 type WebGUIConfig struct {
-	FontSet string `yaml:"font-set" json:"fontSet" default:"local"`
+	FontSet string `yaml:"font-set" json:"fontSet" default:""`
 }
 
 // TracerConfig 请求追踪配置

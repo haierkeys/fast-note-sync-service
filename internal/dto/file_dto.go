@@ -30,7 +30,12 @@ type FileUpdateRequest struct {
 type FileDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash"`
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+}
+
+// FileDeleteMessage 文件删除广播消息
+type FileDeleteMessage struct {
+	Path string `json:"path" form:"path"` // 路径信息（文件路径）
 }
 
 // FileSyncCheckRequest 同步检查单条记录的参数
