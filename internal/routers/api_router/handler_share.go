@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +12,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
-	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 )
 
@@ -89,59 +87,24 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 		return
 	}
 
-	// 获取授权信息
-	shareEntity := pkgapp.GetShareEntity(c)
-	if shareEntity == nil {
+	// 获取授权 Token
+	token, _ := c.Get("share_token")
+	shareToken, _ := token.(string)
+	if shareToken == "" {
 		response.ToResponse(code.ErrorInvalidAuthToken)
 		return
 	}
+
 	ctx := c.Request.Context()
-
-	// 获取分享信息以确认资源归属和权限
-	share, err := h.App.ShareRepo.GetByID(ctx, shareEntity.SID)
+	noteDTO, err := h.App.ShareService.GetSharedNote(ctx, shareToken, params.ID)
 	if err != nil {
-		h.logError(ctx, "ShareHandler.GetShared.GetShare", err)
-		response.ToResponse(code.ErrorShareNotFound)
-		return
-	}
-
-	// 验证资源 ID 是否在授权列表中
-	ids, ok := share.Resources["note"]
-	ridStr := strconv.FormatInt(params.ID, 10)
-	authorized := false
-	if ok {
-		for _, id := range ids {
-			if id == ridStr {
-				authorized = true
-				break
-			}
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			h.logError(ctx, "ShareHandler.NoteGet", err)
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
 		}
-	}
-
-	if !authorized {
-		response.ToResponse(code.ErrorInvalidAuthToken)
 		return
-	}
-
-	// 直接通过 ID 获取笔记 (使用资源所有者的 UID)
-	note, err := h.App.NoteRepo.GetByID(ctx, params.ID, share.UID)
-	if err != nil {
-		h.logError(ctx, "ShareHandler.GetShared.GetNote", err)
-		response.ToResponse(code.ErrorNoteNotFound)
-		return
-	}
-
-	noteDTO := &dto.NoteDTO{
-		ID:               note.ID,
-		Path:             note.Path,
-		Content:          note.Content,
-		ContentHash:      note.ContentHash,
-		Version:          note.Version,
-		Ctime:            note.Ctime,
-		Mtime:            note.Mtime,
-		UpdatedTimestamp: note.UpdatedTimestamp,
-		UpdatedAt:        timex.Time(note.UpdatedAt),
-		CreatedAt:        timex.Time(note.CreatedAt),
 	}
 
 	response.ToResponse(code.Success.WithData(noteDTO))
@@ -168,59 +131,24 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
-	// 获取授权信息
-	shareEntity := pkgapp.GetShareEntity(c)
-	if shareEntity == nil {
+	// 获取授权 Token
+	token, _ := c.Get("share_token")
+	shareToken, _ := token.(string)
+	if shareToken == "" {
 		response.ToResponse(code.ErrorInvalidAuthToken)
 		return
 	}
+
 	ctx := c.Request.Context()
+	content, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFile(ctx, shareToken, params.ID)
 
-	// 获取分享信息以确认资源归属和权限
-	share, err := h.App.ShareRepo.GetByID(ctx, shareEntity.SID)
 	if err != nil {
-		h.logError(ctx, "ShareHandler.GetSharedContent.GetShare", err)
-		response.ToResponse(code.ErrorShareNotFound)
-		return
-	}
-
-	// 验证资源 ID 是否在授权列表中
-	ids, ok := share.Resources["file"]
-	ridStr := strconv.FormatInt(params.ID, 10)
-	authorized := false
-	if ok {
-		for _, id := range ids {
-			if id == ridStr {
-				authorized = true
-				break
-			}
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			h.logError(ctx, "ShareHandler.FileGet", err)
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
 		}
-	}
-
-	if !authorized {
-		response.ToResponse(code.ErrorInvalidAuthToken)
-		return
-	}
-
-	// 1. 先通过 ID 从 Repo 获取文件元数据 (使用资源所有者的 UID)
-	file, err := h.App.FileRepo.GetByID(ctx, params.ID, share.UID)
-	if err != nil {
-		h.logError(ctx, "ShareHandler.GetSharedContent.GetFile", err)
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
-
-	// 2. 调用 Service 获取实际内容
-	fileSvc := h.App.GetFileService(app.WebClientName, "")
-	content, contentType, mtime, etag, err := fileSvc.GetContent(ctx, share.UID, &dto.FileGetRequest{
-		Vault:    "", // 对于 ID 查询，Vault 为空
-		Path:     file.Path,
-		PathHash: file.PathHash,
-	})
-
-	if err != nil {
-		h.logError(ctx, "ShareHandler.GetSharedContent.Svc", err)
-		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
 
@@ -238,7 +166,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		c.Header("ETag", etag)
 	}
 
-	http.ServeContent(c.Writer, c.Request, file.Path, time.UnixMilli(mtime), bytes.NewReader(content))
+	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), bytes.NewReader(content))
 }
 
 // logError 记录错误日志，包含 Trace ID

@@ -42,49 +42,46 @@ func (r *noteRepository) note(uid int64) *query.Query {
 
 // EnsureFTSIndex 确保 FTS 索引存在（公开方法，可手动调用）
 func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
-	key := r.GetKey(uid)
-	ftsKey := key + "#fts_indexed"
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		key := r.GetKey(uid)
+		ftsKey := key + "#fts_indexed"
 
-	// 使用 onceKeys 确保每个用户只检查一次
-	if _, loaded := r.dao.onceKeys.LoadOrStore(ftsKey, true); loaded {
-		return nil // 已检查过
-	}
+		// 使用 onceKeys 确保每个用户只检查一次
+		if _, loaded := r.dao.onceKeys.LoadOrStore(ftsKey, true); loaded {
+			return nil // 已检查过
+		}
 
-	db := r.dao.UseKey(key)
-	if db == nil {
+		// 确保 FTS 表存在（会自动检查版本并重建）
+		_ = model.CreateNoteFTSTable(db)
+
+		// 检查 FTS 表是否为空
+		var ftsCount int64
+		db.Raw("SELECT COUNT(*) FROM note_fts").Scan(&ftsCount)
+		if ftsCount > 0 {
+			return nil // 已有索引
+		}
+
+		// 检查是否有笔记需要索引
+		var noteCount int64
+		db.Model(&model.Note{}).Where("action != ?", "delete").Count(&noteCount)
+		if noteCount == 0 {
+			return nil
+		}
+
+		// 同步重建索引
+		var notes []model.Note
+		if err := db.Where("action != ?", "delete").Find(&notes).Error; err != nil {
+			return err
+		}
+
+		for _, note := range notes {
+			folder := r.dao.GetNoteFolderPath(uid, note.ID)
+			content, _, _ := r.dao.LoadContentFromFile(folder, "content.txt")
+			r.upsertFTS(db, note.ID, note.Path, content)
+		}
+
 		return nil
-	}
-
-	// 确保 FTS 表存在（会自动检查版本并重建）
-	_ = model.CreateNoteFTSTable(db)
-
-	// 检查 FTS 表是否为空
-	var ftsCount int64
-	db.Raw("SELECT COUNT(*) FROM note_fts").Scan(&ftsCount)
-	if ftsCount > 0 {
-		return nil // 已有索引
-	}
-
-	// 检查是否有笔记需要索引
-	var noteCount int64
-	db.Model(&model.Note{}).Where("action != ?", "delete").Count(&noteCount)
-	if noteCount == 0 {
-		return nil
-	}
-
-	// 同步重建索引
-	var notes []model.Note
-	if err := db.Where("action != ?", "delete").Find(&notes).Error; err != nil {
-		return err
-	}
-
-	for _, note := range notes {
-		folder := r.dao.GetNoteFolderPath(uid, note.ID)
-		content, _, _ := r.dao.LoadContentFromFile(folder, "content.txt")
-		r.upsertFTS(db, note.ID, note.Path, content)
-	}
-
-	return nil
+	})
 }
 
 // toDomain 将 DAO Note 转换为领域模型

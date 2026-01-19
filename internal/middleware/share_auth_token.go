@@ -63,6 +63,7 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 
 		// 验证 Token 及其在数据库中的生效状态
 		entity, err := shareService.VerifyShare(c.Request.Context(), token, rid, rtp)
+
 		if err != nil {
 			switch err {
 			case domain.ErrShareCancelled:

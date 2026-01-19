@@ -38,6 +38,11 @@ func TestTokenManager_ShareGenerateAndParse(t *testing.T) {
 		t.Errorf("Expected SID %d, got %d", shareID, parsedClaims.SID)
 	}
 
+	// 验证 UID
+	if parsedClaims.UID != uid {
+		t.Errorf("Expected UID %d, got %d", uid, parsedClaims.UID)
+	}
+
 	// 验证 ExpiresAt (由于只存了秒级 Unix 戳，允许 1 秒内的误差)
 	now := time.Now()
 	expectedExp := now.Add(cfg.ShareExpiry)

@@ -1592,9 +1592,6 @@ const docTemplate = `{
                 "ctime": {
                     "type": "integer"
                 },
-                "id": {
-                    "type": "integer"
-                },
                 "lastTime": {
                     "type": "integer"
                 },
