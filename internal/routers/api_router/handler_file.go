@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
@@ -23,9 +24,9 @@ type FileHandler struct {
 }
 
 // NewFileHandler 创建 FileHandler 实例
-func NewFileHandler(a *app.App) *FileHandler {
+func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 	return &FileHandler{
-		Handler: NewHandler(a),
+		Handler: NewHandlerWithWSS(a, wss),
 	}
 }
 
@@ -162,6 +163,8 @@ func (h *FileHandler) Delete(c *gin.Context) {
 
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
+
+	dump.P(params)
 	if !valid {
 		h.App.Logger().Error("FileHandler.Delete.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
@@ -194,6 +197,8 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(file))
+	fileDeleteMessage := &dto.FileDeleteMessage{Path: file.Path}
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), "FileSyncDelete")
 }
 
 // logError 记录错误日志，包含 Trace ID

@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/haierkeys/fast-note-sync-service/docs"
@@ -92,12 +93,18 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
 
 	r := gin.New()
+
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/webgui")
 	})
 	r.GET("/webgui/", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendIndexContent)
 	})
+
+	userStaticPath := "storage/user_static"
+	if _, err := os.Stat(userStaticPath); os.IsNotExist(err) {
+		_ = os.MkdirAll(userStaticPath, os.ModePerm)
+	}
 
 	cacheMiddleware := func(c *gin.Context) {
 		// 设置强缓存，缓存一年
@@ -107,6 +114,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	r.Group("/assets", cacheMiddleware).StaticFS("/", http.FS(frontendAssets))
 	r.Group("/static", cacheMiddleware).StaticFS("/", http.FS(frontendStatic))
+	r.Group("/user_static", cacheMiddleware).Static("/", userStaticPath)
 
 	api := r.Group("/api")
 	{
@@ -124,7 +132,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		userHandler := api_router.NewUserHandler(appContainer)
 		vaultHandler := api_router.NewVaultHandler(appContainer)
 		noteHandler := api_router.NewNoteHandler(appContainer, wss)
-		fileHandler := api_router.NewFileHandler(appContainer)
+		fileHandler := api_router.NewFileHandler(appContainer, wss)
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
 		webGUIHandler := api_router.NewWebGUIHandler(appContainer)

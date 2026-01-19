@@ -142,10 +142,6 @@ type FileSyncMtimeMessage struct {
 	Mtime int64  `json:"mtime" ` // 修改时间
 }
 
-type FileDeleteMessage struct {
-	Path string `json:"path" form:"path"` // 路径信息（文件路径）
-}
-
 // FileUploadCheck 检查文件上传请求，初始化上传会话或确认无需上传。
 func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.FileUpdateCheckRequest{}
@@ -374,7 +370,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	c.ToResponse(code.Success)
 
-	fileDeleteMessage := convert.StructAssign(fileSvc, &FileDeleteMessage{}).(*FileDeleteMessage)
+	fileDeleteMessage := convert.StructAssign(fileSvc, &dto.FileDeleteMessage{}).(*dto.FileDeleteMessage)
 	// 广播文件删除消息
 	c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
 }
