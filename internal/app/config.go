@@ -37,7 +37,7 @@ type LogConfig struct {
 	// File 日志文件路径，默认为 stderr
 	File string `yaml:"file" default:"storage/logs/log.log"`
 	// Production 是否启用 JSON 输出
-	Production bool `yaml:"production" default:"true"`
+	Production bool `yaml:"production"`
 }
 
 // ServerConfig 服务器配置
@@ -80,7 +80,7 @@ type DatabaseConfig struct {
 	// TablePrefix 表前缀
 	TablePrefix string `yaml:"table-prefix"`
 	// AutoMigrate 是否启用自动迁移
-	AutoMigrate bool `yaml:"auto-migrate" default:"true"`
+	AutoMigrate bool `yaml:"auto-migrate"`
 	// Charset 字符集
 	Charset string `yaml:"charset"`
 	// ParseTime 是否解析时间
@@ -98,7 +98,7 @@ type DatabaseConfig struct {
 // UserConfig 用户配置
 type UserConfig struct {
 	// RegisterIsEnable 注册是否启用
-	RegisterIsEnable bool `yaml:"register-is-enable" default:"true"`
+	RegisterIsEnable bool `yaml:"register-is-enable"`
 	// AdminUID 管理员 UID，0 表示不限制管理员访问
 	AdminUID int `yaml:"admin-uid" default:"0"`
 }
