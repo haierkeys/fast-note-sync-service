@@ -4,7 +4,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -150,16 +149,19 @@ func (s *noteHistoryService) List(ctx context.Context, uid int64, params *dto.No
 	// 获取笔记 ID
 	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, pathHash, vaultID, uid, params.IsRecycle)
 	if err != nil {
-		return nil, 0, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, 0, code.ErrorNoteNotFound
+		}
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	if note == nil {
-		return nil, 0, fmt.Errorf("note not found")
+		return nil, 0, code.ErrorNoteNotFound
 	}
 
 	// 获取历史记录列表
 	histories, count, err := s.historyRepo.ListByNoteID(ctx, note.ID, pager.Page, pager.PageSize, uid)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var results []*dto.NoteHistoryNoContentDTO
@@ -173,7 +175,10 @@ func (s *noteHistoryService) List(ctx context.Context, uid int64, params *dto.No
 func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid int64) error {
 	note, err := s.noteRepo.GetByID(ctx, noteID, uid)
 	if err != nil {
-		return fmt.Errorf("noteRepo.GetByID: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return code.ErrorNoteNotFound
+		}
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	if note.Content == note.ContentLastSnapshot {
@@ -187,7 +192,7 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 
 	latestVersion, err := s.historyRepo.GetLatestVersion(ctx, note.ID, uid)
 	if err != nil {
-		return fmt.Errorf("historyRepo.GetLatestVersion: %w", err)
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	history := &domain.NoteHistory{
@@ -204,7 +209,7 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 
 	_, err = s.historyRepo.Create(ctx, history, uid)
 	if err != nil {
-		return fmt.Errorf("historyRepo.Create: %w", err)
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// 更新 ContentLastSnapshot
@@ -301,7 +306,7 @@ func (s *noteHistoryService) CleanupByTime(ctx context.Context, cutoffTime int64
 	// 获取所有用户 UID
 	uids, err := s.userRepo.GetAllUIDs(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get all UIDs: %w", err)
+		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var totalCleaned int64

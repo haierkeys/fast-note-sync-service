@@ -193,7 +193,11 @@ func (s *userService) ChangePassword(ctx context.Context, uid int64, params *dto
 	}
 
 	// 更新密码
-	return s.userRepo.UpdatePassword(ctx, password, uid)
+	err = s.userRepo.UpdatePassword(ctx, password, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }
 
 // GetInfo 获取用户信息
@@ -216,7 +220,11 @@ func (s *userService) GetInfo(ctx context.Context, uid int64) (*dto.UserDTO, err
 
 // GetAllUIDs 获取所有用户的 UID
 func (s *userService) GetAllUIDs(ctx context.Context) ([]int64, error) {
-	return s.userRepo.GetAllUIDs(ctx)
+	uids, err := s.userRepo.GetAllUIDs(ctx)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return uids, nil
 }
 
 // 确保 userService 实现了 UserService 接口

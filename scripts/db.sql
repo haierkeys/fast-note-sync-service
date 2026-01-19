@@ -25,8 +25,6 @@ CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
 /*
  动作 create modify delete
  */
-
-
 DROP TABLE IF EXISTS "note";
 
 CREATE TABLE "note" (
@@ -149,3 +147,24 @@ CREATE INDEX "idx_setting_id_updated_at" ON "setting" ("id", "updated_at" DESC);
 CREATE INDEX "idx_setting_id_updated_timestamp" ON "setting" ("id", "updated_timestamp" DESC);
 
 CREATE INDEX `idx_setting_id_path` ON `setting`(`id`, `path`);
+
+DROP TABLE IF EXISTS "user_share";
+
+CREATE TABLE "user_share" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "res" text NOT NULL DEFAULT '',
+    -- 资源列表 (JSON: {"note":["id1"],"file":["id2"]})
+    "status" integer DEFAULT 1,
+    -- 1-有效, 2-已撤销
+    "view_count" integer DEFAULT 0,
+    -- 访问次数
+    "last_viewed_at" datetime DEFAULT NULL,
+    "expires_at" datetime DEFAULT NULL,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
+
+CREATE INDEX "idx_user_share_rid" ON "user_share" ("rid");

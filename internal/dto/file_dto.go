@@ -56,24 +56,29 @@ type FileUploadCompleteRequest struct {
 
 // FileGetRequest 用于获取单条文件的请求参数
 type FileGetRequest struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"`
-	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash"`
+	Vault     string `json:"vault" form:"vault" binding:"required"`
+	Path      string `json:"path" form:"path" binding:"required"`
+	PathHash  string `json:"pathHash" form:"pathHash"`
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
 }
 
 // FileListRequest 获取文件列表的分页参数
 type FileListRequest struct {
-	Vault string `json:"vault" form:"vault" binding:"required"`
+	Vault     string `json:"vault" form:"vault" binding:"required"`
+	Keyword   string `json:"keyword" form:"keyword"`
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
+	SortBy    string `json:"sortBy" form:"sortBy"`       // 排序字段: mtime(默认), ctime, path
+	SortOrder string `json:"sortOrder" form:"sortOrder"` // 排序方向: desc(默认), asc
 }
 
 // FileDTO 文件数据传输对象
 type FileDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"-" form:"action"`
+	ID               int64      `json:"-"`
+	Action           string     `json:"-"`
 	Path             string     `json:"path" form:"path"`
 	PathHash         string     `json:"pathHash" form:"pathHash"`
 	ContentHash      string     `json:"contentHash" form:"contentHash"`
-	SavePath         string     `json:"savePath" form:"savePath"`
+	SavePath         string     `json:"-"`
 	Size             int64      `json:"size" form:"size"`
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`

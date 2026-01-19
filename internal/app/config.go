@@ -55,8 +55,11 @@ type ServerConfig struct {
 
 // SecurityConfig 安全配置
 type SecurityConfig struct {
-	AuthTokenKey string `yaml:"auth-token-key"`
-	TokenExpiry  string `yaml:"token-expiry"` // Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟）
+	AuthTokenKey  string `yaml:"auth-token-key"`
+	TokenExpiry   string `yaml:"token-expiry"` // Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟）
+	ShareTokenKey string `yaml:"share-token-key"`
+	// ShareTokenExpiry 分享 Token 过期时间
+	ShareTokenExpiry string `yaml:"share-token-expiry"`
 }
 
 // DatabaseConfig 数据库配置
@@ -233,5 +236,15 @@ func (c *AppConfig) GetTokenExpiry() time.Duration {
 			return expiry
 		}
 	}
-	return 7 * 24 * time.Hour // 默认 7 天
+	return 365 * 24 * time.Hour // 默认 365 天
+}
+
+// GetShareTokenExpiry 获取分享 Token 过期时间
+func (c *AppConfig) GetShareTokenExpiry() time.Duration {
+	if c.Security.ShareTokenExpiry != "" {
+		if expiry, err := util.ParseDuration(c.Security.ShareTokenExpiry); err == nil {
+			return expiry
+		}
+	}
+	return 30 * 24 * time.Hour // 默认 30 天
 }

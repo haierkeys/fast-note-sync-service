@@ -1,8 +1,11 @@
+
 package model
 
 import (
 	"gorm.io/gorm"
 )
+
+
 
 func AutoMigrate(db *gorm.DB, key string) error {
 	if db == nil {
@@ -25,10 +28,11 @@ func AutoMigrate(db *gorm.DB, key string) error {
 	case "User":
 		return db.AutoMigrate(User{})
 
+	case "UserShare":
+		return db.AutoMigrate(UserShare{})
+
 	case "Vault":
 		return db.AutoMigrate(Vault{})
-	case "":
-
 	}
 	return nil
 }

@@ -57,7 +57,7 @@ func AutoMigrate(db *gorm.DB, key string) error {
 			goContent += strings.ReplaceAll(goContentFunc, "{NAME}", field.Name)
 			//goContentHeader += fmt.Sprintf("type %s = %s\n", field.Name, field.Type.Name())
 		}
-		goContent += "\tcase \"\":\n\t\treturn db.AutoMigrate(" + strings.Join(fields, ", ") + ")"
+		//goContent += "\tcase \"\":\n\t\treturn db.AutoMigrate(" + strings.Join(fields, ", ") + ")"
 		goContent += "\t}\n\treturn nil\n}"
 
 		_ = os.WriteFile(g.OutPath[0:len(g.OutPath)-6]+"/model/model.go", []byte(goContent), os.ModePerm)

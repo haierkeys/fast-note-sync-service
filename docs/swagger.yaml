@@ -1,0 +1,1205 @@
+basePath: /
+definitions:
+  api_router.webGUIAdminConfig:
+    properties:
+      adminUid:
+        type: integer
+      authTokenKey:
+        type: string
+      fileChunkSize:
+        type: string
+      fontSet:
+        type: string
+      historyKeepVersions:
+        type: integer
+      historySaveDelay:
+        type: string
+      registerIsEnable:
+        type: boolean
+      softDeleteRetentionTime:
+        type: string
+      uploadSessionTimeout:
+        type: string
+    type: object
+  api_router.webGUIConfig:
+    properties:
+      adminUid:
+        type: integer
+      fontSet:
+        type: string
+      registerIsEnable:
+        type: boolean
+    type: object
+  app.Res:
+    properties:
+      code:
+        type: integer
+      context: {}
+      data: {}
+      details: {}
+      message: {}
+      status:
+        type: boolean
+      vault: {}
+    type: object
+  diffmatchpatch.Diff:
+    properties:
+      text:
+        type: string
+      type:
+        $ref: '#/definitions/diffmatchpatch.Operation'
+    type: object
+  diffmatchpatch.Operation:
+    enum:
+    - -1
+    - 1
+    - 0
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - DiffDelete
+    - DiffInsert
+    - DiffEqual
+  dto.FileDTO:
+    properties:
+      contentHash:
+        type: string
+      ctime:
+        type: integer
+      lastTime:
+        type: integer
+      mtime:
+        type: integer
+      path:
+        type: string
+      pathHash:
+        type: string
+      size:
+        type: integer
+    type: object
+  dto.NoteDTO:
+    properties:
+      content:
+        type: string
+      contentHash:
+        type: string
+      ctime:
+        type: integer
+      id:
+        type: integer
+      lastTime:
+        type: integer
+      mtime:
+        type: integer
+      path:
+        type: string
+      pathHash:
+        type: string
+      version:
+        type: integer
+    type: object
+  dto.NoteHistoryDTO:
+    properties:
+      clientName:
+        type: string
+      content:
+        type: string
+      contentHash:
+        type: string
+      createdAt:
+        type: string
+      diffs:
+        items:
+          $ref: '#/definitions/diffmatchpatch.Diff'
+        type: array
+      id:
+        type: integer
+      noteId:
+        type: integer
+      path:
+        type: string
+      vaultId:
+        type: integer
+      version:
+        type: integer
+    type: object
+  dto.NoteHistoryRestoreRequest:
+    properties:
+      historyId:
+        type: integer
+      vault:
+        type: string
+    required:
+    - historyId
+    - vault
+    type: object
+  dto.NoteModifyOrCreateRequest:
+    properties:
+      baseHash:
+        type: string
+      baseHashMissing:
+        description: 标记 baseHash 是否不可用
+        type: boolean
+      content:
+        type: string
+      contentHash:
+        type: string
+      ctime:
+        type: integer
+      mtime:
+        type: integer
+      oldPath:
+        type: string
+      oldPathHash:
+        type: string
+      path:
+        type: string
+      pathHash:
+        type: string
+      srcPath:
+        type: string
+      srcPathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.NoteRestoreRequest:
+    properties:
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.NoteWithFileLinksResponse:
+    properties:
+      content:
+        type: string
+      contentHash:
+        type: string
+      createdAt: {}
+      ctime:
+        type: integer
+      fileLinks:
+        additionalProperties:
+          type: string
+        type: object
+      id:
+        type: integer
+      mtime:
+        type: integer
+      path:
+        type: string
+      pathHash:
+        type: string
+      updatedAt: {}
+      updatedTimestamp:
+        type: integer
+      version:
+        type: integer
+    type: object
+  dto.ShareCreateRequest:
+    properties:
+      path:
+        description: 资源路径
+        type: string
+      path_hash:
+        description: 资源路径 Hash
+        type: string
+      vault:
+        description: 仓库名称
+        example: defaultVault
+        type: string
+    required:
+    - path
+    - path_hash
+    - vault
+    type: object
+  dto.ShareCreateResponse:
+    properties:
+      expires_at:
+        description: 过期时间
+        type: string
+      id:
+        description: 笔记或附件表的 ID (主资源 ID)
+        type: integer
+      token:
+        description: 分享 Token
+        type: string
+      type:
+        description: '资源类型: note 或 file'
+        type: string
+    type: object
+  dto.UserChangePasswordRequest:
+    properties:
+      confirmPassword:
+        type: string
+      oldPassword:
+        type: string
+      password:
+        type: string
+    required:
+    - confirmPassword
+    - oldPassword
+    - password
+    type: object
+  dto.UserCreateRequest:
+    properties:
+      confirmPassword:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - confirmPassword
+    - email
+    - password
+    - username
+    type: object
+  dto.UserDTO:
+    properties:
+      avatar:
+        type: string
+      createdAt:
+        type: string
+      email:
+        type: string
+      token:
+        type: string
+      uid:
+        type: integer
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.UserLoginRequest:
+    properties:
+      credentials:
+        type: string
+      password:
+        type: string
+    required:
+    - credentials
+    - password
+    type: object
+  dto.VaultDTO:
+    properties:
+      createdAt:
+        type: string
+      fileCount:
+        type: integer
+      fileSize:
+        type: integer
+      id:
+        type: integer
+      noteCount:
+        type: integer
+      noteSize:
+        type: integer
+      size:
+        type: integer
+      updatedAt:
+        type: string
+      vault:
+        type: string
+    type: object
+  dto.VaultPostRequest:
+    properties:
+      id:
+        type: integer
+      vault:
+        type: string
+    required:
+    - vault
+    type: object
+host: localhost:9000
+info:
+  contact:
+    email: haierkeys@gmail.com
+    name: Haierkeys
+    url: https://github.com/haierkeys
+  description: This is the Fast Note Sync Service HTTP API.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Fast Note Sync Service HTTP API
+  version: "1.0"
+paths:
+  /api/admin/config:
+    get:
+      description: 获取系统底层的全量配置信息，需要管理员权限
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.webGUIAdminConfig'
+              type: object
+        "403":
+          description: 权限不足
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: 获取管理员全量配置
+      tags:
+      - 配置
+    post:
+      consumes:
+      - application/json
+      description: 修改系统底层的全量配置信息，需要管理员权限
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 配置参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/api_router.webGUIAdminConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.webGUIAdminConfig'
+              type: object
+        "403":
+          description: 权限不足
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: 更新管理员配置
+      tags:
+      - 配置
+  /api/file:
+    delete:
+      description: 永久删除指定的附件记录及其物理文件
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FileDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 删除附件
+      tags:
+      - 附件
+    get:
+      description: 根据路径获取附件的原始二进制数据，支持强缓存控制
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 成功
+          schema:
+            type: file
+      security:
+      - UserAuthToken: []
+      summary: 获取附件内容
+      tags:
+      - 附件
+  /api/files:
+    get:
+      description: 分页并支持搜索、过滤、排序地获取当前用户的附件列表
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: keyword
+        type: string
+      - description: '排序字段: mtime(默认), ctime, path'
+        in: query
+        name: sortBy
+        type: string
+      - description: '排序方向: desc(默认), asc'
+        in: query
+        name: sortOrder
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.FileDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取文件列表
+      tags:
+      - 附件
+  /api/note:
+    delete:
+      description: 将笔记移至回收站
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 删除笔记
+      tags:
+      - 笔记
+    get:
+      description: 根据路径或路径哈希获取单条笔记的具体内容和元数据
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteWithFileLinksResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取笔记详情
+      tags:
+      - 笔记
+    post:
+      consumes:
+      - application/json
+      description: 处理笔记的新增、修改或重命名（通过路径变化识别）
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 笔记内容
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteModifyOrCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 创建或更新笔记
+      tags:
+      - 笔记
+  /api/note/histories:
+    get:
+      description: 分页获取特定笔记的所有历史修改记录
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.NoteHistoryDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取笔记历史列表
+      tags:
+      - 笔记历史
+  /api/note/history:
+    get:
+      description: 根据历史记录 ID 获取单条特定的笔记历史内容
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 历史记录 ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteHistoryDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取笔记历史详情
+      tags:
+      - 笔记历史
+  /api/note/history/restore:
+    put:
+      consumes:
+      - application/json
+      description: 将笔记内容恢复到指定的历史版本
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 恢复参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteHistoryRestoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 从历史版本恢复笔记
+      tags:
+      - 笔记历史
+  /api/note/restore:
+    put:
+      description: 从回收站恢复被删除的笔记
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 恢复参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteRestoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 恢复笔记
+      tags:
+      - 笔记
+  /api/notes:
+    get:
+      description: 分页获取当前用户的笔记列表
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: keyword
+        type: string
+      - description: 是否搜索内容
+        in: query
+        name: searchContent
+        type: boolean
+      - description: '搜索模式: path(默认), content, regex'
+        in: query
+        name: searchMode
+        type: string
+      - description: '排序字段: mtime(默认), ctime, path'
+        in: query
+        name: sortBy
+        type: string
+      - description: '排序方向: desc(默认), asc'
+        in: query
+        name: sortOrder
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.NoteDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取笔记列表
+      tags:
+      - 笔记
+  /api/share:
+    post:
+      consumes:
+      - application/json
+      description: 为指定的笔记或附件创建分享令牌，自动解析笔记中的附件引用并授权
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 分享参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShareCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ShareCreateResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 创建资源分享
+      tags:
+      - 分享
+  /api/share/file:
+    get:
+      description: 通过分享 Token 授权后，获取特定附件的原始二进制数据
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: Share-Token
+        required: true
+        type: string
+      - description: 资源 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 成功
+          schema:
+            type: file
+      security:
+      - ShareAuthToken: []
+      summary: 获取分享的附件内容
+      tags:
+      - 分享
+  /api/share/note:
+    get:
+      description: 通过分享 Token 授权后，获取特定笔记内容（受限只读访问）
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: Share-Token
+        required: true
+        type: string
+      - description: 资源 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - ShareAuthToken: []
+      summary: 获取被分享的笔记详情
+      tags:
+      - 分享
+  /api/user/change_password:
+    post:
+      consumes:
+      - application/json
+      description: 处理当前登录用户修改密码的请求，验证旧密码并更新新密码
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 修改密码参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: 修改用户密码
+      tags:
+      - 用户
+  /api/user/info:
+    get:
+      consumes:
+      - application/json
+      description: 处理获取当前用户信息的 HTTP 请求
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserDTO'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: 获取用户信息
+      tags:
+      - 用户
+  /api/user/login:
+    post:
+      consumes:
+      - application/json
+      description: 处理用户登录的 HTTP 请求，验证参数并返回认证 Token
+      parameters:
+      - description: 登录参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserDTO'
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/app.Res'
+      summary: 用户登录
+      tags:
+      - 用户
+  /api/user/register:
+    post:
+      consumes:
+      - application/json
+      description: 处理用户注册的 HTTP 请求，验证参数并调用 UserService
+      parameters:
+      - description: 注册参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserDTO'
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/app.Res'
+      summary: 用户注册
+      tags:
+      - 用户
+  /api/vault:
+    delete:
+      description: 永久删除指定的笔记仓库及其关联的所有笔记和附件
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        minimum: 1
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: 删除仓库
+      tags:
+      - 仓库
+    get:
+      description: 获取当前用户所有的笔记仓库清单
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.VaultDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取仓库列表
+      tags:
+      - 仓库
+    post:
+      consumes:
+      - application/json
+      description: 根据请求参数中的 ID 判断是创建新仓库还是更新已有仓库配置
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 仓库参数
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VaultPostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.VaultDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 创建或更新仓库
+      tags:
+      - 仓库
+  /api/vault/get:
+    get:
+      description: 根据仓库 ID 获取特定仓库的配置详情
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 仓库 ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.VaultDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取仓库详情
+      tags:
+      - 仓库
+  /api/version:
+    get:
+      description: 获取服务端当前的软件版本、Git 标签和构建时间
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      summary: 获取服务端版本信息
+      tags:
+      - 系统
+  /api/webgui/config:
+    get:
+      description: 获取前端展示所需的非敏感配置，如字体设置、是否开放注册等
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.webGUIConfig'
+              type: object
+      summary: 获取 WebGUI 基础配置
+      tags:
+      - 配置
+securityDefinitions:
+  ShareAuthToken:
+    in: header
+    name: Share-Token
+    type: apiKey
+  UserAuthToken:
+    in: header
+    name: token
+    type: apiKey
+swagger: "2.0"

@@ -17,6 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/lxzan/gws"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
@@ -119,9 +121,11 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		userHandler := api_router.NewUserHandler(appContainer)
 		vaultHandler := api_router.NewVaultHandler(appContainer)
 		noteHandler := api_router.NewNoteHandler(appContainer, wss)
+		fileHandler := api_router.NewFileHandler(appContainer)
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
 		webGUIHandler := api_router.NewWebGUIHandler(appContainer)
+		shareHandler := api_router.NewShareHandler(appContainer)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -131,26 +135,56 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/webgui/config", webGUIHandler.Config)
 
-		// 管理员配置接口
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/admin/config", webGUIHandler.GetConfig)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/admin/config", webGUIHandler.UpdateConfig)
+		// 分享路由组 (受控的只读访问)
+		share := api.Group("/share")
+		share.Use(middleware.ShareAuthToken(appContainer.ShareService))
+		{
+			share.GET("/note", shareHandler.NoteGet) // 获取分享的笔记
+			share.GET("/file", shareHandler.FileGet) // 获取分享的文件内容
+		}
 
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/user/change_password", userHandler.UserChangePassword)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/user/info", userHandler.UserInfo)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/vault", vaultHandler.List)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/vault", vaultHandler.CreateOrUpdate)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).DELETE("/vault", vaultHandler.Delete)
+		// 需要认证的路由组
+		auth := api.Group("/")
+		auth.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
+		{
+			// 创建分享
+			auth.POST("/share", shareHandler.Create)
 
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note", noteHandler.Get)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/file", noteHandler.GetFileContent)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).POST("/note", noteHandler.CreateOrUpdate)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).DELETE("/note", noteHandler.Delete)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).PUT("/note/restore", noteHandler.Restore)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/notes", noteHandler.List)
+			// 管理员配置接口
+			auth.GET("/admin/config", webGUIHandler.GetConfig)
+			auth.POST("/admin/config", webGUIHandler.UpdateConfig)
 
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/history", noteHistoryHandler.Get)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).GET("/note/histories", noteHistoryHandler.List)
-		api.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey)).PUT("/note/history/restore", noteHistoryHandler.Restore)
+			auth.POST("/user/change_password", userHandler.UserChangePassword)
+			auth.GET("/user/info", userHandler.UserInfo)
+			auth.GET("/vault", vaultHandler.List)
+			auth.POST("/vault", vaultHandler.CreateOrUpdate)
+			auth.DELETE("/vault", vaultHandler.Delete)
+
+			auth.GET("/note", noteHandler.Get)
+			auth.GET("/note/file", fileHandler.GetContent)
+			auth.POST("/note", noteHandler.CreateOrUpdate)
+			auth.DELETE("/note", noteHandler.Delete)
+			auth.PUT("/note/restore", noteHandler.Restore)
+			auth.GET("/notes", noteHandler.List)
+
+			auth.GET("/file", fileHandler.GetContent)
+			auth.DELETE("/file", fileHandler.Delete)
+			auth.GET("/files", fileHandler.List)
+
+			auth.GET("/note/history", noteHistoryHandler.Get)
+			auth.GET("/note/histories", noteHistoryHandler.List)
+			auth.PUT("/note/history/restore", noteHistoryHandler.Restore)
+		}
+
+		// Swagger UI (放在 auth 组外，确保可以公开访问)
+		api.GET("/docs/*any", func(c *gin.Context) {
+			p := c.Param("any")
+			if p == "" || p == "/" {
+				c.Redirect(http.StatusMovedPermanently, "/api/docs/index.html")
+				return
+			}
+			ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+		})
 	}
 
 	if cfg.App.UploadSavePath != "" {

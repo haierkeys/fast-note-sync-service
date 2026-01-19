@@ -26,4 +26,6 @@ type AppServiceConfig struct {
 	// HistorySaveDelay 历史记录保存延迟时间
 	// 支持格式：10s（秒）、1m（分钟），默认 10s
 	HistorySaveDelay string
+	// ShareTokenExpiry 分享 Token 过期时间
+	ShareTokenExpiry string
 }

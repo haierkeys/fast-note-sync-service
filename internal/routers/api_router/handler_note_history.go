@@ -33,6 +33,15 @@ type NoteHistoryGetRequestParams struct {
 }
 
 // Get 获取单条笔记历史详情
+// @Summary 获取笔记历史详情
+// @Description 根据历史记录 ID 获取单条特定的笔记历史内容
+// @Tags 笔记历史
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param id query int64 true "历史记录 ID"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteHistoryDTO} "成功"
+// @Router /api/note/history [get]
 func (h *NoteHistoryHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &NoteHistoryGetRequestParams{}
@@ -67,6 +76,15 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 }
 
 // List 获取笔记历史列表
+// @Summary 获取笔记历史列表
+// @Description 分页获取特定笔记的所有历史修改记录
+// @Tags 笔记历史
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteHistoryListRequest true "查询参数"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteHistoryDTO} "成功"
+// @Router /api/note/histories [get]
 func (h *NoteHistoryHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteHistoryListRequest{}
@@ -116,6 +134,16 @@ func (h *NoteHistoryHandler) logError(ctx context.Context, method string, err er
 }
 
 // Restore 从历史版本恢复笔记内容
+// @Summary 从历史版本恢复笔记
+// @Description 将笔记内容恢复到指定的历史版本
+// @Tags 笔记历史
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteHistoryRestoreRequest true "恢复参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/history/restore [put]
 func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteHistoryRestoreRequest{}
