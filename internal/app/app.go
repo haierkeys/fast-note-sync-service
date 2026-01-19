@@ -161,7 +161,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
 	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, logger, &svcConfig.App)
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
-	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultService, logger, svcConfig)
+	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),
@@ -326,10 +326,10 @@ func (a *App) Shutdown(ctx context.Context) error {
 	if a.writeQueueMgr != nil {
 		a.logger.Info("Shutting down write queue manager...")
 		if err := a.writeQueueMgr.Shutdown(ctx); err != nil {
-			a.logger.Warn("Write queue manager shutdown error", zap.Error(err))
+			a.logger.Warn("write queue manager shutdown error", zap.Error(err))
 			errs = append(errs, fmt.Errorf("write queue manager shutdown: %w", err))
 		} else {
-			a.logger.Info("Write queue manager shutdown completed")
+			a.logger.Info("write queue manager shutdown completed")
 		}
 	}
 

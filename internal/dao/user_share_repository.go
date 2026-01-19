@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -14,19 +15,25 @@ import (
 
 // userShareRepository 实现 domain.UserShareRepository 接口
 type userShareRepository struct {
-	dao *Dao
+	dao             *Dao
+	customPrefixKey string
 }
 
 // NewUserShareRepository 创建 UserShareRepository 实例
 func NewUserShareRepository(dao *Dao) domain.UserShareRepository {
-	return &userShareRepository{dao: dao}
+	return &userShareRepository{dao: dao, customPrefixKey: "user_share_"}
+}
+
+func (r *userShareRepository) GetKey(uid int64) string {
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
 // userShare 获取分享查询对象
-func (r *userShareRepository) userShare() *query.Query {
+func (r *userShareRepository) userShare(uid int64) *query.Query {
+	key := r.GetKey(uid)
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "UserShare")
-	}, "user_share#user_share")
+	}, key+"#userShare", key)
 }
 
 func (r *userShareRepository) toDomain(m *model.UserShare) *domain.UserShare {
@@ -68,18 +75,20 @@ func (r *userShareRepository) toModel(d *domain.UserShare) *model.UserShare {
 	}
 }
 
-func (r *userShareRepository) Create(ctx context.Context, share *domain.UserShare) error {
-	us := r.userShare().UserShare
-	m := r.toModel(share)
-	if err := us.WithContext(ctx).Create(m); err != nil {
-		return err
-	}
-	share.ID = m.ID // 回填生成的 ID
-	return nil
+func (r *userShareRepository) Create(ctx context.Context, uid int64, share *domain.UserShare) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		m := r.toModel(share)
+		if err := us.WithContext(ctx).Create(m); err != nil {
+			return err
+		}
+		share.ID = m.ID // 回填生成的 ID
+		return nil
+	})
 }
 
-func (r *userShareRepository) GetByID(ctx context.Context, id int64) (*domain.UserShare, error) {
-	us := r.userShare().UserShare
+func (r *userShareRepository) GetByID(ctx context.Context, uid int64, id int64) (*domain.UserShare, error) {
+	us := r.userShare(uid).UserShare
 	m, err := us.WithContext(ctx).Where(us.ID.Eq(id)).First()
 	if err != nil {
 		return nil, err
@@ -87,23 +96,27 @@ func (r *userShareRepository) GetByID(ctx context.Context, id int64) (*domain.Us
 	return r.toDomain(m), nil
 }
 
-func (r *userShareRepository) UpdateStatus(ctx context.Context, id int64, status int64) error {
-	us := r.userShare().UserShare
-	_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.Status, status)
-	return err
+func (r *userShareRepository) UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.Status, status)
+		return err
+	})
 }
 
-func (r *userShareRepository) UpdateViewStats(ctx context.Context, id int64, viewCountIncr int64, lastViewedAt time.Time) error {
-	us := r.userShare().UserShare
-	_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Updates(map[string]interface{}{
-		"view_count":     gorm.Expr("view_count + ?", viewCountIncr),
-		"last_viewed_at": lastViewedAt,
+func (r *userShareRepository) UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Updates(map[string]interface{}{
+			"view_count":     gorm.Expr("view_count + ?", viewCountIncr),
+			"last_viewed_at": lastViewedAt,
+		})
+		return err
 	})
-	return err
 }
 
 func (r *userShareRepository) ListByUID(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
-	us := r.userShare().UserShare
+	us := r.userShare(uid).UserShare
 	ms, err := us.WithContext(ctx).Where(us.UID.Eq(uid)).Find()
 	if err != nil {
 		return nil, err

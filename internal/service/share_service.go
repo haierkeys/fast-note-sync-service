@@ -2,6 +2,10 @@ package service
 
 import (
 	"context"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,6 +16,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
@@ -23,13 +28,16 @@ var (
 type ShareService interface {
 	ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string) (*dto.ShareCreateResponse, error)
 	VerifyShare(ctx context.Context, token string, rid string, rtp string) (*pkgapp.ShareEntity, error)
-	RecordView(id int64)
-	StopShare(ctx context.Context, id int64) error
+	GetSharedNote(ctx context.Context, shareToken string, noteID int64) (*dto.NoteDTO, error)
+	GetSharedFile(ctx context.Context, shareToken string, fileID int64) (content []byte, contentType string, mtime int64, etag string, fileName string, err error)
+	RecordView(uid int64, id int64)
+	StopShare(ctx context.Context, uid int64, id int64) error
 	ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error)
 	Shutdown(ctx context.Context) error
 }
 
 type aggStats struct {
+	uid          int64
 	viewCount    int64
 	lastViewedAt time.Time
 }
@@ -39,7 +47,7 @@ type shareService struct {
 	tokenManager pkgapp.TokenManager
 	noteRepo     domain.NoteRepository
 	fileRepo     domain.FileRepository
-	vaultService VaultService
+	vaultRepo    domain.VaultRepository
 	logger       *zap.Logger
 	config       *ServiceConfig
 
@@ -48,21 +56,23 @@ type shareService struct {
 	statsBuffer map[int64]*aggStats
 	ticker      *time.Ticker
 	stopCh      chan struct{}
+	doneCh      chan struct{}
 }
 
 // NewShareService 创建 ShareService 实例
-func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenManager, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultService VaultService, logger *zap.Logger, config *ServiceConfig) ShareService {
+func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenManager, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, logger *zap.Logger, config *ServiceConfig) ShareService {
 	s := &shareService{
 		repo:         repo,
 		tokenManager: tokenManager,
 		noteRepo:     noteRepo,
 		fileRepo:     fileRepo,
-		vaultService: vaultService,
+		vaultRepo:    vaultRepo,
 		logger:       logger,
 		config:       config,
 		statsBuffer:  make(map[int64]*aggStats),
 		ticker:       time.NewTicker(5 * time.Minute),
 		stopCh:       make(chan struct{}),
+		doneCh:       make(chan struct{}),
 	}
 
 	go s.startFlushLoop()
@@ -73,10 +83,11 @@ func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenM
 // ShareGenerate 生成并存储分享 Token
 func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string) (*dto.ShareCreateResponse, error) {
 	// 1. 获取 VaultID
-	vaultID, err := s.vaultService.MustGetID(ctx, uid, vaultName)
+	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
 	if err != nil {
 		return nil, err
 	}
+	vaultID := vault.ID
 
 	var resolvedResources = make(map[string][]string)
 	var mainID int64
@@ -164,7 +175,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.repo.Create(ctx, share); err != nil {
+	if err := s.repo.Create(ctx, uid, share); err != nil {
 		return nil, err
 	}
 
@@ -190,7 +201,7 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 		return nil, err
 	}
 
-	share, err := s.repo.GetByID(ctx, entity.SID)
+	share, err := s.repo.GetByID(ctx, entity.UID, entity.SID)
 
 	if err != nil {
 		return nil, err
@@ -200,7 +211,6 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 		return nil, domain.ErrShareCancelled
 	}
 
-	entity.UID = share.UID
 	entity.Resources = share.Resources
 
 	ids, ok := share.Resources[rtp]
@@ -221,19 +231,21 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 	}
 
 	// 内存记录访问统计 (延迟 5 分钟更新)
-	s.RecordView(share.ID)
+	s.RecordView(share.UID, share.ID)
 
 	return entity, nil
 }
 
 // RecordView 在内存中聚合访问统计
-func (s *shareService) RecordView(id int64) {
+func (s *shareService) RecordView(uid int64, id int64) {
 	s.bufferMu.Lock()
 	defer s.bufferMu.Unlock()
 
 	stats, ok := s.statsBuffer[id]
 	if !ok {
-		stats = &aggStats{}
+		stats = &aggStats{
+			uid: uid,
+		}
 		s.statsBuffer[id] = stats
 	}
 	stats.viewCount++
@@ -242,6 +254,7 @@ func (s *shareService) RecordView(id int64) {
 
 // startFlushLoop 启动定时同步协程
 func (s *shareService) startFlushLoop() {
+	defer close(s.doneCh)
 	for {
 		select {
 		case <-s.ticker.C:
@@ -266,15 +279,15 @@ func (s *shareService) flush() {
 
 	ctx := context.Background()
 	for id, stats := range tempBuffer {
-		if err := s.repo.UpdateViewStats(ctx, id, stats.viewCount, stats.lastViewedAt); err != nil {
+		if err := s.repo.UpdateViewStats(ctx, stats.uid, id, stats.viewCount, stats.lastViewedAt); err != nil {
 			s.logger.Error("failed to flush user_share stats", zap.Int64("id", id), zap.Error(err))
 		}
 	}
 }
 
 // StopShare 撤销分享
-func (s *shareService) StopShare(ctx context.Context, id int64) error {
-	return s.repo.UpdateStatus(ctx, id, 2)
+func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error {
+	return s.repo.UpdateStatus(ctx, uid, id, 2)
 }
 
 // ListShares 列出用户的所有分享
@@ -282,9 +295,151 @@ func (s *shareService) ListShares(ctx context.Context, uid int64) ([]*domain.Use
 	return s.repo.ListByUID(ctx, uid)
 }
 
+// GetSharedNote 获取分享的单条笔记详情
+func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, noteID int64) (*dto.NoteDTO, error) {
+	ridStr := strconv.FormatInt(noteID, 10)
+	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "note")
+	if err != nil {
+		return nil, code.ErrorInvalidAuthToken
+	}
+
+	// 直接通过 ID 获取笔记 (使用资源所有者的 UID)
+	note, err := s.noteRepo.GetByID(ctx, noteID, shareEntity.UID)
+	if err != nil {
+		return nil, code.ErrorNoteNotFound
+	}
+
+	noteDTO := &dto.NoteDTO{
+		ID:               note.ID,
+		Path:             note.Path,
+		Content:          note.Content,
+		ContentHash:      note.ContentHash,
+		Version:          note.Version,
+		Ctime:            note.Ctime,
+		Mtime:            note.Mtime,
+		UpdatedTimestamp: note.UpdatedTimestamp,
+		UpdatedAt:        timex.Time(note.UpdatedAt),
+		CreatedAt:        timex.Time(note.CreatedAt),
+	}
+
+	// 处理 Obsidian 附件嵌入标签 ![[...]]
+	newContent := attachmentRegex.ReplaceAllStringFunc(noteDTO.Content, func(match string) string {
+		submatches := attachmentRegex.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		inner := submatches[1]
+		rawPath := inner
+		options := ""
+
+		// 提取资源路径（移除别名 | 和锚点 # 之后的部分）
+		if idx := strings.IndexAny(inner, "|#"); idx != -1 {
+			rawPath = inner[:idx]
+			if inner[idx] == '|' {
+				options = strings.TrimSpace(inner[idx+1:])
+			}
+		}
+		rawPath = strings.TrimSpace(rawPath)
+		if rawPath == "" {
+			return match
+		}
+
+		// 查找文件 ID
+		file, err := s.fileRepo.GetByPathLike(ctx, rawPath, note.VaultID, shareEntity.UID)
+		if err != nil || file == nil {
+			return match
+		}
+
+		apiUrl := "/api/share/file?id=" + strconv.FormatInt(file.ID, 10) + "&share_token=" + shareToken
+		lowerPath := strings.ToLower(file.Path)
+		ext := filepath.Ext(lowerPath)
+
+		isImage := strings.Contains(".png.jpg.jpeg.gif.svg.webp.bmp", ext) && ext != ""
+		isVideo := strings.Contains(".mp4.webm.ogg.mov", ext) && ext != ""
+		isAudio := strings.Contains(".mp3.wav.ogg.m4a.flac", ext) && ext != ""
+
+		if isImage {
+			width := ""
+			height := ""
+			if options != "" {
+				sizeRe := regexp.MustCompile(`^(\d+)(?:x(\d+))?`)
+				sizeMatch := sizeRe.FindStringSubmatch(options)
+				if len(sizeMatch) > 1 && sizeMatch[1] != "" {
+					width = ` width="` + sizeMatch[1] + `"`
+				}
+				if len(sizeMatch) > 2 && sizeMatch[2] != "" {
+					height = ` height="` + sizeMatch[2] + `"`
+				}
+			}
+			return `<img src="` + apiUrl + `" alt="` + rawPath + `"` + width + height + ` />`
+		} else if isVideo {
+			return `<video src="` + apiUrl + `" controls style="max-width:100%"></video>`
+		} else if isAudio {
+			return `<audio src="` + apiUrl + `" controls></audio>`
+		} else {
+			return `<a href="` + apiUrl + `" target="_blank">📎 ` + rawPath + `</a>`
+		}
+	})
+	noteDTO.Content = newContent
+
+	return noteDTO, nil
+}
+
+// GetSharedFile 获取分享的文件内容
+func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fileID int64) (content []byte, contentType string, mtime int64, etag string, fileName string, err error) {
+	ridStr := strconv.FormatInt(fileID, 10)
+	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "file")
+	if err != nil {
+		return nil, "", 0, "", "", code.ErrorInvalidAuthToken
+	}
+
+	// 1. 获取资源所有者的 UID
+	ownerUID := shareEntity.UID
+
+	// 2. 确认路径哈希 (从 fileRepo 获取文件元数据)
+	file, err := s.fileRepo.GetByID(ctx, fileID, ownerUID)
+	if err != nil {
+		return nil, "", 0, "", "", code.ErrorFileNotFound
+	}
+
+	if file.Action == domain.FileActionDelete {
+		return nil, "", 0, "", "", code.ErrorFileNotFound
+	}
+
+	// 读取物理文件内容
+	content, err = os.ReadFile(file.SavePath)
+	if err != nil {
+		return nil, "", 0, "", "", code.ErrorFileReadFailed.WithDetails(err.Error())
+	}
+
+	// 识别文件 MIME 类型
+	ext := filepath.Ext(file.Path)
+	contentType = mime.TypeByExtension(ext)
+	if contentType == "" {
+		// 如果扩展名识别不到, 进行内容嗅探
+		contentType = http.DetectContentType(content)
+	}
+
+	// 实时计算 etag
+	etag = util.EncodeHash32(string(content))
+
+	return content, contentType, file.Mtime, etag, file.Path, nil
+
+}
+
 // Shutdown 关闭服务并同步最后的数据
 func (s *shareService) Shutdown(ctx context.Context) error {
 	s.ticker.Stop()
 	close(s.stopCh)
-	return nil
+
+	// 等待定时同步协程结束（即最后一次 flush 完成）
+	select {
+	case <-s.doneCh:
+		s.logger.Info("ShareService background flush loop stopped")
+		return nil
+	case <-ctx.Done():
+		s.logger.Warn("ShareService shutdown timeout, some data might not be flushed")
+		return ctx.Err()
+	}
 }

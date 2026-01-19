@@ -129,18 +129,29 @@ func (t *tokenManager) Parse(token string) (*UserEntity, error) {
 func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[string][]string) (string, error) {
 	expirationTime := time.Unix(time.Now().Add(t.config.ShareExpiry).Unix(), 0)
 
-	// 准备数据 (刚好 16 字节): SID (8) + ExpiresAt (4) + Checksum (4)
+	// 准备数据 (固定 16 字节): SID (6) + UID (3) + ExpiresAt (4) + Checksum (3)
 	data := make([]byte, 16)
-	binary.BigEndian.PutUint64(data[0:8], uint64(shareID))
-	binary.BigEndian.PutUint32(data[8:12], uint32(expirationTime.Unix()))
 
-	// 生成校验和: 使用 Key + SID + Exp 生成摘要，取前 4 字节
+	// SID: 6 字节 (0-5)
+	sidBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(sidBytes, uint64(shareID))
+	copy(data[0:6], sidBytes[2:8])
+
+	// UID: 3 字节 (6-8)
+	uidBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(uidBytes, uint64(uid))
+	copy(data[6:9], uidBytes[5:8])
+
+	// ExpiresAt: 4 字节 (9-12)
+	binary.BigEndian.PutUint32(data[9:13], uint32(expirationTime.Unix()))
+
+	// 生成校验和: 使用 Key + 前 13 字节生成摘要，取前 3 字节
 	key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
 	h := sha256.New()
 	h.Write(key[:])
-	h.Write(data[0:12])
+	h.Write(data[0:13])
 	sum := h.Sum(nil)
-	copy(data[12:16], sum[:4])
+	copy(data[13:16], sum[:3])
 
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
@@ -177,18 +188,29 @@ func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 	// 验证校验和
 	h := sha256.New()
 	h.Write(key[:])
-	h.Write(data[0:12])
+	h.Write(data[0:13])
 	sum := h.Sum(nil)
 
-	if !bytes.Equal(data[12:16], sum[:4]) {
+	if !bytes.Equal(data[13:16], sum[:3]) {
 		return nil, fmt.Errorf("invalid token checksum")
 	}
 
-	shareID := int64(binary.BigEndian.Uint64(data[0:8]))
-	expUnix := int64(binary.BigEndian.Uint32(data[8:12]))
+	// 解析 SID (6 字节)
+	sidBytes := make([]byte, 8)
+	copy(sidBytes[2:8], data[0:6])
+	shareID := int64(binary.BigEndian.Uint64(sidBytes))
+
+	// 解析 UID (3 字节)
+	uidBytes := make([]byte, 8)
+	copy(uidBytes[5:8], data[6:9])
+	uid := int64(binary.BigEndian.Uint64(uidBytes))
+
+	// 解析 ExpiresAt (4 字节)
+	expUnix := int64(binary.BigEndian.Uint32(data[9:13]))
 
 	return &ShareEntity{
 		SID:       shareID,
+		UID:       uid,
 		ExpiresAt: time.Unix(expUnix, 0),
 	}, nil
 }

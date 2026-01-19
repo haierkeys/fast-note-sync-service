@@ -26,9 +26,9 @@ type UserShare struct {
 
 // UserShareRepository 用户分享持久化接口
 type UserShareRepository interface {
-	Create(ctx context.Context, share *UserShare) error
-	GetByID(ctx context.Context, id int64) (*UserShare, error)
-	UpdateStatus(ctx context.Context, id int64, status int64) error
-	UpdateViewStats(ctx context.Context, id int64, viewCountIncr int64, lastViewedAt time.Time) error
+	Create(ctx context.Context, uid int64, share *UserShare) error
+	GetByID(ctx context.Context, uid int64, id int64) (*UserShare, error)
+	UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error
+	UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error
 	ListByUID(ctx context.Context, uid int64) ([]*UserShare, error)
 }
