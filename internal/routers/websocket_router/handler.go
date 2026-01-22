@@ -2,6 +2,9 @@
 package websocket_router
 
 import (
+	"context"
+	"strings"
+
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -26,10 +29,27 @@ func (h *WSHandler) logError(c *pkgapp.WebsocketClient, method string, err error
 	if c != nil {
 		traceID = c.TraceID
 	}
+
+	// 如果是连接关闭导致的错误且 context 已取消，降级日志级别
+	if isNetworkClosedError(err) && c != nil && c.Context().Err() != nil {
+		h.logDebug(c, method, zap.Error(err))
+		return
+	}
+
 	h.App.Logger().Error(method,
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)
+}
+
+// logDebug 记录调试日志，包含 Trace ID
+func (h *WSHandler) logDebug(c *pkgapp.WebsocketClient, method string, fields ...zap.Field) {
+	traceID := ""
+	if c != nil {
+		traceID = c.TraceID
+	}
+	allFields := append([]zap.Field{zap.String("traceId", traceID)}, fields...)
+	h.App.Logger().Debug(method, allFields...)
 }
 
 // logInfo 记录信息日志，包含 Trace ID
@@ -80,6 +100,14 @@ func GetTraceID(c *pkgapp.WebsocketClient) string {
 // LogErrorWithLogger 记录错误日志，包含 Trace ID（使用注入的 logger）
 func LogErrorWithLogger(logger *zap.Logger, c *pkgapp.WebsocketClient, method string, err error) {
 	traceID := GetTraceID(c)
+
+	// 如果是连接关闭导致的错误且 context 已取消，降级日志级别
+	if isNetworkClosedError(err) && c != nil && c.Context().Err() != nil {
+		allFields := append([]zap.Field{zap.String("traceId", traceID), zap.Error(err)})
+		logger.Debug(method, allFields...)
+		return
+	}
+
 	logger.Error(method,
 		zap.Error(err),
 		zap.String("traceId", traceID),
@@ -98,4 +126,16 @@ func LogWarnWithLogger(logger *zap.Logger, c *pkgapp.WebsocketClient, method str
 	traceID := GetTraceID(c)
 	allFields := append([]zap.Field{zap.String("traceId", traceID)}, fields...)
 	logger.Warn(method, allFields...)
+}
+
+// isNetworkClosedError 检查是否为网络关闭相关的错误
+func isNetworkClosedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "use of closed network connection") ||
+		strings.Contains(msg, "connection reset by peer") ||
+		strings.Contains(msg, "broken pipe") ||
+		err == context.Canceled
 }
