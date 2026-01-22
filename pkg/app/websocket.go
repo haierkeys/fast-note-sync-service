@@ -29,6 +29,7 @@ const (
 	LogInfo        LogType = "info"
 	LogError       LogType = "error"
 	LogWarn        LogType = "warn"
+	LogDebug       LogType = "debug"
 )
 
 // traceIDKeyType 用于在 context 中存储 Trace ID
@@ -100,6 +101,8 @@ func log(t LogType, msg string, fields ...zap.Field) {
 		wsLogger.Warn(msg, fields...)
 	case LogInfo:
 		wsLogger.Info(msg, fields...)
+	case LogDebug:
+		wsLogger.Debug(msg, fields...)
 	}
 }
 
@@ -198,6 +201,7 @@ type WebsocketClient struct {
 	conn                *gws.Conn                 // WebSocket 底层连接句柄
 	done                chan struct{}             // 关闭信号通道，用于优雅关闭读/写协程
 	app                 AppContainer              // App Container 引用
+	Server              *WebsocketServer          // WebSocket 服务器引用，用于访问全局状态（如会话）
 	Ctx                 *gin.Context              // 原始 HTTP 升级请求的上下文（可用于获取 Header、Query 等）
 	WsCtx               context.Context           // WebSocket 连接的长生命周期 context
 	WsCancel            context.CancelFunc        // 用于取消 WsCtx
@@ -205,8 +209,7 @@ type WebsocketClient struct {
 	User                *UserEntity               // 已认证用户信息，通常在握手阶段绑定
 	UserClients         *ConnStorage              // 用户连接池，支持多设备在线时广播或单点通信
 	SF                  *singleflight.Group       // 并发控制：相同 key 的请求只执行一次，其余等待结果
-	BinaryMu            sync.Mutex                // 二进制分块会话的互斥锁，防止并发冲突
-	BinaryChunkSessions map[string]any            // 临时存储分块上传/下载的中间状态，例如文件重组缓冲区
+	BinaryMu            sync.Mutex                // 用于读写数据时的同步锁 (不再保护 map 存储)
 	ClientName          string                    // 客户端名称 (例如 "Mac", "Windows", "iPhone")
 	ClientVersion       string                    // 客户端版本号 (例如 "1.2.4")
 	IsFirstSync         bool                      // 是否是第一次同步过
@@ -337,7 +340,12 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 				return
 			}
 			if err := c.conn.WritePing(nil); err != nil {
-				log(LogError, "WS Client Ping err ", zap.Error(err))
+				// 连接关闭时的正常错误，降低日志级别
+				if strings.Contains(err.Error(), "use of closed network connection") {
+					log(LogDebug, "WS Client Ping: connection closed")
+				} else {
+					log(LogError, "WS Client Ping err ", zap.Error(err))
+				}
 				return
 			}
 			// log(LogInfo, "WS Client Ping", zap.String("uid", c.User.ID))
@@ -464,6 +472,9 @@ func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
 // SendBinary 发送二进制消息
 // prefix: 2字节前缀
 func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
+	if c.conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
 	if len(prefix) != 2 {
 		return fmt.Errorf("prefix must be 2 bytes")
 	}
@@ -521,6 +532,9 @@ type WebsocketServer struct {
 	mu                sync.Mutex
 	up                *gws.Upgrader
 	config            *WSConfig
+	// 全局会话管理 (UID -> SessionID -> Session)
+	binaryChunkSessions map[string]map[string]any
+	sessionsMu          sync.RWMutex
 }
 
 // NewWebsocketServer 创建 WebSocket 服务器实例
@@ -543,12 +557,13 @@ func NewWebsocketServer(c WSConfig, app AppContainer) *WebsocketServer {
 	SetWSProductionMode(app.IsProductionMode())
 
 	return &WebsocketServer{
-		app:            app,
-		handlers:       make(map[string]func(*WebsocketClient, *WebSocketMessage)),
-		binaryHandlers: make(map[string]func(*WebsocketClient, []byte)),
-		clients:        make(ConnStorage),
-		userClients:    make(map[string]ConnStorage),
-		config:         &c,
+		app:                 app,
+		handlers:            make(map[string]func(*WebsocketClient, *WebSocketMessage)),
+		binaryHandlers:      make(map[string]func(*WebsocketClient, []byte)),
+		clients:             make(ConnStorage),
+		userClients:         make(map[string]ConnStorage),
+		config:              &c,
+		binaryChunkSessions: make(map[string]map[string]any),
 	}
 }
 
@@ -576,11 +591,12 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		traceID := extractOrGenerateTraceID(c)
 
 		client := &WebsocketClient{
-			conn: socket,
-			done: make(chan struct{}),
-			app:  w.app,
-			Ctx:  c,
-			SF:   new(singleflight.Group),
+			conn:   socket,
+			done:   make(chan struct{}),
+			app:    w.app,
+			Server: w,
+			Ctx:    c,
+			SF:     new(singleflight.Group),
 		}
 
 		// 初始化 WebSocket 连接的长生命周期 context
@@ -645,8 +661,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		userClients := w.userClients[user.ID]
 
 		c.BinaryMu.Lock()
-		// 清空所有会话(具体的文件清理由超时机制或 cleanupSession 处理)
-		c.BinaryChunkSessions = make(map[string]any)
+		// 登录时不清理全局会话，确保重连后会话依然存在
 		c.BinaryMu.Unlock()
 
 		c.UserClients = &userClients
@@ -720,6 +735,38 @@ func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	log(LogInfo, "WS Client Remove", zap.Int("userCount", len(w.clients)))
 }
 
+// SetSession 设置全局二进制上传会话
+func (w *WebsocketServer) SetSession(uid string, sessionID string, session any) {
+	w.sessionsMu.Lock()
+	defer w.sessionsMu.Unlock()
+	if w.binaryChunkSessions[uid] == nil {
+		w.binaryChunkSessions[uid] = make(map[string]any)
+	}
+	w.binaryChunkSessions[uid][sessionID] = session
+}
+
+// GetSession 获取全局二进制上传会话
+func (w *WebsocketServer) GetSession(uid string, sessionID string) any {
+	w.sessionsMu.RLock()
+	defer w.sessionsMu.RUnlock()
+	if userSessions, ok := w.binaryChunkSessions[uid]; ok {
+		return userSessions[sessionID]
+	}
+	return nil
+}
+
+// RemoveSession 移除全局二进制上传会话
+func (w *WebsocketServer) RemoveSession(uid string, sessionID string) {
+	w.sessionsMu.Lock()
+	defer w.sessionsMu.Unlock()
+	if userSessions, ok := w.binaryChunkSessions[uid]; ok {
+		delete(userSessions, sessionID)
+		if len(userSessions) == 0 {
+			delete(w.binaryChunkSessions, uid)
+		}
+	}
+}
+
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	log(LogInfo, "WS Client Connect", zap.Int("Count", len(w.clients)))
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
@@ -749,26 +796,8 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		log(LogInfo, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
 	}
 
-	// 清理所有未完成的上传会话
-	if len(c.BinaryChunkSessions) > 0 {
-		c.BinaryMu.Lock()
-		sessionCount := len(c.BinaryChunkSessions)
-		// 显式清理资源（关闭文件句柄等）
-		for _, sess := range c.BinaryChunkSessions {
-			if cleaner, ok := sess.(SessionCleaner); ok {
-				cleaner.Cleanup()
-			}
-		}
-		// 清空所有会话
-		c.BinaryChunkSessions = make(map[string]any)
-		c.BinaryMu.Unlock()
-
-		if sessionCount > 0 {
-			log(LogWarn, "OnClose: cleared upload sessions on disconnect",
-				zap.Int("sessionCount", sessionCount),
-				zap.String("traceID", c.TraceID))
-		}
-	}
+	// 不再在 OnClose 中清理 BinaryChunkSessions，改为依赖超时机制自动清理
+	// 这样可以支持在大文件上传过程中网络波动导致重连时，继续使用原有会话
 
 	// 清理所有 DiffMergePaths 条目
 	if diffMergeCount := c.ClearAllDiffMergePaths(); diffMergeCount > 0 {

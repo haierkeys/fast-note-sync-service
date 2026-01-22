@@ -234,11 +234,10 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	chunkIndex := binary.BigEndian.Uint32(data[36:40])
 	chunkData := data[40:]
 
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[sessionID]
-	c.BinaryMu.Unlock()
+	// 从全局服务器获取会话 (支持跨连接)
+	binarySession := c.Server.GetSession(c.User.ID, sessionID)
 
-	if !exists {
+	if binarySession == nil {
 		h.logError(c, "websocket_router.file.FileUploadChunkBinary", fmt.Errorf("session not found: %s", sessionID))
 		c.ToResponse(code.ErrorFileUploadSessionNotFound.WithData(map[string]string{
 			"sessionID": sessionID,
@@ -282,10 +281,8 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			zap.Int64("uploadedChunks", session.UploadedChunks),
 			zap.Int64("totalChunks", session.TotalChunks))
 
-		// 获取并移除会话
-		c.BinaryMu.Lock()
-		delete(c.BinaryChunkSessions, session.ID)
-		c.BinaryMu.Unlock()
+		// 获取并从全局服务器移除会话
+		c.Server.RemoveSession(c.User.ID, session.ID)
 
 		// 取消超时定时器
 		if session.CancelFunc != nil {
@@ -622,16 +619,11 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 // cleanupSession 清理因为完成或超时而废弃的上传会话。
 func (h *FileWSHandler) handleFileUploadSessionCleanup(c *pkgapp.WebsocketClient, sessionID string) {
-	c.BinaryMu.Lock()
-	binarySession, exists := c.BinaryChunkSessions[sessionID]
-	if exists {
-		delete(c.BinaryChunkSessions, sessionID)
-	}
-	c.BinaryMu.Unlock()
-
-	if !exists {
+	binarySession := c.Server.GetSession(c.User.ID, sessionID)
+	if binarySession == nil {
 		return
 	}
+	c.Server.RemoveSession(c.User.ID, sessionID)
 
 	session := binarySession.(pkgapp.SessionCleaner)
 	session.Cleanup()
@@ -640,14 +632,14 @@ func (h *FileWSHandler) handleFileUploadSessionCleanup(c *pkgapp.WebsocketClient
 		zap.String("sessionID", sessionID))
 }
 
-// startSessionTimeout 启动会话超时定时器。
-// 返回一个取消函数，调用后可阻止超时清理的执行。
 func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient, sessionID string, timeout time.Duration) context.CancelFunc {
 	if timeout <= 0 {
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(c.Context())
+	// 使用 context.Background() 确保超时定时器不受连接断开影响
+	// 这样在网络波动重连期间，会话依然有效
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
 		timer := time.NewTimer(timeout)
@@ -740,10 +732,8 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 	// 启动超时清理任务
 	session.CancelFunc = h.handleFileUploadSessionTimeout(c, sessionID, timeout)
 
-	// 注册会话
-	c.BinaryMu.Lock()
-	c.BinaryChunkSessions[sessionID] = session
-	c.BinaryMu.Unlock()
+	// 注册到全局服务器
+	c.Server.SetSession(c.User.ID, session.ID, session)
 
 	return &FileUploadMessage{
 		Path:      path,
