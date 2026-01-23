@@ -419,7 +419,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(note))
-	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncRestore")
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
 // logError 记录错误日志，包含 Trace ID

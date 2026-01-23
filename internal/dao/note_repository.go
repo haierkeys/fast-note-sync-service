@@ -358,6 +358,7 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			Action:           string(note.Action),
 			Rename:           note.Rename,
 			ClientName:       note.ClientName,
+			Mtime:            note.Mtime,
 			UpdatedTimestamp: timex.Now().UnixMilli(),
 		}
 
@@ -368,6 +369,7 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			u.Action,
 			u.Rename,
 			u.ClientName,
+			u.Mtime,
 			u.UpdatedTimestamp,
 		).Save(m)
 	})
