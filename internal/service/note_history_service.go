@@ -266,9 +266,10 @@ func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, 
 		zap.Int("afterContentLen", len(restoredContent)),
 	)
 
-	// 5. 使用恢复的内容更新笔记
+	// 5. 使用恢复的内容更新笔记, 并设置修改时间
 	note.Content = restoredContent
 	note.ContentHash = restoredContentHash
+	note.Mtime = timex.Now().UnixMilli()
 	note.Action = domain.NoteActionModify
 
 	// 6. 更新笔记

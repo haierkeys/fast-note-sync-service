@@ -176,7 +176,5 @@ func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(note).WithVault(params.Vault))
-
-	// 广播恢复事件到其他客户端
-	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncHistoryRestore")
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }

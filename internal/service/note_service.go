@@ -350,9 +350,10 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 		return nil, code.ErrorNoteNotFound
 	}
 
-	// 更新为修改状态（恢复）
+	// 更新为修改状态 并更新修改时间
 	note.Action = domain.NoteActionModify
 	note.ClientName = s.clientName
+	note.Mtime = time.Now().UnixMilli()
 	note.Rename = 0
 
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
