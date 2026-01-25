@@ -183,7 +183,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		isNew = false
 		// 检查内容是否一致,排除掉已被标记删除的文件
 		if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
-			return isNew, nil, nil
+			return isNew, s.domainToDTO(file), nil
 		}
 		// 检查内容是否一致但修改时间不同，则只更新修改时间
 		if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
