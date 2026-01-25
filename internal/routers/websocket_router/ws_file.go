@@ -320,8 +320,11 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			return
 		}
 
-		// 用于给客户端
-		//sessionID := uuid.New().String()
+		if fileSvc == nil {
+			h.logInfo(c, "FileUploadChunkBinary: fileSvc is nil, skipping broadcast", zap.String("path", session.Path))
+			c.ToResponse(code.Success)
+			return
+		}
 
 		fileMsg := &FileMessage{
 			Path:             fileSvc.Path,
