@@ -46,6 +46,7 @@ type App struct {
 	FileRepo        domain.FileRepository
 	SettingRepo     domain.SettingRepository
 	NoteHistoryRepo domain.NoteHistoryRepository
+	NoteLinkRepo    domain.NoteLinkRepository
 	ShareRepo       domain.UserShareRepository
 
 	// Service 层
@@ -57,6 +58,7 @@ type App struct {
 	NoteHistoryService service.NoteHistoryService
 	ConflictService    service.ConflictService
 	ShareService       service.ShareService
+	NoteLinkService    service.NoteLinkService
 
 	// 基础设施组件
 	TokenManager pkgapp.TokenManager
@@ -68,6 +70,9 @@ type App struct {
 	// 版本检查信息
 	checkVersionMu sync.RWMutex
 	checkVersion   pkgapp.CheckVersionInfo
+
+	// 启动时间（用于计算 uptime）
+	StartTime time.Time
 }
 
 // NewApp 创建应用容器实例
@@ -91,6 +96,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 		logger:     logger,
 		DB:         db,
 		shutdownCh: make(chan struct{}),
+		StartTime:  time.Now(),
 	}
 
 	// 初始化 Worker Pool
@@ -144,6 +150,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.FileRepo = dao.NewFileRepository(a.Dao)
 	a.SettingRepo = dao.NewSettingRepository(a.Dao)
 	a.NoteHistoryRepo = dao.NewNoteHistoryRepository(a.Dao)
+	a.NoteLinkRepo = dao.NewNoteLinkRepository(a.Dao)
 	a.ShareRepo = dao.NewUserShareRepository(a.Dao)
 
 	// 创建 ServiceConfig（从 AppConfig 提取 Service 层需要的配置）
@@ -159,15 +166,16 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 		},
 	}
 
-	// 初始化 Service 层（依赖注入）
+	// Initialize Service layer (dependency injection)
 	a.VaultService = service.NewVaultService(a.VaultRepo)
-	a.NoteService = service.NewNoteService(a.NoteRepo, a.FileRepo, a.VaultService, svcConfig)
+	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, svcConfig)
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
 	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, svcConfig)
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
 	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, logger, &svcConfig.App)
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
+	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),

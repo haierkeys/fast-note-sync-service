@@ -223,3 +223,18 @@ type NoteHistoryRepository interface {
 	// Delete 删除指定ID的历史记录
 	Delete(ctx context.Context, id, uid int64) error
 }
+
+// NoteLinkRepository note link repository interface
+type NoteLinkRepository interface {
+	// CreateBatch creates multiple note links in batch
+	CreateBatch(ctx context.Context, links []*NoteLink, uid int64) error
+
+	// DeleteBySourceNoteID deletes all links from a source note
+	DeleteBySourceNoteID(ctx context.Context, sourceNoteID, uid int64) error
+
+	// GetBacklinks gets all notes that link to a target path
+	GetBacklinks(ctx context.Context, targetPathHash string, vaultID, uid int64) ([]*NoteLink, error)
+
+	// GetOutlinks gets all links from a source note
+	GetOutlinks(ctx context.Context, sourceNoteID, uid int64) ([]*NoteLink, error)
+}

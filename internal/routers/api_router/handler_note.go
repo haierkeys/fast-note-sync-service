@@ -185,6 +185,14 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+		if params.SrcPath != "" {
+			params.SrcPath = util.ApplyDefaultFolder(params.SrcPath, defaultFolder)
+		}
+	}
+
 	// 计算哈希值
 	if params.SrcPathHash == "" {
 		params.SrcPathHash = util.EncodeHash32(params.SrcPath)
@@ -420,6 +428,408 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 
 	response.ToResponse(code.Success.WithData(note))
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// PatchFrontmatter 修改笔记 frontmatter
+// @Summary 修改笔记 frontmatter
+// @Description 更新或删除笔记的 frontmatter 字段
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NotePatchFrontmatterRequest true "Frontmatter 修改参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/frontmatter [patch]
+func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NotePatchFrontmatterRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.PatchFrontmatter.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.PatchFrontmatter err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	note, err := noteSvc.PatchFrontmatter(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.PatchFrontmatter", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note))
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// Append 追加内容到笔记末尾
+// @Summary 追加内容到笔记
+// @Description 将内容追加到笔记的末尾
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteAppendRequest true "追加内容参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/append [post]
+func (h *NoteHandler) Append(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteAppendRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Append.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Append err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	note, err := noteSvc.AppendContent(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Append", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note))
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// Prepend 在笔记开头插入内容
+// @Summary 在笔记开头插入内容
+// @Description 将内容插入到笔记的开头（frontmatter 之后）
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NotePrependRequest true "插入内容参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/prepend [post]
+func (h *NoteHandler) Prepend(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NotePrependRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Prepend.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Prepend err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	note, err := noteSvc.PrependContent(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Prepend", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note))
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// Replace 在笔记中执行查找替换
+// @Summary 查找替换笔记内容
+// @Description 在笔记中执行查找替换操作，支持正则表达式
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteReplaceRequest true "查找替换参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteReplaceResponse} "成功"
+// @Router /api/note/replace [post]
+func (h *NoteHandler) Replace(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteReplaceRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Replace.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Replace err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	result, err := noteSvc.ReplaceContent(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Replace", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(result))
+	if result.Note != nil {
+		h.WSS.BroadcastToUser(uid, code.Success.WithData(result.Note).WithVault(params.Vault), "NoteSyncModify")
+	}
+}
+
+// Move 移动笔记到新路径
+// @Summary 移动笔记
+// @Description 将笔记移动到新的路径
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteMoveRequest true "移动参数"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Router /api/note/move [post]
+func (h *NoteHandler) Move(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteMoveRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Move.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Move err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+		params.Destination = util.ApplyDefaultFolder(params.Destination, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+
+	// 获取旧笔记用于广播删除事件
+	oldNote, _ := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
+		Vault:    params.Vault,
+		Path:     params.Path,
+		PathHash: params.PathHash,
+	})
+
+	note, err := noteSvc.Move(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Move", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(note))
+
+	// 广播 WebSocket 事件: 删除旧路径 + 新建新路径
+	if oldNote != nil {
+		h.WSS.BroadcastToUser(uid, code.Success.WithData(oldNote).WithVault(params.Vault), "NoteSyncDelete")
+	}
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// GetBacklinks 获取指向指定笔记的反向链接
+// @Summary 获取反向链接
+// @Description 获取所有链接到指定笔记的其他笔记
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteLinkQueryRequest true "查询参数"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "成功"
+// @Router /api/note/backlinks [get]
+func (h *NoteHandler) GetBacklinks(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteLinkQueryRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.GetBacklinks.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.GetBacklinks err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	links, err := h.App.NoteLinkService.GetBacklinks(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.GetBacklinks", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(links))
+}
+
+// GetOutlinks 获取指定笔记中的外向链接
+// @Summary 获取外向链接
+// @Description 获取指定笔记中链接到的其他笔记
+// @Tags 笔记
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.NoteLinkQueryRequest true "查询参数"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "成功"
+// @Router /api/note/outlinks [get]
+func (h *NoteHandler) GetOutlinks(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteLinkQueryRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.GetOutlinks.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.GetOutlinks err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Apply default folder if configured
+	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	links, err := h.App.NoteLinkService.GetOutlinks(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.GetOutlinks", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(links))
 }
 
 // logError 记录错误日志，包含 Trace ID

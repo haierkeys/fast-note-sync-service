@@ -146,6 +146,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/webgui/config", webGUIHandler.Config)
 
+		// 健康检查接口（无需认证）
+		healthHandler := api_router.NewHealthHandler(appContainer)
+		api.GET("/health", healthHandler.Check)
+
 		// 分享路由组 (受控的只读访问)
 		share := api.Group("/share")
 		share.Use(middleware.ShareAuthToken(appContainer.ShareService))
@@ -177,6 +181,17 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/note", noteHandler.Delete)
 			auth.PUT("/note/restore", noteHandler.Restore)
 			auth.GET("/notes", noteHandler.List)
+
+			// Note edit operations
+			auth.PATCH("/note/frontmatter", noteHandler.PatchFrontmatter)
+			auth.POST("/note/append", noteHandler.Append)
+			auth.POST("/note/prepend", noteHandler.Prepend)
+			auth.POST("/note/replace", noteHandler.Replace)
+			auth.POST("/note/move", noteHandler.Move)
+
+			// Note link operations
+			auth.GET("/note/backlinks", noteHandler.GetBacklinks)
+			auth.GET("/note/outlinks", noteHandler.GetOutlinks)
 
 			auth.GET("/file", fileHandler.GetContent)
 			auth.GET("/file/info", fileHandler.Get)

@@ -321,6 +321,7 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 			u.Size,
 			u.Ctime,
 			u.Mtime,
+			u.Version,
 			u.UpdatedAt,
 			u.UpdatedTimestamp,
 		).Save(m)

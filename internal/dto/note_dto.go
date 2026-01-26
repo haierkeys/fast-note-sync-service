@@ -54,13 +54,14 @@ type NoteModifyOrCreateRequest struct {
 	SrcPath         string `json:"srcPath" form:"srcPath"`
 	SrcPathHash     string `json:"srcPathHash" form:"srcPathHash"`
 	BaseHash        string `json:"baseHash" form:"baseHash" binding:""`
-	BaseHashMissing bool   `json:"baseHashMissing" form:"baseHashMissing"` // 标记 baseHash 是否不可用
+	BaseHashMissing bool   `json:"baseHashMissing" form:"baseHashMissing"` // Marks if baseHash is unavailable
 	Content         string `json:"content" form:"content" binding:""`
 	ContentHash     string `json:"contentHash" form:"contentHash" binding:""`
 	Ctime           int64  `json:"ctime" form:"ctime"`
 	Mtime           int64  `json:"mtime" form:"mtime"`
 	OldPath         string `json:"oldPath" form:"oldPath"`
 	OldPathHash     string `json:"oldPathHash" form:"oldPathHash"`
+	CreateOnly      bool   `json:"createOnly" form:"createOnly"` // If true, fail if note already exists
 }
 
 // ContentModifyRequest 专用于只修改内容的请求参数
@@ -81,11 +82,77 @@ type NoteDeleteRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
-// NoteRestoreRequest 恢复笔记所需参数
+// NoteRestoreRequest parameters for restoring a note
 type NoteRestoreRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
 	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
+// NotePatchFrontmatterRequest parameters for patching note frontmatter
+type NotePatchFrontmatterRequest struct {
+	Vault    string                 `json:"vault" form:"vault" binding:"required"`
+	Path     string                 `json:"path" form:"path" binding:"required"`
+	PathHash string                 `json:"pathHash" form:"pathHash"`
+	Updates  map[string]interface{} `json:"updates"`
+	Remove   []string               `json:"remove"`
+}
+
+// NoteAppendRequest parameters for appending content to a note
+type NoteAppendRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+	Content  string `json:"content" form:"content" binding:"required"`
+}
+
+// NotePrependRequest parameters for prepending content to a note
+type NotePrependRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+	Content  string `json:"content" form:"content" binding:"required"`
+}
+
+// NoteReplaceRequest parameters for find/replace in a note
+type NoteReplaceRequest struct {
+	Vault         string `json:"vault" form:"vault" binding:"required"`
+	Path          string `json:"path" form:"path" binding:"required"`
+	PathHash      string `json:"pathHash" form:"pathHash"`
+	Find          string `json:"find" form:"find" binding:"required"`
+	Replace       string `json:"replace" form:"replace"`
+	Regex         bool   `json:"regex" form:"regex"`
+	All           bool   `json:"all" form:"all"`
+	FailIfNoMatch bool   `json:"failIfNoMatch" form:"failIfNoMatch"`
+}
+
+// NoteReplaceResponse response for replace operation
+type NoteReplaceResponse struct {
+	MatchCount int      `json:"matchCount"`
+	Note       *NoteDTO `json:"note"`
+}
+
+// NoteMoveRequest parameters for moving a note
+type NoteMoveRequest struct {
+	Vault       string `json:"vault" form:"vault" binding:"required"`
+	Path        string `json:"path" form:"path" binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"`
+	Destination string `json:"destination" form:"destination" binding:"required"`
+	Overwrite   bool   `json:"overwrite" form:"overwrite"`
+}
+
+// NoteLinkQueryRequest parameters for backlinks/outlinks query
+type NoteLinkQueryRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
+// NoteLinkItem represents a link in backlinks/outlinks response
+type NoteLinkItem struct {
+	Path     string `json:"path"`
+	LinkText string `json:"linkText,omitempty"`
+	Context  string `json:"context,omitempty"` // snippet around link
 }
 
 // NoteSyncCheckRequest 同步检查单条记录的参数
