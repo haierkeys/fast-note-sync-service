@@ -250,12 +250,15 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 		cv.PluginVersionNewName = ""
 	}
 
+	// 返回给客户端的版本号不带 v 前缀
+	cv.VersionNewName = strings.TrimPrefix(cv.VersionNewName, "v")
+	cv.PluginVersionNewName = strings.TrimPrefix(cv.PluginVersionNewName, "v")
 	// 补充链接信息
 	if cv.VersionNewLink == "" && cv.VersionNewName != "" {
-		cv.VersionNewLink = "https://github.com/haierkeys/fast-note-sync-service/releases/latest"
+		cv.VersionNewLink = "https://github.com/haierkeys/fast-note-sync-service/releases/tag/" + cv.VersionNewName
 	}
 	if cv.PluginVersionNewLink == "" && cv.PluginVersionNewName != "" {
-		cv.PluginVersionNewLink = "https://github.com/haierkeys/obsidian-fast-note-sync/releases/latest"
+		cv.PluginVersionNewLink = "https://github.com/haierkeys/obsidian-fast-note-sync/releases/tag/" + cv.PluginVersionNewName
 	}
 
 	return cv
