@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -63,16 +65,32 @@ type NoteService interface {
 	// Migrate 迁移笔记历史记录
 	Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error
 
-	// MigratePush 提交笔记迁移任务
+	// MigratePush submits note migration task
 	MigratePush(oldNoteID, newNoteID int64, uid int64)
 
-	// WithClient 设置客户端信息
+	// WithClient sets client info
 	WithClient(name, version string) NoteService
+
+	// PatchFrontmatter patches note frontmatter
+	PatchFrontmatter(ctx context.Context, uid int64, params *dto.NotePatchFrontmatterRequest) (*dto.NoteDTO, error)
+
+	// AppendContent appends content to a note
+	AppendContent(ctx context.Context, uid int64, params *dto.NoteAppendRequest) (*dto.NoteDTO, error)
+
+	// PrependContent prepends content to a note
+	PrependContent(ctx context.Context, uid int64, params *dto.NotePrependRequest) (*dto.NoteDTO, error)
+
+	// ReplaceContent performs find/replace in a note
+	ReplaceContent(ctx context.Context, uid int64, params *dto.NoteReplaceRequest) (*dto.NoteReplaceResponse, error)
+
+	// Move moves a note to a new path
+	Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error)
 }
 
-// noteService 实现 NoteService 接口
+// noteService implements NoteService interface
 type noteService struct {
 	noteRepo     domain.NoteRepository
+	noteLinkRepo domain.NoteLinkRepository
 	fileRepo     domain.FileRepository
 	vaultService VaultService
 	sf           *singleflight.Group
@@ -81,10 +99,11 @@ type noteService struct {
 	config       *ServiceConfig
 }
 
-// NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) NoteService {
+// NewNoteService creates NoteService instance
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) NoteService {
 	return &noteService{
 		noteRepo:     noteRepo,
+		noteLinkRepo: noteLinkRepo,
 		fileRepo:     fileRepo,
 		vaultService: vaultSvc,
 		sf:           &singleflight.Group{},
@@ -92,10 +111,11 @@ func NewNoteService(noteRepo domain.NoteRepository, fileRepo domain.FileReposito
 	}
 }
 
-// WithClient 设置客户端信息，返回新的 NoteService 实例
+// WithClient sets client info, returns new NoteService instance
 func (s *noteService) WithClient(name, version string) NoteService {
 	return &noteService{
 		noteRepo:     s.noteRepo,
+		noteLinkRepo: s.noteLinkRepo,
 		fileRepo:     s.fileRepo,
 		vaultService: s.vaultService,
 		sf:           s.sf,
@@ -218,7 +238,12 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	if note != nil {
 		isNew = false
 
-		// 检查内容是否一致,排除掉已被标记删除的笔记
+		// If createOnly is set and note exists (not deleted), return error
+		if note.Action != domain.NoteActionDelete && params.CreateOnly {
+			return false, nil, code.ErrorNoteExist
+		}
+
+		// Check if content is consistent, excluding notes marked as deleted
 		if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
 			return isNew, nil, nil
 		}
@@ -252,6 +277,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		note.Ctime = params.Ctime
 		note.Action = action
 		note.Rename = 0
+		note.Version++ // 内容变更时递增版本号
 
 		updated, err := s.noteRepo.Update(ctx, note, uid)
 		if err != nil {
@@ -259,12 +285,13 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
+		go s.updateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
 		NoteHistoryDelayPush(updated.ID, uid)
 
 		return isNew, s.domainToDTO(updated), nil
 	}
 
-	// 创建新笔记
+	// Create new note
 	isNew = true
 	newNote := &domain.Note{
 		VaultID:     vaultID,
@@ -285,12 +312,13 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	go s.updateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
 
 	return isNew, s.domainToDTO(created), nil
 }
 
-// Delete 删除笔记
+// Delete deletes a note
 func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error) {
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
@@ -559,10 +587,345 @@ func (s *noteService) MigratePush(oldNoteID, newNoteID int64, uid int64) {
 	}
 }
 
-// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
+// Sync syncs notes (alias for ListByLastTime, used for WebSocket sync)
 func (s *noteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
 }
 
-// 确保 noteService 实现了 NoteService 接口
+// PatchFrontmatter patches note frontmatter with updates and removes specified keys
+func (s *noteService) PatchFrontmatter(ctx context.Context, uid int64, params *dto.NotePatchFrontmatterRequest) (*dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Parse existing frontmatter
+	existingYaml, body, _ := util.ParseFrontmatter(note.Content)
+	if existingYaml == nil {
+		existingYaml = make(map[string]interface{})
+	}
+
+	// Merge updates
+	newYaml := util.MergeFrontmatter(existingYaml, params.Updates, params.Remove)
+
+	// Reconstruct content
+	newContent := util.ReconstructContent(newYaml, body)
+
+	// Save via ModifyOrCreate
+	modifyParams := &dto.NoteModifyOrCreateRequest{
+		Vault:       params.Vault,
+		Path:        params.Path,
+		PathHash:    params.PathHash,
+		Content:     newContent,
+		ContentHash: util.EncodeHash32(newContent),
+		Mtime:       time.Now().UnixMilli(),
+		Ctime:       note.Ctime,
+	}
+
+	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	return result, err
+}
+
+// AppendContent appends content to the end of a note
+func (s *noteService) AppendContent(ctx context.Context, uid int64, params *dto.NoteAppendRequest) (*dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Append content
+	newContent := note.Content + params.Content
+
+	// Save via ModifyOrCreate
+	modifyParams := &dto.NoteModifyOrCreateRequest{
+		Vault:       params.Vault,
+		Path:        params.Path,
+		PathHash:    params.PathHash,
+		Content:     newContent,
+		ContentHash: util.EncodeHash32(newContent),
+		Mtime:       time.Now().UnixMilli(),
+		Ctime:       note.Ctime,
+	}
+
+	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	return result, err
+}
+
+// PrependContent prepends content to a note (after frontmatter if present)
+func (s *noteService) PrependContent(ctx context.Context, uid int64, params *dto.NotePrependRequest) (*dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Parse frontmatter to preserve it
+	yamlData, body, hasFrontmatter := util.ParseFrontmatter(note.Content)
+
+	// Prepend content to body
+	newBody := params.Content + body
+
+	// Reconstruct content
+	var newContent string
+	if hasFrontmatter {
+		newContent = util.ReconstructContent(yamlData, newBody)
+	} else {
+		newContent = newBody
+	}
+
+	// Save via ModifyOrCreate
+	modifyParams := &dto.NoteModifyOrCreateRequest{
+		Vault:       params.Vault,
+		Path:        params.Path,
+		PathHash:    params.PathHash,
+		Content:     newContent,
+		ContentHash: util.EncodeHash32(newContent),
+		Mtime:       time.Now().UnixMilli(),
+		Ctime:       note.Ctime,
+	}
+
+	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	return result, err
+}
+
+// ReplaceContent performs find/replace in a note
+func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto.NoteReplaceRequest) (*dto.NoteReplaceResponse, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	var matchCount int
+	var newContent string
+
+	if params.Regex {
+		// Regex mode
+		re, err := regexp.Compile(params.Find)
+		if err != nil {
+			return nil, code.ErrorInvalidRegex.WithDetails(err.Error())
+		}
+
+		matches := re.FindAllStringIndex(note.Content, -1)
+		matchCount = len(matches)
+
+		if params.All {
+			newContent = re.ReplaceAllString(note.Content, params.Replace)
+		} else if matchCount > 0 {
+			newContent = re.ReplaceAllStringFunc(note.Content, func(s string) string {
+				return params.Replace
+			})
+			// Only replace first match
+			loc := re.FindStringIndex(note.Content)
+			if loc != nil {
+				newContent = note.Content[:loc[0]] + params.Replace + note.Content[loc[1]:]
+			}
+		} else {
+			newContent = note.Content
+		}
+	} else {
+		// Plain text mode
+		matchCount = strings.Count(note.Content, params.Find)
+
+		if params.All {
+			newContent = strings.ReplaceAll(note.Content, params.Find, params.Replace)
+		} else if matchCount > 0 {
+			newContent = strings.Replace(note.Content, params.Find, params.Replace, 1)
+		} else {
+			newContent = note.Content
+		}
+	}
+
+	// Check if no match found and fail flag is set
+	if matchCount == 0 && params.FailIfNoMatch {
+		return nil, code.ErrorNoMatchFound
+	}
+
+	// If no changes, return early
+	if newContent == note.Content {
+		return &dto.NoteReplaceResponse{
+			MatchCount: matchCount,
+			Note:       s.domainToDTO(note),
+		}, nil
+	}
+
+	// Save via ModifyOrCreate
+	modifyParams := &dto.NoteModifyOrCreateRequest{
+		Vault:       params.Vault,
+		Path:        params.Path,
+		PathHash:    params.PathHash,
+		Content:     newContent,
+		ContentHash: util.EncodeHash32(newContent),
+		Mtime:       time.Now().UnixMilli(),
+		Ctime:       note.Ctime,
+	}
+
+	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.NoteReplaceResponse{
+		MatchCount: matchCount,
+		Note:       result,
+	}, nil
+}
+
+// Move moves a note to a new path
+func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// Get source note
+	sourceNote, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorNoteNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	destPathHash := util.EncodeHash32(params.Destination)
+
+	// Check if destination exists
+	destNote, _ := s.noteRepo.GetByPathHash(ctx, destPathHash, vaultID, uid)
+	if destNote != nil {
+		if !params.Overwrite {
+			return nil, code.ErrorNoteConflict
+		}
+		// Delete destination if overwrite is allowed
+		deleteParams := &dto.NoteDeleteRequest{
+			Vault:    params.Vault,
+			Path:     params.Destination,
+			PathHash: destPathHash,
+		}
+		_, err = s.Delete(ctx, uid, deleteParams)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Create new note at destination with same content
+	modifyParams := &dto.NoteModifyOrCreateRequest{
+		Vault:       params.Vault,
+		Path:        params.Destination,
+		PathHash:    destPathHash,
+		Content:     sourceNote.Content,
+		ContentHash: sourceNote.ContentHash,
+		Mtime:       time.Now().UnixMilli(),
+		Ctime:       sourceNote.Ctime,
+	}
+
+	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Delete source note
+	deleteParams := &dto.NoteDeleteRequest{
+		Vault:    params.Vault,
+		Path:     params.Path,
+		PathHash: params.PathHash,
+	}
+	_, err = s.Delete(ctx, uid, deleteParams)
+	if err != nil {
+		// Log but don't fail - the move already succeeded
+		zap.L().Warn("Move: failed to delete source note",
+			zap.Int64(logger.FieldUID, uid),
+			zap.String("path", params.Path),
+			zap.Error(err),
+		)
+	}
+
+	// Trigger history migration
+	if result != nil {
+		s.MigratePush(sourceNote.ID, result.ID, uid)
+	}
+
+	return result, nil
+}
+
+// updateNoteLinks extracts wiki links from content and updates the link index
+func (s *noteService) updateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
+	if s.noteLinkRepo == nil {
+		return
+	}
+
+	// Delete existing links for this note
+	_ = s.noteLinkRepo.DeleteBySourceNoteID(ctx, noteID, uid)
+
+	// Parse wiki links from content
+	links := util.ParseWikiLinks(content)
+	if len(links) == 0 {
+		return
+	}
+
+	// Create new link records
+	var noteLinks []*domain.NoteLink
+	for _, link := range links {
+		noteLinks = append(noteLinks, &domain.NoteLink{
+			SourceNoteID:   noteID,
+			TargetPath:     link.Path,
+			TargetPathHash: util.EncodeHash32(link.Path),
+			LinkText:       link.Alias,
+			VaultID:        vaultID,
+		})
+	}
+
+	_ = s.noteLinkRepo.CreateBatch(ctx, noteLinks, uid)
+}
+
+// Ensure noteService implements NoteService interface
 var _ NoteService = (*noteService)(nil)
