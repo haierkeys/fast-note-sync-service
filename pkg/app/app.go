@@ -9,6 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// VersionInfo 版本信息
+type VersionInfo struct {
+	Version   string `json:"version"`
+	GitTag    string `json:"gitTag"`
+	BuildTime string `json:"buildTime"`
+}
+
+type CheckVersionInfo struct {
+	VersionIsNew         bool   `json:"versionIsNew"`
+	VersionNewName       string `json:"versionNewName"`
+	VersionNewLink       string `json:"versionNewLink"`
+	PluginVersionIsNew   bool   `json:"pluginVersionIsNew"`
+	PluginVersionNewName string `json:"pluginVersionNewName"`
+	PluginVersionNewLink string `json:"pluginVersionNewLink"`
+}
+
 type Response struct {
 	Ctx *gin.Context
 }

@@ -4,6 +4,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
+	"golang.org/x/mod/semver"
 
 	"github.com/gin-gonic/gin/binding"
 	"go.uber.org/zap"
@@ -62,6 +64,10 @@ type App struct {
 	// 关闭控制
 	shutdownCh chan struct{}
 	wg         sync.WaitGroup
+
+	// 版本检查信息
+	checkVersionMu sync.RWMutex
+	checkVersion   pkgapp.CheckVersionInfo
 }
 
 // NewApp 创建应用容器实例
@@ -214,6 +220,52 @@ func (a *App) Version() pkgapp.VersionInfo {
 		GitTag:    GitTag,
 		BuildTime: BuildTime,
 	}
+}
+
+// CheckVersion 获取版本信息
+func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
+	a.checkVersionMu.RLock()
+	defer a.checkVersionMu.RUnlock()
+
+	cv := a.checkVersion
+
+	// 比较插件版本
+	if pluginVersion != "" && cv.PluginVersionNewName != "" {
+		v1 := pluginVersion
+		if !strings.HasPrefix(v1, "v") {
+			v1 = "v" + v1
+		}
+		v2 := cv.PluginVersionNewName
+		if !strings.HasPrefix(v2, "v") {
+			v2 = "v" + v2
+		}
+		cv.PluginVersionIsNew = semver.Compare(v2, v1) > 0
+	}
+
+	// 如果没有更新，把版本名称设置为空
+	if !cv.VersionIsNew {
+		cv.VersionNewName = ""
+	}
+	if !cv.PluginVersionIsNew {
+		cv.PluginVersionNewName = ""
+	}
+
+	// 补充链接信息
+	if cv.VersionNewLink == "" && cv.VersionNewName != "" {
+		cv.VersionNewLink = "https://github.com/haierkeys/fast-note-sync-service/releases/latest"
+	}
+	if cv.PluginVersionNewLink == "" && cv.PluginVersionNewName != "" {
+		cv.PluginVersionNewLink = "https://github.com/haierkeys/obsidian-fast-note-sync/releases/latest"
+	}
+
+	return cv
+}
+
+// SetCheckVersionInfo 设置版本检查信息
+func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
+	a.checkVersionMu.Lock()
+	defer a.checkVersionMu.Unlock()
+	a.checkVersion = info
 }
 
 // Validator 获取验证器
