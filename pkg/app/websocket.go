@@ -176,6 +176,7 @@ type WebSocketMessage struct {
 type ClientInfoMessage struct {
 	Name                string `json:"name"`                // 客户端名称
 	Version             string `json:"version"`             // 客户端版本
+	Type                string `json:"type"`                // 客户端类型 "web" | "desktop" | "mobile" | "obsidianPlugin"
 	OfflineSyncStrategy string `json:"offlineSyncStrategy"` // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 }
 
@@ -500,6 +501,8 @@ type AppContainer interface {
 	SubmitTaskAsync(ctx context.Context, task func(context.Context) error) error
 	// Version 获取版本信息
 	Version() VersionInfo
+	// CheckVersion 检查版本
+	CheckVersion(pluginVersion string) CheckVersionInfo
 	// Validator 获取验证器（可能为 nil）
 	Validator() ValidatorInterface
 	// IsReturnSuccess 是否返回成功响应
@@ -508,13 +511,6 @@ type AppContainer interface {
 	GetAuthTokenKey() string
 	// IsProductionMode 是否为生产模式
 	IsProductionMode() bool
-}
-
-// VersionInfo 版本信息
-type VersionInfo struct {
-	Version   string
-	GitTag    string
-	BuildTime string
 }
 
 // ValidatorInterface 验证器接口
@@ -698,7 +694,9 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 		return "Guest"
 	}()), zap.String("name", c.ClientName), zap.String("version", c.ClientVersion), zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
 
-	c.ToResponse(code.Success, "ClientInfo")
+	checkVersionInfo := w.app.CheckVersion(c.ClientVersion)
+
+	c.ToResponse(code.Success.WithData(checkVersionInfo), "ClientInfo")
 }
 
 func (w *WebsocketServer) GetClient(conn *gws.Conn) *WebsocketClient {
