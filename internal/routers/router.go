@@ -179,6 +179,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/notes", noteHandler.List)
 
 			auth.GET("/file", fileHandler.GetContent)
+			auth.GET("/file/info", fileHandler.Get)
 			auth.DELETE("/file", fileHandler.Delete)
 			auth.GET("/files", fileHandler.List)
 

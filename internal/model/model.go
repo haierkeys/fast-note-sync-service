@@ -1,11 +1,8 @@
-
 package model
 
 import (
 	"gorm.io/gorm"
 )
-
-
 
 func AutoMigrate(db *gorm.DB, key string) error {
 	if db == nil {

@@ -201,6 +201,60 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), "FileSyncDelete")
 }
 
+// Get 获取文件元数据信息
+// @Summary 获取附件信息
+// @Description 根据路径获取附件的元数据信息 (FileDTO)
+// @Tags 附件
+// @Security UserAuthToken
+// @Param token header string true "认证 Token"
+// @Produce json
+// @Param params query dto.FileGetRequest true "获取参数"
+// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "成功"
+// @Router /api/file/info [get]
+func (h *FileHandler) Get(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FileGetRequest{}
+
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("FileHandler.Get.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("FileHandler.Get err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	fileSvc := h.App.GetFileService(app.WebClientName, "")
+	file, err := fileSvc.Get(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "FileHandler.Get", err)
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+
+	if file == nil {
+		response.ToResponse(code.ErrorNoteNotFound)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(file))
+}
+
 // logError 记录错误日志，包含 Trace ID
 func (h *FileHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

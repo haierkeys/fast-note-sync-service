@@ -422,6 +422,7 @@ paths:
         type: string
       - in: query
         name: pathHash
+        required: true
         type: string
       - in: query
         name: vault
@@ -476,6 +477,46 @@ paths:
       security:
       - UserAuthToken: []
       summary: 获取附件内容
+      tags:
+      - 附件
+  /api/file/info:
+    get:
+      description: 根据路径获取附件的元数据信息 (FileDTO)
+      parameters:
+      - description: 认证 Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: isRecycle
+        type: boolean
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FileDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: 获取附件信息
       tags:
       - 附件
   /api/files:
