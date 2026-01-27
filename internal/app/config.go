@@ -131,6 +131,8 @@ type AppSettings struct {
 	UploadSessionTimeout string `yaml:"upload-session-timeout" default:"1d"`
 	// FileChunkSize 文件分片大小
 	FileChunkSize string `yaml:"file-chunk-size" default:"512KB"`
+	// DownloadSessionTimeout 文件分片下载超时时间
+	DownloadSessionTimeout string `yaml:"download-session-timeout" default:"1h"`
 
 	// Worker Pool 配置
 	WorkerPoolMaxWorkers int `yaml:"worker-pool-max-workers" default:"100"`

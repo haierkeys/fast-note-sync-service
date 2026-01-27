@@ -749,8 +749,21 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 // 在独立的 goroutine 中运行,读取文件并通过 WebSocket 发送二进制分片。
 func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileDownloadChunkSession) {
 	logger := h.App.Logger()
+	// 从配置获取超时时间，默认 1 小时
+	timeout := 1 * time.Hour
+	cfg := h.App.Config()
+	if cfg.App.DownloadSessionTimeout != "" && cfg.App.DownloadSessionTimeout != "0" {
+		if t, err := util.ParseDuration(cfg.App.DownloadSessionTimeout); err == nil {
+			timeout = t
+		} else {
+			LogWarnWithLogger(logger, c, "sendFileChunks: invalid download-session-timeout config, using default 1h",
+				zap.String("config", cfg.App.DownloadSessionTimeout),
+				zap.Error(err))
+		}
+	}
+
 	// 创建超时上下文，基于 WebSocket 连接的 context
-	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(c.Context(), timeout)
 	defer cancel()
 
 	// 打开文件

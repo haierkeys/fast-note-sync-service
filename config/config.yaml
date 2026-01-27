@@ -44,6 +44,9 @@ app:
   # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
   # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
   file-chunk-size: "512KB"
+  # 文件分片下载超时时间(如:1h/30m,0表示不超时)
+  # File chunk download session timeout (e.g., 1h/30m, 0 means no timeout)
+  download-session-timeout: "1h"
   # 历史记录保留版本数，默认 100
   # Number of history versions to keep, default 100
   history-keep-versions: 100
