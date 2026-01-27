@@ -153,6 +153,7 @@ type NoteLinkItem struct {
 	Path     string `json:"path"`
 	LinkText string `json:"linkText,omitempty"`
 	Context  string `json:"context,omitempty"` // snippet around link
+	IsEmbed  bool   `json:"isEmbed"`           // true if embed (![[...]]) vs regular link ([[...]])
 }
 
 // NoteSyncCheckRequest 同步检查单条记录的参数

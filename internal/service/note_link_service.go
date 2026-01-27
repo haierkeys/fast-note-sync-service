@@ -38,24 +38,29 @@ func NewNoteLinkService(noteLinkRepo domain.NoteLinkRepository, noteRepo domain.
 	}
 }
 
-// GetBacklinks gets all notes that link to a target note
+// GetBacklinks gets all notes that link to a target note.
+// Uses path variations to match links stored as partial paths (e.g., [[note]], [[folder/note]]).
 func (s *noteLinkService) GetBacklinks(ctx context.Context, uid int64, params *dto.NoteLinkQueryRequest) ([]*dto.NoteLinkItem, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
 	}
 
-	// Wiki links are stored without .md extension (e.g., [[Note1]] stores "Note1")
-	// but the API receives full paths (e.g., "Note1.md")
-	// Strip .md extension to match stored link targets
-	targetPath := params.Path
-	if strings.HasSuffix(targetPath, ".md") {
-		targetPath = strings.TrimSuffix(targetPath, ".md")
+	// Generate all path variations for matching
+	// e.g., "projects/folder/note.md" -> ["note", "folder/note", "projects/folder/note"]
+	pathVariations := util.GeneratePathVariations(params.Path)
+	if len(pathVariations) == 0 {
+		return nil, nil
 	}
-	params.PathHash = util.EncodeHash32(targetPath)
 
-	// Get backlinks from repository
-	links, err := s.noteLinkRepo.GetBacklinks(ctx, params.PathHash, vaultID, uid)
+	// Generate hashes for all variations
+	var pathHashes []string
+	for _, variation := range pathVariations {
+		pathHashes = append(pathHashes, util.EncodeHash32(variation))
+	}
+
+	// Get backlinks matching any of the path variations
+	links, err := s.noteLinkRepo.GetBacklinksByHashes(ctx, pathHashes, vaultID, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -71,10 +76,16 @@ func (s *noteLinkService) GetBacklinks(ctx context.Context, uid int64, params *d
 		item := &dto.NoteLinkItem{
 			Path:     sourceNote.Path,
 			LinkText: link.LinkText,
+			IsEmbed:  link.IsEmbed,
 		}
 
-		// Extract context around the link
-		item.Context = s.extractLinkContext(sourceNote.Content, params.Path)
+		// Extract context around the link (try all variations)
+		for _, variation := range pathVariations {
+			item.Context = s.extractLinkContext(sourceNote.Content, variation)
+			if item.Context != "" {
+				break
+			}
+		}
 
 		results = append(results, item)
 	}
@@ -113,6 +124,7 @@ func (s *noteLinkService) GetOutlinks(ctx context.Context, uid int64, params *dt
 		item := &dto.NoteLinkItem{
 			Path:     link.TargetPath,
 			LinkText: link.LinkText,
+			IsEmbed:  link.IsEmbed,
 		}
 
 		// Extract context around the link

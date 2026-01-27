@@ -53,6 +53,7 @@ func (r *noteLinkRepository) toDomain(m *model.NoteLink) *domain.NoteLink {
 		TargetPath:     m.TargetPath,
 		TargetPathHash: m.TargetPathHash,
 		LinkText:       m.LinkText,
+		IsEmbed:        m.IsEmbed,
 		VaultID:        m.VaultID,
 		CreatedAt:      time.Time(m.CreatedAt),
 	}
@@ -73,6 +74,7 @@ func (r *noteLinkRepository) CreateBatch(ctx context.Context, links []*domain.No
 				TargetPath:     link.TargetPath,
 				TargetPathHash: link.TargetPathHash,
 				LinkText:       link.LinkText,
+				IsEmbed:        link.IsEmbed,
 				VaultID:        link.VaultID,
 				UID:            uid,
 				CreatedAt:      now,
@@ -104,6 +106,34 @@ func (r *noteLinkRepository) GetBacklinks(ctx context.Context, targetPathHash st
 	var results []*domain.NoteLink
 	for _, m := range modelList {
 		results = append(results, r.toDomain(m))
+	}
+	return results, nil
+}
+
+// GetBacklinksByHashes gets all notes that link to any of the target path hashes.
+// Used for matching path variations (e.g., [[note]], [[folder/note]], [[full/path/note]]).
+// Results are deduplicated by SourceNoteID.
+func (r *noteLinkRepository) GetBacklinksByHashes(ctx context.Context, targetPathHashes []string, vaultID, uid int64) ([]*domain.NoteLink, error) {
+	if len(targetPathHashes) == 0 {
+		return nil, nil
+	}
+
+	var modelList []*model.NoteLink
+	err := r.getDB(uid).WithContext(ctx).
+		Where("target_path_hash IN ? AND vault_id = ?", targetPathHashes, vaultID).
+		Find(&modelList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Deduplicate by SourceNoteID
+	seen := make(map[int64]bool)
+	var results []*domain.NoteLink
+	for _, m := range modelList {
+		if !seen[m.SourceNoteID] {
+			seen[m.SourceNoteID] = true
+			results = append(results, r.toDomain(m))
+		}
 	}
 	return results, nil
 }

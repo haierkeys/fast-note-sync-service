@@ -235,6 +235,10 @@ type NoteLinkRepository interface {
 	// GetBacklinks gets all notes that link to a target path
 	GetBacklinks(ctx context.Context, targetPathHash string, vaultID, uid int64) ([]*NoteLink, error)
 
+	// GetBacklinksByHashes gets all notes that link to any of the target path hashes
+	// Used for matching path variations (e.g., [[note]], [[folder/note]], [[full/path/note]])
+	GetBacklinksByHashes(ctx context.Context, targetPathHashes []string, vaultID, uid int64) ([]*NoteLink, error)
+
 	// GetOutlinks gets all links from a source note
 	GetOutlinks(ctx context.Context, sourceNoteID, uid int64) ([]*NoteLink, error)
 }

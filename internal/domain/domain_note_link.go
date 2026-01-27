@@ -10,6 +10,7 @@ type NoteLink struct {
 	TargetPath     string
 	TargetPathHash string
 	LinkText       string // alias from [[link|alias]]
+	IsEmbed        bool   // true if embed (![[...]]) vs regular link ([[...]])
 	VaultID        int64
 	CreatedAt      time.Time
 }

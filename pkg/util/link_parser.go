@@ -5,16 +5,19 @@ import "regexp"
 
 // WikiLink represents a wiki-style link extracted from content
 type WikiLink struct {
-	Path  string // The target path
-	Alias string // Optional alias from [[link|alias]]
+	Path    string // The target path
+	Alias   string // Optional alias from [[link|alias]]
+	IsEmbed bool   // True if this is an embed (![[...]]) rather than a link ([[...]])
 }
 
-// wikiLinkRegex matches [[wiki-links]] and [[link|alias]] patterns
-// Group 1: path, Group 2: optional alias
-var wikiLinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
+// wikiLinkRegex matches [[wiki-links]], [[link|alias]], and ![[embeds]] patterns
+// Group 1: optional "!" prefix (embed marker)
+// Group 2: path
+// Group 3: optional alias
+var wikiLinkRegex = regexp.MustCompile(`(!?)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 
-// ParseWikiLinks extracts [[wiki-links]] and [[link|alias]] from content
-// Returns a slice of WikiLink with path and optional alias
+// ParseWikiLinks extracts [[wiki-links]], [[link|alias]], and ![[embeds]] from content
+// Returns a slice of WikiLink with path, optional alias, and embed flag
 func ParseWikiLinks(content string) []WikiLink {
 	if content == "" {
 		return nil
@@ -25,22 +28,29 @@ func ParseWikiLinks(content string) []WikiLink {
 		return nil
 	}
 
-	// Use a map to deduplicate by path
-	seen := make(map[string]bool)
+	// Use a map to deduplicate by path+isEmbed combination
+	type linkKey struct {
+		path    string
+		isEmbed bool
+	}
+	seen := make(map[linkKey]bool)
 	var links []WikiLink
 
 	for _, match := range matches {
-		path := match[1]
-		if seen[path] {
+		isEmbed := match[1] == "!"
+		path := match[2]
+		key := linkKey{path: path, isEmbed: isEmbed}
+		if seen[key] {
 			continue
 		}
-		seen[path] = true
+		seen[key] = true
 
 		link := WikiLink{
-			Path: path,
+			Path:    path,
+			IsEmbed: isEmbed,
 		}
-		if len(match) > 2 && match[2] != "" {
-			link.Alias = match[2]
+		if len(match) > 3 && match[3] != "" {
+			link.Alias = match[3]
 		}
 		links = append(links, link)
 	}
