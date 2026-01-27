@@ -69,6 +69,7 @@ var (
 	ErrorNoteConflict                = NewError(460, lang{zh_cn: "目标笔记已存在", en: "Destination note already exists"})
 	ErrorNoMatchFound                = NewError(461, lang{zh_cn: "未找到匹配内容", en: "No match found"})
 	ErrorInvalidRegex                = NewError(462, lang{zh_cn: "无效的正则表达式", en: "Invalid regex pattern"})
+	ErrorInvalidPath                 = NewError(463, lang{zh_cn: "无效的路径：路径不能包含 '..'", en: "Invalid path: path cannot contain '..'"})
 	ErrorNoteSyncFailed              = NewError(432, lang{zh_cn: "同步笔记失败", en: "Sync note failed"})
 	ErrorNoteUpdateCheckFailed       = NewError(433, lang{zh_cn: "笔记更新检查失败", en: "Note update check failed"})
 	ErrorNoteListFailed              = NewError(434, lang{zh_cn: "笔记列表获取失败", en: "Note list get failed"})

@@ -920,6 +920,7 @@ func (s *noteService) updateNoteLinks(ctx context.Context, noteID int64, content
 			TargetPath:     link.Path,
 			TargetPathHash: util.EncodeHash32(link.Path),
 			LinkText:       link.Alias,
+			IsEmbed:        link.IsEmbed,
 			VaultID:        vaultID,
 		})
 	}

@@ -185,6 +185,16 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// Validate paths for directory traversal attacks
+	if !util.ValidatePath(params.Path) {
+		response.ToResponse(code.ErrorInvalidPath)
+		return
+	}
+	if params.SrcPath != "" && !util.ValidatePath(params.SrcPath) {
+		response.ToResponse(code.ErrorInvalidPath)
+		return
+	}
+
 	// Apply default folder if configured
 	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
@@ -684,6 +694,12 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	if uid == 0 {
 		h.App.Logger().Error("NoteHandler.Move err uid=0")
 		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Validate paths for directory traversal attacks
+	if !util.ValidatePath(params.Path) || !util.ValidatePath(params.Destination) {
+		response.ToResponse(code.ErrorInvalidPath)
 		return
 	}
 
