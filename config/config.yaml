@@ -47,9 +47,9 @@ app:
   # 文件分片下载超时时间(如:1h/30m,0表示不超时)
   # File chunk download session timeout (e.g., 1h/30m, 0 means no timeout)
   download-session-timeout: "1h"
-  # 默认文件夹前缀，当笔记路径不包含"/"时自动添加此前缀（如: "inbox" 使 "note.md" 变为 "inbox/note.md"）
-  # Default folder prefix, automatically prepended when note path doesn't contain "/" (e.g., "inbox" makes "note.md" become "inbox/note.md")
-  default-folder: ""
+  # API默认笔记文件夹，当笔记路径不包含"/"时自动添加此前缀（如: "inbox" 使 "note.md" 变为 "inbox/note.md"）
+  # Default API note folder, automatically prepended when note path doesn't contain "/" (e.g., "inbox" makes "note.md" become "inbox/note.md")
+  default-api-folder: ""
   # 历史记录保留版本数，默认 100
   # Number of history versions to keep, default 100
   history-keep-versions: 100

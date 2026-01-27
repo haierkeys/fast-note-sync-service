@@ -133,8 +133,8 @@ type AppSettings struct {
 	FileChunkSize string `yaml:"file-chunk-size" default:"512KB"`
 	// DownloadSessionTimeout 文件分片下载超时时间
 	DownloadSessionTimeout string `yaml:"download-session-timeout" default:"1h"`
-	// DefaultFolder 默认文件夹前缀，当笔记路径不包含"/"时自动添加此前缀
-	DefaultFolder string `yaml:"default-folder" default:""`
+	// DefaultAPIFolder API默认笔记文件夹，当笔记路径不包含"/"时自动添加此前缀
+	DefaultAPIFolder string `yaml:"default-api-folder" default:""`
 
 	// Worker Pool 配置
 	WorkerPoolMaxWorkers int `yaml:"worker-pool-max-workers" default:"100"`

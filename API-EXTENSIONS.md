@@ -167,10 +167,10 @@ With `createOnly: true`, returns error 430 if note already exists.
 
 ## Configuration
 
-New config option in `config.yaml`:
+New config option in `config.yaml` (also editable via Admin Settings API):
 ```yaml
 app:
-  default-folder: ""  # Optional: prepend this folder to paths without /
+  default-api-folder: ""  # Optional: prepend this folder to note paths without /
 ```
 
 ## Known Limitations

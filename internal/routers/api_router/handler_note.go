@@ -196,7 +196,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 		if params.SrcPath != "" {
 			params.SrcPath = util.ApplyDefaultFolder(params.SrcPath, defaultFolder)
@@ -472,7 +472,7 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 
@@ -528,7 +528,7 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 
@@ -584,7 +584,7 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 
@@ -640,7 +640,7 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 
@@ -704,7 +704,7 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 		params.Destination = util.ApplyDefaultFolder(params.Destination, defaultFolder)
 	}
@@ -773,7 +773,7 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 
@@ -826,7 +826,7 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultFolder; defaultFolder != "" {
+	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	}
 

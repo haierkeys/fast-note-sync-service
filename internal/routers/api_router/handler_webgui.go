@@ -40,6 +40,7 @@ type webGUIAdminConfig struct {
 	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`
 	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`
 	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`
+	DefaultAPIFolder        string `json:"defaultApiFolder,omitempty" form:"defaultApiFolder"`
 	AdminUID                int    `json:"adminUid" form:"adminUid"`
 	AuthTokenKey            string `json:"authTokenKey" form:"authTokenKey"`
 	TokenExpiry             string `json:"tokenExpiry" form:"tokenExpiry"`
@@ -101,6 +102,7 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 		UploadSessionTimeout:    cfg.App.UploadSessionTimeout,
 		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 		HistorySaveDelay:        cfg.App.HistorySaveDelay,
+		DefaultAPIFolder:        cfg.App.DefaultAPIFolder,
 		AdminUID:                cfg.User.AdminUID,
 		AuthTokenKey:            cfg.Security.AuthTokenKey,
 		TokenExpiry:             cfg.Security.TokenExpiry,
@@ -182,6 +184,7 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 	cfg.App.UploadSessionTimeout = params.UploadSessionTimeout
 	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
 	cfg.App.HistorySaveDelay = params.HistorySaveDelay
+	cfg.App.DefaultAPIFolder = params.DefaultAPIFolder
 	cfg.User.AdminUID = params.AdminUID
 	cfg.Security.AuthTokenKey = params.AuthTokenKey
 	cfg.Security.TokenExpiry = params.TokenExpiry
