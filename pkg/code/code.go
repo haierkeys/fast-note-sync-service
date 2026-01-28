@@ -35,11 +35,12 @@ type Code struct {
 var codes = map[int]string{}
 var maxcode = 0
 
-func NewError(code int, l lang, reset ...bool) *Code {
+func NewError(code int, reset ...bool) *Code {
 	if _, ok := codes[code]; ok {
 		panic(fmt.Sprintf("错误码 %d 已经存在，请更换一个", code))
 	}
 
+	l := getLang(code)
 	codes[code] = l.GetMessage()
 
 	if code > maxcode {
@@ -63,16 +64,24 @@ func incr(code int) int {
 
 var sussCodes = map[int]string{}
 
-func NewSuss(code int, l lang) *Code {
+func NewSuss(code int) *Code {
 	if _, ok := sussCodes[code]; ok {
 		panic(fmt.Sprintf("成功码 %d 已经存在，请更换一个", code))
 	}
+	l := getLang(code)
 	sussCodes[code] = l.GetMessage()
 	if code > maxcode {
 		maxcode = code
 	}
 
 	return &Code{code: code, status: true, Lang: l}
+}
+
+func getLang(code int) lang {
+	return lang{
+		zh_cn: zh_cn_messages[code],
+		en:    en_messages[code],
+	}
 }
 
 func (e *Code) Error() string {

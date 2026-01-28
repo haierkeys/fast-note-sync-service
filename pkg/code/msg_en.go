@@ -1,0 +1,97 @@
+package code
+
+var en_messages = map[int]string{
+	0:   "Failed",
+	1:   "Success",
+	2:   "Create Success",
+	3:   "Update Success",
+	4:   "Delete Success",
+	5:   "Password Update Success",
+	6:   "No Update",
+	300: "Server Internal Error",
+	301: "Database query failed",
+	302: "Server busy, please try again later",
+	303: "Too Many Requests",
+	304: "Not Found API",
+	305: "Invalid Params",
+	306: "Invalid Auth Token",
+	307: "Not logged in. Please log in first.",
+	308: "Session expired, please log in again.",
+	309: "Your access is missing a user token",
+	310: "User token has expired",
+	311: "Token generation failed",
+
+	// --- User Related (400-419) ---
+	400: "User registration failed",
+	401: "User login failed",
+	402: "Invalid username or password",
+	403: "Username does not exist",
+	404: "Username already exists",
+	405: "User email already exists",
+	406: "The username does not meet the rules, the username length is 3-15 digits, and can only contain letters, numbers or underscores",
+	407: "Password does not meet the rules",
+	408: "Current password verification error",
+	409: "The two passwords entered are inconsistent",
+	410: "User registration is closed, please contact the administrator to configure the config.user.register-is-enable option",
+	411: "This operation requires administrator privileges",
+	412: "User local file system is disabled",
+
+	// --- Vault Related (420-429) ---
+	420: "Note Vault does not exist",
+	421: "Note Vault already exists",
+	422: "Invalid storage type",
+	423: "Invalid cloud storage type",
+
+	// --- Note Related (430-449) ---
+	430: "Note does not exist",
+	431: "Note already exists",
+	432: "Get note failed",
+	433: "Note modify or create failed",
+	434: "Modify note content failed",
+	435: "Delete note failed",
+	436: "Note list get failed",
+	437: "Note rename failed",
+	438: "Note rename target note already exists",
+	439: "Sync note failed",
+	440: "Note update check failed",
+	441: "Destination note already exists",
+	442: "No match found",
+	443: "Invalid regex pattern",
+	444: "Invalid path: path cannot contain '..'",
+
+	// --- File/Attachment Related (450-464) ---
+	450: "File does not exist",
+	451: "Get file failed",
+	452: "File modify or create failed",
+	453: "Modify file content failed",
+	454: "Delete file failed",
+	455: "File list get failed",
+	456: "Upload file failed",
+	457: "File upload check failed",
+	458: "Upload file session not found",
+	459: "File save failed",
+	460: "File move failed",
+	461: "File read failed",
+
+	// --- Setting Related (465-474) ---
+	465: "Setting does not exist",
+	466: "Setting already exists",
+	467: "Get setting failed",
+	468: "Setting modify or create failed",
+	469: "Modify setting content failed",
+	470: "Delete setting failed",
+	471: "Setting list get failed",
+	472: "Sync setting failed",
+	473: "Setting update check failed",
+	474: "Config save failed",
+
+	// --- Share Related (475-484) ---
+	475: "Share link not found",
+	476: "Share link has expired",
+	477: "Share link has been revoked",
+
+	// --- Sync & History (485-499) ---
+	485: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
+	486: "History record not found",
+	487: "History restore failed",
+}
