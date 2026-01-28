@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Cors creates CORS middleware
+// Cors 创建跨域中间件
 func Cors() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
@@ -37,6 +39,7 @@ func Cors() gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Origin", "*")
 		}
 
+		// Allow OPTIONS requests to pass
 		// 允许放行OPTIONS请求
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)

@@ -24,12 +24,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// FileWSHandler WebSocket file handler
 // FileWSHandler WebSocket 文件处理器
+// Uses App Container to inject dependencies
 // 使用 App Container 注入依赖
 type FileWSHandler struct {
 	*WSHandler
 }
 
+// NewFileWSHandler creates FileWSHandler instance
 // NewFileWSHandler 创建 FileWSHandler 实例
 func NewFileWSHandler(a *app.App) *FileWSHandler {
 	return &FileWSHandler{
@@ -38,34 +41,34 @@ func NewFileWSHandler(a *app.App) *FileWSHandler {
 }
 
 type FileMessage struct {
-	Path             string `json:"path" form:"path"`                     // 路径信息（文件路径）
-	PathHash         string `json:"pathHash" form:"pathHash"`             // 路径哈希值，用于快速查找
-	ContentHash      string `json:"contentHash" form:"contentHash"`       // 内容哈希，用于判定内容是否变更
-	SavePath         string `json:"savePath" form:"savePath"  binding:""` // 文件保存路径
-	Size             int64  `json:"size" form:"size"`                     // 文件大小
-	Ctime            int64  `json:"ctime" form:"ctime"`                   // 创建时间戳（秒）
-	Mtime            int64  `json:"mtime" form:"mtime"`                   // 文件修改时间戳（秒）
-	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`     // 记录更新时间戳（用于同步）
+	Path             string `json:"path" form:"path"`                     // Path info (file path) // 路径信息（文件路径）
+	PathHash         string `json:"pathHash" form:"pathHash"`             // Path hash for fast lookup // 路径哈希值，用于快速查找
+	ContentHash      string `json:"contentHash" form:"contentHash"`       // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
+	SavePath         string `json:"savePath" form:"savePath"  binding:""` // File save path // 文件保存路径
+	Size             int64  `json:"size" form:"size"`                     // File size // 文件大小
+	Ctime            int64  `json:"ctime" form:"ctime"`                   // Creation timestamp (seconds) // 创建时间戳（秒）
+	Mtime            int64  `json:"mtime" form:"mtime"`                   // Modification timestamp (seconds) // 文件修改时间戳（秒）
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`     // Update timestamp (for sync) // 记录更新时间戳（用于同步）
 }
 
 type FileUploadBinaryChunkSession struct {
-	ID             string             // 会话 ID
-	Vault          string             // 仓库名称
-	Path           string             // 文件路径
-	PathHash       string             // 文件路径哈希值
-	ContentHash    string             // 文件内容哈希值
-	Ctime          int64              // 创建时间
-	Mtime          int64              // 修改时间
-	Size           int64              // 文件大小
-	TotalChunks    int64              // 总分块数
-	UploadedChunks int64              // 已上传分块数
-	UploadedBytes  int64              // 已上传字节数
-	ChunkSize      int64              // 分块大小
-	SavePath       string             // 临时保存路径
-	FileHandle     *os.File           // 文件句柄
-	mu             sync.Mutex         // 互斥锁，保护并发操作
-	CreatedAt      time.Time          // 创建时间
-	CancelFunc     context.CancelFunc // 取消函数，用于超时控制
+	ID             string             // Session ID // 会话 ID
+	Vault          string             // Vault Name // 仓库名称
+	Path           string             // File Path // 文件路径
+	PathHash       string             // File Path Hash // 文件路径哈希值
+	ContentHash    string             // File Content Hash // 文件内容哈希值
+	Ctime          int64              // Creation time // 创建时间
+	Mtime          int64              // Modification time // 修改时间
+	Size           int64              // File size // 文件大小
+	TotalChunks    int64              // Total chunks // 总分块数
+	UploadedChunks int64              // Uploaded chunks // 已上传分块数
+	UploadedBytes  int64              // Uploaded bytes // 已上传字节数
+	ChunkSize      int64              // Chunk size // 分块大小
+	SavePath       string             // Temp save path // 临时保存路径
+	FileHandle     *os.File           // File handle // 文件句柄
+	mu             sync.Mutex         // Mutex to protect concurrent operations // 互斥锁，保护并发操作
+	CreatedAt      time.Time          // Created time // 创建时间
+	CancelFunc     context.CancelFunc // Cancel function for timeout control // 取消函数，用于超时控制
 }
 
 func (s *FileUploadBinaryChunkSession) Cleanup() {
@@ -96,56 +99,64 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 	}
 }
 
+// FileDownloadChunkSession defines the session state for file chunk download
+// Used to track progress and file info for large file chunk downloads
 // FileDownloadChunkSession 定义文件分块下载的会话状态。
 // 用于跟踪大文件分块下载的进度和文件信息。
 type FileDownloadChunkSession struct {
-	SessionID   string // 会话 ID
-	Path        string // 文件路径(用于日志)
-	Size        int64  // 文件大小
-	TotalChunks int64  // 总分块数
-	ChunkSize   int64  // 分块大小
-	SavePath    string // 文件实际保存路径
+	SessionID   string // Session ID // 会话 ID
+	Path        string // File path (for logging) // 文件路径(用于日志)
+	Size        int64  // File size // 文件大小
+	TotalChunks int64  // Total chunks // 总分块数
+	ChunkSize   int64  // Chunk size // 分块大小
+	SavePath    string // File actual save path // 文件实际保存路径
 }
 
+// FileSyncEndMessage defines the message structure when file sync ends
 // FileSyncEndMessage 定义文件同步结束时的消息结构。
 type FileSyncEndMessage struct {
-	LastTime           int64           `json:"lastTime" form:"lastTime"`                     // 最后同步时间
-	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
-	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
-	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
-	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
-	Messages           []queuedMessage `json:"messages"`                                     // 合并的消息队列
+	LastTime           int64           `json:"lastTime" form:"lastTime"`                     // Last sync time // 最后同步时间
+	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // Number of items needing upload // 需要上传的数量
+	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // Number of items needing modification // 需要修改的数量
+	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // Number of items needing mtime sync // 需要同步修改时间的数量
+	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // Number of items needing deletion // 需要删除的数量
+	Messages           []queuedMessage `json:"messages"`                                     // Merged message queue // 合并的消息队列
 }
 
+// FileUploadMessage defines the message structure informing client that file upload is needed
 // FileUploadMessage 定义服务端通知客户端需要上传文件的消息结构。
 type FileUploadMessage struct {
-	Path      string `json:"path"`      // 文件路径
-	SessionID string `json:"sessionId"` // 会话 ID
-	ChunkSize int64  `json:"chunkSize"` // 分块大小
+	Path      string `json:"path"`      // File path // 文件路径
+	SessionID string `json:"sessionId"` // Session ID // 会话 ID
+	ChunkSize int64  `json:"chunkSize"` // Chunk size // 分块大小
 }
 
+// FileDownloadMessage defines the message structure informing client that file download is ready
 // FileDownloadMessage 定义服务端通知客户端准备下载文件的消息结构。
 type FileDownloadMessage struct {
-	Path        string `json:"path"`        // 文件路径
-	Ctime       int64  `json:"ctime"`       // 创建时间
-	Mtime       int64  `json:"mtime"`       // 修改时间
-	SessionID   string `json:"sessionId"`   // 会话 ID
-	ChunkSize   int64  `json:"chunkSize"`   // 分块大小
-	TotalChunks int64  `json:"totalChunks"` // 总分块数
-	Size        int64  `json:"size"`        // 文件总大小
+	Path        string `json:"path"`        // File path // 文件路径
+	Ctime       int64  `json:"ctime"`       // Creation time // 创建时间
+	Mtime       int64  `json:"mtime"`       // Modification time // 修改时间
+	SessionID   string `json:"sessionId"`   // Session ID // 会话 ID
+	ChunkSize   int64  `json:"chunkSize"`   // Chunk size // 分块大小
+	TotalChunks int64  `json:"totalChunks"` // Total chunks // 总分块数
+	Size        int64  `json:"size"`        // Total file size // 文件总大小
 }
 
+// FileSyncMtimeMessage defines the message structure for file metadata update
 // FileSyncMtimeMessage 定义文件元数据更新消息结构。
 type FileSyncMtimeMessage struct {
-	Path  string `json:"path"`   // 文件路径
-	Ctime int64  `json:"ctime" ` // 创建时间
-	Mtime int64  `json:"mtime" ` // 修改时间
+	Path  string `json:"path"`   // File path // 文件路径
+	Ctime int64  `json:"ctime" ` // Creation time // 创建时间
+	Mtime int64  `json:"mtime" ` // Modification time // 修改时间
 }
 
+// FileUploadCheck checks file upload request, initializes upload session or confirms no upload needed
 // FileUploadCheck 检查文件上传请求，初始化上传会话或确认无需上传。
 func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.FileUpdateCheckRequest{}
 
+	// Bind and validate parameters
 	// 绑定并验证参数
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
@@ -153,6 +164,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		return
 	}
 
+	// Required parameter validation
 	// 必填参数校验
 	if params.PathHash == "" {
 		c.ToResponse(code.ErrorInvalidParams.WithDetails("pathHash is required"))
@@ -175,6 +187,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileUploadCheck", params.Path, params.Vault)
 
+	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
@@ -214,8 +227,10 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	}
 }
 
+// FileUploadChunkBinary handles binary data for file chunk upload.
 // FileUploadChunkBinary 处理文件分块上传的二进制数据。
 func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []byte) {
+	// Check if context is cancelled (connection might be closed)
 	// 检查 context 是否已取消（连接可能已关闭）
 	select {
 	case <-c.Context().Done():
@@ -229,11 +244,13 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		return
 	}
 
+	// Parse session ID and chunk index
 	// 解析会话 ID 和分块索引
 	sessionID := string(data[:36])
 	chunkIndex := binary.BigEndian.Uint32(data[36:40])
 	chunkData := data[40:]
 
+	// Get session from global server (supports cross-connection)
 	// 从全局服务器获取会话 (支持跨连接)
 	binarySession := c.Server.GetSession(c.User.ID, sessionID)
 
@@ -255,6 +272,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		return
 	}
 
+	// Calculate write offset and write data
 	// 计算写入偏移量并写入数据
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
@@ -263,6 +281,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		return
 	}
 
+	// Update uploaded count and bytes
 	// 更新已上传计数和字节数
 	session.mu.Lock()
 	session.UploadedChunks++
@@ -270,6 +289,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	uploadedBytes := session.UploadedBytes
 	session.mu.Unlock()
 
+	// Check if all data has been uploaded (judged by bytes)
 	// 检查是否所有数据都已上传(根据字节数判断)
 	if uploadedBytes >= session.Size {
 
@@ -281,23 +301,27 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			zap.Int64("uploadedChunks", session.UploadedChunks),
 			zap.Int64("totalChunks", session.TotalChunks))
 
+		// Get and remove session from global server
 		// 获取并从全局服务器移除会话
 		c.Server.RemoveSession(c.User.ID, session.ID)
 
+		// Cancel timeout timer
 		// 取消超时定时器
 		if session.CancelFunc != nil {
 			session.CancelFunc()
 		}
 
+		// Close temp file handle
 		// 关闭临时文件句柄
 		if err := session.FileHandle.Close(); err != nil {
 			h.respondErrorWithData(c, code.ErrorFileUploadFailed, err, map[string]string{"sessionID": sessionID}, "websocket_router.file.FileUploadChunkBinary.Close")
 			return
 		}
-		session.FileHandle = nil // 避免再次清理时重复关闭
+		session.FileHandle = nil // Avoid double closing during cleanup // 避免再次清理时重复关闭
 
 		ctx := c.Context()
 
+		// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 		// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 		h.App.VaultService.GetOrCreate(ctx, c.User.UID, session.Vault)
 
@@ -312,6 +336,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			Mtime:       session.Mtime,
 		}
 
+		// Update or create file record (DAO layer will automatically move temp file from SavePath to f_{id} folder)
 		// 更新或创建文件记录 (DAO 层会自动将 SavePath 里的临时文件移动到 f_{id} 文件夹)
 		_, fileSvc, err := h.App.FileService.UploadComplete(ctx, c.User.UID, svcParams)
 
@@ -338,11 +363,13 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		}
 
 		c.ToResponse(code.Success)
+		// Broadcast file update message
 		// 广播文件更新消息
 		c.BroadcastResponse(code.Success.WithData(fileMsg).WithVault(session.Vault), true, "FileSyncUpdate")
 	}
 }
 
+// FileDelete handles file deletion request.
 // FileDelete 处理文件删除请求。
 func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.FileDeleteRequest{}
@@ -360,6 +387,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
+	// Execute deletion logic
 	// 执行删除逻辑
 	fileSvc, err := h.App.FileService.Delete(ctx, c.User.UID, params)
 
@@ -371,10 +399,13 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success)
 
 	fileDeleteMessage := convert.StructAssign(fileSvc, &dto.FileDeleteMessage{}).(*dto.FileDeleteMessage)
+	// Broadcast file deletion message
 	// 广播文件删除消息
 	c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
 }
 
+// FileChunkDownload handles file chunk download request.
+// Client requests file download via this interface, server creates download session and starts sending chunks.
 // FileChunkDownload 处理文件分片下载请求。
 // 客户端通过此接口请求下载文件,服务端创建下载会话并开始发送分片。
 func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
@@ -393,6 +424,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
+	// Get file info
 	// 获取文件信息
 	fileSvc, err := h.App.FileService.Get(ctx, c.User.UID, params)
 
@@ -401,19 +433,23 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 		return
 	}
 
+	// Check if file exists on disk
 	// 检查文件是否存在于磁盘
 	if _, err := os.Stat(fileSvc.SavePath); os.IsNotExist(err) {
 		h.respondError(c, code.ErrorFileGetFailed, fmt.Errorf("file not found on disk: %s (pathHash: %s)", fileSvc.SavePath, fileSvc.PathHash), "websocket_router.file.FileChunkDownload.Stat")
 		return
 	}
 
+	// Create download session
 	// 创建下载会话
 	sessionID := uuid.New().String()
 	chunkSize := getChunkSizeFromConfig(h.App.Config()) // 从注入的配置获取
 
+	// Calculate total chunks
 	// 计算总分块数
 	totalChunks := util.Ceil(fileSvc.Size, chunkSize)
 
+	// Initialize download session
 	// 初始化下载会话
 	session := &FileDownloadChunkSession{
 		SessionID:   sessionID,
@@ -424,6 +460,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 		SavePath:    fileSvc.SavePath,
 	}
 
+	// Construct download message
 	// 构造下载消息
 	fileDownloadMessage := &FileDownloadMessage{
 		Path:        fileSvc.Path,
@@ -435,13 +472,17 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 		Size:        session.Size,
 	}
 
+	// Send download ready message
 	// 发送下载准备消息
 	c.ToResponse(code.Success.WithData(fileDownloadMessage), "FileSyncChunkDownload")
 
+	// Start chunk sending, pass timeout and logger
 	// 启动分片发送,传入超时时间和 logger
 	go h.handleFileChunkDownloadSendChunks(c, session)
 }
 
+// FileSync batch checks if user files need update.
+// Compares file list between client and server, deciding which files need upload, update or delete.
 // FileSync 批量检测用户文件是否需要更新。
 // 对比客户端和服务端的文件列表，决定哪些文件需要上传、更新或删除。
 func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
@@ -460,6 +501,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
+	// Get list of changed files after last sync
 	// 获取最后一次同步后的变更文件列表
 	list, err := h.App.FileService.Sync(ctx, c.User.UID, params)
 
@@ -468,6 +510,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		return
 	}
 
+	// Build client file index
 	// 构建客户端文件索引
 	var cFiles map[string]dto.FileSyncCheckRequest = make(map[string]dto.FileSyncCheckRequest, 0)
 	var cFilesKeys map[string]struct{} = make(map[string]struct{}, 0)
@@ -479,6 +522,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
+	// Create message queue for collecting all messages to be sent
 	// 创建消息队列，用于收集所有待发送的消息
 	var messageQueue []queuedMessage
 
@@ -488,6 +532,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	var needSyncMtimeCount int64
 	var needDeleteCount int64
 
+	// Iterate over server file list for processing
 	// 遍历服务端文件列表进行处理
 	for _, file := range list {
 		if file.UpdatedTimestamp >= lastTime {
@@ -495,6 +540,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 
 		if file.Action == "delete" {
+			// Server already deleted, notify client to delete
 			// 服务端已删除，通知客户端删除
 			if _, ok := cFiles[file.PathHash]; ok {
 				delete(cFilesKeys, file.PathHash)
@@ -509,13 +555,16 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		} else {
 
 			if cFile, ok := cFiles[file.PathHash]; ok {
+				// Client has this file
 				// 客户端存在该文件
 				delete(cFilesKeys, file.PathHash)
 
 				if file.ContentHash == cFile.ContentHash && file.Mtime == cFile.Mtime {
+					// Content and time match, no action
 					// 内容与时间一致，无操作
 					continue
 				} else if file.ContentHash != cFile.ContentHash {
+					// Content inconsistent
 					// 内容不一致
 					if file.Mtime > cFile.Mtime {
 						// 服务端修改时间比客户端新, 通知客户端下载更新文件
@@ -550,12 +599,14 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						needUploadCount++
 					}
 				} else {
+					// Content matches, but modification time differs, notify client to update file modification time
 					// 内容一致, 但修改时间不一致, 通知客户端更新文件修改时间
 					fileSyncMtimeMessage := &FileSyncMtimeMessage{
 						Path:  file.Path,
 						Ctime: file.Ctime,
 						Mtime: file.Mtime,
 					}
+					// Add message to queue instead of sending immediately
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
 						Action: "FileSyncMtime",
@@ -564,6 +615,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					needSyncMtimeCount++
 				}
 			} else {
+				// File client doesn't have, notify client to download file
 				// 客户端没有的文件, 通知客户端下载文件
 				fileMessage := &FileMessage{
 					Path:             file.Path,
@@ -588,16 +640,19 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	if list == nil {
 		lastTime = timex.Now().UnixMilli()
 	}
+	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
+			// Create upload session and return FileUpload message
 			// 创建上传会话并返回 FileUpload 消息
 			fileUploadMessage, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, 0, file.Mtime)
 			if ferr != nil {
 				h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
 				continue
 			}
+			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送
 			messageQueue = append(messageQueue, queuedMessage{
 				Action: "FileUpload",
@@ -607,6 +662,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
+	// Send FileSyncEnd message, containing all merged messages
 	// 发送 FileSyncEnd 消息，包含所有合并的消息
 	message := &FileSyncEndMessage{
 		LastTime:           lastTime,
@@ -620,6 +676,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "FileSyncEnd")
 }
 
+// cleanupSession cleans up discarded upload sessions due to completion or timeout.
 // cleanupSession 清理因为完成或超时而废弃的上传会话。
 func (h *FileWSHandler) handleFileUploadSessionCleanup(c *pkgapp.WebsocketClient, sessionID string) {
 	binarySession := c.Server.GetSession(c.User.ID, sessionID)
@@ -640,6 +697,8 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 		return nil
 	}
 
+	// Use context.Background() to ensure timeout timer is not affected by connection loss
+	// This keeps the session valid during network fluctuation and reconnection
 	// 使用 context.Background() 确保超时定时器不受连接断开影响
 	// 这样在网络波动重连期间，会话依然有效
 	ctx, cancel := context.WithCancel(context.Background())
@@ -650,14 +709,17 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 
 		select {
 		case <-timer.C:
+			// Timeout triggered, clean up session
 			// 超时触发，清理会话
 			h.logWarn(c, "startSessionTimeout: session timeout, cleaning up",
 				zap.String("sessionID", sessionID),
 				zap.Duration("timeout", timeout))
 
+			// Execute cleanup on timeout
 			// 超时执行清理
 			h.handleFileUploadSessionCleanup(c, sessionID)
 		case <-ctx.Done():
+			// Cancel timer
 			// 取消定时器
 			return
 		}
@@ -666,6 +728,7 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 	return cancel
 }
 
+// handleFileUploadSession initializes a file upload session and returns upload message.
 // handleFileUploadSession 初始化一个文件上传会话并返回上传消息。
 func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient, vault, path, pathHash, contentHash string, size, ctime, mtime int64) (*FileUploadMessage, error) {
 	sessionID := uuid.New().String()
@@ -675,6 +738,7 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		tempDir = "storage/temp"
 	}
 
+	// Create temp directory
 	// 创建临时目录
 	if err := os.MkdirAll(tempDir, 0754); err != nil {
 		h.logError(c, "websocket_router.file.handleFileUploadSession.MkdirAll", err)
@@ -699,6 +763,7 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		return nil, err
 	}
 
+	// Initialize chunk upload session
 	// 初始化分块上传会话
 	session := &FileUploadBinaryChunkSession{
 		ID:          sessionID,
@@ -714,9 +779,11 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		FileHandle:  file,
 		CreatedAt:   time.Now(),
 	}
+	// Adjust chunk size based on file size
 	// 根据文件大小调整分块大小
 	session.TotalChunks = util.Ceil(session.Size, session.ChunkSize)
 
+	// Configure timeout
 	// 配置超时时间
 	var timeout time.Duration
 	if cfg.App.UploadSessionTimeout != "" && cfg.App.UploadSessionTimeout != "0" {
@@ -732,9 +799,11 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		timeout = 20 * time.Minute
 	}
 
+	// Start timeout cleanup task
 	// 启动超时清理任务
 	session.CancelFunc = h.handleFileUploadSessionTimeout(c, sessionID, timeout)
 
+	// Register to global server
 	// 注册到全局服务器
 	c.Server.SetSession(c.User.ID, session.ID, session)
 
@@ -745,10 +814,13 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 	}, nil
 }
 
+// handleFileChunkDownloadSendChunks executes file chunk sending.
+// Runs in independent goroutine, reads file and sends binary chunks via WebSocket.
 // handleFileChunkDownloadSendChunks 执行文件分片发送。
 // 在独立的 goroutine 中运行,读取文件并通过 WebSocket 发送二进制分片。
 func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketClient, session *FileDownloadChunkSession) {
 	logger := h.App.Logger()
+	// Get timeout from config, default 1 hour
 	// 从配置获取超时时间，默认 1 小时
 	timeout := 1 * time.Hour
 	cfg := h.App.Config()
@@ -762,10 +834,12 @@ func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketCli
 		}
 	}
 
+	// Create timeout context, based on WebSocket connection context
 	// 创建超时上下文，基于 WebSocket 连接的 context
 	ctx, cancel := context.WithTimeout(c.Context(), timeout)
 	defer cancel()
 
+	// Open file
 	// 打开文件
 	file, err := os.Open(session.SavePath)
 	if err != nil {
@@ -781,8 +855,10 @@ func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketCli
 		zap.Int64("size", session.Size),
 		zap.Int64("totalChunks", session.TotalChunks))
 
+	// Loop to send chunks
 	// 循环发送分片
 	for chunkIndex := int64(0); chunkIndex < session.TotalChunks; chunkIndex++ {
+		// Check timeout
 		// 检查超时
 		select {
 		case <-ctx.Done():
@@ -794,6 +870,7 @@ func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketCli
 		default:
 		}
 
+		// Calculate current chunk size
 		// 计算当前分片的大小
 		chunkStart := chunkIndex * session.ChunkSize
 		chunkEnd := chunkStart + session.ChunkSize

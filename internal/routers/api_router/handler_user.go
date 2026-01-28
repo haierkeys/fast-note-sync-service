@@ -13,12 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// UserHandler user API router handler
 // UserHandler 用户 API 路由处理器
+// Uses App Container to inject dependencies, supports unified error handling
 // 使用 App Container 注入依赖，支持统一错误处理
 type UserHandler struct {
 	*Handler
 }
 
+// NewUserHandler creates UserHandler instance
 // NewUserHandler 创建 UserHandler 实例
 func NewUserHandler(a *app.App) *UserHandler {
 	return &UserHandler{
@@ -40,6 +43,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserCreateRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -48,9 +52,11 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Get request context (including Trace ID)
 	// 获取请求上下文（包含 Trace ID）
 	ctx := c.Request.Context()
 
+	// Call UserService to perform registration
 	// 调用 UserService 执行注册
 	userDTO, err := h.App.UserService.Register(ctx, params)
 	if err != nil {
@@ -76,6 +82,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserLoginRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -84,10 +91,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Get request context and client IP
 	// 获取请求上下文和客户端 IP
 	ctx := c.Request.Context()
 	clientIP := c.ClientIP()
 
+	// Call UserService to perform login
 	// 调用 UserService 执行登录
 	userDTO, err := h.App.UserService.Login(ctx, params, clientIP)
 	if err != nil {
@@ -114,6 +123,7 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.UserChangePasswordRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -122,6 +132,7 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -130,9 +141,11 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
+	// Call UserService to change password
 	// 调用 UserService 修改密码
 	err := h.App.UserService.ChangePassword(ctx, uid, params)
 	if err != nil {
@@ -158,6 +171,7 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 func (h *UserHandler) UserInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -166,9 +180,11 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
+	// Call UserService to get user info
 	// 调用 UserService 获取用户信息
 	userDTO, err := h.App.UserService.GetInfo(ctx, uid)
 	if err != nil {
@@ -180,6 +196,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(userDTO))
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *UserHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

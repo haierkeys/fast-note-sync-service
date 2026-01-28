@@ -6,13 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PaginationConfig 分页配置
+// PaginationConfig pagination configuration // 分页配置
 type PaginationConfig struct {
 	DefaultPageSize int
 	MaxPageSize     int
 }
 
-// DefaultPaginationConfig 默认分页配置
+// DefaultPaginationConfig default pagination configuration // 默认分页配置
 var DefaultPaginationConfig = PaginationConfig{
 	DefaultPageSize: 10,
 	MaxPageSize:     100,
@@ -35,6 +35,7 @@ func GetPage(c *gin.Context) int {
 	return page
 }
 
+// GetPageSizeWithConfig gets page size (using injected configuration)
 // GetPageSizeWithConfig 获取分页大小（使用注入的配置）
 func GetPageSizeWithConfig(c *gin.Context, cfg PaginationConfig) int {
 	var pageSize int
@@ -55,6 +56,7 @@ func GetPageSizeWithConfig(c *gin.Context, cfg PaginationConfig) int {
 	return pageSize
 }
 
+// GetPageSize gets page size (using default configuration)
 // GetPageSize 获取分页大小（使用默认配置）
 func GetPageSize(c *gin.Context) int {
 	return GetPageSizeWithConfig(c, DefaultPaginationConfig)

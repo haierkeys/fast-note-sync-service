@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NoFound 404 handler
+// NoFound 404 处理
 func NoFound() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := app.NewResponse(c)

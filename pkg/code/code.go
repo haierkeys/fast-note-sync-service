@@ -5,31 +5,22 @@ import (
 	"net/http"
 )
 
-// Code 是一个不可变的错误码对象
+// Code is an immutable error code object // Code 是一个不可变的错误码对象
+// All With* methods return new instances, original object is not modified
 // 所有 With* 方法都返回新实例，不修改原对象
 type Code struct {
-	// 状态码
-	code int
-	// 状态
-	status bool
-	// 错误消息
-	Lang lang
-	// 错误消息
-	msg string
-	// 数据
-	data  interface{}
-	vault string
-	// 是否含有Vault
-	haveVault bool
-	// 是否含有Data
-	haveData bool
-	// 错误详细信息
-	details []string
-	// 是否含有详情
-	haveDetails bool
+	code        int         // Status code // 状态码
+	status      bool        // Status // 状态
+	Lang        lang        // Error message // 错误消息
+	msg         string      // Error message // 错误消息
+	data        interface{} // Data // 数据
+	vault       string
+	haveVault   bool     // Whether it contains Vault // 是否含有Vault
+	haveData    bool     // Whether it contains Data // 是否含有Data
+	details     []string // Error detail information // 错误详细信息
+	haveDetails bool     // Whether it contains details // 是否含有详情
 	context     string
-	// 是否含有Context
-	haveContext bool
+	haveContext bool // Whether it contains Context // 是否含有Context
 }
 
 var codes = map[int]string{}
@@ -143,7 +134,9 @@ func (e *Code) HaveContext() bool {
 	return e.haveContext
 }
 
+// WithData returns a new Code instance containing specified data
 // WithData 返回一个包含指定数据的新 Code 实例
+// Original object will not be modified (immutable design)
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithData(data interface{}) *Code {
 	return &Code{
@@ -162,7 +155,9 @@ func (e *Code) WithData(data interface{}) *Code {
 	}
 }
 
+// WithVault returns a new Code instance containing specified vault
 // WithVault 返回一个包含指定 vault 的新 Code 实例
+// Original object will not be modified (immutable design)
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithVault(vault string) *Code {
 	return &Code{
@@ -181,9 +176,12 @@ func (e *Code) WithVault(vault string) *Code {
 	}
 }
 
+// WithDetails returns a new Code instance containing specified details
 // WithDetails 返回一个包含指定详情的新 Code 实例
+// Original object will not be modified (immutable design)
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithDetails(details ...string) *Code {
+	// Create a copy of details to avoid shared underlying array
 	// 创建 details 的副本，避免共享底层数组
 	newDetails := make([]string, len(details))
 	copy(newDetails, details)
@@ -204,7 +202,9 @@ func (e *Code) WithDetails(details ...string) *Code {
 	}
 }
 
+// WithContext returns a new Code instance containing specified context
 // WithContext 返回一个包含指定上下文的新 Code 实例
+// Original object will not be modified (immutable design)
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithContext(context string) *Code {
 	return &Code{

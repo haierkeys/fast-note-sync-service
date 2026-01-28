@@ -11,7 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ShareAuthToken share Token authentication middleware
 // ShareAuthToken 分享 Token 认证中间件
+// Try to get Token by priority: Header -> Query -> PostForm
 // 按优先级尝试获取 Token：Header -> Query -> PostForm
 func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -20,6 +22,7 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 
 		token = c.GetHeader("Share-Token") // 支持自定义头
 
+		// 2. Try parsing from URL parameters (GET)
 		// 2. 尝试从 URL 参数解析 (GET)
 		if token == "" {
 			token = c.Query("shareToken")
@@ -29,6 +32,7 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 			token = c.Query("share_token")
 		}
 
+		// 3. Try parsing from form parameters (POST)
 		// 3. 尝试从表单参数解析 (POST)
 		if token == "" {
 			token = c.PostForm("shareToken")
@@ -43,12 +47,14 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 			return
 		}
 
+		// Determine resource ID and type currently requested
 		// 确定当前请求想要访问的资源 ID 和类型
 		rid := c.Query("id")
 		if rid == "" {
 			rid = c.PostForm("id")
 		}
 
+		// Simple resource type determination logic: distinguish by route path
 		// 简单的资源类型判定逻辑：根据路由路径区分
 		rtp := "note"
 		if strings.Contains(c.Request.URL.Path, "/file") {
@@ -61,6 +67,7 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 			return
 		}
 
+		// Verify Token and its availability in database
 		// 验证 Token 及其在数据库中的生效状态
 		entity, err := shareService.VerifyShare(c.Request.Context(), token, rid, rtp)
 

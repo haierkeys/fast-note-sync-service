@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// UploadByFile uploads file
 // UploadByFile 上传文件
 func (p *R2) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 
@@ -89,7 +90,8 @@ func (w *R2) DeleteFile(fileKey string) error {
 		Key:    aws.String(fileKey),
 	})
 	if err != nil {
-		return errors.Wrap(err, "cloudflare_r2: 删除文件失败")
+		return errors.Wrap(err, "cloudflare_r2: failed to delete file")
+		// return errors.Wrap(err, "cloudflare_r2: 删除文件失败")
 	}
 	return nil
 }

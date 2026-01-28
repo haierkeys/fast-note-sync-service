@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// AccessLogWithLogger creates access log middleware with logger (supports dependency injection)
 // AccessLogWithLogger 创建带日志器的访问日志中间件（支持依赖注入）
 func AccessLogWithLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {

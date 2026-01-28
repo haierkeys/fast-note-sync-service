@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// UploadByFile uploads file
 // UploadByFile 上传文件
 func (p *S3) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 
@@ -90,7 +91,8 @@ func (w *S3) DeleteFile(fileKey string) error {
 		Key:    aws.String(fileKey),
 	})
 	if err != nil {
-		return errors.Wrap(err, "aws_s3: 删除文件失败")
+		return errors.Wrap(err, "aws_s3: failed to delete file")
+		// return errors.Wrap(err, "aws_s3: 删除文件失败")
 	}
 	return nil
 }

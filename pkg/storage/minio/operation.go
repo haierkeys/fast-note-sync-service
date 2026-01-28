@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// UploadByFile uploads file
 // UploadByFile 上传文件
 func (p *MinIO) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 
@@ -90,7 +91,8 @@ func (w *MinIO) DeleteFile(fileKey string) error {
 		Key:    aws.String(fileKey),
 	})
 	if err != nil {
-		return errors.Wrap(err, "minio: 删除文件失败")
+		return errors.Wrap(err, "minio: failed to delete file")
+		// return errors.Wrap(err, "minio: 删除文件失败")
 	}
 	return nil
 }

@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 /**
- * 用法（在项目根目录）：
- *  node scripts/update-version.js 0.8.11      # 将 version 设置为 0.8.11
- *  node scripts/update-version.js patch (或 c) # 将 patch 自增（如 0.8.10 -> 0.8.11）
- *  node scripts/update-version.js minor (或 b) # 将 minor 自增（如 0.8.10 -> 0.9.0）
- *  node scripts/update-version.js major (或 a) # 将 major 自增（如 0.8.10 -> 1.0.0）
- *  或者使用环境变量： NEW_VERSION=0.8.11 node scripts/update-version.js
+ * Usage (in project root): // 用法（在项目根目录）：
+ *  node scripts/update-version.js 0.8.11      # Set version to 0.8.11 // 将 version 设置为 0.8.11
+ *  node scripts/update-version.js patch (or c) # Increment patch (e.g. 0.8.10 -> 0.8.11) // 将 patch 自增（如 0.8.10 -> 0.8.11）
+ *  node scripts/update-version.js minor (or b) # Increment minor (e.g. 0.8.10 -> 0.9.0) // 将 minor 自增（如 0.8.10 -> 0.9.0）
+ *  node scripts/update-version.js major (or a) # Increment major (e.g. 0.8.10 -> 1.0.0) // 将 major 自增（如 0.8.10 -> 1.0.0）
+ *  Or use environment variable: // 或者使用环境变量：
+ *  NEW_VERSION=0.8.11 node scripts/update-version.js
  *
- * 优先级（目标版本来源）：
- * 1. 命令行参数（node scripts/update-version.js <version|major|minor|patch>）
- * 2. 环境变量 NEW_VERSION
+ * Priority (target version source): // 优先级（目标版本来源）：
+ * 1. Command line arguments // 1. 命令行参数（node scripts/update-version.js <version|major|minor|patch>）
+ * 2. Environment variable NEW_VERSION // 2. 环境变量 NEW_VERSION
  */
 
 const fs = require('fs');
 const path = require('path');
 
 /**
+ * Read current version from Go version file
  * 从 Go 版本文件中读取当前版本号
- * @param {string} filePath - version.go 文件路径
- * @returns {string} 当前版本号
+ * @param {string} filePath - version.go file path // version.go 文件路径
+ * @returns {string} current version // 当前版本号
  */
 function readGoVersion(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
+    // Match Version string = "x.y.z" format
     // 匹配 Version string = "x.y.z" 格式
     const match = content.match(/Version\s+string\s*=\s*"([^"]+)"/);
     if (!match) {
@@ -31,12 +34,14 @@ function readGoVersion(filePath) {
 }
 
 /**
+ * Update version number in Go version file
  * 更新 Go 版本文件中的版本号
- * @param {string} filePath - version.go 文件路径
- * @param {string} newVersion - 新版本号
+ * @param {string} filePath - version.go file path // version.go 文件路径
+ * @param {string} newVersion - new version number // 新版本号
  */
 function writeGoVersion(filePath, newVersion) {
     let content = fs.readFileSync(filePath, 'utf8');
+    // Replace the value of Version variable, keeping the original spacing format
     // 替换 Version 变量的值,保留原有的空格格式
     content = content.replace(
         /(Version\s+string\s*=\s*)"[^"]+"/,
@@ -46,8 +51,9 @@ function writeGoVersion(filePath, newVersion) {
 }
 
 /**
+ * Validate version format is x.y.z
  * 验证版本号格式是否为 x.y.z
- * @param {string} v - 版本号
+ * @param {string} v - version number // 版本号
  * @returns {boolean}
  */
 function isValidSemver(v) {
@@ -55,10 +61,11 @@ function isValidSemver(v) {
 }
 
 /**
+ * Increment version number
  * 版本号递增
- * @param {string} current - 当前版本号
- * @param {string} part - 递增部分：major/minor/patch
- * @returns {string} 新版本号
+ * @param {string} current - current version // 当前版本号
+ * @param {string} part - increment part: major/minor/patch // 递增部分：major/minor/patch
+ * @returns {string} new version // 新版本号
  */
 function bumpVersion(current, part) {
     if (!isValidSemver(current)) {
@@ -72,11 +79,12 @@ function bumpVersion(current, part) {
 }
 
 /**
+ * Update file version
  * 更新版本文件
- * @param {string} filePath - 文件路径
- * @param {string|null} targetVersion - 目标版本号
- * @param {string|null} bumpOption - 递增选项
- * @returns {object|null} 更新结果
+ * @param {string} filePath - file path // 文件路径
+ * @param {string|null} targetVersion - target version // 目标版本号
+ * @param {string|null} bumpOption - increment option // 递增选项
+ * @returns {object|null} update result // 更新结果
  */
 function updateFileVersion(filePath, targetVersion, bumpOption) {
     if (!fs.existsSync(filePath)) {
@@ -103,6 +111,7 @@ function updateFileVersion(filePath, targetVersion, bumpOption) {
     return { filePath, from, to };
 }
 
+// Main logic
 // 主逻辑
 (function main() {
     const rawArgs = process.argv.slice(2);
@@ -123,6 +132,7 @@ function updateFileVersion(filePath, targetVersion, bumpOption) {
         } else if (isValidSemver(arg)) {
             newVersion = arg;
         } else {
+            console.error('Invalid argument, should be x.y.z or major/minor/patch');
             console.error('参数无效，应为 x.y.z 或 major/minor/patch');
             process.exit(1);
         }
@@ -132,10 +142,12 @@ function updateFileVersion(filePath, targetVersion, bumpOption) {
         } else if (isValidSemver(envVersion)) {
             newVersion = envVersion;
         } else {
+            console.error('Invalid NEW_VERSION format, should be x.y.z or major/minor/patch');
             console.error('环境变量 NEW_VERSION 格式无效，应为 x.y.z 或 major/minor/patch');
             process.exit(1);
         }
     } else {
+        console.error('No version parameter provided: use node scripts/update-version.js <version|major|minor|patch> or NEW_VERSION environment variable');
         console.error('未提供版本参数：使用 node scripts/update-version.js <version|major|minor|patch> 或 NEW_VERSION 环境变量');
         process.exit(1);
     }

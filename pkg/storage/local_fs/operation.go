@@ -30,7 +30,8 @@ func (p *LocalFS) getSavePath() string {
 	return fileurl.PathSuffixCheckAdd(p.Config.SavePath, "/")
 }
 
-// PutFile  上传文件
+// PutFile upload file
+// PutFile 上传文件
 func (p *LocalFS) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/studio-b12/gowebdav"
 )
 
+// Config struct is used to store WebDAV connection information.
 // Config 结构体用于存储 WebDAV 连接信息。
 type Config struct {
 	IsEnabled  bool   `yaml:"is-enable"`
@@ -16,6 +17,7 @@ type Config struct {
 	CustomPath string `yaml:"custom-path"`
 }
 
+// WebDAV struct represents WebDAV client.
 // WebDAV 结构体表示 WebDAV 客户端。
 type WebDAV struct {
 	Client *gowebdav.Client
@@ -24,6 +26,7 @@ type WebDAV struct {
 
 var clients = make(map[string]*WebDAV)
 
+// NewClient creates a new WebDAV client instance.
 // NewClient 创建一个新的 WebDAV 客户端实例。
 func NewClient(cf map[string]any) (*WebDAV, error) {
 	// New client

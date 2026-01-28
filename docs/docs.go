@@ -1982,19 +1982,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "database": {
-                    "description": "\"connected\" 或 \"error\"",
+                    "description": "\"connected\" or \"error\" // \"connected\" 或 \"error\"",
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"healthy\" 或 \"unhealthy\"",
+                    "description": "\"healthy\" or \"unhealthy\" // \"healthy\" 或 \"unhealthy\"",
                     "type": "string"
                 },
                 "uptime": {
-                    "description": "运行时间（秒）",
+                    "description": "Uptime (seconds) // 运行时间（秒）",
                     "type": "number"
                 },
                 "version": {
-                    "description": "服务版本号",
+                    "description": "Service version number // 服务版本号",
                     "type": "string"
                 }
             }
@@ -2003,42 +2003,55 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "adminUid": {
+                    "description": "Admin UID // 管理员 UID",
                     "type": "integer"
                 },
                 "authTokenKey": {
+                    "description": "Auth token key // 认证 Token 密钥",
                     "type": "string"
                 },
                 "defaultApiFolder": {
+                    "description": "Default API folder // 默认 API 目录",
                     "type": "string"
                 },
                 "fileChunkSize": {
+                    "description": "File chunk size // 文件分块大小",
                     "type": "string"
                 },
                 "fontSet": {
+                    "description": "Font set // 字体设置",
                     "type": "string"
                 },
                 "historyKeepVersions": {
+                    "description": "History versions to keep // 历史版本保留数",
                     "type": "integer"
                 },
                 "historySaveDelay": {
+                    "description": "History save delay // 历史保存延迟",
                     "type": "string"
                 },
                 "registerIsEnable": {
+                    "description": "Registration enablement // 是否开启注册",
                     "type": "boolean"
                 },
                 "shareTokenExpiry": {
+                    "description": "Share token expiry // 分享 Token 有效期",
                     "type": "string"
                 },
                 "shareTokenKey": {
+                    "description": "Share token key // 分享 Token 密钥",
                     "type": "string"
                 },
                 "softDeleteRetentionTime": {
+                    "description": "Soft delete retention time // 软删除保留时间",
                     "type": "string"
                 },
                 "tokenExpiry": {
+                    "description": "Token expiry // Token 有效期",
                     "type": "string"
                 },
                 "uploadSessionTimeout": {
+                    "description": "Upload session timeout // 上传会话超时时间",
                     "type": "string"
                 }
             }
@@ -2047,12 +2060,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "adminUid": {
+                    "description": "Admin UID // 管理员 UID",
                     "type": "integer"
                 },
                 "fontSet": {
+                    "description": "Font set // 字体设置",
                     "type": "string"
                 },
                 "registerIsEnable": {
+                    "description": "Registration enablement // 是否开启注册",
                     "type": "boolean"
                 }
             }

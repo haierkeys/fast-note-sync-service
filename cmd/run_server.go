@@ -31,6 +31,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// defaultSecretKeys defines the list of default secret keys to be detected
 // defaultSecretKeys 定义需要检测的默认密钥列表
 var defaultSecretKeys = []string{
 	"6666",
@@ -38,20 +39,22 @@ var defaultSecretKeys = []string{
 	"",
 }
 
+// DefaultShutdownTimeout default shutdown timeout duration
 // DefaultShutdownTimeout 默认关闭超时时间
 const DefaultShutdownTimeout = 30 * time.Second
 
 type Server struct {
-	logger            *zap.Logger             // non-nil logger.
-	config            *internalApp.AppConfig  // 应用配置（注入的依赖）
-	db                *gorm.DB                // 数据库连接
-	ut                *ut.UniversalTranslator // 翻译器
+	logger            *zap.Logger             // Logger // 日志对象
+	config            *internalApp.AppConfig  // App configuration (injected dependency) // 应用配置（注入的依赖）
+	db                *gorm.DB                // Database connection // 数据库连接
+	ut                *ut.UniversalTranslator // Translator // 翻译器
 	httpServer        *http.Server
 	privateHttpServer *http.Server
 	sc                *safe_close.SafeClose
 	app               *internalApp.App // App Container
 }
 
+// checkSecurityConfigWithConfig checks security configuration, outputs warning if using default keys
 // checkSecurityConfig 检查安全配置，如果使用默认密钥则输出警告
 func checkSecurityConfigWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) {
 	isDefault := false
@@ -63,6 +66,7 @@ func checkSecurityConfigWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) {
 	}
 
 	if isDefault {
+		// Output to console
 		// 输出到控制台
 		fmt.Println()
 		fmt.Println(strings.Repeat("=", 60))
@@ -74,6 +78,7 @@ func checkSecurityConfigWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) {
 		fmt.Println(strings.Repeat("=", 60))
 		fmt.Println()
 
+		// Record to log
 		// 记录到日志
 		if lg != nil {
 			lg.Warn("Using default secret key - please change security.auth-token-key in config.yaml")
@@ -83,12 +88,14 @@ func checkSecurityConfigWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) {
 
 func NewServer(runEnv *runFlags) (*Server, error) {
 
+	// Use LoadConfig to directly load config into AppConfig
 	// 使用 LoadConfig 直接加载配置到 AppConfig
 	appConfig, configRealpath, err := internalApp.LoadConfig(runEnv.config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Determine run mode
 	// 确定运行模式
 	runMode := runEnv.runMode
 	if len(runMode) <= 0 {
@@ -106,19 +113,23 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		sc:     safe_close.NewSafeClose(),
 	}
 
+	// Initialize logger (using injected config)
 	// 初始化日志器（使用注入的配置）
 	if err := initLoggerWithConfig(s, appConfig); err != nil {
 		return nil, fmt.Errorf("initLogger: %w", err)
 	}
 
+	// Check security configuration (using injected config)
 	// 检查安全配置（使用注入的配置）
 	checkSecurityConfigWithConfig(appConfig, s.logger)
 
+	// Initialize storage directory (using injected config)
 	// 初始化存储目录（使用注入的配置）
 	if err := initStorageWithConfig(appConfig); err != nil {
 		return nil, fmt.Errorf("initStorage: %w", err)
 	}
 
+	// Initialize database (using injected config)
 	// 初始化数据库（使用注入的配置）
 	db, err := initDatabaseWithConfig(appConfig, s.logger)
 	if err != nil {
@@ -126,6 +137,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	}
 	s.db = db
 
+	// Initialize App Container (using AppConfig directly)
 	// 初始化 App Container（直接使用 AppConfig）
 	app, err := internalApp.NewApp(appConfig, s.logger, db)
 	if err != nil {
@@ -133,6 +145,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	}
 	s.app = app
 
+	// Auto-execute migration tasks (using injected config)
 	// 自动执行迁移任务（使用注入的配置）
 	if err := upgrade.Execute(
 		db,
@@ -144,6 +157,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		return nil, fmt.Errorf("upgrade.Execute: %w", err)
 	}
 
+	// Initialize validator
 	// 初始化验证器
 	uni, err := initValidatorWithLogger(s.logger)
 	if err != nil {
@@ -153,6 +167,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	validator.RegisterCustom()
 
+	// Start scheduler
 	// 启动调度器
 	initScheduler(s)
 
@@ -167,6 +182,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	s.logger.Warn("config loaded", zap.String("path", configRealpath))
 
+	// Start HTTP API server
 	// 启动 HTTP API 服务器
 	if httpAddr := appConfig.Server.HttpPort; len(httpAddr) > 0 {
 		s.logger.Warn("api_router", zap.String("config.server.HttpPort", appConfig.Server.HttpPort))
@@ -230,7 +246,8 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 
-				// 停止HTTP服务器
+				// Stop HTTP server
+				// 停止 HTTP 服务器
 				if err := s.privateHttpServer.Shutdown(ctx); err != nil {
 					s.logger.Error("private api service shutdown error", zap.Error(err))
 				}
@@ -238,11 +255,13 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		})
 	}
 
+	// Register App Container graceful shutdown (using Shutdown method)
 	// 注册 App Container 的优雅关闭（使用 Shutdown 方法）
 	s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
 		<-closeSignal
 		if s.app != nil {
+			// Use graceful shutdown with timeout
 			// 使用带超时的优雅关闭
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout)
 			defer cancel()
@@ -259,19 +278,23 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 }
 
 func initScheduler(s *Server) {
+	// Create task manager
 	// 创建任务管理器
 	manager := task.NewManager(s.logger, s.sc, s.app)
 
+	// Register all tasks (business layer control)
 	// 注册所有任务(业务层控制)
 	if err := manager.RegisterTasks(); err != nil {
 		s.logger.Error("failed to register tasks", zap.Error(err))
 		return
 	}
 
+	// Start task scheduler
 	// 启动任务调度器
 	manager.Start()
 }
 
+// initLoggerWithConfig initializes logger (using injected config)
 // initLoggerWithConfig 初始化日志器（使用注入的配置）
 func initLoggerWithConfig(s *Server, cfg *internalApp.AppConfig) error {
 	lg, err := logger.NewLogger(logger.Config{
@@ -287,6 +310,7 @@ func initLoggerWithConfig(s *Server, cfg *internalApp.AppConfig) error {
 	return nil
 }
 
+// initValidatorWithLogger initializes validator, returns UniversalTranslator
 // initValidatorWithLogger 初始化验证器，返回 UniversalTranslator
 func initValidatorWithLogger(lg *zap.Logger) (*ut.UniversalTranslator, error) {
 	customValidator := validator.NewCustomValidator()
@@ -324,8 +348,10 @@ func initValidatorWithLogger(lg *zap.Logger) (*ut.UniversalTranslator, error) {
 	return uni, nil
 }
 
+// initDatabaseWithConfig initializes database (using injected config)
 // initDatabaseWithConfig 初始化数据库（使用注入的配置）
 func initDatabaseWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) (*gorm.DB, error) {
+	// Convert AppConfig.DatabaseConfig to dao.DatabaseConfig
 	// 转换 AppConfig.DatabaseConfig 为 dao.DatabaseConfig
 	dbConfig := dao.DatabaseConfig{
 		Type:            cfg.Database.Type,
@@ -353,6 +379,7 @@ func initDatabaseWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) (*gorm.D
 	return db, nil
 }
 
+// initStorageWithConfig initializes storage directory (using injected config)
 // initStorageWithConfig 初始化存储目录（使用注入的配置）
 func initStorageWithConfig(cfg *internalApp.AppConfig) error {
 	dirs := []string{
@@ -373,11 +400,13 @@ func initStorageWithConfig(cfg *internalApp.AppConfig) error {
 	return nil
 }
 
+// GetApp gets App Container
 // GetApp 获取 App Container
 func (s *Server) GetApp() *internalApp.App {
 	return s.app
 }
 
+// GetConfig gets app configuration
 // GetConfig 获取应用配置
 func (s *Server) GetConfig() *internalApp.AppConfig {
 	return s.config

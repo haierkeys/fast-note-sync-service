@@ -6,7 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AppInfoWithConfig 创建带配置的应用信息中间件（支持依赖注入）
+// AppInfoWithConfig creates middleware to set application information (supports dependency injection)
+// AppInfoWithConfig 创建设置应用信息的中间件（支持依赖注入）
 func AppInfoWithConfig(appName, appVersion string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {

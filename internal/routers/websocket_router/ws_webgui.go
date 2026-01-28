@@ -6,16 +6,19 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
+// WebGUIWSHandler WebGUI WebSocket handler
 // WebGUIWSHandler WebGUI WebSocket 处理器
 type WebGUIWSHandler struct {
 	App *app.App
 }
 
+// NewWebGUIWSHandler creates WebGUIWSHandler instance
 // NewWebGUIWSHandler 创建 WebGUIWSHandler 实例
 func NewWebGUIWSHandler(a *app.App) *WebGUIWSHandler {
 	return &WebGUIWSHandler{App: a}
 }
 
+// WebGUIConfigGet handles WebSocket messages for getting WebGUI configuration
 // WebGUIConfigGet 处理获取 WebGUI 配置的 WebSocket 消息
 func (h *WebGUIWSHandler) WebGUIConfigGet(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	cfg := h.App.Config()

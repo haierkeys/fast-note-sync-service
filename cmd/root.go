@@ -19,6 +19,8 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// Execute executes the root command
+// Execute 执行根命令
 func Execute(efs embed.FS, c string) {
 	frontendFiles = efs
 	configDefault = c

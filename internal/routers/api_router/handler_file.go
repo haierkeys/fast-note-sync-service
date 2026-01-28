@@ -18,11 +18,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// FileHandler file API router handler
 // FileHandler 文件 API 路由处理器
 type FileHandler struct {
 	*Handler
 }
 
+// NewFileHandler creates FileHandler instance
 // NewFileHandler 创建 FileHandler 实例
 func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 	return &FileHandler{
@@ -44,6 +46,7 @@ func (h *FileHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FileListRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -52,6 +55,7 @@ func (h *FileHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -60,6 +64,7 @@ func (h *FileHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -89,6 +94,7 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FileGetRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -97,6 +103,7 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -105,11 +112,13 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -121,12 +130,14 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 		return
 	}
 
+	// If content is nil, means resource not found or deleted, return 404
 	// 如果内容为 nil, 表示资源未找到或已删除, 返回 404
 	if content == nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
+	// Set response headers
 	// 设置响应头
 	if contentType != "" {
 		c.Header("Content-Type", contentType)
@@ -161,6 +172,7 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FileDeleteRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 
@@ -171,6 +183,7 @@ func (h *FileHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -179,15 +192,18 @@ func (h *FileHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	fileSvc := h.App.GetFileService(app.WebClientName, "")
+	// Execute deletion
 	// 执行删除
 	file, err := fileSvc.Delete(ctx, uid, params)
 	if err != nil {
@@ -215,6 +231,7 @@ func (h *FileHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FileGetRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -223,6 +240,7 @@ func (h *FileHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -231,11 +249,13 @@ func (h *FileHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -255,6 +275,7 @@ func (h *FileHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(file))
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *FileHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

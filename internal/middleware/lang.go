@@ -9,6 +9,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 )
 
+// LangWithTranslator creates language middleware with translator (supports dependency injection)
 // LangWithTranslator 创建带翻译器的语言中间件（支持依赖注入）
 func LangWithTranslator(uni *ut.UniversalTranslator) gin.HandlerFunc {
 

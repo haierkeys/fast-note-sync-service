@@ -61,9 +61,13 @@ func RequestParams(c *gin.Context) (map[string]interface{}, error) {
 			}
 		}
 	default:
+		// ParseForm parses query string in URL and updates the parsing results to r.Form field
 		// ParseForm 解析 URL 中的查询字符串，并将解析结果更新到 r.Form 字段
+		// For POST or PUT requests, ParseForm will also parse the body as a form,
 		// 对于 POST 或 PUT 请求，ParseForm 还会将 body 当作表单解析，
+		// and update the results both to r.PostForm and r.Form. In the parsing results,
 		// 并将结果既更新到 r.PostForm 也更新到 r.Form。解析结果中，
+		// POST or PUT request body takes precedence over URL query string (same name variable, body value is before query string value)
 		// POST 或 PUT 请求主体要优先于 URL 查询字符串（同名变量，主体的值在查询字符串的值前面）
 		// @see gin@v1.7.7/binding/form.go ==> func (formBinding) Bind(req *httpclient.Request, obj interface{})
 		if err := c.Request.ParseForm(); err != nil {

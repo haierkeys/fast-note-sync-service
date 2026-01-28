@@ -24,9 +24,11 @@ func (t *Time) UnmarshalJSON(data []byte) (err error) {
 
 func (t Time) MarshalJSON() ([]byte, error) {
 	tTime := time.Time(t)
+	// If time value is empty or 0, return null. Returning empty string will cause abnormal time exception.
 	// 如果时间值是空或者0值 返回为null 如果写空字符串会报出异常时间
+	// Fixes 0001-01-01 issue below
 	// 下面是修复0001-01-01问题的
-	if &t == nil || t.IsZero() {
+	if t.IsZero() {
 		return []byte("null"), nil
 	}
 	return []byte(fmt.Sprintf("\"%s\"", tTime.Format(TimeFormat))), nil
@@ -69,21 +71,25 @@ func Now() Time {
 	return Time(time.Now())
 }
 
+// Unix timestamp (seconds)
 // Unix 时间戳（秒）
 func (t Time) Unix() int64 {
 	return time.Now().Unix()
 }
 
+// UnixMilli timestamp (milliseconds)
 // UnixMilli 时间戳（毫秒）
 func (t Time) UnixMilli() int64 {
 	return time.Now().UnixMilli()
 }
 
+// UnixMicro timestamp (microseconds)
 // UnixMicro 时间戳（微秒）
 func (t Time) UnixMicro() int64 {
 	return time.Now().UnixMicro()
 }
 
+// UnixNano timestamp (nanoseconds)
 // UnixNano 时间戳（纳秒）
 func (t Time) UnixNano() int64 {
 	return time.Now().UnixNano()

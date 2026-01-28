@@ -210,13 +210,13 @@ More wikilinks at the end: [[Final Note]]
 	result := ParseWikiLinks(content)
 
 	expectedPaths := map[string]bool{
-		"Another Note":    true,
-		"Note":            true,
-		"Embedded Note":   true,
-		"photo.jpg":       true,
-		"Note#Section":    true,
-		"Note#^abc123":    true,
-		"Final Note":      true,
+		"Another Note":  true,
+		"Note":          true,
+		"Embedded Note": true,
+		"photo.jpg":     true,
+		"Note#Section":  true,
+		"Note#^abc123":  true,
+		"Final Note":    true,
 	}
 
 	if len(result) != len(expectedPaths) {

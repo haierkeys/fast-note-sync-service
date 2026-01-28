@@ -1,3 +1,5 @@
+// Package service implements the business logic layer
+// Package service 实现业务逻辑层
 package service
 
 import (
@@ -25,40 +27,71 @@ var (
 	attachmentRegex = regexp.MustCompile(`!\[\[(.*?)\]\]`)
 )
 
+// ShareService defines the share business service interface
+// ShareService 定义分享业务服务接口
 type ShareService interface {
+	// ShareGenerate generates and stores share token
+	// ShareGenerate 生成并存储分享 Token
 	ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string) (*dto.ShareCreateResponse, error)
+
+	// VerifyShare verifies share token and its status
+	// VerifyShare 验证分享 Token 及其状态
 	VerifyShare(ctx context.Context, token string, rid string, rtp string) (*pkgapp.ShareEntity, error)
+
+	// GetSharedNote retrieves shared note details
+	// GetSharedNote 获取分享的单条笔记详情
 	GetSharedNote(ctx context.Context, shareToken string, noteID int64) (*dto.NoteDTO, error)
+
+	// GetSharedFile retrieves shared file content
+	// GetSharedFile 获取分享的文件内容
 	GetSharedFile(ctx context.Context, shareToken string, fileID int64) (content []byte, contentType string, mtime int64, etag string, fileName string, err error)
+
+	// RecordView aggregates access statistics in memory
+	// RecordView 在内存中聚合访问统计
 	RecordView(uid int64, id int64)
+
+	// StopShare revokes a share
+	// StopShare 撤销分享
 	StopShare(ctx context.Context, uid int64, id int64) error
+
+	// ListShares lists all shares of a user
+	// ListShares 列出用户的所有分享
 	ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error)
+
+	// Shutdown shuts down the service and flushes remaining data
+	// Shutdown 关闭服务并同步最后的数据
 	Shutdown(ctx context.Context) error
 }
 
+// aggStats aggregated statistics
+// aggStats 聚合统计
 type aggStats struct {
-	uid          int64
-	viewCount    int64
-	lastViewedAt time.Time
+	uid          int64     // User ID // 用户 ID
+	viewCount    int64     // View count // 访问计数
+	lastViewedAt time.Time // Last viewed at // 最后访问时间
 }
 
+// shareService implementation of ShareService interface
+// shareService 实现 ShareService 接口
 type shareService struct {
-	repo         domain.UserShareRepository
-	tokenManager pkgapp.TokenManager
-	noteRepo     domain.NoteRepository
-	fileRepo     domain.FileRepository
-	vaultRepo    domain.VaultRepository
-	logger       *zap.Logger
-	config       *ServiceConfig
+	repo         domain.UserShareRepository // Share repository // 分享仓库
+	tokenManager pkgapp.TokenManager        // Token manager // Token 管理器
+	noteRepo     domain.NoteRepository      // Note repository // 笔记仓库
+	fileRepo     domain.FileRepository      // File repository // 文件仓库
+	vaultRepo    domain.VaultRepository     // Vault repository // 仓库仓库
+	logger       *zap.Logger                // Logger // 日志器
+	config       *ServiceConfig             // Service configuration // 服务配置
 
+	// Statistics buffer
 	// 统计缓冲区
-	bufferMu    sync.Mutex
-	statsBuffer map[int64]*aggStats
-	ticker      *time.Ticker
-	stopCh      chan struct{}
-	doneCh      chan struct{}
+	bufferMu    sync.Mutex          // Buffer mutex // 缓冲区互斥锁
+	statsBuffer map[int64]*aggStats // Stats buffer // 统计缓冲区
+	ticker      *time.Ticker        // Sync ticker // 同步定时器
+	stopCh      chan struct{}       // Stop channel // 停止信号
+	doneCh      chan struct{}       // Done channel // 完成信号
 }
 
+// NewShareService creates ShareService instance
 // NewShareService 创建 ShareService 实例
 func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenManager, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, logger *zap.Logger, config *ServiceConfig) ShareService {
 	s := &shareService{
@@ -80,8 +113,10 @@ func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenM
 	return s
 }
 
+// ShareGenerate generates and stores share token
 // ShareGenerate 生成并存储分享 Token
 func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string) (*dto.ShareCreateResponse, error) {
+	// 1. Get VaultID
 	// 1. 获取 VaultID
 	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
 	if err != nil {
@@ -93,10 +128,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 	var mainID int64
 	var mainType string
 
+	// 2. Determine type based on suffix
 	// 2. 根据后缀判定类型
 	isNote := strings.HasSuffix(strings.ToLower(path), ".md")
 
 	if isNote {
+		// Try looking up as Note
 		// 尝试作为 Note 查找
 		note, err := s.noteRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && note != nil && note.Action != domain.NoteActionDelete {
@@ -105,11 +142,13 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 			noteIDStr := strconv.FormatInt(note.ID, 10)
 			resolvedResources["note"] = []string{noteIDStr}
 
+			// Resolve attachments in content ![[attachment path]]
 			// 解析内容中的附件 ![[附件路径]]
 			matches := attachmentRegex.FindAllStringSubmatch(note.Content, -1)
 			for _, match := range matches {
 				if len(match) > 1 {
 					inner := match[1]
+					// Extract resource path (remove parts after alias | and anchor #)
 					// 提取资源路径（移除别名 | 和锚点 # 之后的部分）
 					attPath := inner
 					if idx := strings.IndexAny(inner, "|#"); idx != -1 {
@@ -123,10 +162,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 					var file *domain.File
 					var ferr error
 
+					// Strategy 1: Try exact match (full path hash)
 					// 策略 1: 尝试精确匹配（完整路径哈希）
 					attHash := util.EncodeHash32(attPath)
 					file, ferr = s.fileRepo.GetByPathHash(ctx, attHash, vaultID, uid)
 
+					// Strategy 2: Try suffix match (handle Obsidian shorthand paths)
 					// 策略 2: 尝试后缀匹配（处理 Obsidian 简写路径）
 					if (ferr != nil || file == nil) && !strings.Contains(attPath, "/") {
 						file, ferr = s.fileRepo.GetByPathLike(ctx, attPath, vaultID, uid)
@@ -134,6 +175,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 
 					if ferr == nil && file != nil && file.Action != domain.FileActionDelete {
 						fileIDStr := strconv.FormatInt(file.ID, 10)
+						// Avoid duplicate authorization
 						// 避免重复授权
 						if !util.Inarray(resolvedResources["file"], fileIDStr) {
 							resolvedResources["file"] = append(resolvedResources["file"], fileIDStr)
@@ -145,6 +187,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 			return nil, code.ErrorNoteNotFound.WithDetails("note not found: " + path)
 		}
 	} else {
+		// Try looking up as File
 		// 尝试作为 File 查找
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && file != nil && file.Action != domain.FileActionDelete {
@@ -157,8 +200,9 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		}
 	}
 
+	// 3. Determine expiration time
 	// 3. 确定过期时间
-	expiry := 30 * 24 * time.Hour // 默认 30 天
+	expiry := 30 * 24 * time.Hour // Default 30 days // 默认 30 天
 	if s.config != nil && s.config.App.ShareTokenExpiry != "" {
 		if d, err := util.ParseDuration(s.config.App.ShareTokenExpiry); err == nil {
 			expiry = d
@@ -179,6 +223,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		return nil, err
 	}
 
+	// 4. Generate Token (using underlying SID encryption scheme)
 	// 4. 生成 Token (使用底层 SID 加密方案)
 	token, err := s.tokenManager.ShareGenerate(share.ID, uid, resolvedResources)
 	if err != nil {
@@ -193,6 +238,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 	}, nil
 }
 
+// VerifyShare verifies share token and its status
 // VerifyShare 验证分享 Token 及其状态
 func (s *shareService) VerifyShare(ctx context.Context, token string, rid string, rtp string) (*pkgapp.ShareEntity, error) {
 	entity, err := s.tokenManager.ShareParse(token)
@@ -215,7 +261,7 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 
 	ids, ok := share.Resources[rtp]
 	if !ok {
-		return nil, domain.ErrShareCancelled // 资源类型不匹配
+		return nil, domain.ErrShareCancelled // Match type mismatch // 资源类型不匹配
 	}
 
 	authorized := false
@@ -227,15 +273,17 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 	}
 
 	if !authorized {
-		return nil, domain.ErrShareCancelled // 资源未授权
+		return nil, domain.ErrShareCancelled // Resource not authorized // 资源未授权
 	}
 
+	// In-memory record access statistics (delayed 5 minutes update)
 	// 内存记录访问统计 (延迟 5 分钟更新)
 	s.RecordView(share.UID, share.ID)
 
 	return entity, nil
 }
 
+// RecordView aggregates access statistics in memory
 // RecordView 在内存中聚合访问统计
 func (s *shareService) RecordView(uid int64, id int64) {
 	s.bufferMu.Lock()
@@ -252,6 +300,7 @@ func (s *shareService) RecordView(uid int64, id int64) {
 	stats.lastViewedAt = time.Now()
 }
 
+// startFlushLoop starts periodic synchronization goroutine
 // startFlushLoop 启动定时同步协程
 func (s *shareService) startFlushLoop() {
 	defer close(s.doneCh)
@@ -266,6 +315,7 @@ func (s *shareService) startFlushLoop() {
 	}
 }
 
+// flush synchronizes incremental totals in memory to database
 // flush 将内存中的增量合计同步到数据库
 func (s *shareService) flush() {
 	s.bufferMu.Lock()
@@ -285,16 +335,19 @@ func (s *shareService) flush() {
 	}
 }
 
+// StopShare revokes a share
 // StopShare 撤销分享
 func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error {
 	return s.repo.UpdateStatus(ctx, uid, id, 2)
 }
 
+// ListShares lists all shares of a user
 // ListShares 列出用户的所有分享
 func (s *shareService) ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
 	return s.repo.ListByUID(ctx, uid)
 }
 
+// GetSharedNote retrieves specific shared note details
 // GetSharedNote 获取分享的单条笔记详情
 func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, noteID int64) (*dto.NoteDTO, error) {
 	ridStr := strconv.FormatInt(noteID, 10)
@@ -303,6 +356,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 		return nil, code.ErrorInvalidAuthToken
 	}
 
+	// Retrieve note directly via ID (using resource owner's UID)
 	// 直接通过 ID 获取笔记 (使用资源所有者的 UID)
 	note, err := s.noteRepo.GetByID(ctx, noteID, shareEntity.UID)
 	if err != nil {
@@ -322,6 +376,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 		CreatedAt:        timex.Time(note.CreatedAt),
 	}
 
+	// Handle Obsidian attachment embedded tags ![[...]]
 	// 处理 Obsidian 附件嵌入标签 ![[...]]
 	newContent := attachmentRegex.ReplaceAllStringFunc(noteDTO.Content, func(match string) string {
 		submatches := attachmentRegex.FindStringSubmatch(match)
@@ -345,6 +400,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 			return match
 		}
 
+		// Search for file ID
 		// 查找文件 ID
 		file, err := s.fileRepo.GetByPathLike(ctx, rawPath, note.VaultID, shareEntity.UID)
 		if err != nil || file == nil {
@@ -386,6 +442,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 	return noteDTO, nil
 }
 
+// GetSharedFile retrieves shared file content
 // GetSharedFile 获取分享的文件内容
 func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fileID int64) (content []byte, contentType string, mtime int64, etag string, fileName string, err error) {
 	ridStr := strconv.FormatInt(fileID, 10)
@@ -394,9 +451,11 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 		return nil, "", 0, "", "", code.ErrorInvalidAuthToken
 	}
 
+	// 1. Get resource owner's UID
 	// 1. 获取资源所有者的 UID
 	ownerUID := shareEntity.UID
 
+	// 2. Confirm path hash (get file metadata from fileRepo)
 	// 2. 确认路径哈希 (从 fileRepo 获取文件元数据)
 	file, err := s.fileRepo.GetByID(ctx, fileID, ownerUID)
 	if err != nil {
@@ -407,20 +466,24 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 		return nil, "", 0, "", "", code.ErrorFileNotFound
 	}
 
+	// Read physical file content
 	// 读取物理文件内容
 	content, err = os.ReadFile(file.SavePath)
 	if err != nil {
 		return nil, "", 0, "", "", code.ErrorFileReadFailed.WithDetails(err.Error())
 	}
 
+	// Identify file MIME type
 	// 识别文件 MIME 类型
 	ext := filepath.Ext(file.Path)
 	contentType = mime.TypeByExtension(ext)
 	if contentType == "" {
+		// If extension cannot be identified, perform content sniffing
 		// 如果扩展名识别不到, 进行内容嗅探
 		contentType = http.DetectContentType(content)
 	}
 
+	// Compute etag in real-time
 	// 实时计算 etag
 	etag = util.EncodeHash32(string(content))
 
@@ -428,11 +491,13 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 
 }
 
+// Shutdown shuts down the service and flushes remaining data
 // Shutdown 关闭服务并同步最后的数据
 func (s *shareService) Shutdown(ctx context.Context) error {
 	s.ticker.Stop()
 	close(s.stopCh)
 
+	// Wait for periodic synchronization goroutine to end (i.e., last flush completed)
 	// 等待定时同步协程结束（即最后一次 flush 完成）
 	select {
 	case <-s.doneCh:

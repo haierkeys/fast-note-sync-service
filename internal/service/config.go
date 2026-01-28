@@ -1,31 +1,25 @@
+// Package service implements the business logic layer
 // Package service 实现业务逻辑层
 package service
 
+// ServiceConfig service layer configuration
 // ServiceConfig 服务层配置
 type ServiceConfig struct {
-	// User 用户相关配置
-	User UserServiceConfig
-
-	// App 应用相关配置
-	App AppServiceConfig
+	User UserServiceConfig // User related config // 用户相关配置
+	App  AppServiceConfig  // App related config // 应用相关配置
 }
 
+// UserServiceConfig user service configuration
 // UserServiceConfig 用户服务配置
 type UserServiceConfig struct {
-	// RegisterIsEnable 注册是否启用
-	RegisterIsEnable bool
+	RegisterIsEnable bool // Whether registration is enabled // 注册是否启用
 }
 
+// AppServiceConfig app service configuration
 // AppServiceConfig 应用服务配置
 type AppServiceConfig struct {
-	// SoftDeleteRetentionTime 软删除保留时间
-	// 支持格式：7d（天）、24h（小时）、30m（分钟）、0 或空表示不自动清理
-	SoftDeleteRetentionTime string
-	// HistoryKeepVersions 历史记录保留版本数
-	HistoryKeepVersions int
-	// HistorySaveDelay 历史记录保存延迟时间
-	// 支持格式：10s（秒）、1m（分钟），默认 10s
-	HistorySaveDelay string
-	// ShareTokenExpiry 分享 Token 过期时间
-	ShareTokenExpiry string
+	SoftDeleteRetentionTime string // Soft delete retention time (e.g., 7d, 24h, 30m, 0/empty for no cleanup) // 软删除保留时间（支持格式：7d、24h、30m、0 或空表示不自动清理）
+	HistoryKeepVersions     int    // History versions to keep // 历史记录保留版本数
+	HistorySaveDelay        string // History save delay (e.g., 10s, 1m, default 10s) // 历史记录保存延迟时间（支持格式：10s、1m，默认 10s）
+	ShareTokenExpiry        string // Share token expiry // 分享 Token 过期时间
 }
