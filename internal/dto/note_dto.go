@@ -181,12 +181,18 @@ type NoteSyncCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
+type NoteSyncDelNotes struct {
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+}
+
 // NoteSyncRequest Synchronization request body
 // 同步请求主体
 type NoteSyncRequest struct {
 	Vault    string                 `json:"vault" form:"vault" binding:"required"`
 	LastTime int64                  `json:"lastTime" form:"lastTime"`
 	Notes    []NoteSyncCheckRequest `json:"notes" form:"notes"`
+	DelNotes []NoteSyncDelNotes     `json:"delNotes" form:"delNotes"`
 }
 
 // ModifyMtimeFilesRequest Request for querying modified files by mtime
