@@ -532,9 +532,43 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	var needSyncMtimeCount int64
 	var needDeleteCount int64
 
+	var cDelFilesKeys map[string]struct{} = make(map[string]struct{}, 0)
+
+	// Handle files deleted by client
+	// 处理客户端删除的文件
+	if len(params.DelFiles) > 0 {
+		for _, delFile := range params.DelFiles {
+			delParams := &dto.FileDeleteRequest{
+				Vault:    params.Vault,
+				Path:     delFile.Path,
+				PathHash: delFile.PathHash,
+			}
+			fileSvc, err := h.App.FileService.Delete(ctx, c.User.UID, delParams)
+			if err != nil {
+				h.App.Logger().Error("failed to delete file from DelFiles during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, delFile.Path),
+					zap.Error(err))
+				continue
+			}
+			// 记录客户端已主动删除的 PathHash，避免重复下发
+			cDelFilesKeys[delFile.PathHash] = struct{}{}
+			// Broadcast deletion to other clients
+			// 将删除消息广播给其他客户端
+			fileDeleteMessage := convert.StructAssign(fileSvc, &dto.FileDeleteMessage{}).(*dto.FileDeleteMessage)
+			c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
+		}
+	}
+
 	// Iterate over server file list for processing
 	// 遍历服务端文件列表进行处理
 	for _, file := range list {
+		// 如果该文件是客户端刚才通过参数告知删除的，则跳过下发
+		if _, ok := cDelFilesKeys[file.PathHash]; ok {
+			continue
+		}
+
 		if file.UpdatedTimestamp >= lastTime {
 			lastTime = file.UpdatedTimestamp
 		}

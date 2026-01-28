@@ -724,7 +724,40 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	var needSyncMtimeCount int64
 	var needDeleteCount int64
 
+	var cDelNotesKeys map[string]struct{} = make(map[string]struct{}, 0)
+
+	// Handle notes deleted by client
+	// 处理客户端删除的笔记
+	if len(params.DelNotes) > 0 {
+		for _, delNote := range params.DelNotes {
+			delParams := &dto.NoteDeleteRequest{
+				Vault:    params.Vault,
+				Path:     delNote.Path,
+				PathHash: delNote.PathHash,
+			}
+			note, err := noteSvc.Delete(ctx, c.User.UID, delParams)
+			if err != nil {
+				h.App.Logger().Error("failed to delete note from DelNotes during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, delNote.Path),
+					zap.Error(err))
+				continue
+			}
+			// 记录客户端已主动删除的 PathHash，避免重复下发
+			cDelNotesKeys[delNote.PathHash] = struct{}{}
+			// Broadcast deletion to other clients
+			// 将删除消息广播给其他客户端
+			c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
+		}
+	}
+
 	for _, note := range list {
+		// 如果该笔记是客户端刚才通过参数告知删除的，则跳过下发
+		if _, ok := cDelNotesKeys[note.PathHash]; ok {
+			continue
+		}
+
 		if note.UpdatedTimestamp >= lastTime {
 			lastTime = note.UpdatedTimestamp
 		}
