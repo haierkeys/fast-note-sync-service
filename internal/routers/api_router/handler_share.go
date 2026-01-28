@@ -27,16 +27,16 @@ func NewShareHandler(app *app.App) *ShareHandler {
 	}
 }
 
-// Create 创建分享
-// @Summary 创建资源分享
-// @Description 为指定的笔记或附件创建分享令牌，自动解析笔记中的附件引用并授权
-// @Tags 分享
+// Create creates a share
+// @Summary Create resource share
+// @Description Create a share token for a specific note or attachment, automatically resolve attachment references and authorize
+// @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.ShareCreateRequest true "分享参数"
-// @Success 200 {object} pkgapp.Res{data=dto.ShareCreateResponse} "成功"
+// @Param params body dto.ShareCreateRequest true "Share Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.ShareCreateResponse} "Success"
 // @Router /api/share [post]
 func (h *ShareHandler) Create(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -66,15 +66,15 @@ func (h *ShareHandler) Create(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(shareRes))
 }
 
-// GetShared 获取分享的单条笔记详情
-// @Summary 获取被分享的笔记详情
-// @Description 通过分享 Token 授权后，获取特定笔记内容（受限只读访问）
-// @Tags 分享
+// GetShared retrieves shared note details
+// @Summary Get shared note details
+// @Description Get specific note content (restricted read-only access) via share token
+// @Tags Share
 // @Security ShareAuthToken
-// @Param Share-Token header string true "认证 Token"
+// @Param Share-Token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.ShareResourceRequest true "获取参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params query dto.ShareResourceRequest true "Get Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/share/note [get]
 func (h *ShareHandler) NoteGet(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -110,15 +110,15 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(noteDTO))
 }
 
-// GetSharedContent 获取分享的文件内容
-// @Summary 获取分享的附件内容
-// @Description 通过分享 Token 授权后，获取特定附件的原始二进制数据
-// @Tags 分享
+// GetSharedContent retrieves shared file content
+// @Summary Get shared attachment content
+// @Description Get raw binary data of a specific attachment via share token
+// @Tags Share
 // @Security ShareAuthToken
-// @Param Share-Token header string true "认证 Token"
+// @Param Share-Token header string true "Auth Token"
 // @Produce octet-stream
-// @Param params query dto.ShareResourceRequest true "获取参数"
-// @Success 200 {file} binary "成功"
+// @Param params query dto.ShareResourceRequest true "Get Parameters"
+// @Success 200 {file} binary "Success"
 // @Router /api/share/file [get]
 func (h *ShareHandler) FileGet(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

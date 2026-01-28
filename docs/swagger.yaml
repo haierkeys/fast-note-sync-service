@@ -1,10 +1,27 @@
 basePath: /
 definitions:
+  api_router.HealthResponse:
+    properties:
+      database:
+        description: '"connected" 或 "error"'
+        type: string
+      status:
+        description: '"healthy" 或 "unhealthy"'
+        type: string
+      uptime:
+        description: 运行时间（秒）
+        type: number
+      version:
+        description: 服务版本号
+        type: string
+    type: object
   api_router.webGUIAdminConfig:
     properties:
       adminUid:
         type: integer
       authTokenKey:
+        type: string
+      defaultApiFolder:
         type: string
       fileChunkSize:
         type: string
@@ -83,6 +100,21 @@ definitions:
       size:
         type: integer
     type: object
+  dto.NoteAppendRequest:
+    properties:
+      content:
+        type: string
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - content
+    - path
+    - vault
+    type: object
   dto.NoteDTO:
     properties:
       content:
@@ -137,17 +169,33 @@ definitions:
     - historyId
     - vault
     type: object
+  dto.NoteLinkItem:
+    properties:
+      context:
+        description: snippet around link
+        type: string
+      isEmbed:
+        description: true if embed (![[...]]) vs regular link ([[...]])
+        type: boolean
+      linkText:
+        type: string
+      path:
+        type: string
+    type: object
   dto.NoteModifyOrCreateRequest:
     properties:
       baseHash:
         type: string
       baseHashMissing:
-        description: 标记 baseHash 是否不可用
+        description: Marks if baseHash is unavailable
         type: boolean
       content:
         type: string
       contentHash:
         type: string
+      createOnly:
+        description: If true, fail if note already exists
+        type: boolean
       ctime:
         type: integer
       mtime:
@@ -169,6 +217,87 @@ definitions:
     required:
     - path
     - vault
+    type: object
+  dto.NoteMoveRequest:
+    properties:
+      destination:
+        type: string
+      overwrite:
+        type: boolean
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - destination
+    - path
+    - vault
+    type: object
+  dto.NotePatchFrontmatterRequest:
+    properties:
+      path:
+        type: string
+      pathHash:
+        type: string
+      remove:
+        items:
+          type: string
+        type: array
+      updates:
+        additionalProperties: true
+        type: object
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.NotePrependRequest:
+    properties:
+      content:
+        type: string
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - content
+    - path
+    - vault
+    type: object
+  dto.NoteReplaceRequest:
+    properties:
+      all:
+        type: boolean
+      failIfNoMatch:
+        type: boolean
+      find:
+        type: string
+      path:
+        type: string
+      pathHash:
+        type: string
+      regex:
+        type: boolean
+      replace:
+        type: string
+      vault:
+        type: string
+    required:
+    - find
+    - path
+    - vault
+    type: object
+  dto.NoteReplaceResponse:
+    properties:
+      matchCount:
+        type: integer
+      note:
+        $ref: '#/definitions/dto.NoteDTO'
     type: object
   dto.NoteRestoreRequest:
     properties:
@@ -212,13 +341,13 @@ definitions:
   dto.ShareCreateRequest:
     properties:
       path:
-        description: 资源路径
+        description: Resource path
         type: string
       path_hash:
-        description: 资源路径 Hash
+        description: Resource path Hash
         type: string
       vault:
-        description: 仓库名称
+        description: Vault name
         example: defaultVault
         type: string
     required:
@@ -229,16 +358,16 @@ definitions:
   dto.ShareCreateResponse:
     properties:
       expires_at:
-        description: 过期时间
+        description: Expiration time
         type: string
       id:
-        description: 笔记或附件表的 ID (主资源 ID)
+        description: ID of the note or file table (primary resource ID)
         type: integer
       token:
-        description: 分享 Token
+        description: Share Token
         type: string
       type:
-        description: '资源类型: note 或 file'
+        description: 'Resource type: note or file'
         type: string
     type: object
   dto.UserChangePasswordRequest:
@@ -342,9 +471,9 @@ info:
 paths:
   /api/admin/config:
     get:
-      description: 获取系统底层的全量配置信息，需要管理员权限
+      description: Get full system configuration information, requires admin privileges
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -353,7 +482,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -362,25 +491,25 @@ paths:
                   $ref: '#/definitions/api_router.webGUIAdminConfig'
               type: object
         "403":
-          description: 权限不足
+          description: Insufficient privileges
           schema:
             $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
-      summary: 获取管理员全量配置
+      summary: Get full admin config
       tags:
-      - 配置
+      - Config
     post:
       consumes:
       - application/json
-      description: 修改系统底层的全量配置信息，需要管理员权限
+      description: Modify full system configuration information, requires admin privileges
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 配置参数
+      - description: Config Parameters
         in: body
         name: params
         required: true
@@ -390,7 +519,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -399,19 +528,20 @@ paths:
                   $ref: '#/definitions/api_router.webGUIAdminConfig'
               type: object
         "403":
-          description: 权限不足
+          description: Insufficient privileges
           schema:
             $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
-      summary: 更新管理员配置
+      summary: Update admin config
       tags:
-      - 配置
+      - Config
   /api/file:
     delete:
-      description: 永久删除指定的附件记录及其物理文件
+      description: Permanently delete a specific attachment record and its physical
+        file
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -432,7 +562,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -442,13 +572,14 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 删除附件
+      summary: Delete attachment
       tags:
-      - 附件
+      - File
     get:
-      description: 根据路径获取附件的原始二进制数据，支持强缓存控制
+      description: Get raw binary data of an attachment by path, supports strong cache
+        control
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -471,19 +602,19 @@ paths:
       - application/octet-stream
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             type: file
       security:
       - UserAuthToken: []
-      summary: 获取附件内容
+      summary: Get attachment content
       tags:
-      - 附件
+      - File
   /api/file/info:
     get:
-      description: 根据路径获取附件的元数据信息 (FileDTO)
+      description: Get attachment metadata (FileDTO) by path
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -506,7 +637,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -516,14 +647,15 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取附件信息
+      summary: Get attachment info
       tags:
-      - 附件
+      - File
   /api/files:
     get:
-      description: 分页并支持搜索、过滤、排序地获取当前用户的附件列表
+      description: Get attachment list for current user with pagination, search, filter,
+        and sort support
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -534,11 +666,11 @@ paths:
       - in: query
         name: keyword
         type: string
-      - description: '排序字段: mtime(默认), ctime, path'
+      - description: 'Sorting field: mtime(default), ctime, path'
         in: query
         name: sortBy
         type: string
-      - description: '排序方向: desc(默认), asc'
+      - description: 'Sorting order: desc(default), asc'
         in: query
         name: sortOrder
         type: string
@@ -550,7 +682,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -562,14 +694,27 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取文件列表
+      summary: Get file list
       tags:
-      - 附件
+      - File
+  /api/health:
+    get:
+      description: Check service health status, including database connection
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_router.HealthResponse'
+      summary: Health check
+      tags:
+      - System
   /api/note:
     delete:
-      description: 将笔记移至回收站
+      description: Move note to trash
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -589,7 +734,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -599,13 +744,13 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 删除笔记
+      summary: Delete note
       tags:
-      - 笔记
+      - Note
     get:
-      description: 根据路径或路径哈希获取单条笔记的具体内容和元数据
+      description: Get specific note content and metadata by path or path hash
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -628,7 +773,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -638,20 +783,21 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取笔记详情
+      summary: Get note details
       tags:
-      - 笔记
+      - Note
     post:
       consumes:
       - application/json
-      description: 处理笔记的新增、修改或重命名（通过路径变化识别）
+      description: Handle note creation, modification, or renaming (identified by
+        path change)
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 笔记内容
+      - description: Note Content
         in: body
         name: params
         required: true
@@ -661,7 +807,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -671,14 +817,121 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 创建或更新笔记
+      summary: Create or update note
       tags:
-      - 笔记
+      - Note
+  /api/note/append:
+    post:
+      consumes:
+      - application/json
+      description: Append content to the end of a note
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Append Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteAppendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Append content to note
+      tags:
+      - Note
+  /api/note/backlinks:
+    get:
+      description: Get all other notes that link to the specified note
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.NoteLinkItem'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get backlinks
+      tags:
+      - Note
+  /api/note/frontmatter:
+    patch:
+      consumes:
+      - application/json
+      description: Update or delete note frontmatter fields
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Frontmatter Modification Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NotePatchFrontmatterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Modify note frontmatter
+      tags:
+      - Note
   /api/note/histories:
     get:
-      description: 分页获取特定笔记的所有历史修改记录
+      description: Get all history records for a specific note with pagination
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -701,7 +954,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -713,19 +966,19 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取笔记历史列表
+      summary: Get note history list
       tags:
-      - 笔记历史
+      - Note History
   /api/note/history:
     get:
-      description: 根据历史记录 ID 获取单条特定的笔记历史内容
+      description: Get specific note history content by history record ID
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 历史记录 ID
+      - description: History Record ID
         format: int64
         in: query
         name: id
@@ -735,7 +988,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -745,21 +998,21 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取笔记历史详情
+      summary: Get note history details
       tags:
-      - 笔记历史
+      - Note History
   /api/note/history/restore:
     put:
       consumes:
       - application/json
-      description: 将笔记内容恢复到指定的历史版本
+      description: Restore note content to a specific history version
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 恢复参数
+      - description: Restore Parameters
         in: body
         name: params
         required: true
@@ -769,7 +1022,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -779,19 +1032,161 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 从历史版本恢复笔记
+      summary: Restore note from history
       tags:
-      - 笔记历史
-  /api/note/restore:
-    put:
-      description: 从回收站恢复被删除的笔记
+      - Note History
+  /api/note/move:
+    post:
+      consumes:
+      - application/json
+      description: Move a note to a new path
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 恢复参数
+      - description: Move Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteMoveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Move note
+      tags:
+      - Note
+  /api/note/outlinks:
+    get:
+      description: Get other notes that the specified note links to
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        required: true
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.NoteLinkItem'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get outgoing links
+      tags:
+      - Note
+  /api/note/prepend:
+    post:
+      consumes:
+      - application/json
+      description: Insert content at the beginning of a note (after frontmatter)
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Prepend Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NotePrependRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Prepend content to note
+      tags:
+      - Note
+  /api/note/replace:
+    post:
+      consumes:
+      - application/json
+      description: Perform find and replace operation in a note, supporting regular
+        expressions
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Find and Replace Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteReplaceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteReplaceResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Find and replace in note
+      tags:
+      - Note
+  /api/note/restore:
+    put:
+      description: Restore deleted note from trash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Restore Parameters
         in: body
         name: params
         required: true
@@ -801,7 +1196,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -811,14 +1206,14 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 恢复笔记
+      summary: Restore note
       tags:
-      - 笔记
+      - Note
   /api/notes:
     get:
-      description: 分页获取当前用户的笔记列表
+      description: Get note list for current user with pagination
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -829,19 +1224,19 @@ paths:
       - in: query
         name: keyword
         type: string
-      - description: 是否搜索内容
+      - description: Whether to search content
         in: query
         name: searchContent
         type: boolean
-      - description: '搜索模式: path(默认), content, regex'
+      - description: 'Search mode: path(default), content, regex'
         in: query
         name: searchMode
         type: string
-      - description: '排序字段: mtime(默认), ctime, path'
+      - description: 'Sorting field: mtime(default), ctime, path'
         in: query
         name: sortBy
         type: string
-      - description: '排序方向: desc(默认), asc'
+      - description: 'Sorting order: desc(default), asc'
         in: query
         name: sortOrder
         type: string
@@ -853,7 +1248,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -865,21 +1260,22 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取笔记列表
+      summary: Get note list
       tags:
-      - 笔记
+      - Note
   /api/share:
     post:
       consumes:
       - application/json
-      description: 为指定的笔记或附件创建分享令牌，自动解析笔记中的附件引用并授权
+      description: Create a share token for a specific note or attachment, automatically
+        resolve attachment references and authorize
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 分享参数
+      - description: Share Parameters
         in: body
         name: params
         required: true
@@ -889,7 +1285,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -899,19 +1295,19 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 创建资源分享
+      summary: Create resource share
       tags:
-      - 分享
+      - Share
   /api/share/file:
     get:
-      description: 通过分享 Token 授权后，获取特定附件的原始二进制数据
+      description: Get raw binary data of a specific attachment via share token
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: Share-Token
         required: true
         type: string
-      - description: 资源 ID
+      - description: Resource ID
         in: query
         name: id
         required: true
@@ -920,24 +1316,25 @@ paths:
       - application/octet-stream
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             type: file
       security:
       - ShareAuthToken: []
-      summary: 获取分享的附件内容
+      summary: Get shared attachment content
       tags:
-      - 分享
+      - Share
   /api/share/note:
     get:
-      description: 通过分享 Token 授权后，获取特定笔记内容（受限只读访问）
+      description: Get specific note content (restricted read-only access) via share
+        token
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: Share-Token
         required: true
         type: string
-      - description: 资源 ID
+      - description: Resource ID
         in: query
         name: id
         required: true
@@ -946,7 +1343,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -956,21 +1353,22 @@ paths:
               type: object
       security:
       - ShareAuthToken: []
-      summary: 获取被分享的笔记详情
+      summary: Get shared note details
       tags:
-      - 分享
+      - Share
   /api/user/change_password:
     post:
       consumes:
       - application/json
-      description: 处理当前登录用户修改密码的请求，验证旧密码并更新新密码
+      description: Handle password change request for current user, validate old password
+        and update new password
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 修改密码参数
+      - description: Change Password Parameters
         in: body
         name: params
         required: true
@@ -980,21 +1378,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
-      summary: 修改用户密码
+      summary: Change user password
       tags:
-      - 用户
+      - User
   /api/user/info:
     get:
       consumes:
       - application/json
-      description: 处理获取当前用户信息的 HTTP 请求
+      description: Handle request to get current user info
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -1003,7 +1401,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1012,21 +1410,22 @@ paths:
                   $ref: '#/definitions/dto.UserDTO'
               type: object
         "401":
-          description: 未授权
+          description: Unauthorized
           schema:
             $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
-      summary: 获取用户信息
+      summary: Get user info
       tags:
-      - 用户
+      - User
   /api/user/login:
     post:
       consumes:
       - application/json
-      description: 处理用户登录的 HTTP 请求，验证参数并返回认证 Token
+      description: Handle user login HTTP request, validate parameters and return
+        auth token
       parameters:
-      - description: 登录参数
+      - description: Login Parameters
         in: body
         name: params
         required: true
@@ -1036,7 +1435,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1045,19 +1444,20 @@ paths:
                   $ref: '#/definitions/dto.UserDTO'
               type: object
         "400":
-          description: 参数错误
+          description: Invalid Parameters
           schema:
             $ref: '#/definitions/app.Res'
-      summary: 用户登录
+      summary: User login
       tags:
-      - 用户
+      - User
   /api/user/register:
     post:
       consumes:
       - application/json
-      description: 处理用户注册的 HTTP 请求，验证参数并调用 UserService
+      description: Handle user registration HTTP request, validate parameters and
+        call UserService
       parameters:
-      - description: 注册参数
+      - description: Register Parameters
         in: body
         name: params
         required: true
@@ -1067,7 +1467,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1076,17 +1476,18 @@ paths:
                   $ref: '#/definitions/dto.UserDTO'
               type: object
         "400":
-          description: 参数错误
+          description: Invalid Parameters
           schema:
             $ref: '#/definitions/app.Res'
-      summary: 用户注册
+      summary: User registration
       tags:
-      - 用户
+      - User
   /api/vault:
     delete:
-      description: 永久删除指定的笔记仓库及其关联的所有笔记和附件
+      description: Permanently delete a specific note vault and all associated notes
+        and attachments
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -1100,18 +1501,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
-      summary: 删除仓库
+      summary: Delete vault
       tags:
-      - 仓库
+      - Vault
     get:
-      description: 获取当前用户所有的笔记仓库清单
+      description: Get all note vaults for current user
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
@@ -1120,7 +1521,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1132,20 +1533,21 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取仓库列表
+      summary: Get vault list
       tags:
-      - 仓库
+      - Vault
     post:
       consumes:
       - application/json
-      description: 根据请求参数中的 ID 判断是创建新仓库还是更新已有仓库配置
+      description: Be used to create a new vault or update an existing vault configuration
+        based on the ID in the request parameters
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 仓库参数
+      - description: Vault Parameters
         in: body
         name: params
         required: true
@@ -1155,7 +1557,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1165,19 +1567,19 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 创建或更新仓库
+      summary: Create or update vault
       tags:
-      - 仓库
+      - Vault
   /api/vault/get:
     get:
-      description: 根据仓库 ID 获取特定仓库的配置详情
+      description: Get specific vault configuration details by vault ID
       parameters:
-      - description: 认证 Token
+      - description: Auth Token
         in: header
         name: token
         required: true
         type: string
-      - description: 仓库 ID
+      - description: Vault ID
         format: int64
         in: query
         name: id
@@ -1187,7 +1589,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1197,17 +1599,17 @@ paths:
               type: object
       security:
       - UserAuthToken: []
-      summary: 获取仓库详情
+      summary: Get vault details
       tags:
-      - 仓库
+      - Vault
   /api/version:
     get:
-      description: 获取服务端当前的软件版本、Git 标签和构建时间
+      description: Get current server software version, Git tag, and build time
       produces:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1217,17 +1619,18 @@ paths:
                     type: string
                   type: object
               type: object
-      summary: 获取服务端版本信息
+      summary: Get server version info
       tags:
-      - 系统
+      - System
   /api/webgui/config:
     get:
-      description: 获取前端展示所需的非敏感配置，如字体设置、是否开放注册等
+      description: Get non-sensitive configuration required for frontend display,
+        such as font settings, registration status, etc.
       produces:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: Success
           schema:
             allOf:
             - $ref: '#/definitions/app.Res'
@@ -1235,9 +1638,9 @@ paths:
                 data:
                   $ref: '#/definitions/api_router.webGUIConfig'
               type: object
-      summary: 获取 WebGUI 基础配置
+      summary: Get WebGUI basic config
       tags:
-      - 配置
+      - Config
 securityDefinitions:
   ShareAuthToken:
     in: header

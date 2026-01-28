@@ -20,12 +20,12 @@ func NewVersionHandler(a *app.App) *VersionHandler {
 	}
 }
 
-// ServerVersion 获取服务端版本信息
-// @Summary 获取服务端版本信息
-// @Description 获取服务端当前的软件版本、Git 标签和构建时间
-// @Tags 系统
+// ServerVersion retrieves server version information
+// @Summary Get server version info
+// @Description Get current server software version, Git tag, and build time
+// @Tags System
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=map[string]string} "成功"
+// @Success 200 {object} pkgapp.Res{data=map[string]string} "Success"
 // @Router /api/version [get]
 func (h *VersionHandler) ServerVersion(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

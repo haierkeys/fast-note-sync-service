@@ -26,16 +26,16 @@ func NewVaultHandler(a *app.App) *VaultHandler {
 	}
 }
 
-// CreateOrUpdate 创建或更新仓库
-// @Summary 创建或更新仓库
-// @Description 根据请求参数中的 ID 判断是创建新仓库还是更新已有仓库配置
-// @Tags 仓库
+// CreateOrUpdate creates or updates a vault
+// @Summary Create or update vault
+// @Description Be used to create a new vault or update an existing vault configuration based on the ID in the request parameters
+// @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.VaultPostRequest true "仓库参数"
-// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "成功"
+// @Param params body dto.VaultPostRequest true "Vault Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "Success"
 // @Router /api/vault [post]
 func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -84,15 +84,15 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	}
 }
 
-// Get 获取仓库详情
-// @Summary 获取仓库详情
-// @Description 根据仓库 ID 获取特定仓库的配置详情
-// @Tags 仓库
+// Get retrieves vault details
+// @Summary Get vault details
+// @Description Get specific vault configuration details by vault ID
+// @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param id query int64 true "仓库 ID"
-// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "成功"
+// @Param id query int64 true "Vault ID"
+// @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "Success"
 // @Router /api/vault/get [get]
 func (h *VaultHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -122,14 +122,14 @@ func (h *VaultHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(vault))
 }
 
-// List 获取仓库列表
-// @Summary 获取仓库列表
-// @Description 获取当前用户所有的笔记仓库清单
-// @Tags 仓库
+// List retrieves vault list
+// @Summary Get vault list
+// @Description Get all note vaults for current user
+// @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=[]dto.VaultDTO} "成功"
+// @Success 200 {object} pkgapp.Res{data=[]dto.VaultDTO} "Success"
 // @Router /api/vault [get]
 func (h *VaultHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -155,15 +155,15 @@ func (h *VaultHandler) List(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(vaults))
 }
 
-// Delete 删除仓库
-// @Summary 删除仓库
-// @Description 永久删除指定的笔记仓库及其关联的所有笔记和附件
-// @Tags 仓库
+// Delete deletes a vault
+// @Summary Delete vault
+// @Description Permanently delete a specific note vault and all associated notes and attachments
+// @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.VaultGetRequest true "删除参数"
-// @Success 200 {object} pkgapp.Res "成功"
+// @Param params query dto.VaultGetRequest true "Delete Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
 // @Router /api/vault [delete]
 func (h *VaultHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

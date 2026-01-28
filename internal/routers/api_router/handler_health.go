@@ -29,10 +29,10 @@ type HealthResponse struct {
 	Database string  `json:"database"` // "connected" 或 "error"
 }
 
-// Check 健康检查接口
-// @Summary 健康检查
-// @Description 检查服务健康状态，包括数据库连接
-// @Tags 系统
+// Check health check interface
+// @Summary Health check
+// @Description Check service health status, including database connection
+// @Tags System
 // @Produce json
 // @Success 200 {object} HealthResponse
 // @Router /api/health [get]

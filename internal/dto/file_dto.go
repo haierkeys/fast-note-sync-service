@@ -1,9 +1,11 @@
+// Package dto Defines data transfer objects (request parameters and response structs)
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
 import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
-// FileUpdateCheckRequest 客户端用于检查是否需要更新的请求参数
+// FileUpdateCheckRequest Client request parameters for checking if updates are needed
+// 客户端用于检查是否需要更新的请求参数
 type FileUpdateCheckRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -14,7 +16,8 @@ type FileUpdateCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
-// FileUpdateRequest 用于创建或修改文件的请求参数
+// FileUpdateRequest Request parameters for creating or modifying a file
+// 用于创建或修改文件的请求参数
 type FileUpdateRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -26,19 +29,22 @@ type FileUpdateRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime"`
 }
 
-// FileDeleteRequest 删除文件所需参数
+// FileDeleteRequest Parameters required for deleting a file
+// 删除文件所需参数
 type FileDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
 	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
 }
 
-// FileDeleteMessage 文件删除广播消息
+// FileDeleteMessage File deletion broadcast message
+// 文件删除广播消息
 type FileDeleteMessage struct {
-	Path string `json:"path" form:"path"` // 路径信息（文件路径）
+	Path string `json:"path" form:"path"` // Path info (file path)
 }
 
-// FileSyncCheckRequest 同步检查单条记录的参数
+// FileSyncCheckRequest/ Parameters for checking synchronization of a single record
+// 同步检查单条记录的参数
 type FileSyncCheckRequest struct {
 	Path        string `json:"path" form:"path"`
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
@@ -47,19 +53,22 @@ type FileSyncCheckRequest struct {
 	Size        int64  `json:"size" form:"size"`
 }
 
-// FileSyncRequest 同步请求主体
+// FileSyncRequest Synchronization request body
+// 同步请求主体
 type FileSyncRequest struct {
 	Vault    string                 `json:"vault" form:"vault" binding:"required"`
 	LastTime int64                  `json:"lastTime" form:"lastTime"`
 	Files    []FileSyncCheckRequest `json:"files" form:"files"`
 }
 
-// FileUploadCompleteRequest 文件上传完成参数
+// FileUploadCompleteRequest Parameters for file upload completion
+// 文件上传完成参数
 type FileUploadCompleteRequest struct {
 	SessionID string `json:"sessionId" binding:"required"`
 }
 
-// FileGetRequest 用于获取单条文件的请求参数
+// FileGetRequest Request parameters for retrieving a single file
+// 用于获取单条文件的请求参数
 type FileGetRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required"`
 	Path      string `json:"path" form:"path" binding:"required"`
@@ -67,15 +76,17 @@ type FileGetRequest struct {
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
 }
 
-// FileListRequest 获取文件列表的分页参数
+// FileListRequest Pagination parameters for retrieving the file list
+// 获取文件列表的分页参数
 type FileListRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required"`
 	Keyword   string `json:"keyword" form:"keyword"`
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
-	SortBy    string `json:"sortBy" form:"sortBy"`       // 排序字段: mtime(默认), ctime, path
-	SortOrder string `json:"sortOrder" form:"sortOrder"` // 排序方向: desc(默认), asc
+	SortBy    string `json:"sortBy" form:"sortBy"`       // Sorting field: mtime(default), ctime, path
+	SortOrder string `json:"sortOrder" form:"sortOrder"` // Sorting order: desc(default), asc
 }
 
+// FileDTO File Data Transfer Object
 // FileDTO 文件数据传输对象
 type FileDTO struct {
 	ID               int64      `json:"-"`

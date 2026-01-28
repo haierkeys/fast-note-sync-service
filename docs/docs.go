@@ -30,18 +30,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "获取系统底层的全量配置信息，需要管理员权限",
+                "description": "Get full system configuration information, requires admin privileges",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "配置"
+                    "Config"
                 ],
-                "summary": "获取管理员全量配置",
+                "summary": "Get full admin config",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -49,7 +49,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -67,7 +67,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "权限不足",
+                        "description": "Insufficient privileges",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -80,7 +80,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "修改系统底层的全量配置信息，需要管理员权限",
+                "description": "Modify full system configuration information, requires admin privileges",
                 "consumes": [
                     "application/json"
                 ],
@@ -88,19 +88,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "配置"
+                    "Config"
                 ],
-                "summary": "更新管理员配置",
+                "summary": "Update admin config",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "配置参数",
+                        "description": "Config Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -111,7 +111,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -129,7 +129,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "权限不足",
+                        "description": "Insufficient privileges",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -144,18 +144,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据路径获取附件的原始二进制数据，支持强缓存控制",
+                "description": "Get raw binary data of an attachment by path, supports strong cache control",
                 "produces": [
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "附件"
+                    "File"
                 ],
-                "summary": "获取附件内容",
+                "summary": "Get attachment content",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -185,7 +185,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "type": "file"
                         }
@@ -198,18 +198,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "永久删除指定的附件记录及其物理文件",
+                "description": "Permanently delete a specific attachment record and its physical file",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "附件"
+                    "File"
                 ],
-                "summary": "删除附件",
+                "summary": "Delete attachment",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -235,7 +235,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -262,18 +262,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据路径获取附件的元数据信息 (FileDTO)",
+                "description": "Get attachment metadata (FileDTO) by path",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "附件"
+                    "File"
                 ],
-                "summary": "获取附件信息",
+                "summary": "Get attachment info",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -303,7 +303,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -330,18 +330,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "分页并支持搜索、过滤、排序地获取当前用户的附件列表",
+                "description": "Get attachment list for current user with pagination, search, filter, and sort support",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "附件"
+                    "File"
                 ],
-                "summary": "获取文件列表",
+                "summary": "Get file list",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -358,13 +358,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "排序字段: mtime(默认), ctime, path",
+                        "description": "Sorting field: mtime(default), ctime, path",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "排序方向: desc(默认), asc",
+                        "description": "Sorting order: desc(default), asc",
                         "name": "sortOrder",
                         "in": "query"
                     },
@@ -377,7 +377,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -400,6 +400,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/health": {
+            "get": {
+                "description": "Check service health status, including database connection",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api_router.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/note": {
             "get": {
                 "security": [
@@ -407,18 +427,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据路径或路径哈希获取单条笔记的具体内容和元数据",
+                "description": "Get specific note content and metadata by path or path hash",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记"
+                    "Note"
                 ],
-                "summary": "获取笔记详情",
+                "summary": "Get note details",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -448,7 +468,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -473,7 +493,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "处理笔记的新增、修改或重命名（通过路径变化识别）",
+                "description": "Handle note creation, modification, or renaming (identified by path change)",
                 "consumes": [
                     "application/json"
                 ],
@@ -481,19 +501,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "笔记"
+                    "Note"
                 ],
-                "summary": "创建或更新笔记",
+                "summary": "Create or update note",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "笔记内容",
+                        "description": "Note Content",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -504,7 +524,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -529,18 +549,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "将笔记移至回收站",
+                "description": "Move note to trash",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记"
+                    "Note"
                 ],
-                "summary": "删除笔记",
+                "summary": "Delete note",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -565,7 +585,189 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/append": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Append content to the end of a note",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Append content to note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Append Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NoteAppendRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/backlinks": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get all other notes that link to the specified note",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Get backlinks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "pathHash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.NoteLinkItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/frontmatter": {
+            "patch": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Update or delete note frontmatter fields",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Modify note frontmatter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Frontmatter Modification Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NotePatchFrontmatterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -592,18 +794,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "分页获取特定笔记的所有历史修改记录",
+                "description": "Get all history records for a specific note with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记历史"
+                    "Note History"
                 ],
-                "summary": "获取笔记历史列表",
+                "summary": "Get note history list",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -633,7 +835,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -663,18 +865,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据历史记录 ID 获取单条特定的笔记历史内容",
+                "description": "Get specific note history content by history record ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记历史"
+                    "Note History"
                 ],
-                "summary": "获取笔记历史详情",
+                "summary": "Get note history details",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -682,7 +884,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "历史记录 ID",
+                        "description": "History Record ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -690,7 +892,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -717,7 +919,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "将笔记内容恢复到指定的历史版本",
+                "description": "Restore note content to a specific history version",
                 "consumes": [
                     "application/json"
                 ],
@@ -725,19 +927,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "笔记历史"
+                    "Note History"
                 ],
-                "summary": "从历史版本恢复笔记",
+                "summary": "Restore note from history",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "恢复参数",
+                        "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -748,7 +950,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -768,6 +970,246 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/note/move": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Move a note to a new path",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Move note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Move Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NoteMoveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/outlinks": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get other notes that the specified note links to",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Get outgoing links",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "pathHash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.NoteLinkItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/prepend": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Insert content at the beginning of a note (after frontmatter)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Prepend content to note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Prepend Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NotePrependRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/note/replace": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Perform find and replace operation in a note, supporting regular expressions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Find and replace in note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Find and Replace Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NoteReplaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteReplaceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/note/restore": {
             "put": {
                 "security": [
@@ -775,24 +1217,24 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "从回收站恢复被删除的笔记",
+                "description": "Restore deleted note from trash",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记"
+                    "Note"
                 ],
-                "summary": "恢复笔记",
+                "summary": "Restore note",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "恢复参数",
+                        "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -803,7 +1245,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -830,18 +1272,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "分页获取当前用户的笔记列表",
+                "description": "Get note list for current user with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "笔记"
+                    "Note"
                 ],
-                "summary": "获取笔记列表",
+                "summary": "Get note list",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -858,25 +1300,25 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "是否搜索内容",
+                        "description": "Whether to search content",
                         "name": "searchContent",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "搜索模式: path(默认), content, regex",
+                        "description": "Search mode: path(default), content, regex",
                         "name": "searchMode",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "排序字段: mtime(默认), ctime, path",
+                        "description": "Sorting field: mtime(default), ctime, path",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "排序方向: desc(默认), asc",
+                        "description": "Sorting order: desc(default), asc",
                         "name": "sortOrder",
                         "in": "query"
                     },
@@ -889,7 +1331,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -919,7 +1361,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "为指定的笔记或附件创建分享令牌，自动解析笔记中的附件引用并授权",
+                "description": "Create a share token for a specific note or attachment, automatically resolve attachment references and authorize",
                 "consumes": [
                     "application/json"
                 ],
@@ -927,19 +1369,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "分享"
+                    "Share"
                 ],
-                "summary": "创建资源分享",
+                "summary": "Create resource share",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "分享参数",
+                        "description": "Share Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -950,7 +1392,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -977,25 +1419,25 @@ const docTemplate = `{
                         "ShareAuthToken": []
                     }
                 ],
-                "description": "通过分享 Token 授权后，获取特定附件的原始二进制数据",
+                "description": "Get raw binary data of a specific attachment via share token",
                 "produces": [
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "分享"
+                    "Share"
                 ],
-                "summary": "获取分享的附件内容",
+                "summary": "Get shared attachment content",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "Share-Token",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "资源 ID",
+                        "description": "Resource ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -1003,7 +1445,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "type": "file"
                         }
@@ -1018,25 +1460,25 @@ const docTemplate = `{
                         "ShareAuthToken": []
                     }
                 ],
-                "description": "通过分享 Token 授权后，获取特定笔记内容（受限只读访问）",
+                "description": "Get specific note content (restricted read-only access) via share token",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "分享"
+                    "Share"
                 ],
-                "summary": "获取被分享的笔记详情",
+                "summary": "Get shared note details",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "Share-Token",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "资源 ID",
+                        "description": "Resource ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -1044,7 +1486,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1071,7 +1513,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "处理当前登录用户修改密码的请求，验证旧密码并更新新密码",
+                "description": "Handle password change request for current user, validate old password and update new password",
                 "consumes": [
                     "application/json"
                 ],
@@ -1079,19 +1521,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "用户"
+                    "User"
                 ],
-                "summary": "修改用户密码",
+                "summary": "Change user password",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "修改密码参数",
+                        "description": "Change Password Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -1102,7 +1544,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -1117,7 +1559,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "处理获取当前用户信息的 HTTP 请求",
+                "description": "Handle request to get current user info",
                 "consumes": [
                     "application/json"
                 ],
@@ -1125,13 +1567,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "用户"
+                    "User"
                 ],
-                "summary": "获取用户信息",
+                "summary": "Get user info",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -1139,7 +1581,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1157,7 +1599,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "未授权",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -1167,7 +1609,7 @@ const docTemplate = `{
         },
         "/api/user/login": {
             "post": {
-                "description": "处理用户登录的 HTTP 请求，验证参数并返回认证 Token",
+                "description": "Handle user login HTTP request, validate parameters and return auth token",
                 "consumes": [
                     "application/json"
                 ],
@@ -1175,12 +1617,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "用户"
+                    "User"
                 ],
-                "summary": "用户登录",
+                "summary": "User login",
                 "parameters": [
                     {
-                        "description": "登录参数",
+                        "description": "Login Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -1191,7 +1633,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1209,7 +1651,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "Invalid Parameters",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -1219,7 +1661,7 @@ const docTemplate = `{
         },
         "/api/user/register": {
             "post": {
-                "description": "处理用户注册的 HTTP 请求，验证参数并调用 UserService",
+                "description": "Handle user registration HTTP request, validate parameters and call UserService",
                 "consumes": [
                     "application/json"
                 ],
@@ -1227,12 +1669,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "用户"
+                    "User"
                 ],
-                "summary": "用户注册",
+                "summary": "User registration",
                 "parameters": [
                     {
-                        "description": "注册参数",
+                        "description": "Register Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -1243,7 +1685,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1261,7 +1703,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "Invalid Parameters",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -1276,18 +1718,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "获取当前用户所有的笔记仓库清单",
+                "description": "Get all note vaults for current user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "仓库"
+                    "Vault"
                 ],
-                "summary": "获取仓库列表",
+                "summary": "Get vault list",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -1295,7 +1737,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1323,7 +1765,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据请求参数中的 ID 判断是创建新仓库还是更新已有仓库配置",
+                "description": "Be used to create a new vault or update an existing vault configuration based on the ID in the request parameters",
                 "consumes": [
                     "application/json"
                 ],
@@ -1331,19 +1773,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "仓库"
+                    "Vault"
                 ],
-                "summary": "创建或更新仓库",
+                "summary": "Create or update vault",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "仓库参数",
+                        "description": "Vault Parameters",
                         "name": "params",
                         "in": "body",
                         "required": true,
@@ -1354,7 +1796,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1379,18 +1821,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "永久删除指定的笔记仓库及其关联的所有笔记和附件",
+                "description": "Permanently delete a specific note vault and all associated notes and attachments",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "仓库"
+                    "Vault"
                 ],
-                "summary": "删除仓库",
+                "summary": "Delete vault",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -1405,7 +1847,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -1420,18 +1862,18 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "根据仓库 ID 获取特定仓库的配置详情",
+                "description": "Get specific vault configuration details by vault ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "仓库"
+                    "Vault"
                 ],
-                "summary": "获取仓库详情",
+                "summary": "Get vault details",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "认证 Token",
+                        "description": "Auth Token",
                         "name": "token",
                         "in": "header",
                         "required": true
@@ -1439,7 +1881,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "仓库 ID",
+                        "description": "Vault ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -1447,7 +1889,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1469,17 +1911,17 @@ const docTemplate = `{
         },
         "/api/version": {
             "get": {
-                "description": "获取服务端当前的软件版本、Git 标签和构建时间",
+                "description": "Get current server software version, Git tag, and build time",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "系统"
+                    "System"
                 ],
-                "summary": "获取服务端版本信息",
+                "summary": "Get server version info",
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1504,17 +1946,17 @@ const docTemplate = `{
         },
         "/api/webgui/config": {
             "get": {
-                "description": "获取前端展示所需的非敏感配置，如字体设置、是否开放注册等",
+                "description": "Get non-sensitive configuration required for frontend display, such as font settings, registration status, etc.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "配置"
+                    "Config"
                 ],
-                "summary": "获取 WebGUI 基础配置",
+                "summary": "Get WebGUI basic config",
                 "responses": {
                     "200": {
-                        "description": "成功",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -1536,6 +1978,27 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api_router.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "database": {
+                    "description": "\"connected\" 或 \"error\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"healthy\" 或 \"unhealthy\"",
+                    "type": "string"
+                },
+                "uptime": {
+                    "description": "运行时间（秒）",
+                    "type": "number"
+                },
+                "version": {
+                    "description": "服务版本号",
+                    "type": "string"
+                }
+            }
+        },
         "api_router.webGUIAdminConfig": {
             "type": "object",
             "properties": {
@@ -1543,6 +2006,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "authTokenKey": {
+                    "type": "string"
+                },
+                "defaultApiFolder": {
                     "type": "string"
                 },
                 "fileChunkSize": {
@@ -1658,6 +2124,28 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.NoteAppendRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "vault": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.NoteDTO": {
             "type": "object",
             "properties": {
@@ -1740,6 +2228,25 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.NoteLinkItem": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "description": "snippet around link",
+                    "type": "string"
+                },
+                "isEmbed": {
+                    "description": "true if embed (![[...]]) vs regular link ([[...]])",
+                    "type": "boolean"
+                },
+                "linkText": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.NoteModifyOrCreateRequest": {
             "type": "object",
             "required": [
@@ -1751,7 +2258,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "baseHashMissing": {
-                    "description": "标记 baseHash 是否不可用",
+                    "description": "Marks if baseHash is unavailable",
                     "type": "boolean"
                 },
                 "content": {
@@ -1759,6 +2266,10 @@ const docTemplate = `{
                 },
                 "contentHash": {
                     "type": "string"
+                },
+                "createOnly": {
+                    "description": "If true, fail if note already exists",
+                    "type": "boolean"
                 },
                 "ctime": {
                     "type": "integer"
@@ -1786,6 +2297,126 @@ const docTemplate = `{
                 },
                 "vault": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.NoteMoveRequest": {
+            "type": "object",
+            "required": [
+                "destination",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "destination": {
+                    "type": "string"
+                },
+                "overwrite": {
+                    "type": "boolean"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "vault": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NotePatchFrontmatterRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "remove": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updates": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "vault": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NotePrependRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "vault": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NoteReplaceRequest": {
+            "type": "object",
+            "required": [
+                "find",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "all": {
+                    "type": "boolean"
+                },
+                "failIfNoMatch": {
+                    "type": "boolean"
+                },
+                "find": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "regex": {
+                    "type": "boolean"
+                },
+                "replace": {
+                    "type": "string"
+                },
+                "vault": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NoteReplaceResponse": {
+            "type": "object",
+            "properties": {
+                "matchCount": {
+                    "type": "integer"
+                },
+                "note": {
+                    "$ref": "#/definitions/dto.NoteDTO"
                 }
             }
         },
@@ -1856,15 +2487,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
-                    "description": "资源路径",
+                    "description": "Resource path",
                     "type": "string"
                 },
                 "path_hash": {
-                    "description": "资源路径 Hash",
+                    "description": "Resource path Hash",
                     "type": "string"
                 },
                 "vault": {
-                    "description": "仓库名称",
+                    "description": "Vault name",
                     "type": "string",
                     "example": "defaultVault"
                 }
@@ -1874,19 +2505,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "expires_at": {
-                    "description": "过期时间",
+                    "description": "Expiration time",
                     "type": "string"
                 },
                 "id": {
-                    "description": "笔记或附件表的 ID (主资源 ID)",
+                    "description": "ID of the note or file table (primary resource ID)",
                     "type": "integer"
                 },
                 "token": {
-                    "description": "分享 Token",
+                    "description": "Share Token",
                     "type": "string"
                 },
                 "type": {
-                    "description": "资源类型: note 或 file",
+                    "description": "Resource type: note or file",
                     "type": "string"
                 }
             }
