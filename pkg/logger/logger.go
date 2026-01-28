@@ -81,6 +81,7 @@ func NewLogger(lc Config) (*zap.Logger, error) {
 		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.NewMultiWriteSyncer(zapcore.AddSync(stderr)), lvl)
 		fileCore := zapcore.NewCore(fileEncoder, zapcore.NewMultiWriteSyncer(zapcore.AddSync(fileOut)), lvl)
 
+		// Use zapcore.NewTee to merge two Cores
 		// 使用 zapcore.NewTee 合并两个 Core
 		return zap.New(zapcore.NewTee(consoleCore, fileCore)), nil
 

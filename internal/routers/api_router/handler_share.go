@@ -15,11 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// ShareHandler share API router handler
 // ShareHandler 分享 API 路由处理器
 type ShareHandler struct {
 	*Handler
 }
 
+// NewShareHandler creates ShareHandler instance
 // NewShareHandler 创建 ShareHandler 实例
 func NewShareHandler(app *app.App) *ShareHandler {
 	return &ShareHandler{
@@ -42,6 +44,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.ShareCreateRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -52,6 +55,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
 
+	// Call service layer to generate Token (automatically identify type and resolve associated resources)
 	// 调用服务层生成 Token (自动识别类型及解析关联资源)
 	shareRes, err := h.App.ShareService.ShareGenerate(ctx, uid, params.Vault, params.Path, params.PathHash)
 	if err != nil {
@@ -80,6 +84,7 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.ShareResourceRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -87,6 +92,7 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 		return
 	}
 
+	// Get authorization Token
 	// 获取授权 Token
 	token, _ := c.Get("share_token")
 	shareToken, _ := token.(string)
@@ -124,6 +130,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.ShareResourceRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -131,6 +138,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
+	// Get authorization Token
 	// 获取授权 Token
 	token, _ := c.Get("share_token")
 	shareToken, _ := token.(string)
@@ -157,6 +165,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
+	// Set response headers and output content
 	// 设置响应头并输出内容
 	if contentType != "" {
 		c.Header("Content-Type", contentType)
@@ -169,6 +178,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), bytes.NewReader(content))
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *ShareHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

@@ -27,9 +27,11 @@ type S3 struct {
 	logger    *zap.Logger
 }
 
+// Option configuration option function type
 // Option 配置选项函数类型
 type Option func(*S3)
 
+// WithLogger sets the logger
 // WithLogger 设置日志器
 func WithLogger(logger *zap.Logger) Option {
 	return func(s *S3) {
@@ -39,7 +41,9 @@ func WithLogger(logger *zap.Logger) Option {
 
 var clients = make(map[string]*S3)
 
+// NewClient creates an S3 storage instance
 // NewClient 创建 S3 存储实例
+// opts is optional parameters for configuring logger and other options
 // opts 可选参数用于配置日志器等选项
 func NewClient(cf map[string]any, opts ...Option) (*S3, error) {
 	// New client
@@ -70,6 +74,7 @@ func NewClient(cf map[string]any, opts ...Option) (*S3, error) {
 	var accessKeySecret = conf.AccessKeySecret
 
 	if clients[accessKeyId] != nil {
+		// Apply options to existing client
 		// 应用选项到已存在的客户端
 		for _, opt := range opts {
 			opt(clients[accessKeyId])
@@ -87,15 +92,13 @@ func NewClient(cf map[string]any, opts ...Option) (*S3, error) {
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {})
 
-	if err != nil {
-		return nil, errors.Wrap(err, "aws_s3")
-	}
-
 	clients[accessKeyId] = &S3{
 		S3Client: client,
 		Config:   conf,
-		logger:   zap.NewNop(), // 默认空日志器
+		logger:   zap.NewNop(), // Default Nop logger
+		// 默认空日志器
 	}
+	// Apply options
 	// 应用选项
 	for _, opt := range opts {
 		opt(clients[accessKeyId])

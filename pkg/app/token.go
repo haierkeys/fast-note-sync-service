@@ -16,25 +16,25 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// 默认 Token 签发者
+// DefaultTokenIssuer default Token issuer // 默认 Token 签发者
 const DefaultTokenIssuer = "fast-note-sync-service"
 
-// TokenConfig 定义 Token 管理器的配置
+// TokenConfig defines Token manager configuration // TokenConfig 定义 Token 管理器的配置
 type TokenConfig struct {
 	SecretKey     string        `yaml:"secret-key"`         // JWT 签名密钥
 	Expiry        time.Duration `yaml:"expiry"`             // Token 过期时间，默认 365 天
 	ShareTokenKey string        `yaml:"share-token-key"`    // 分享专用签名密钥
 	ShareExpiry   time.Duration `yaml:"share-token-expiry"` // 分享专用过期时间
-	Issuer        string        `yaml:"issuer"`             // Token 签发者
+	Issuer        string        `yaml:"issuer"`             // Token issuer // Token 签发者
 }
 
-// TokenManager 定义 Token 管理接口
+// TokenManager defines Token management interface // TokenManager 定义 Token 管理接口
 type TokenManager interface {
-	// 用户认证相关
+	// User authentication related // 用户认证相关
 	Generate(uid int64, nickname, ip string) (string, error)
 	Parse(token string) (*UserEntity, error)
 
-	// 资源分享相关
+	// Resource sharing related // 资源分享相关
 	ShareGenerate(shareID int64, uid int64, resources map[string][]string) (string, error)
 	ShareParse(token string) (*ShareEntity, error)
 
@@ -42,11 +42,12 @@ type TokenManager interface {
 	GetSecretKey() string
 }
 
-// tokenManager 实现 TokenManager 接口
+// tokenManager implementation of TokenManager interface // tokenManager 实现 TokenManager 接口
 type tokenManager struct {
 	config TokenConfig
 }
 
+// NewTokenManager creates a new TokenManager instance
 // NewTokenManager 创建一个新的 TokenManager 实例
 func NewTokenManager(cfg TokenConfig) TokenManager {
 	// 设置默认值
@@ -74,14 +75,15 @@ type UserEntity struct {
 	jwt.RegisteredClaims
 }
 
-// ShareEntity 资源分享 Claims
+// ShareEntity resource sharing Claims // ShareEntity 资源分享 Claims
 type ShareEntity struct {
-	SID       int64               `json:"sid"`       // 数据库中的分享记录 ID (Share ID)
-	UID       int64               `json:"uid"`       // 数据库中的用户 ID (User ID)
-	Resources map[string][]string `json:"resources"` // 资源列表
+	SID       int64               `json:"sid"`       // Share record ID in database // 数据库中的分享记录 ID (Share ID)
+	UID       int64               `json:"uid"`       // User ID in database // 数据库中的用户 ID (User ID)
+	Resources map[string][]string `json:"resources"` // Resource list // 资源列表
 	ExpiresAt time.Time           `json:"exp"`
 }
 
+// Generate generates a new JWT Token
 // Generate 生成一个新的 JWT Token
 func (t *tokenManager) Generate(uid int64, nickname, ip string) (string, error) {
 	expirationTime := time.Now().Add(t.config.Expiry)
@@ -103,6 +105,7 @@ func (t *tokenManager) Generate(uid int64, nickname, ip string) (string, error) 
 	return token.SignedString([]byte(t.config.SecretKey + "_" + util.GetMachineID()))
 }
 
+// Parse parses JWT Token and returns user info
 // Parse 解析 JWT Token 并返回用户信息
 func (t *tokenManager) Parse(token string) (*UserEntity, error) {
 	claims := &UserEntity{}
@@ -125,6 +128,7 @@ func (t *tokenManager) Parse(token string) (*UserEntity, error) {
 	return claims, nil
 }
 
+// ShareGenerate builds share Token (extremely shortened version: single block AES + Checksum)
 // ShareGenerate 构建分享 Token (极致缩短版: 单块 AES + Checksum)
 func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[string][]string) (string, error) {
 	expirationTime := time.Unix(time.Now().Add(t.config.ShareExpiry).Unix(), 0)
@@ -166,6 +170,7 @@ func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[str
 	return base64.RawURLEncoding.EncodeToString(ciphertext), nil
 }
 
+// ShareParse parses share Token
 // ShareParse 解析分享 Token
 func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 	ciphertext, err := base64.RawURLEncoding.DecodeString(tokenString)
@@ -215,17 +220,20 @@ func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 	}, nil
 }
 
+// Validate validates if Token is valid
 // Validate 验证 Token 是否有效
 func (t *tokenManager) Validate(token string) error {
 	_, err := t.Parse(token)
 	return err
 }
 
+// GetSecretKey gets secret key
 // GetSecretKey 获取密钥
 func (t *tokenManager) GetSecretKey() string {
 	return t.config.SecretKey
 }
 
+// ParseTokenWithKey parses Token with specified key
 // ParseTokenWithKey 使用指定密钥解析 Token
 func ParseTokenWithKey(tokenString string, secretKey string) (*UserEntity, error) {
 	claims := &UserEntity{}
@@ -281,6 +289,7 @@ func GetIP(ctx *gin.Context) (out string) {
 	return
 }
 
+// SetTokenToContextWithKey sets Token to Context with specified key
 // SetTokenToContextWithKey 使用指定密钥设置 Token 到 Context
 func SetTokenToContextWithKey(ctx *gin.Context, tokenString string, secretKey string) error {
 	user, err := ParseTokenWithKey(tokenString, secretKey)

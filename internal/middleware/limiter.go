@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RateLimiter creates rate limiting middleware (supports dependency injection)
+// RateLimiter 创建限流中间件（支持依赖注入）
 func RateLimiter(l limiter.Face) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := l.Key(c)

@@ -19,12 +19,14 @@ var upgradeCmd = &cobra.Command{
 This command will check the current database version and apply all pending migrations.
 It is safe to run this command multiple times - already applied migrations will be skipped.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Load configuration
 		// 加载配置
 		configPath, _ := cmd.Flags().GetString("config")
 		if len(configPath) <= 0 {
 			configPath = "config/config.yaml"
 		}
 
+		// Use LoadConfig to directly load config into AppConfig
 		// 使用 LoadConfig 直接加载配置到 AppConfig
 		appConfig, configRealpath, err := internalApp.LoadConfig(configPath)
 		if err != nil {
@@ -34,6 +36,7 @@ It is safe to run this command multiple times - already applied migrations will 
 
 		bootstrapLogger.Info("Loading config", zap.String("path", configRealpath))
 
+		// Initialize log
 		// 初始化日志
 		lg, err := logger.NewLogger(logger.Config{
 			Level:      appConfig.Log.Level,
@@ -45,6 +48,7 @@ It is safe to run this command multiple times - already applied migrations will 
 			os.Exit(1)
 		}
 
+		// Initialize database (using injected config)
 		// 初始化数据库（使用注入的配置）
 		dbConfig := dao.DatabaseConfig{
 			Type:            appConfig.Database.Type,
@@ -72,6 +76,7 @@ It is safe to run this command multiple times - already applied migrations will 
 
 		bootstrapLogger.Info("Starting database upgrade...")
 
+		// Execute upgrade
 		// 执行升级
 		if err := upgrade.Execute(
 			db,

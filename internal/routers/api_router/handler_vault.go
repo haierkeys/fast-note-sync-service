@@ -13,12 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// VaultHandler vault API router handler
 // VaultHandler 仓库 API 路由处理器
+// Uses App Container to inject dependencies, supports unified error handling
 // 使用 App Container 注入依赖，支持统一错误处理
 type VaultHandler struct {
 	*Handler
 }
 
+// NewVaultHandler creates VaultHandler instance
 // NewVaultHandler 创建 VaultHandler 实例
 func NewVaultHandler(a *app.App) *VaultHandler {
 	return &VaultHandler{
@@ -41,6 +44,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultPostRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -49,6 +53,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -57,6 +62,7 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -98,6 +104,7 @@ func (h *VaultHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultGetRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -106,9 +113,11 @@ func (h *VaultHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -134,6 +143,7 @@ func (h *VaultHandler) Get(c *gin.Context) {
 func (h *VaultHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -142,6 +152,7 @@ func (h *VaultHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -169,6 +180,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.VaultGetRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -177,6 +189,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -185,6 +198,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -198,6 +212,7 @@ func (h *VaultHandler) Delete(c *gin.Context) {
 	response.ToResponse(code.SuccessDelete)
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *VaultHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

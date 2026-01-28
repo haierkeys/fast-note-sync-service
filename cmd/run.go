@@ -14,10 +14,10 @@ import (
 )
 
 type runFlags struct {
-	dir     string // 项目根目录
-	port    string // 启动端口
-	runMode string // 启动模式
-	config  string // 指定要使用的配置文件路径
+	dir     string // Project root directory // 项目根目录
+	port    string // Startup port // 启动端口
+	runMode string // Startup mode // 启动模式
+	config  string // Specified configuration file path // 指定要使用的配置文件路径
 }
 
 func init() {
@@ -78,11 +78,14 @@ func init() {
 
 				w := watcher.New()
 
+				// Set MaxEvents to 1 to receive at most 1 event in each listening cycle
 				// 将 SetMaxEvents 设置为 1，以便在每个监听周期中至多接收 1 个事件
+				// If SetMaxEvents is not set, all events are sent by default.
 				// 如果没有设置 SetMaxEvents，默认情况下会发送所有事件。
 				w.SetMaxEvents(1)
 
-				// 只通知重命名和移动事件。
+				// Only notify write events.
+				// 只通知写入事件。
 				w.FilterOps(watcher.Write)
 
 				go func() {
@@ -93,6 +96,7 @@ func init() {
 							s.logger.Info("config watcher change", zap.String("event", event.Op.String()), zap.String("file", event.Path))
 							s.sc.SendCloseSignal(nil)
 
+							// Re-initialize server
 							// 重新初始化 server
 							s, err = NewServer(runEnv)
 							if err != nil {
@@ -108,11 +112,13 @@ func init() {
 					}
 				}()
 
+				// Watch config.yaml file
 				// 监听 config.yaml 文件
 				if err := w.Add(runEnv.config); err != nil {
 					s.logger.Error("config watcher file error", zap.Error(err))
 				}
 
+				// Start watching
 				// 启动监听
 				if err := w.Start(time.Second * 5); err != nil {
 					s.logger.Error("config watcher start error", zap.Error(err))
@@ -125,6 +131,7 @@ func init() {
 			s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
 			s.sc.SendCloseSignal(nil)
 
+			// Wait for all shutdown handlers to complete (including App Container graceful shutdown)
 			// 等待所有关闭处理器完成（包括 App Container 的优雅关闭）
 			if err := s.sc.WaitClosed(); err != nil {
 				s.logger.Error("Shutdown completed with error", zap.Error(err))

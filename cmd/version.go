@@ -10,7 +10,7 @@ import (
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print out version info and exit.",
+	Short: "Print out version info and exit. // 打印版本信息并退出。",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("v%s ( Git:%s ) BuidTime:%s\n", app.Version, app.GitTag, app.BuildTime)
 	},

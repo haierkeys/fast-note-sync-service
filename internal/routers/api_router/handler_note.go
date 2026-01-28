@@ -15,12 +15,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// NoteHandler note API router handler
 // NoteHandler 笔记 API 路由处理器
+// Uses App Container to inject dependencies, supports unified error handling
 // 使用 App Container 注入依赖，支持统一错误处理
 type NoteHandler struct {
 	*Handler
 }
 
+// NewNoteHandler creates NoteHandler instance
 // NewNoteHandler 创建 NoteHandler 实例
 func NewNoteHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHandler {
 	return &NoteHandler{
@@ -42,6 +45,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteGetRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -50,6 +54,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -58,11 +63,13 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -74,6 +81,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Parse ![[ ]] tags in content
 	// 解析内容中的 ![[ ]] 标签
 	fileLinks, err := h.App.FileService.ResolveEmbedLinks(ctx, uid, params.Vault, note.Content)
 	if err != nil {
@@ -122,6 +130,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteListRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -130,6 +139,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -138,6 +148,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -169,6 +180,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteModifyOrCreateRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -177,6 +189,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -203,6 +216,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	// 	}
 	// }
 
+	// Calculate hash values
 	// 计算哈希值
 	if params.SrcPathHash == "" {
 		params.SrcPathHash = util.EncodeHash32(params.SrcPath)
@@ -220,11 +234,13 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		params.Ctime = params.Mtime
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
+	// Handle rename scenarios
 	// 处理重命名场景
 	if params.SrcPath != "" && params.SrcPath != params.Path {
 		noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
@@ -243,6 +259,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		}
 	}
 
+	// Check update
 	// 检查更新
 	checkParams := &dto.NoteUpdateCheckRequest{
 		Vault:       params.Vault,
@@ -272,6 +289,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	var noteNew *dto.NoteDTO
 	var noteOld *dto.NoteDTO
 
+	// If path changed, delete old note
 	// 如果路径发生变化，删除旧笔记
 	if params.SrcPath != "" && params.SrcPath != params.Path {
 		deleteParams := &dto.NoteDeleteRequest{
@@ -317,6 +335,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteDeleteRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -325,6 +344,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -333,16 +353,19 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
+	// Check if note exists
 	// 检查笔记是否存在
 	noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
 		Vault:    params.Vault,
@@ -359,6 +382,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Execute deletion
 	// 执行删除
 	note, err := noteSvc.Delete(ctx, uid, params)
 	if err != nil {
@@ -385,6 +409,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteRestoreRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -393,6 +418,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -401,16 +427,19 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 		return
 	}
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
+	// Check if note exists in trash
 	// 检查笔记是否存在于回收站
 	noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
 		Vault:     params.Vault,
@@ -428,6 +457,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 		return
 	}
 
+	// Execute restore
 	// 执行恢复
 	note, err := noteSvc.Restore(ctx, uid, params)
 	if err != nil {
@@ -455,6 +485,7 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NotePatchFrontmatterRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -463,6 +494,7 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -476,11 +508,13 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -511,6 +545,7 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteAppendRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -519,6 +554,7 @@ func (h *NoteHandler) Append(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -532,11 +568,13 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -567,6 +605,7 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NotePrependRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -575,6 +614,7 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -588,11 +628,13 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -623,6 +665,7 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteReplaceRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -631,6 +674,7 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -644,11 +688,13 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -681,6 +727,7 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteMoveRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -689,6 +736,7 @@ func (h *NoteHandler) Move(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -709,16 +757,19 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	// 	params.Destination = util.ApplyDefaultFolder(params.Destination, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
+	// Get old note for broadcasting deletion event
 	// 获取旧笔记用于广播删除事件
 	oldNote, _ := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
 		Vault:    params.Vault,
@@ -735,6 +786,7 @@ func (h *NoteHandler) Move(c *gin.Context) {
 
 	response.ToResponse(code.Success.WithData(note))
 
+	// Broadcast WebSocket events: delete old path + create new path
 	// 广播 WebSocket 事件: 删除旧路径 + 新建新路径
 	if oldNote != nil {
 		h.WSS.BroadcastToUser(uid, code.Success.WithData(oldNote).WithVault(params.Vault), "NoteSyncDelete")
@@ -756,6 +808,7 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteLinkQueryRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -764,6 +817,7 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -777,11 +831,13 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -809,6 +865,7 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteLinkQueryRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -817,6 +874,7 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -830,11 +888,13 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
 	// }
 
+	// Calculate PathHash
 	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -848,6 +908,7 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(links))
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *NoteHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)

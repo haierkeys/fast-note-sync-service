@@ -9,12 +9,15 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
 
+// SettingWSHandler WebSocket setting handler
 // SettingWSHandler WebSocket 配置处理器
+// Uses App Container to inject dependencies
 // 使用 App Container 注入依赖
 type SettingWSHandler struct {
 	*WSHandler
 }
 
+// NewSettingWSHandler creates SettingWSHandler instance
 // NewSettingWSHandler 创建 SettingWSHandler 实例
 func NewSettingWSHandler(a *app.App) *SettingWSHandler {
 	return &SettingWSHandler{
@@ -23,23 +26,23 @@ func NewSettingWSHandler(a *app.App) *SettingWSHandler {
 }
 
 type SettingMessage struct {
-	Vault            string `json:"vault" form:"vault"`
-	Path             string `json:"path" form:"path"`
-	PathHash         string `json:"pathHash" form:"pathHash"`
-	Content          string `json:"content" form:"content"`
-	ContentHash      string `json:"contentHash" form:"contentHash"`
-	Ctime            int64  `json:"ctime" form:"ctime"`
-	Mtime            int64  `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`
+	Vault            string `json:"vault" form:"vault"`               // Vault ID // 仓库标识
+	Path             string `json:"path" form:"path"`                 // Setting path // 配置路径
+	PathHash         string `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希
+	Content          string `json:"content" form:"content"`           // Setting content // 配置内容
+	ContentHash      string `json:"contentHash" form:"contentHash"`   // Content hash // 内容哈希
+	Ctime            int64  `json:"ctime" form:"ctime"`               // Creation time // 创建时间
+	Mtime            int64  `json:"mtime" form:"mtime"`               // Modification time // 修改时间
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // Update timestamp // 更新时间戳
 }
 
 type SettingSyncEndMessage struct {
-	LastTime           int64           `json:"lastTime" form:"lastTime"`
-	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // 需要上传的数量
-	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // 需要修改的数量
-	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // 需要同步修改时间的数量
-	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // 需要删除的数量
-	Messages           []queuedMessage `json:"messages"`                                     // 合并的消息队列
+	LastTime           int64           `json:"lastTime" form:"lastTime"`                     // Last sync time // 最后同步时间
+	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // Number of items needing upload // 需要上传的数量
+	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // Number of items needing modification // 需要修改的数量
+	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // Number of items needing mtime sync // 需要同步修改时间的数量
+	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // Number of items needing deletion // 需要删除的数量
+	Messages           []queuedMessage `json:"messages"`                                     // Merged message queue // 合并的消息队列
 }
 
 type SettingSyncNeedUploadMessage struct {
@@ -56,6 +59,7 @@ type SettingDeleteMessage struct {
 	Path string `json:"path" form:"path"`
 }
 
+// SettingModify handles setting modification messages
 // SettingModify 处理配置修改消息
 func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingModifyOrCreateRequest{}
@@ -113,6 +117,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	}
 }
 
+// SettingModifyCheck checks the necessity of setting modification
 // SettingModifyCheck 检查配置修改必要性
 func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingUpdateCheckRequest{}
@@ -155,6 +160,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 	}
 }
 
+// SettingDelete handles setting deletion messages
 // SettingDelete 处理配置删除消息
 func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingDeleteRequest{}
@@ -180,6 +186,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 	c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, "SettingSyncDelete")
 }
 
+// SettingSync handles setting synchronization messages
 // SettingSync 处理配置同步消息
 func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingSyncRequest{}
@@ -208,7 +215,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		cSettingsKeys[s.PathHash] = struct{}{}
 	}
 
+	// Create message queue for collecting all messages to be sent
 	// 创建消息队列，用于收集所有待发送的消息
+	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
+	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	var messageQueue []queuedMessage
 
 	var lastTime int64
@@ -259,6 +269,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 链接端和服务端， 文件内容相同
 				if s.ContentHash != cSetting.ContentHash {
 					if s.Mtime >= cSetting.Mtime {
+						// Server file mtime is greater than client file mtime, notify client to update
+						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
@@ -275,6 +287,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						})
 						needModifyCount++
 					} else {
+						// Server file mtime is less than client file mtime, notify client to update
+						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
@@ -286,6 +300,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						needUploadCount++
 					}
 				} else {
+					// Client and server have same content, but different mtime
+					// 将消息添加到队列而非立即发送
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
@@ -322,6 +338,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
+		// Add message to queue instead of sending immediately
 		// 将消息添加到队列而非立即发送
 		messageQueue = append(messageQueue, queuedMessage{
 			Action: "SettingSyncNeedUpload",
@@ -330,6 +347,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		needUploadCount++
 	}
 
+	// Send SettingSyncEnd message, containing all merged messages
 	// 发送 SettingSyncEnd 消息，包含所有合并的消息
 	message := &SettingSyncEndMessage{
 		LastTime:           lastTime,

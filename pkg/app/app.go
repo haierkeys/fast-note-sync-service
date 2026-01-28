@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// VersionInfo 版本信息
+// VersionInfo version information // 版本信息
 type VersionInfo struct {
 	Version   string `json:"version"`
 	GitTag    string `json:"gitTag"`
@@ -30,22 +30,19 @@ type Response struct {
 }
 
 type Pager struct {
-	// 页码
-	Page int `json:"page"`
-	// 每页数量
-	PageSize int `json:"pageSize"`
-	// 总行数
-	TotalRows int `json:"totalRows"`
+	Page      int `json:"page"`      // Page number // 页码
+	PageSize  int `json:"pageSize"`  // Page size // 每页数量
+	TotalRows int `json:"totalRows"` // Total rows // 总行数
 }
 
 type ListRes struct {
-	// 数据清单
-	List interface{} `json:"list"`
-	// 翻页信息
-	Pager Pager `json:"pager"`
+	List  interface{} `json:"list"`  // Data list // 数据清单
+	Pager Pager       `json:"pager"` // Pagination info // 翻页信息
 }
 
-// BaseRes 是统一的响应结构：Code/Status/Msg/Data
+// Res is the unified response structure: Code/Status/Msg/Data
+// Optional fields Vault and Details use omitempty (will not be serialized if nil)
+// Res 是统一的响应结构：Code/Status/Msg/Data
 // 可选字段 Vault 与 Details 使用 omitempty（nil 则不会被序列化）
 type Res struct {
 	Code    int         `json:"code"`
@@ -63,7 +60,9 @@ func NewResponse(ctx *gin.Context) *Response {
 	}
 }
 
+// RequestParamStrParse parses request parameters
 // RequestParamStrParse 解析
+// Keep original behavior
 // 保持原有行为
 func RequestParamStrParse(c *gin.Context, param any) {
 	tParam := reflect.TypeOf(param).Elem()
@@ -82,6 +81,7 @@ func RequestParamStrParse(c *gin.Context, param any) {
 	}
 }
 
+// GetRequestIP gets the request IP
 // GetRequestIP 获取ip
 func GetRequestIP(c *gin.Context) string {
 	reqIP := c.ClientIP()
@@ -101,7 +101,8 @@ func GetAccessHost(c *gin.Context) string {
 	return AccessProto + c.Request.Host
 }
 
-// ToResponse 输出到浏览器：统一使用 BaseRes，根据情况设置 Details 与 Vault
+// ToResponse output to browser: unified use of Res, set Details and Vault as needed
+// ToResponse 输出到浏览器：统一使用 Res，根据情况设置 Details 与 Vault
 func (r *Response) ToResponse(codeObj *code.Code) {
 	r.Ctx.Set("status_code", codeObj.StatusCode())
 
@@ -117,6 +118,7 @@ func (r *Response) ToResponse(codeObj *code.Code) {
 	}
 
 	if codeObj.HaveVault() {
+		// Assume codeObj.Vault() returns a serializable value (string, struct, etc.)
 		// 假设 codeObj.Vault() 返回可序列化的值（string 或 struct 等）
 		content.Vault = codeObj.Vault()
 	}
@@ -124,6 +126,7 @@ func (r *Response) ToResponse(codeObj *code.Code) {
 	r.send(codeObj.StatusCode(), content)
 }
 
+// ToResponseList outputs list response using ListRes as Data; also supports dynamic Vault addition
 // ToResponseList 输出列表响应，使用 ListRes 作为 Data；同样支持 Vault 动态添加
 func (r *Response) ToResponseList(codeObj *code.Code, list interface{}, totalRows int) {
 	r.Ctx.Set("status_code", codeObj.StatusCode())

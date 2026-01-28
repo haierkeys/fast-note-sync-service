@@ -17,6 +17,7 @@ const (
 	DefaultPrefix = "/debug/pprof"
 )
 
+// NewPrivateRouterWithLogger creates private router (using injected logger)
 // NewPrivateRouterWithLogger 创建私有路由（使用注入的日志器）
 func NewPrivateRouterWithLogger(runMode string, logger *zap.Logger) *gin.Engine {
 
@@ -28,6 +29,7 @@ func NewPrivateRouterWithLogger(runMode string, logger *zap.Logger) *gin.Engine 
 		r.Use(middleware.RecoveryWithLogger(logger))
 	}
 
+	// prom monitoring
 	// prom监控
 	r.GET("/debug/vars", api_router.Expvar)
 	r.GET("metrics", gin.WrapH(promhttp.Handler()))
@@ -53,13 +55,17 @@ func NewPrivateRouterWithLogger(runMode string, logger *zap.Logger) *gin.Engine 
 	return r
 }
 
+// NewPrivateRouterWithConfig creates private router (using injected config, using nop logger)
 // NewPrivateRouterWithConfig 创建私有路由（使用注入的配置，使用 nop logger）
+// Deprecated: Recommended to use NewPrivateRouterWithLogger
 // Deprecated: 推荐使用 NewPrivateRouterWithLogger
 func NewPrivateRouterWithConfig(runMode string) *gin.Engine {
 	return NewPrivateRouterWithLogger(runMode, zap.NewNop())
 }
 
+// NewPrivateRouter creates private router (using default release mode)
 // NewPrivateRouter 创建私有路由（使用默认 release 模式）
+// Deprecated: Recommended to use NewPrivateRouterWithLogger
 // Deprecated: 推荐使用 NewPrivateRouterWithLogger
 func NewPrivateRouter() *gin.Engine {
 	return NewPrivateRouterWithConfig("release")

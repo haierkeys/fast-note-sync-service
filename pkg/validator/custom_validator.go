@@ -54,6 +54,7 @@ func kindOfData(data interface{}) reflect.Kind {
 
 func RegisterCustom() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		// Register custom validation rule for model.LocalTime type
 		// 注册 model.LocalTime 类型的自定义校验规则
 		v.RegisterCustomTypeFunc(ValidateJSONDateType, timex.Time{})
 	}
@@ -62,7 +63,9 @@ func RegisterCustom() {
 func ValidateJSONDateType(field reflect.Value) interface{} {
 	if field.Type() == reflect.TypeOf(timex.Time{}) {
 		timeStr := field.Interface().(timex.Time).String()
+		// 0001-01-01 00:00:00 is the zero value for time.Time type in go
 		// 0001-01-01 00:00:00 是 go 中 time.Time 类型的空值
+		// Returning Nil here will be judged as a zero value by the validator, and will not pass the `binding:"required"` rule
 		// 这里返回 Nil 则会被 validator 判定为空值，而无法通过 `binding:"required"` 规则
 		if timeStr == "0001-01-01 00:00:00" {
 			return nil

@@ -7,12 +7,15 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
+// VersionHandler version info API router handler
 // VersionHandler 版本信息 API 路由处理器
+// Uses App Container to inject dependencies
 // 使用 App Container 注入依赖
 type VersionHandler struct {
 	*Handler
 }
 
+// NewVersionHandler creates VersionHandler instance
 // NewVersionHandler 创建 VersionHandler 实例
 func NewVersionHandler(a *app.App) *VersionHandler {
 	return &VersionHandler{

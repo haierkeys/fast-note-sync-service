@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// UrlEscape escapes file path
 // UrlEscape 转义文件路径
 func UrlEscape(fileKey string) string {
 	if strings.Contains(fileKey, "/") {

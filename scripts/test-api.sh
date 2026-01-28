@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Fast Note Sync Service - API Test Script
-# Usage: ./test-api.sh [base_url]
+# Fast Note Sync Service - API Test Script // Fast Note Sync Service - API 测试脚本
+# Usage: ./test-api.sh [base_url] // 用法：./test-api.sh [base_url]
 
 BASE_URL="${1:-http://localhost:9000}"
 API_URL="$BASE_URL/api"
 
-# Colors for output
+# Colors for output // 输出颜色
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Test counters
+# Test counters // 测试计数器
 PASSED=0
 FAILED=0
 
-# Helper functions
+# Helper functions // 工具函数
 print_header() {
     echo -e "\n${BLUE}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${BLUE}  $1${NC}"
@@ -62,6 +62,7 @@ echo "Started: $(date)"
 
 # ============================================================================
 print_header "1. PUBLIC ENDPOINTS"
+# 1. PUBLIC ENDPOINTS // 1. 公共端点
 
 # Test: Get version
 print_test "GET /version"
@@ -81,7 +82,7 @@ RESPONSE=$(curl -s "$API_URL/health")
 echo "Response: $RESPONSE"
 check_response "$RESPONSE" "1" "Health check endpoint"
 
-# Verify health response contains expected fields
+# Verify health response contains expected fields // 验证 health 响应包含预期字段
 if echo "$RESPONSE" | jq -e '.data.status' > /dev/null 2>&1; then
     print_success "Health response has status field"
 else
@@ -90,8 +91,9 @@ fi
 
 # ============================================================================
 print_header "2. USER REGISTRATION & LOGIN"
+# 2. USER REGISTRATION & LOGIN // 2. 用户注册与登录
 
-# Generate unique username for this test run
+# Generate unique username for this test run // 为本次测试生成唯一的用户名
 TEST_USER="apitest_$(date +%s)"
 TEST_EMAIL="${TEST_USER}@test.com"
 TEST_PASS="TestPass123!"
@@ -117,7 +119,7 @@ RESPONSE=$(curl -s -X POST "$API_URL/user/login" \
 echo "Response: $RESPONSE"
 check_response "$RESPONSE" "1" "User login"
 
-# Extract token
+# Extract token // 提取 token
 TOKEN=$(echo "$RESPONSE" | jq -r '.data.token')
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
     echo -e "${RED}Failed to extract token. Cannot continue authenticated tests.${NC}"
@@ -125,11 +127,12 @@ if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
 fi
 echo -e "${GREEN}Token extracted successfully${NC}"
 
-# Auth header for subsequent requests
+# Auth header for subsequent requests // 后续请求的认证头
 AUTH_HEADER="Authorization: Bearer $TOKEN"
 
 # ============================================================================
 print_header "3. USER INFO"
+# 3. USER INFO // 3. 用户信息
 
 # Test: Get user info
 print_test "GET /user/info"
@@ -139,6 +142,7 @@ check_response "$RESPONSE" "1" "Get user info"
 
 # ============================================================================
 print_header "4. VAULT OPERATIONS"
+# 4. VAULT OPERATIONS // 4. 库操作
 
 VAULT_NAME="TestVault_$(date +%s)"
 
@@ -161,6 +165,7 @@ check_response "$RESPONSE" "1" "List vaults"
 
 # ============================================================================
 print_header "5. NOTE CRUD OPERATIONS"
+# 5. NOTE CRUD OPERATIONS // 5. 笔记 CRUD 操作
 
 NOTE_PATH="test-folder/test-note.md"
 NOTE_CONTENT="# Test Note\n\nThis is a test note created by the API test script.\n\n- Item 1\n- Item 2\n- Item 3"
@@ -184,7 +189,7 @@ RESPONSE=$(curl -s "$API_URL/note?vault=$VAULT_NAME&path=$NOTE_PATH" -H "$AUTH_H
 echo "Response: $RESPONSE"
 check_response "$RESPONSE" "1" "Get note"
 
-# Verify content matches
+# Verify content matches // 验证内容匹配
 RETRIEVED_CONTENT=$(echo "$RESPONSE" | jq -r '.data.content')
 if [[ "$RETRIEVED_CONTENT" == *"Test Note"* ]]; then
     print_success "Note content verified"
@@ -215,7 +220,7 @@ check_response "$RESPONSE" "1" "List notes"
 NOTE_COUNT=$(echo "$RESPONSE" | jq -r '.data.pager.totalRows')
 echo "Total notes in vault: $NOTE_COUNT"
 
-# Test: Create additional notes for pagination test
+# Test: Create additional notes for pagination test // 测试：为分页测试创建额外的笔记
 print_test "Creating multiple notes for pagination test"
 for i in {1..5}; do
     curl -s -X POST "$API_URL/note" \
@@ -242,7 +247,7 @@ echo "Response: $RESPONSE"
 check_response "$RESPONSE" "1" "Search notes by keyword"
 
 # ============================================================================
-print_header "6. NEW NOTE EDIT OPERATIONS"
+# 6. NEW NOTE EDIT OPERATIONS // 6. 新笔记编辑操作
 
 # Test: Create a note with frontmatter for testing
 FRONTMATTER_NOTE="frontmatter-test.md"
@@ -427,7 +432,7 @@ RESPONSE=$(curl -s -X POST "$API_URL/note" \
         \"createOnly\": true
     }")
 echo "Response: $RESPONSE"
-# Should return error code 430 (ErrorNoteExist)
+# Should return error code 430 (ErrorNoteExist) // 应返回错误码 430 (ErrorNoteExist)
 if [[ $(echo "$RESPONSE" | jq -r '.code') == "430" ]]; then
     print_success "createOnly rejects existing note"
 else
@@ -481,7 +486,7 @@ RESPONSE=$(curl -s -X PUT "$API_URL/note/restore" \
         \"path\": \"bulk/note-5.md\"
     }")
 echo "Response: $RESPONSE"
-# Note: This might fail if soft-delete cleanup already ran
+# Note: This might fail if soft-delete cleanup already ran // 注意：如果软删除清理已运行，这可能会失败
 if [[ $(echo "$RESPONSE" | jq -r '.code') == "1" ]]; then
     print_success "Restore deleted note"
 else

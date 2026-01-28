@@ -34,8 +34,10 @@ func NewClient(cType Type, config map[string]any) (Storager, error) {
 	return nil, code.ErrorInvalidStorageType
 }
 
+// IsUserEnabledWithConfig check if the storage type is enabled (using injected configuration)
 // IsUserEnabledWithConfig 检查存储类型是否启用（使用注入的配置）
 func IsUserEnabledWithConfig(cType Type, localFSEnabled bool) error {
+	// Check if the cloud storage type is valid
 	// 检查云存储类型是否有效
 	if !StorageTypeMap[cType] {
 		return code.ErrorInvalidCloudStorageType
@@ -47,6 +49,7 @@ func IsUserEnabledWithConfig(cType Type, localFSEnabled bool) error {
 	return nil
 }
 
+// GetEnabledStorageTypesWithConfig get enabled storage types (using injected configuration)
 // GetEnabledStorageTypesWithConfig 获取启用的存储类型（使用注入的配置）
 func GetEnabledStorageTypesWithConfig(localFSEnabled bool) []CloudType {
 	var list []CloudType

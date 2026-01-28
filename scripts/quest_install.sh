@@ -20,7 +20,7 @@ GITHUB_RAW="https://github.com/$REPO/releases/download"
 GITHUB_API="https://api.github.com/repos/$REPO/releases"
 SUDO=""
 
-# --- 颜色系统 ---
+# --- Color system // 颜色系统 ---
 _RED=$(tput setaf 1)
 _GREEN=$(tput setaf 2)
 _YELLOW=$(tput setaf 3)
@@ -32,7 +32,7 @@ _ITALIC=$(tput sitm)
 _DIM=$(tput dim)
 _RESET=$(tput sgr0)
 
-# --- 视觉装饰 ---
+# --- Visual decorations // 视觉装饰 ---
 _INFO="  [i] "
 _SUCCESS="  [+] "
 _WARN="  [!] "
@@ -221,9 +221,10 @@ load_lang() {
         L_NOT_INSTALLED="Not installed"
     fi
 }
-load_lang "init" # Initial load
+# Initial load // 初始加载
+load_lang "init"
 
-# --- Version Tracking ---
+# --- Version Tracking // 版本追踪 ---
 load_version() {
     if [ -f "$VERSION_CONF" ]; then
         INSTALLED_VER=$(cat "$VERSION_CONF" 2>/dev/null | tr -d '[:space:]' || echo "")
@@ -273,6 +274,7 @@ _arch_map() {
 }
 
 # try get latest tag from GitHub API; fallback to "latest" string
+# 尝试从 GitHub API 获取最新 tag；失败则回退到 "latest" 字符串
 get_latest_tag() {
     if command -v curl >/dev/null 2>&1; then
         local latest
@@ -286,6 +288,7 @@ get_latest_tag() {
 }
 
 # construct expected asset file name: fast-note-sync-service-<ver>-<os>-<arch>.tar.gz
+# 构建预期的资产文件名：fast-note-sync-service-<ver>-<os>-<arch>.tar.gz
 asset_name_for() {
     local ver="$1" os="$2" arch="$3"
     # strip leading v if present in tag
@@ -294,6 +297,7 @@ asset_name_for() {
 }
 
 # download using direct URL based on naming convention; if fails, try API lookup
+# 基于命名规范使用直接 URL 下载；如果失败，尝试 API 查找
 download_release_asset() {
     local ver="$1" os="$2" arch="$3"
     local clean_ver="${ver#v}"
@@ -400,6 +404,7 @@ install_binary_from_tar() {
 
 
 
+# Service control functions // 服务控制函数
 start_service() {
     ensure_root
     if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
@@ -580,7 +585,7 @@ install_cmd() {
     start_service
 }
 
-# main dispatcher
+# main dispatcher // 主调度器
 cmd="${1:-menu}"
 case "$cmd" in
     install)

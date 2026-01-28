@@ -11,6 +11,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
+// PutFile uploads local files to WebDAV server.
 // PutFile 将本地文件上传到 WebDAV 服务器。
 func (w *WebDAV) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
 
@@ -35,6 +36,7 @@ func (w *WebDAV) PutFile(fileKey string, file io.Reader, itype string) (string, 
 	return fileKey, nil
 }
 
+// PutContent uploads binary content to WebDAV server.
 // PutContent 将二进制内容上传到 WebDAV 服务器。
 func (w *WebDAV) PutContent(fileKey string, content []byte) (string, error) {
 
@@ -53,7 +55,8 @@ func (w *WebDAV) DeleteFile(fileKey string) error {
 	fileKey = fileurl.PathSuffixCheckAdd(w.Config.CustomPath, "/") + fileKey
 	err := w.Client.Remove(fileKey)
 	if err != nil {
-		return fmt.Errorf("删除文件失败: %v", err)
+		return fmt.Errorf("failed to delete file: %v", err)
+		// return fmt.Errorf("删除文件失败: %v", err)
 	}
 	return nil
 }

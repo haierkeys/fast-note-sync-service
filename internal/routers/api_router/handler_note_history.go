@@ -14,12 +14,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// NoteHistoryHandler note history API router handler
 // NoteHistoryHandler 笔记历史 API 路由处理器
+// Uses App Container to inject dependencies, supports unified error handling
 // 使用 App Container 注入依赖，支持统一错误处理
 type NoteHistoryHandler struct {
 	*Handler
 }
 
+// NewNoteHistoryHandler creates NoteHistoryHandler instance
 // NewNoteHistoryHandler 创建 NoteHistoryHandler 实例
 func NewNoteHistoryHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHistoryHandler {
 	return &NoteHistoryHandler{
@@ -27,6 +30,7 @@ func NewNoteHistoryHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHistory
 	}
 }
 
+// NoteHistoryGetRequestParams request parameters for getting note history details
 // NoteHistoryGetRequestParams 获取笔记历史详情请求参数
 type NoteHistoryGetRequestParams struct {
 	ID int64 `form:"id" binding:"required"`
@@ -46,6 +50,7 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &NoteHistoryGetRequestParams{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -54,6 +59,7 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -62,6 +68,7 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -89,6 +96,7 @@ func (h *NoteHistoryHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteHistoryListRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -97,6 +105,7 @@ func (h *NoteHistoryHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -105,6 +114,7 @@ func (h *NoteHistoryHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
@@ -124,6 +134,7 @@ func (h *NoteHistoryHandler) List(c *gin.Context) {
 	response.ToResponseList(code.Success, list, int(count))
 }
 
+// logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *NoteHistoryHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
@@ -148,6 +159,7 @@ func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.NoteHistoryRestoreRequest{}
 
+	// Parameter binding and validation
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
@@ -156,6 +168,7 @@ func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 		return
 	}
 
+	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
@@ -164,9 +177,11 @@ func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 		return
 	}
 
+	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
+	// Execute restore
 	// 执行恢复
 	note, err := h.App.NoteHistoryService.RestoreFromHistory(ctx, uid, params.HistoryID)
 	if err != nil {

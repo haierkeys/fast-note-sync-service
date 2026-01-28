@@ -1,3 +1,4 @@
+// Package api_router provides HTTP API router handlers
 // Package api_router 提供 HTTP API 路由处理器
 package api_router
 
@@ -11,22 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HealthHandler health check handler
 // HealthHandler 健康检查处理器
 type HealthHandler struct {
 	*Handler
 }
 
+// NewHealthHandler creates health check handler instance
 // NewHealthHandler 创建健康检查处理器实例
 func NewHealthHandler(a *app.App) *HealthHandler {
 	return &HealthHandler{Handler: NewHandler(a)}
 }
 
+// HealthResponse health check response
 // HealthResponse 健康检查响应
 type HealthResponse struct {
-	Status   string  `json:"status"`   // "healthy" 或 "unhealthy"
-	Version  string  `json:"version"`  // 服务版本号
-	Uptime   float64 `json:"uptime"`   // 运行时间（秒）
-	Database string  `json:"database"` // "connected" 或 "error"
+	Status   string  `json:"status"`   // "healthy" or "unhealthy" // "healthy" 或 "unhealthy"
+	Version  string  `json:"version"`  // Service version number // 服务版本号
+	Uptime   float64 `json:"uptime"`   // Uptime (seconds) // 运行时间（秒）
+	Database string  `json:"database"` // "connected" or "error" // "connected" 或 "error"
 }
 
 // Check health check interface
@@ -44,6 +48,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 		Database: "connected",
 	}
 
+	// Check database connection
 	// 检查数据库连接
 	if err := h.App.DB.Raw("SELECT 1").Error; err != nil {
 		response.Status = "unhealthy"
