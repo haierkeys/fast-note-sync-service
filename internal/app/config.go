@@ -134,7 +134,7 @@ type AppSettings struct {
 	// DownloadSessionTimeout 文件分片下载超时时间
 	DownloadSessionTimeout string `yaml:"download-session-timeout" default:"1h"`
 	// DefaultAPIFolder API默认笔记文件夹，当笔记路径不包含"/"时自动添加此前缀
-	DefaultAPIFolder string `yaml:"default-api-folder" default:""`
+	// DefaultAPIFolder string `yaml:"default-api-folder" default:""`
 
 	// Worker Pool 配置
 	WorkerPoolMaxWorkers int `yaml:"worker-pool-max-workers" default:"100"`

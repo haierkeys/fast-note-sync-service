@@ -32,15 +32,15 @@ type NoteHistoryGetRequestParams struct {
 	ID int64 `form:"id" binding:"required"`
 }
 
-// Get 获取单条笔记历史详情
-// @Summary 获取笔记历史详情
-// @Description 根据历史记录 ID 获取单条特定的笔记历史内容
-// @Tags 笔记历史
+// Get retrieves specific note history details
+// @Summary Get note history details
+// @Description Get specific note history content by history record ID
+// @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param id query int64 true "历史记录 ID"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteHistoryDTO} "成功"
+// @Param id query int64 true "History Record ID"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteHistoryDTO} "Success"
 // @Router /api/note/history [get]
 func (h *NoteHistoryHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -75,15 +75,15 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(history))
 }
 
-// List 获取笔记历史列表
-// @Summary 获取笔记历史列表
-// @Description 分页获取特定笔记的所有历史修改记录
-// @Tags 笔记历史
+// List retrieves note history list
+// @Summary Get note history list
+// @Description Get all history records for a specific note with pagination
+// @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteHistoryListRequest true "查询参数"
-// @Success 200 {object} pkgapp.Res{data=[]dto.NoteHistoryDTO} "成功"
+// @Param params query dto.NoteHistoryListRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteHistoryDTO} "Success"
 // @Router /api/note/histories [get]
 func (h *NoteHistoryHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -133,16 +133,16 @@ func (h *NoteHistoryHandler) logError(ctx context.Context, method string, err er
 	)
 }
 
-// Restore 从历史版本恢复笔记内容
-// @Summary 从历史版本恢复笔记
-// @Description 将笔记内容恢复到指定的历史版本
-// @Tags 笔记历史
+// Restore restores note content from history
+// @Summary Restore note from history
+// @Description Restore note content to a specific history version
+// @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NoteHistoryRestoreRequest true "恢复参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NoteHistoryRestoreRequest true "Restore Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/history/restore [put]
 func (h *NoteHistoryHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

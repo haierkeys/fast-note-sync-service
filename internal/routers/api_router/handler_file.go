@@ -30,15 +30,15 @@ func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 	}
 }
 
-// List 获取文件列表
-// @Summary 获取文件列表
-// @Description 分页并支持搜索、过滤、排序地获取当前用户的附件列表
-// @Tags 附件
+// List retrieves file list
+// @Summary Get file list
+// @Description Get attachment list for current user with pagination, search, filter, and sort support
+// @Tags File
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.FileListRequest true "查询参数"
-// @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "成功"
+// @Param params query dto.FileListRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "Success"
 // @Router /api/files [get]
 func (h *FileHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -75,15 +75,15 @@ func (h *FileHandler) List(c *gin.Context) {
 	response.ToResponseList(code.Success, files, count)
 }
 
-// GetContent 获取文件或笔记的原始内容
-// @Summary 获取附件内容
-// @Description 根据路径获取附件的原始二进制数据，支持强缓存控制
-// @Tags 附件
+// GetContent retrieves raw content of file or note
+// @Summary Get attachment content
+// @Description Get raw binary data of an attachment by path, supports strong cache control
+// @Tags File
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce octet-stream
-// @Param params query dto.FileGetRequest true "获取参数"
-// @Success 200 {file} binary "成功"
+// @Param params query dto.FileGetRequest true "Get Parameters"
+// @Success 200 {file} binary "Success"
 // @Router /api/file [get]
 func (h *FileHandler) GetContent(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -139,23 +139,23 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 	http.ServeContent(c.Writer, c.Request, params.Path, time.UnixMilli(mtime), bytes.NewReader(content))
 }
 
-// GetSharedContent 获取分享的文件内容
-// @Summary 获取被分享的附件内容
-// @Description 通过分享 Token 授权后，获取特定附件的原始二进制数据
-// @Tags 附件
+// GetSharedContent retrieves shared file content
+// @Summary Get shared attachment content
+// @Description Get raw binary data of a specific attachment via share token
+// @Tags File
 // @Produce octet-stream
-// @Success 200 {file} binary "成功"
+// @Success 200 {file} binary "Success"
 // @Router /api/share/file [get]
 
-// Delete 删除文件
-// @Summary 删除附件
-// @Description 永久删除指定的附件记录及其物理文件
-// @Tags 附件
+// Delete deletes a file
+// @Summary Delete attachment
+// @Description Permanently delete a specific attachment record and its physical file
+// @Tags File
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.FileDeleteRequest true "删除参数"
-// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "成功"
+// @Param params query dto.FileDeleteRequest true "Delete Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
 // @Router /api/file [delete]
 func (h *FileHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -201,15 +201,15 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), "FileSyncDelete")
 }
 
-// Get 获取文件元数据信息
-// @Summary 获取附件信息
-// @Description 根据路径获取附件的元数据信息 (FileDTO)
-// @Tags 附件
+// Get retrieves file metadata
+// @Summary Get attachment info
+// @Description Get attachment metadata (FileDTO) by path
+// @Tags File
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.FileGetRequest true "获取参数"
-// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "成功"
+// @Param params query dto.FileGetRequest true "Get Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
 // @Router /api/file/info [get]
 func (h *FileHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

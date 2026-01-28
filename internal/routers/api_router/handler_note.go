@@ -28,15 +28,15 @@ func NewNoteHandler(a *app.App, wss *pkgapp.WebsocketServer) *NoteHandler {
 	}
 }
 
-// Get 获取单条笔记详情
-// @Summary 获取笔记详情
-// @Description 根据路径或路径哈希获取单条笔记的具体内容和元数据
-// @Tags 笔记
+// Get retrieves note details
+// @Summary Get note details
+// @Description Get specific note content and metadata by path or path hash
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteGetRequest true "获取参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteWithFileLinksResponse} "成功"
+// @Param params query dto.NoteGetRequest true "Get Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteWithFileLinksResponse} "Success"
 // @Router /api/note [get]
 func (h *NoteHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -98,25 +98,25 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(noteWithLinks))
 }
 
-// GetShared 获取分享的单条笔记详情
-// @Summary 获取被分享的笔记详情
-// @Description 通过分享 Token 授权后，获取特定笔记内容（受限只读访问）
-// @Tags 笔记
+// GetShared retrieves shared note details
+// @Summary Get shared note details
+// @Description Get specific note content (restricted read-only access) via share token
+// @Tags Note
 // @Security ShareAuthToken
-// @Param Share-Token header string true "认证 Token"
+// @Param Share-Token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/share/note [get]
 
-// List 获取笔记列表
-// @Summary 获取笔记列表
-// @Description 分页获取当前用户的笔记列表
-// @Tags 笔记
+// List retrieves note list
+// @Summary Get note list
+// @Description Get note list for current user with pagination
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteListRequest true "查询参数"
-// @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "成功"
+// @Param params query dto.NoteListRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "Success"
 // @Router /api/notes [get]
 func (h *NoteHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -154,16 +154,16 @@ func (h *NoteHandler) List(c *gin.Context) {
 	response.ToResponseList(code.Success, notes, count)
 }
 
-// CreateOrUpdate 创建或更新笔记
-// @Summary 创建或更新笔记
-// @Description 处理笔记的新增、修改或重命名（通过路径变化识别）
-// @Tags 笔记
+// CreateOrUpdate creates or updates a note
+// @Summary Create or update note
+// @Description Handle note creation, modification, or renaming (identified by path change)
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NoteModifyOrCreateRequest true "笔记内容"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NoteModifyOrCreateRequest true "Note Content"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note [post]
 func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -196,12 +196,12 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-		if params.SrcPath != "" {
-			params.SrcPath = util.ApplyDefaultFolder(params.SrcPath, defaultFolder)
-		}
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// 	if params.SrcPath != "" {
+	// 		params.SrcPath = util.ApplyDefaultFolder(params.SrcPath, defaultFolder)
+	// 	}
+	// }
 
 	// 计算哈希值
 	if params.SrcPathHash == "" {
@@ -303,15 +303,15 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	}
 }
 
-// Delete 删除笔记
-// @Summary 删除笔记
-// @Description 将笔记移至回收站
-// @Tags 笔记
+// Delete deletes a note
+// @Summary Delete note
+// @Description Move note to trash
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteDeleteRequest true "删除参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params query dto.NoteDeleteRequest true "Delete Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note [delete]
 func (h *NoteHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -371,15 +371,15 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncDelete")
 }
 
-// Restore 恢复笔记（从回收站恢复）
-// @Summary 恢复笔记
-// @Description 从回收站恢复被删除的笔记
-// @Tags 笔记
+// Restore restores a note from trash
+// @Summary Restore note
+// @Description Restore deleted note from trash
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params body dto.NoteRestoreRequest true "恢复参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NoteRestoreRequest true "Restore Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/restore [put]
 func (h *NoteHandler) Restore(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -440,16 +440,16 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
-// PatchFrontmatter 修改笔记 frontmatter
-// @Summary 修改笔记 frontmatter
-// @Description 更新或删除笔记的 frontmatter 字段
-// @Tags 笔记
+// PatchFrontmatter modifies note frontmatter
+// @Summary Modify note frontmatter
+// @Description Update or delete note frontmatter fields
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NotePatchFrontmatterRequest true "Frontmatter 修改参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NotePatchFrontmatterRequest true "Frontmatter Modification Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/frontmatter [patch]
 func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -472,9 +472,9 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -496,16 +496,16 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
-// Append 追加内容到笔记末尾
-// @Summary 追加内容到笔记
-// @Description 将内容追加到笔记的末尾
-// @Tags 笔记
+// Append appends content to a note
+// @Summary Append content to note
+// @Description Append content to the end of a note
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NoteAppendRequest true "追加内容参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NoteAppendRequest true "Append Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/append [post]
 func (h *NoteHandler) Append(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -528,9 +528,9 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -552,16 +552,16 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
-// Prepend 在笔记开头插入内容
-// @Summary 在笔记开头插入内容
-// @Description 将内容插入到笔记的开头（frontmatter 之后）
-// @Tags 笔记
+// Prepend inserts content at the beginning of a note
+// @Summary Prepend content to note
+// @Description Insert content at the beginning of a note (after frontmatter)
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NotePrependRequest true "插入内容参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NotePrependRequest true "Prepend Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/prepend [post]
 func (h *NoteHandler) Prepend(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -584,9 +584,9 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -608,16 +608,16 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
-// Replace 在笔记中执行查找替换
-// @Summary 查找替换笔记内容
-// @Description 在笔记中执行查找替换操作，支持正则表达式
-// @Tags 笔记
+// Replace performs find and replace in a note
+// @Summary Find and replace in note
+// @Description Perform find and replace operation in a note, supporting regular expressions
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NoteReplaceRequest true "查找替换参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteReplaceResponse} "成功"
+// @Param params body dto.NoteReplaceRequest true "Find and Replace Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteReplaceResponse} "Success"
 // @Router /api/note/replace [post]
 func (h *NoteHandler) Replace(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -640,9 +640,9 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -666,16 +666,16 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	}
 }
 
-// Move 移动笔记到新路径
-// @Summary 移动笔记
-// @Description 将笔记移动到新的路径
-// @Tags 笔记
+// Move moves a note to a new path
+// @Summary Move note
+// @Description Move a note to a new path
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NoteMoveRequest true "移动参数"
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "成功"
+// @Param params body dto.NoteMoveRequest true "Move Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/move [post]
 func (h *NoteHandler) Move(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -704,10 +704,10 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-		params.Destination = util.ApplyDefaultFolder(params.Destination, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// 	params.Destination = util.ApplyDefaultFolder(params.Destination, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -742,15 +742,15 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
 }
 
-// GetBacklinks 获取指向指定笔记的反向链接
-// @Summary 获取反向链接
-// @Description 获取所有链接到指定笔记的其他笔记
-// @Tags 笔记
+// GetBacklinks retrieves backlinks to a specific note
+// @Summary Get backlinks
+// @Description Get all other notes that link to the specified note
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteLinkQueryRequest true "查询参数"
-// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "成功"
+// @Param params query dto.NoteLinkQueryRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "Success"
 // @Router /api/note/backlinks [get]
 func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -773,9 +773,9 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {
@@ -795,15 +795,15 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(links))
 }
 
-// GetOutlinks 获取指定笔记中的外向链接
-// @Summary 获取外向链接
-// @Description 获取指定笔记中链接到的其他笔记
-// @Tags 笔记
+// GetOutlinks retrieves outgoing links from a specific note
+// @Summary Get outgoing links
+// @Description Get other notes that the specified note links to
+// @Tags Note
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Produce json
-// @Param params query dto.NoteLinkQueryRequest true "查询参数"
-// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "成功"
+// @Param params query dto.NoteLinkQueryRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=[]dto.NoteLinkItem} "Success"
 // @Router /api/note/outlinks [get]
 func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -826,9 +826,9 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	}
 
 	// Apply default folder if configured
-	if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
-		params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	}
+	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
+	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
+	// }
 
 	// 计算 PathHash
 	if params.PathHash == "" {

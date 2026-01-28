@@ -26,15 +26,15 @@ func NewUserHandler(a *app.App) *UserHandler {
 	}
 }
 
-// Register 用户注册
-// @Summary 用户注册
-// @Description 处理用户注册的 HTTP 请求，验证参数并调用 UserService
-// @Tags 用户
+// Register user registration
+// @Summary User registration
+// @Description Handle user registration HTTP request, validate parameters and call UserService
+// @Tags User
 // @Accept json
 // @Produce json
-// @Param params body dto.UserCreateRequest true "注册参数"
-// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
-// @Failure 400 {object} pkgapp.Res "参数错误"
+// @Param params body dto.UserCreateRequest true "Register Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
+// @Failure 400 {object} pkgapp.Res "Invalid Parameters"
 // @Router /api/user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -62,15 +62,15 @@ func (h *UserHandler) Register(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(userDTO))
 }
 
-// Login 用户登录
-// @Summary 用户登录
-// @Description 处理用户登录的 HTTP 请求，验证参数并返回认证 Token
-// @Tags 用户
+// Login user login
+// @Summary User login
+// @Description Handle user login HTTP request, validate parameters and return auth token
+// @Tags User
 // @Accept json
 // @Produce json
-// @Param params body dto.UserLoginRequest true "登录参数"
-// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
-// @Failure 400 {object} pkgapp.Res "参数错误"
+// @Param params body dto.UserLoginRequest true "Login Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
+// @Failure 400 {object} pkgapp.Res "Invalid Parameters"
 // @Router /api/user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -99,16 +99,16 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(userDTO))
 }
 
-// UserChangePassword 修改用户密码
-// @Summary 修改用户密码
-// @Description 处理当前登录用户修改密码的请求，验证旧密码并更新新密码
-// @Tags 用户
+// UserChangePassword changes user password
+// @Summary Change user password
+// @Description Handle password change request for current user, validate old password and update new password
+// @Tags User
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.UserChangePasswordRequest true "修改密码参数"
-// @Success 200 {object} pkgapp.Res "成功"
+// @Param params body dto.UserChangePasswordRequest true "Change Password Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
 // @Router /api/user/change_password [post]
 func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -144,16 +144,16 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response.ToResponse(code.SuccessPasswordUpdate)
 }
 
-// UserInfo 获取用户信息
-// @Summary 获取用户信息
-// @Description 处理获取当前用户信息的 HTTP 请求
-// @Tags 用户
+// UserInfo retrieves user info
+// @Summary Get user info
+// @Description Handle request to get current user info
+// @Tags User
 // @Accept json
 // @Produce json
 // @Security UserAuthToken
-// @Param token header string true "认证 Token"
-// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "成功"
-// @Failure 401 {object} pkgapp.Res "未授权"
+// @Param token header string true "Auth Token"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
+// @Failure 401 {object} pkgapp.Res "Unauthorized"
 // @Router /api/user/info [get]
 func (h *UserHandler) UserInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

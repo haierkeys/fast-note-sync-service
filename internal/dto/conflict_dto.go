@@ -1,7 +1,9 @@
+// Package dto Defines data transfer objects (request parameters and response structs)
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
-// ConflictFileRequest 创建冲突文件的请求参数
+// ConflictFileRequest Request parameters for creating a conflict file
+// 创建冲突文件的请求参数
 type ConflictFileRequest struct {
 	Vault             string `json:"vault" form:"vault" binding:"required"`
 	OriginalPath      string `json:"originalPath" form:"originalPath" binding:"required"`
@@ -11,7 +13,8 @@ type ConflictFileRequest struct {
 	Mtime             int64  `json:"mtime" form:"mtime"`
 }
 
-// ConflictFileResponse 创建冲突文件的响应
+// ConflictFileResponse Response for creating a conflict file
+// 创建冲突文件的响应
 type ConflictFileResponse struct {
 	ConflictPath string `json:"conflictPath"`
 	Message      string `json:"message"`

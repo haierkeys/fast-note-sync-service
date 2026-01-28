@@ -1,3 +1,4 @@
+// Package dto Defines data transfer objects (request parameters and response structs)
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
@@ -6,6 +7,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
+// NoteDTO Note data transfer object
 // NoteDTO 笔记数据传输对象
 type NoteDTO struct {
 	ID               int64      `json:"-" form:"id"`
@@ -22,6 +24,7 @@ type NoteDTO struct {
 	CreatedAt        timex.Time `json:"-"`
 }
 
+// NoteNoContentDTO Note DTO without content
 // NoteNoContentDTO 不包含内容的笔记 DTO
 type NoteNoContentDTO struct {
 	ID               int64      `json:"id" form:"id"`
@@ -36,7 +39,8 @@ type NoteNoContentDTO struct {
 	CreatedAt        timex.Time `json:"createdAt"`
 }
 
-// NoteUpdateCheckRequest 客户端用于检查是否需要更新的请求参数
+// NoteUpdateCheckRequest Client request parameters for checking if updates are needed
+// 客户端用于检查是否需要更新的请求参数
 type NoteUpdateCheckRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -46,7 +50,8 @@ type NoteUpdateCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
-// NoteModifyOrCreateRequest 用于创建或修改笔记的请求参数
+// NoteModifyOrCreateRequest Request parameters for creating or modifying a note
+// 用于创建或修改笔记的请求参数
 type NoteModifyOrCreateRequest struct {
 	Vault           string `json:"vault" form:"vault" binding:"required"`
 	Path            string `json:"path" form:"path" binding:"required"`
@@ -64,7 +69,8 @@ type NoteModifyOrCreateRequest struct {
 	CreateOnly      bool   `json:"createOnly" form:"createOnly"` // If true, fail if note already exists
 }
 
-// ContentModifyRequest 专用于只修改内容的请求参数
+// ContentModifyRequest Request parameters for modifying content only
+// 专用于只修改内容的请求参数
 type ContentModifyRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -75,7 +81,8 @@ type ContentModifyRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
-// NoteDeleteRequest 删除笔记所需参数
+// NoteDeleteRequest Parameters required for deleting a note
+// 删除笔记所需参数
 type NoteDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -83,6 +90,7 @@ type NoteDeleteRequest struct {
 }
 
 // NoteRestoreRequest parameters for restoring a note
+// NoteRestoreRequest 恢复笔记请求参数
 type NoteRestoreRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -90,6 +98,7 @@ type NoteRestoreRequest struct {
 }
 
 // NotePatchFrontmatterRequest parameters for patching note frontmatter
+// NotePatchFrontmatterRequest 修改笔记 Frontmatter 请求参数
 type NotePatchFrontmatterRequest struct {
 	Vault    string                 `json:"vault" form:"vault" binding:"required"`
 	Path     string                 `json:"path" form:"path" binding:"required"`
@@ -99,6 +108,7 @@ type NotePatchFrontmatterRequest struct {
 }
 
 // NoteAppendRequest parameters for appending content to a note
+// NoteAppendRequest 追加笔记内容请求参数
 type NoteAppendRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -107,6 +117,7 @@ type NoteAppendRequest struct {
 }
 
 // NotePrependRequest parameters for prepending content to a note
+// NotePrependRequest 在笔记头部添加内容请求参数
 type NotePrependRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -115,6 +126,7 @@ type NotePrependRequest struct {
 }
 
 // NoteReplaceRequest parameters for find/replace in a note
+// NoteReplaceRequest 笔记查找替换请求参数
 type NoteReplaceRequest struct {
 	Vault         string `json:"vault" form:"vault" binding:"required"`
 	Path          string `json:"path" form:"path" binding:"required"`
@@ -127,12 +139,14 @@ type NoteReplaceRequest struct {
 }
 
 // NoteReplaceResponse response for replace operation
+// NoteReplaceResponse 替换操作响应
 type NoteReplaceResponse struct {
 	MatchCount int      `json:"matchCount"`
 	Note       *NoteDTO `json:"note"`
 }
 
 // NoteMoveRequest parameters for moving a note
+// NoteMoveRequest 移动笔记请求参数
 type NoteMoveRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -142,6 +156,7 @@ type NoteMoveRequest struct {
 }
 
 // NoteLinkQueryRequest parameters for backlinks/outlinks query
+// NoteLinkQueryRequest 反向链接/出链查询请求参数
 type NoteLinkQueryRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path" binding:"required"`
@@ -149,6 +164,7 @@ type NoteLinkQueryRequest struct {
 }
 
 // NoteLinkItem represents a link in backlinks/outlinks response
+// NoteLinkItem 代表反向链接/出链响应中的链接项
 type NoteLinkItem struct {
 	Path     string `json:"path"`
 	LinkText string `json:"linkText,omitempty"`
@@ -156,7 +172,8 @@ type NoteLinkItem struct {
 	IsEmbed  bool   `json:"isEmbed"`           // true if embed (![[...]]) vs regular link ([[...]])
 }
 
-// NoteSyncCheckRequest 同步检查单条记录的参数
+// NoteSyncCheckRequest Parameters for checking synchronization of a single record
+// 同步检查单条记录的参数
 type NoteSyncCheckRequest struct {
 	Path        string `json:"path" form:"path"`
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
@@ -164,20 +181,23 @@ type NoteSyncCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
 }
 
-// NoteSyncRequest 同步请求主体
+// NoteSyncRequest Synchronization request body
+// 同步请求主体
 type NoteSyncRequest struct {
 	Vault    string                 `json:"vault" form:"vault" binding:"required"`
 	LastTime int64                  `json:"lastTime" form:"lastTime"`
 	Notes    []NoteSyncCheckRequest `json:"notes" form:"notes"`
 }
 
-// ModifyMtimeFilesRequest 用于按 mtime 查询修改文件
+// ModifyMtimeFilesRequest Request for querying modified files by mtime
+// 用于按 mtime 查询修改文件
 type ModifyMtimeFilesRequest struct {
 	Vault string `json:"vault" form:"vault" binding:"required"`
 	Mtime int64  `json:"mtime" form:"mtime"`
 }
 
-// NoteGetRequest 用于获取单条笔记的请求参数
+// NoteGetRequest Request parameters for retrieving a single note
+// 用于获取单条笔记的请求参数
 type NoteGetRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required"`
 	Path      string `json:"path" form:"path" binding:"required"`
@@ -185,7 +205,8 @@ type NoteGetRequest struct {
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
 }
 
-// NoteRenameRequest 重命名笔记所需参数
+// NoteRenameRequest Parameters required for renaming a note
+// 重命名笔记所需参数
 type NoteRenameRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required"`
 	Path        string `json:"path" form:"path" binding:"required"`
@@ -194,18 +215,20 @@ type NoteRenameRequest struct {
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"`
 }
 
-// NoteListRequest 获取笔记列表的分页参数
+// NoteListRequest Pagination parameters for retrieving the note list
+// 获取笔记列表的分页参数
 type NoteListRequest struct {
 	Vault         string `json:"vault" form:"vault" binding:"required"`
 	Keyword       string `json:"keyword" form:"keyword"`
 	IsRecycle     bool   `json:"isRecycle" form:"isRecycle"`
-	SearchMode    string `json:"searchMode" form:"searchMode"`       // 搜索模式: path(默认), content, regex
-	SearchContent bool   `json:"searchContent" form:"searchContent"` // 是否搜索内容
-	SortBy        string `json:"sortBy" form:"sortBy"`               // 排序字段: mtime(默认), ctime, path
-	SortOrder     string `json:"sortOrder" form:"sortOrder"`         // 排序方向: desc(默认), asc
+	SearchMode    string `json:"searchMode" form:"searchMode"`       // Search mode: path(default), content, regex
+	SearchContent bool   `json:"searchContent" form:"searchContent"` // Whether to search content
+	SortBy        string `json:"sortBy" form:"sortBy"`               // Sorting field: mtime(default), ctime, path
+	SortOrder     string `json:"sortOrder" form:"sortOrder"`         // Sorting order: desc(default), asc
 }
 
-// NoteWithFileLinksResponse 带有文件链接的笔记响应结构体
+// NoteWithFileLinksResponse Note response structure with file links
+// 带有文件链接的笔记响应结构体
 type NoteWithFileLinksResponse struct {
 	ID               int64             `json:"id"`
 	Path             string            `json:"path"`
@@ -221,7 +244,8 @@ type NoteWithFileLinksResponse struct {
 	CreatedAt        interface{}       `json:"createdAt"`
 }
 
-// NoteHistoryListRequest 笔记历史列表请求参数
+// NoteHistoryListRequest Note history list request parameters
+// 笔记历史列表请求参数
 type NoteHistoryListRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required"`
 	Path      string `json:"path" form:"path" binding:"required"`
@@ -229,7 +253,8 @@ type NoteHistoryListRequest struct {
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
 }
 
-// NoteHistoryDTO 笔记历史数据传输对象
+// NoteHistoryDTO Note history data transfer object
+// 笔记历史数据传输对象
 type NoteHistoryDTO struct {
 	ID          int64                 `json:"id" form:"id"`
 	NoteID      int64                 `json:"noteId" form:"noteId"`
@@ -243,7 +268,8 @@ type NoteHistoryDTO struct {
 	CreatedAt   timex.Time            `json:"createdAt" form:"createdAt"`
 }
 
-// NoteHistoryNoContentDTO 不包含内容的笔记历史 DTO
+// NoteHistoryNoContentDTO Note history DTO without content
+// 不包含内容的笔记历史 DTO
 type NoteHistoryNoContentDTO struct {
 	ID         int64      `json:"id" form:"id"`
 	NoteID     int64      `json:"noteId" form:"noteId"`
@@ -254,7 +280,8 @@ type NoteHistoryNoContentDTO struct {
 	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`
 }
 
-// NoteHistoryRestoreRequest 历史版本恢复请求参数
+// NoteHistoryRestoreRequest Request parameters for restoring a historical version
+// 历史版本恢复请求参数
 type NoteHistoryRestoreRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required"`
 	HistoryID int64  `json:"historyId" form:"historyId" binding:"required"`

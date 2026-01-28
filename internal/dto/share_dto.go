@@ -2,22 +2,25 @@ package dto
 
 import "time"
 
-// ShareCreateRequest 创建分享请求
+// ShareCreateRequest Request parameters for creating a share
+// 创建分享请求
 type ShareCreateRequest struct {
-	Vault    string `json:"vault" binding:"required" example:"defaultVault"` // 仓库名称
-	Path     string `json:"path" binding:"required"`                         // 资源路径
-	PathHash string `json:"path_hash" binding:"required"`                    // 资源路径 Hash
+	Vault    string `json:"vault" binding:"required" example:"defaultVault"` // Vault name
+	Path     string `json:"path" binding:"required"`                         // Resource path
+	PathHash string `json:"path_hash" binding:"required"`                    // Resource path Hash
 }
 
-// ShareCreateResponse 创建分享响应
+// ShareCreateResponse Response for creating a share
+// 创建分享响应
 type ShareCreateResponse struct {
-	ID        int64     `json:"id"`         // 笔记或附件表的 ID (主资源 ID)
-	Type      string    `json:"type"`       // 资源类型: note 或 file
-	Token     string    `json:"token"`      // 分享 Token
-	ExpiresAt time.Time `json:"expires_at"` // 过期时间
+	ID        int64     `json:"id"`         // ID of the note or file table (primary resource ID)
+	Type      string    `json:"type"`       // Resource type: note or file
+	Token     string    `json:"token"`      // Share Token
+	ExpiresAt time.Time `json:"expires_at"` // Expiration time
 }
 
-// ShareResourceRequest 分享资源获取请求
+// ShareResourceRequest Request parameters for retrieving a shared resource
+// 分享资源获取请求
 type ShareResourceRequest struct {
-	ID int64 `json:"id" form:"id" binding:"required"` // 资源 ID
+	ID int64 `json:"id" form:"id" binding:"required"` // Resource ID
 }
