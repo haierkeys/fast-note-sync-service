@@ -752,6 +752,43 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
+	// Handle notes missing on client (only for incremental sync)
+	// 处理客户端缺失的笔记（仅限增量同步）
+	if params.LastTime > 0 && len(params.MissingNotes) > 0 {
+		for _, missingNote := range params.MissingNotes {
+			getParams := &dto.NoteGetRequest{
+				Vault:    params.Vault,
+				PathHash: missingNote.PathHash,
+			}
+			note, err := noteSvc.Get(ctx, c.User.UID, getParams)
+			if err != nil {
+				h.App.Logger().Warn("failed to fetch missing note during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String("pathHash", missingNote.PathHash),
+					zap.Error(err))
+				continue
+			}
+			if note != nil && note.Action != "delete" {
+				noteMessage := &NoteMessage{
+					Path:             note.Path,
+					PathHash:         note.PathHash,
+					Content:          note.Content,
+					ContentHash:      note.ContentHash,
+					Ctime:            note.Ctime,
+					Mtime:            note.Mtime,
+					UpdatedTimestamp: note.UpdatedTimestamp,
+				}
+				messageQueue = append(messageQueue, queuedMessage{
+					Action: "NoteSyncModify",
+					Data:   noteMessage,
+				})
+				needModifyCount++
+				// 加入排除索引
+				cDelNotesKeys[note.PathHash] = struct{}{}
+			}
+		}
+	}
+
 	for _, note := range list {
 		// 如果该笔记是客户端刚才通过参数告知删除的，则跳过下发
 		if _, ok := cDelNotesKeys[note.PathHash]; ok {

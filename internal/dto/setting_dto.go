@@ -35,13 +35,28 @@ type SettingDeleteRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
+// SettingGetRequest Parameters for retrieving a single setting
+// 获取单条配置参数
+type SettingGetRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
+type SettingSyncDelSetting struct {
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+}
+
 // SettingSyncRequest Synchronization request parameters
 // 同步请求参数
 type SettingSyncRequest struct {
-	Vault    string                    `json:"vault" form:"vault" binding:"required"`
-	LastTime int64                     `json:"lastTime" form:"lastTime"`
-	Cover    bool                      `json:"cover" form:"cover"`
-	Settings []SettingSyncCheckRequest `json:"settings" form:"settings"`
+	Vault           string                    `json:"vault" form:"vault" binding:"required"`
+	LastTime        int64                     `json:"lastTime" form:"lastTime"`
+	Cover           bool                      `json:"cover" form:"cover"`
+	Settings        []SettingSyncCheckRequest `json:"settings" form:"settings"`
+	DelSettings     []SettingSyncDelSetting   `json:"delSettings" form:"delSettings"`
+	MissingSettings []SettingSyncDelSetting   `json:"missingFiles" form:"missingFiles"`
 }
 
 // SettingSyncCheckRequest Parameters for checking synchronization of a single setting

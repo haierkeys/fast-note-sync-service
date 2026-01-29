@@ -53,7 +53,7 @@ type FileSyncCheckRequest struct {
 	Size        int64  `json:"size" form:"size"`
 }
 
-type FileSyncDelNotes struct {
+type FileSyncDelFile struct {
 	Path     string `json:"path" form:"path" binding:"required"`
 	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
 }
@@ -61,10 +61,11 @@ type FileSyncDelNotes struct {
 // FileSyncRequest Synchronization request body
 // 同步请求主体
 type FileSyncRequest struct {
-	Vault    string                 `json:"vault" form:"vault" binding:"required"`
-	LastTime int64                  `json:"lastTime" form:"lastTime"`
-	Files    []FileSyncCheckRequest `json:"files" form:"files"`
-	DelFiles []FileSyncDelNotes     `json:"delFiles" form:"delFiles"`
+	Vault        string                 `json:"vault" form:"vault" binding:"required"`
+	LastTime     int64                  `json:"lastTime" form:"lastTime"`
+	Files        []FileSyncCheckRequest `json:"files" form:"files"`
+	DelFiles     []FileSyncDelFile      `json:"delFiles" form:"delFiles"`
+	MissingFiles []FileSyncDelFile      `json:"missingFiles" form:"missingFiles"`
 }
 
 // FileUploadCompleteRequest Parameters for file upload completion

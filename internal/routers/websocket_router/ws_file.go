@@ -561,6 +561,45 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
+	// Handle files missing on client (only for incremental sync)
+	// 处理客户端缺失的文件（仅限增量同步）
+	if params.LastTime > 0 && len(params.MissingFiles) > 0 {
+		for _, missingFile := range params.MissingFiles {
+			getParams := &dto.FileGetRequest{
+				Vault:    params.Vault,
+				PathHash: missingFile.PathHash,
+			}
+			fileSvc, err := h.App.FileService.Get(ctx, c.User.UID, getParams)
+			if err != nil {
+				h.App.Logger().Warn("failed to fetch missing file during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String("pathHash", missingFile.PathHash),
+					zap.Error(err))
+				continue
+			}
+
+			if fileSvc != nil && fileSvc.Action != "delete" {
+				fileMessage := &FileMessage{
+					Path:             fileSvc.Path,
+					PathHash:         fileSvc.PathHash,
+					ContentHash:      fileSvc.ContentHash,
+					SavePath:         fileSvc.SavePath,
+					Size:             fileSvc.Size,
+					Ctime:            fileSvc.Ctime,
+					Mtime:            fileSvc.Mtime,
+					UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+				}
+				messageQueue = append(messageQueue, queuedMessage{
+					Action: "FileSyncUpdate",
+					Data:   fileMessage,
+				})
+				needModifyCount++
+				// 加入排除索引
+				cDelFilesKeys[fileSvc.PathHash] = struct{}{}
+			}
+		}
+	}
+
 	// Iterate over server file list for processing
 	// 遍历服务端文件列表进行处理
 	for _, file := range list {
