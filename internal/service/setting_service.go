@@ -41,6 +41,10 @@ type SettingService interface {
 	// Delete 删除配置
 	Delete(ctx context.Context, uid int64, params *dto.SettingDeleteRequest) (*dto.SettingDTO, error)
 
+	// Get retrieves a single configuration
+	// Get 获取单条配置
+	Get(ctx context.Context, uid int64, params *dto.SettingGetRequest) (*dto.SettingDTO, error)
+
 	// ListByLastTime retrieves configurations updated after lastTime
 	// ListByLastTime 获取在 lastTime 之后更新的配置
 	ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
@@ -268,6 +272,27 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 	}
 
 	return s.domainToDTO(updated), nil
+}
+
+// Get retrieves a single configuration
+// Get 获取单条配置
+func (s *settingService) Get(ctx context.Context, uid int64, params *dto.SettingGetRequest) (*dto.SettingDTO, error) {
+	// Use VaultService.MustGetID to retrieve VaultID
+	// 使用 VaultService.MustGetID 获取 VaultID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	setting, err := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorSettingNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	return s.domainToDTO(setting), nil
 }
 
 // ListByLastTime retrieves configurations updated after lastTime

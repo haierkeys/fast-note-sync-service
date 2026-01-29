@@ -6,7 +6,9 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
+	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 )
 
 // SettingWSHandler WebSocket setting handler
@@ -227,7 +229,79 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	var needSyncMtimeCount int64
 	var needDeleteCount int64
 
+	var cDelSettingsKeys map[string]struct{} = make(map[string]struct{}, 0)
+
+	// Handle settings deleted by client
+	// 处理客户端删除的配置
+	if len(params.DelSettings) > 0 {
+		for _, delSetting := range params.DelSettings {
+			delParams := &dto.SettingDeleteRequest{
+				Vault:    params.Vault,
+				Path:     delSetting.Path,
+				PathHash: delSetting.PathHash,
+			}
+			setting, err := h.App.SettingService.Delete(ctx, c.User.UID, delParams)
+			if err != nil {
+				h.App.Logger().Error("failed to delete setting from DelSettings during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, delSetting.Path),
+					zap.Error(err))
+				continue
+			}
+			// 记录客户端已主动删除的 PathHash,避免重复下发
+			cDelSettingsKeys[delSetting.PathHash] = struct{}{}
+			// Broadcast deletion to other clients
+			// 将删除消息广播给其他客户端
+			c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, "SettingSyncDelete")
+		}
+	}
+
+	// Handle settings missing on client (only for incremental sync)
+	// 处理客户端缺失的配置（仅限增量同步）
+	if params.LastTime > 0 && len(params.MissingSettings) > 0 {
+		for _, missingSetting := range params.MissingSettings {
+			getParams := &dto.SettingGetRequest{
+				Vault:    params.Vault,
+				PathHash: missingSetting.PathHash,
+			}
+			setting, err := h.App.SettingService.Get(ctx, c.User.UID, getParams)
+			if err != nil {
+				h.App.Logger().Warn("failed to fetch missing setting during sync",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String("pathHash", missingSetting.PathHash),
+					zap.Error(err))
+				continue
+			}
+
+			if setting != nil && setting.Action != "delete" {
+				settingMessage := &SettingMessage{
+					Vault:            params.Vault,
+					Path:             setting.Path,
+					PathHash:         setting.PathHash,
+					Content:          setting.Content,
+					ContentHash:      setting.ContentHash,
+					Ctime:            setting.Ctime,
+					Mtime:            setting.Mtime,
+					UpdatedTimestamp: setting.UpdatedTimestamp,
+				}
+				messageQueue = append(messageQueue, queuedMessage{
+					Action: "SettingSyncModify",
+					Data:   settingMessage,
+				})
+				needModifyCount++
+				// 加入排除索引
+				cDelSettingsKeys[setting.PathHash] = struct{}{}
+			}
+		}
+	}
+
 	for _, s := range list {
+		// 如果该配置是客户端刚才通过参数告知删除的,则跳过下发
+		if _, ok := cDelSettingsKeys[s.PathHash]; ok {
+			continue
+		}
+
 		if s.UpdatedTimestamp >= lastTime {
 			lastTime = s.UpdatedTimestamp
 		}
