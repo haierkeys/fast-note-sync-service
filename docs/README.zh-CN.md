@@ -22,7 +22,14 @@
 </p>
 
 <div align="center">
-    <img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-preview" width="800" />
+  <div align="center">
+    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/vault.png"><img src="images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/attach.png"><img src="images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    </div>
+  <div align="center">
+    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/note.png"><img src="images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/setting.png"><img src="images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
+  </div>
 </div>
 
 ---
@@ -49,6 +56,9 @@
   | Ko-fi *非中国地区*                                                                                                   |    | 微信扫码打赏 *中国地区*                                            |
   |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
   | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+
+  - 已支持名单：
+    - https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-CN.md
 
 ## ⏱️ 更新日志
 
@@ -149,38 +159,12 @@ docker compose up -d
 4.  **连接 Obsidian**：
     打开 Obsidian 插件设置页面，粘贴刚才复制的配置信息即可。
 
+
 ## ⚙️ 配置说明
 
 默认配置文件为 `config.yaml`，程序会自动在 **根目录** 或 **config/** 目录下查找。
 
 查看完整配置示例：[config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
-
-### 关键配置项
-
-| 配置节 | 选项 | 说明 | 默认值 |
-|--------|------|------|--------|
-| `security` | `auth-token-key` | JWT 签名密钥 (⚠️ **必须修改默认值！**) | - |
-| `security` | `token-expiry` | Token 过期时间 (如 `7d`, `24h`, `30m`) | `7d` |
-| `database` | `max-open-conns` | 最大数据库连接数 | `100` |
-| `database` | `max-idle-conns` | 最大空闲连接数 | `10` |
-| `database` | `conn-max-lifetime` | 连接最大生命周期 (如 `30m`, `1h`) | `30m` |
-| `database` | `conn-max-idle-time` | 空闲连接最大生命周期 | `10m` |
-| `tracer` | `enabled` | 启用请求追踪 | `true` |
-| `tracer` | `header` | Trace ID 请求头名称 | `X-Trace-ID` |
-
-> ⚠️ **安全警告**: 系统会在使用默认密钥时发出警告。请使用以下命令生成安全密钥: `openssl rand -base64 32`
-
-## 📐 架构设计
-
-本服务采用 Clean Architecture 设计原则，实现清晰的关注点分离：
-
-- **传输层**: HTTP/WebSocket 处理器
-- **应用层**: 业务逻辑编排
-- **领域层**: 核心实体和 Repository 接口
-- **基础设施层**: 数据库实现
-
-详细架构文档请参阅: [docs/ARCHITECTURE.md](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/ARCHITECTURE.md)
-
 
 ## 🔗 相关资源
 
