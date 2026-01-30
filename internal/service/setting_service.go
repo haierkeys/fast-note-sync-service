@@ -176,7 +176,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 		// If content is consistent but modification time is different, only update modification time
 		// 检查内容是否一致但修改时间不同，则只更新修改时间
 		if mtimeCheck && setting.Mtime < params.Mtime && setting.ContentHash == params.ContentHash {
-			err := s.settingRepo.UpdateMtime(ctx, params.Mtime, setting.ID, uid)
+			err := s.settingRepo.UpdateActionMtime(ctx, domain.SettingActionModify, params.Mtime, setting.ID, uid)
 			if err != nil {
 				return false, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}

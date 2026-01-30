@@ -82,6 +82,10 @@ type FileService interface {
 	// GetContent 获取笔记或附件文件的原始内容
 	GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error)
 
+	// Restore restores a file (from recycle bin)
+	// Restore 恢复文件（从回收站恢复）
+	Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error)
+
 	// WithClient sets client info
 	// WithClient 设置客户端信息
 	WithClient(name, version string) FileService
@@ -209,6 +213,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 	}
 
 	file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+
 	if file != nil {
 		isNew = false
 		// Check if content is consistent, excluding files marked as deleted
@@ -216,10 +221,11 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
 			return isNew, s.domainToDTO(file), nil
 		}
+
 		// If content is consistent but modification time is different, only update modification time
 		// 检查内容是否一致但修改时间不同，则只更新修改时间
 		if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
-			err := s.fileRepo.UpdateMtime(ctx, params.Mtime, file.ID, uid)
+			err := s.fileRepo.UpdateActionMtime(ctx, domain.FileActionModify, params.Mtime, file.ID, uid)
 			if err != nil {
 				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
@@ -299,11 +305,45 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 	// Update to deleted status
 	// 更新为删除状态
 	file.Action = domain.FileActionDelete
-	file.ContentHash = ""
-	file.SavePath = ""
-	file.Size = 0
-	file.Mtime = 0
-	file.Ctime = 0
+
+	updated, err := s.fileRepo.Update(ctx, file, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	go s.CountSizeSum(context.Background(), vaultID, uid)
+	return s.domainToDTO(updated), nil
+}
+
+// Restore restores a file (from recycle bin)
+// Restore 恢复文件（从回收站恢复）
+func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error) {
+	// Use VaultService.MustGetID to retrieve VaultID
+	// 使用 VaultService.MustGetID 获取 VaultID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate PathHash if not provided
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// Get file from recycle bin
+	file, err := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorNoteNotFound
+	}
+
+	// Check if file is deleted
+	if file.Action != domain.FileActionDelete {
+		return nil, code.ErrorNoteNotFound
+	}
+
+	// Update to modified status and update modification time
+	file.Action = domain.FileActionModify
+	file.Mtime = time.Now().UnixMilli()
 
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
@@ -438,22 +478,12 @@ func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.Fil
 		pathHash = util.EncodeHash32(params.Path)
 	}
 
-	// 3. Priority attempt to get from Note table (note/text content)
-	// 3. 优先尝试从 Note 表获取 (笔记/文本内容)
-	if s.noteRepo != nil {
-		note, err := s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil && note != nil {
-			// Note content fixed identification as markdown
-			// 笔记内容固定识别为 markdown
-			return []byte(note.Content), "text/markdown; charset=utf-8", note.Mtime, note.ContentHash, nil
-		}
-	}
-
 	// 4. Attempt to get from File table (attachment/binary file)
 	// 4. 尝试从 File 表获取 (附件/二进制文件)
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil && file != nil && file.Action != domain.FileActionDelete {
+		if err == nil && file != nil {
+
 			// Read physical file content
 			// 读取物理文件内容
 			content, err := os.ReadFile(file.SavePath)

@@ -138,6 +138,9 @@ type FileRepository interface {
 	// UpdateMtime 更新文件修改时间
 	UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error
 
+	// UpdateActionMtime 更新文件类型并修改时间
+	UpdateActionMtime(ctx context.Context, action FileAction, mtime int64, id, uid int64) error
+
 	// Delete 物理删除文件
 	Delete(ctx context.Context, id, uid int64) error
 
@@ -176,6 +179,9 @@ type SettingRepository interface {
 
 	// UpdateMtime 更新配置修改时间
 	UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error
+
+	// UpdateActionMtime 更新配置类型并修改时间
+	UpdateActionMtime(ctx context.Context, action SettingAction, mtime int64, id, uid int64) error
 
 	// Delete 物理删除配置
 	Delete(ctx context.Context, id, uid int64) error

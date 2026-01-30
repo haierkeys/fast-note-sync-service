@@ -260,6 +260,23 @@ func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid i
 	})
 }
 
+// UpdateActionMtime 更新文件类型并修改时间
+func (r *fileRepository) UpdateActionMtime(ctx context.Context, action domain.FileAction, mtime int64, id, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
+
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Action.Value(string(action)),
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
+}
+
 // Delete 物理删除文件
 func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
