@@ -82,6 +82,10 @@ type FileService interface {
 	// GetContent 获取笔记或附件文件的原始内容
 	GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error)
 
+	// GetContentInfo retrieves file metadata and path for zero-copy download
+	// GetContentInfo 获取文件的元数据和路径，用于零拷贝下载
+	GetContentInfo(ctx context.Context, uid int64, params *dto.FileGetRequest) (savePath string, contentType string, mtime int64, etag string, fileName string, err error)
+
 	// Restore restores a file (from recycle bin)
 	// Restore 恢复文件（从回收站恢复）
 	Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error)
@@ -510,6 +514,47 @@ func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.Fil
 	}
 
 	return nil, "", 0, "", code.ErrorNoteNotFound
+}
+
+// GetContentInfo retrieves file metadata and path for zero-copy download
+// GetContentInfo 获取文件的元数据 and 路径，用于零拷贝下载
+func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto.FileGetRequest) (string, string, int64, string, string, error) {
+	// 1. Get vault ID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return "", "", 0, "", "", err
+	}
+
+	// 2. Confirm path hash
+	pathHash := params.PathHash
+	if pathHash == "" {
+		pathHash = util.EncodeHash32(params.Path)
+	}
+
+	// 3. Attempt to get from File table
+	if s.fileRepo != nil {
+		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil && file != nil {
+
+
+			// Identify file MIME type
+			ext := filepath.Ext(file.Path)
+			contentType := mime.TypeByExtension(ext)
+			if contentType == "" {
+				contentType = "application/octet-stream"
+			}
+
+			// Use file's content hash as ETag
+			etag := file.ContentHash
+			if etag == "" {
+				etag = file.PathHash
+			}
+
+			return file.SavePath, contentType, file.Mtime, etag, filepath.Base(file.Path), nil
+		}
+	}
+
+	return "", "", 0, "", "", code.ErrorNoteNotFound
 }
 
 // ResolveEmbedLinks resolves embedded links in content

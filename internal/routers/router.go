@@ -205,7 +205,6 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/vault", vaultHandler.Delete)
 
 			auth.GET("/note", noteHandler.Get)
-			auth.GET("/note/file", fileHandler.GetContent)
 			auth.POST("/note", noteHandler.CreateOrUpdate)
 			auth.DELETE("/note", noteHandler.Delete)
 			auth.PUT("/note/restore", noteHandler.Restore)
@@ -222,7 +221,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/note/backlinks", noteHandler.GetBacklinks)
 			auth.GET("/note/outlinks", noteHandler.GetOutlinks)
 
-			auth.GET("/file", fileHandler.GetContent)
+			auth.GET("/file", fileHandler.GetInfo)
 			auth.GET("/file/info", fileHandler.Get)
 			auth.DELETE("/file", fileHandler.Delete)
 			auth.PUT("/file/restore", fileHandler.Restore)
