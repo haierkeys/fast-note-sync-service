@@ -12,23 +12,23 @@
 </p>
 
 <p align="center">
-  <strong>高性能、低延迟的笔记同步服务解决</strong>
+  <strong>高性能、低延迟的笔记同步, 在线管理, 远端 REST API 等服务平台</strong>
   <br>
   <em>基于 Golang + Websocket + Sqlite + React 构建</em>
 </p>
 
 <p align="center">
-  需配合客户端插件使用：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  数据提供需配合客户端插件使用：<a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/vault.png"><img src="images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/attach.png"><img src="images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/vault.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/attach.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
     </div>
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/note.png"><img src="images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/docs/images/setting.png"><img src="images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/note.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/setting.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
   </div>
 </div>
 
@@ -80,8 +80,10 @@
 
 我们正在持续改进，以下是未来的开发计划：
 
+- [ ] **分享功能**：支持笔记的分享。
+- [ ] **MCP支持**：增加 AI MCP 相关功能支持。
+- [ ] **目录同步**：支持目录的增删改查。
 - [ ] **Git 版本控制集成**：为笔记提供更安全的版本回溯。
-- [ ] **同步算法优化**：集成 `google-diff-match-patch` 以实现更高效的增量同步。
 - [ ] **云存储与备份策略**：
     - [ ] 自定义备份策略配置。
     - [ ] 多协议适配：S3 / Minio / Cloudflare R2 / 阿里云 OSS / WebDAV。
@@ -177,6 +179,10 @@ docker compose up -d
 默认配置文件为 `config.yaml`，程序会自动在 **根目录** 或 **config/** 目录下查找。
 
 查看完整配置示例：[config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+
+## 🌐 Nginx 反代配置示例
+
+查看完整配置示例：[https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
 ## 🔗 相关资源
 
