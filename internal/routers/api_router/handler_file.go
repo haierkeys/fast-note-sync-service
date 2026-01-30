@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
@@ -176,7 +175,6 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 
-	dump.P(params)
 	if !valid {
 		h.App.Logger().Error("FileHandler.Delete.BindAndValid err", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
@@ -273,6 +271,63 @@ func (h *FileHandler) Get(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(file))
+}
+
+// Restore restores a file from trash
+// @Summary Restore attachment
+// @Description Restore deleted attachment from trash
+// @Tags File
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Param params body dto.FileRestoreRequest true "Restore Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
+// @Router /api/file/restore [put]
+func (h *FileHandler) Restore(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FileRestoreRequest{}
+
+	// Parameter binding and validation
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("FileHandler.Restore.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// Get UID
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("FileHandler.Restore err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Calculate PathHash
+	// 计算 PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	// Get request context
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	fileSvc := h.App.GetFileService(app.WebClientName, "")
+
+	// Execute restore
+	// 执行恢复
+	file, err := fileSvc.Restore(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "FileHandler.Restore.FileRestore", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(file))
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(file).WithVault(params.Vault), "FileSyncUpdate")
 }
 
 // logError records error log, including Trace ID

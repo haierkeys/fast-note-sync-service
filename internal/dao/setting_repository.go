@@ -201,6 +201,23 @@ func (r *settingRepository) UpdateMtime(ctx context.Context, mtime int64, id, ui
 	})
 }
 
+// UpdateActionMtime 更新配置类型并修改时间
+func (r *settingRepository) UpdateActionMtime(ctx context.Context, action domain.SettingAction, mtime int64, id, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
+
+		_, err := u.WithContext(ctx).Where(
+			u.ID.Eq(id),
+		).UpdateSimple(
+			u.Action.Value(string(action)),
+			u.Mtime.Value(mtime),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
+}
+
 // Delete 物理删除配置
 func (r *settingRepository) Delete(ctx context.Context, id, uid int64) error {
 	// 暂不实现物理删除单条记录

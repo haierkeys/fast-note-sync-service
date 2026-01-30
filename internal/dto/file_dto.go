@@ -37,6 +37,14 @@ type FileDeleteRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
 }
 
+// FileRestoreRequest parameters for restoring a file
+// FileRestoreRequest 恢复文件请求参数
+type FileRestoreRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
 // FileDeleteMessage File deletion broadcast message
 // 文件删除广播消息
 type FileDeleteMessage struct {
