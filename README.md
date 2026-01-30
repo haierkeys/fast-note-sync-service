@@ -12,43 +12,65 @@ If you have any questions, please create an [issue](https://github.com/haierkeys
 </p>
 
 <p align="center">
-  <strong>High-performance, low-latency note synchronization service solution</strong>
+  <strong>High-performance, low-latency note synchronization, online management, remote REST API and other service platforms</strong>
   <br>
   <em>Built with Golang + Websocket + Sqlite + React</em>
 </p>
 
 <p align="center">
-  Requires client plugin to use: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  Data provision needs to be used with the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
-    <img src="https://image.diybeta.com/blog/fast-note-sync-service-2.png" alt="fast-note-sync-service-preview" width="800" />
+  <div align="center">
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/vault.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/attach.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    </div>
+  <div align="center">
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/note.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/setting.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
+  </div>
 </div>
 
 ---
 
 ## ✨ Core Features
 
-* **💻 Web Management Panel**: Built-in modern management interface to easily create users, generate plugin configurations, manage repositories, and note content.
+* **🚀 REST API Support**:
+    * Provides standard REST API interfaces, supporting programmatic operations (e.g., automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
+    * For details, please refer to the [REST API Documentation](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/REST_API.md).
+* **💻 Web Admin Panel**:
+  * Built-in modern management interface for easily creating users, generating plugin configurations, managing vaults and note content.
 * **🔄 Multi-device Note Sync**:
     * Supports automatic **Vault** creation.
-    * Supports note management (Add, Delete, Edit, Search), with millisecond-level real-time distribution of changes to all online devices.
+    * Supports note management (CRUD), with changes distributed to all online devices in real-time within milliseconds.
 * **🖼️ Attachment Sync Support**:
-    * Perfectly supports synchronization of non-note files such as images.
-    * *(Note: Requires server v0.9+ and [Obsidian Plugin v1.0+](https://github.com/haierkeys/obsidian-fast-note-sync/releases); Obsidian configuration files are not supported)*
-* **📝 Note History**:
-    * View the history of modifications for each note on the Web page or within the plugin.
-    * (Requires server v1.2+)
+    * Perfect support for syncing non-note files such as images.
+    * Supports chunked upload and download for large attachments, with configurable chunk sizes to improve synchronization efficiency.
 * **⚙️ Configuration Sync**:
     * Supports synchronization of `.obsidian` configuration files.
+    * Supports synchronization of `PDF` progress status.
+* **📝 Note History**:
+    * View the historical modification versions of each note in the Web page or the plugin side.
+    * (Server v1.2+ required)
+* **🗑️ Recycle Bin**:
+    * Supports automatic entry into the recycle bin after note deletion.
+    * Supports restoring notes from the recycle bin. (Attachment restoration will be added later)
 
-## ☕ Support and Sponsorship
+* **🚫 Offline Sync Strategy**:
+    * Supports automatic merging of note edits made offline. (Requires plugin settings)
+    * Offline deletion, auto-completion or deletion synchronization after reconnection. (Requires plugin settings)
 
-- If you find this plugin useful and want to see continued development, please support me in the following ways:
+## ☕ Sponsorship and Support
 
-  | Ko-fi *Outside China*                                                                                                |    | WeChat Pay *Inside China*                                          |
+- If you find this plugin useful and want it to continue being developed, please support me in the following ways:
+
+  | Ko-fi *Non-Mainland China*                                                                                           |    | WeChat Pay *Mainland China*                                        |
   |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
   | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | or | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+
+  - Supported List:
+    - https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-CN.md
 
 ## ⏱️ Changelog
 
@@ -58,17 +80,19 @@ If you have any questions, please create an [issue](https://github.com/haierkeys
 
 We are continuously improving, here are the future development plans:
 
-- [ ] **Git Version Control Integration**: Provides more secure version rollback for notes.
-- [ ] **Sync Algorithm Optimization**: Integrate `google-diff-match-patch` for more efficient incremental synchronization.
+- [ ] **Sharing Feature**: Support for sharing notes.
+- [ ] **MCP Support**: Add support for AI MCP related functions.
+- [ ] **Directory Sync**: Support for CRUD operations on directories.
+- [ ] **Git Version Control Integration**: Provides safer version backtracking for notes.
 - [ ] **Cloud Storage and Backup Strategy**:
     - [ ] Custom backup strategy configuration.
     - [ ] Multi-protocol adaptation: S3 / Minio / Cloudflare R2 / Alibaba Cloud OSS / WebDAV.
 
-> **If you have suggestions for improvement or new ideas, feel free to share them with us by submitting an issue—we will carefully evaluate and adopt suitable suggestions.**
+> **If you have suggestions for improvement or new ideas, feel free to share them with us by submitting an issue — we will carefully evaluate and adopt appropriate suggestions.**
 
 ## 🚀 Quick Deployment
 
-We provide multiple installation methods, it is recommended to use the **One-click Script** or **Docker**.
+We provide multiple installation methods, we recommend using the **One-click Script** or **Docker**.
 
 ### Method 1: One-click Script (Recommended)
 
@@ -78,12 +102,12 @@ Automatically detects the system environment and completes installation and serv
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
-**Script Main Actions:**
+**Main actions of the script:**
 
-  * Automatically downloads the Release binary adapted to the current system.
-  * Default installation to `/opt/fast-note`, and creates a shortcut command in `/usr/local/bin/fast-note`.
-  * Configures and starts the Systemd service (`fast-note.service`) to enable auto-start on boot.
-  * **Management Commands**: `fast-note [install|uninstall|start|stop|status|update|menu]`
+  * Automatically downloads the Release binary file adapted to the current system.
+  * Installed to `/opt/fast-note` by default, and a shortcut command is created at `/usr/local/bin/fast-note`.
+  * Configures and starts the Systemd service (`fast-note.service`) for auto-start at boot.
+  * **Management command**: `fast-note [install|uninstall|start|stop|status|update|menu]`
 
 -----
 
@@ -132,7 +156,7 @@ docker compose up -d
 
 ### Method 3: Manual Binary Installation
 
-Download the latest version for your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), extract it, and run:
+Download the latest version for your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), unzip and run:
 
 ```bash
 ./fast-note-sync-service run -c config/config.yaml
@@ -140,47 +164,25 @@ Download the latest version for your system from [Releases](https://github.com/h
 
 ## 📖 User Guide
 
-1.  **Access Management Panel**:
+1.  **Access Admin Panel**:
     Open `http://{Server IP}:9000` in your browser.
 2.  **Initial Setup**:
-    Registration is required for the first visit. *(If you need to disable registration, set `user.register-is-enable: false` in the configuration file)*
+    Registration is required for the first visit. *(To disable the registration function, please set `user.register-is-enable: false` in the configuration file)*
 3.  **Configure Client**:
     Log in to the management panel and click **"Copy API Configuration"**.
-4.  **Connect Obsidian**:
+4.  **Connect to Obsidian**:
     Open the Obsidian plugin settings page and paste the configuration information you just copied.
 
-## ⚙️ Configuration Description
 
-The default configuration file is `config.yaml`, the program will automatically search in the **root directory** or **config/** directory.
+## ⚙️ Configuration
+
+The default configuration file is `config.yaml`, and the program will automatically search for it in the **root directory** or **config/** directory.
 
 View full configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
 
-### Key Configuration Options
+## 🌐 Nginx Reverse Proxy Configuration Example
 
-| Section | Option | Description | Default |
-|---------|--------|-------------|---------|
-| `security` | `auth-token-key` | JWT signing key (⚠️ **Must change from default!**) | - |
-| `security` | `token-expiry` | Token expiration time (e.g., `7d`, `24h`, `30m`) | `7d` |
-| `database` | `max-open-conns` | Maximum open database connections | `100` |
-| `database` | `max-idle-conns` | Maximum idle database connections | `10` |
-| `database` | `conn-max-lifetime` | Connection max lifetime (e.g., `30m`, `1h`) | `30m` |
-| `database` | `conn-max-idle-time` | Idle connection max lifetime | `10m` |
-| `tracer` | `enabled` | Enable request tracing | `true` |
-| `tracer` | `header` | Trace ID header name | `X-Trace-ID` |
-
-> ⚠️ **Security Warning**: The system will warn you if using default secret keys. Please generate a secure key with: `openssl rand -base64 32`
-
-## 📐 Architecture
-
-This service follows Clean Architecture principles with clear separation of concerns:
-
-- **Transport Layer**: HTTP/WebSocket handlers
-- **Application Layer**: Business logic orchestration
-- **Domain Layer**: Core entities and repository interfaces
-- **Infrastructure Layer**: Database implementations
-
-For detailed architecture documentation, see: [docs/ARCHITECTURE.md](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/ARCHITECTURE.md)
-
+View full configuration example: [https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
 ## 🔗 Related Resources
 
