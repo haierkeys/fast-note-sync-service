@@ -490,9 +490,12 @@ install_self() {
         $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
         $SUDO curl -fsSL "$src_url" -o "$INSTALLER_SELF_PATH" || { error "$L_ERR_DL_SCRIPT"; return 1; }
     else
-        step "$L_CP_SCRIPT"
-        $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
-        $SUDO cp -f "$0" "$INSTALLER_SELF_PATH"
+        # 检查是否已经是同一个文件（例如通过 fns 链接运行时）
+        if [ ! "$0" -ef "$INSTALLER_SELF_PATH" ]; then
+            step "$L_CP_SCRIPT"
+            $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
+            $SUDO cp -f "$0" "$INSTALLER_SELF_PATH"
+        fi
     fi
 
     $SUDO chmod +x "$INSTALLER_SELF_PATH"
