@@ -1,9 +1,9 @@
 package api_router
 
 import (
-	"bytes"
 	"context"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -79,7 +79,7 @@ func (h *FileHandler) List(c *gin.Context) {
 	response.ToResponseList(code.Success, files, count)
 }
 
-// GetContent retrieves raw content of file or note
+// GetInfo retrieves raw content of file or note
 // @Summary Get attachment content
 // @Description Get raw binary data of an attachment by path, supports strong cache control
 // @Tags File
@@ -89,12 +89,11 @@ func (h *FileHandler) List(c *gin.Context) {
 // @Param params query dto.FileGetRequest true "Get Parameters"
 // @Success 200 {file} binary "Success"
 // @Router /api/file [get]
-func (h *FileHandler) GetContent(c *gin.Context) {
+func (h *FileHandler) GetInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FileGetRequest{}
 
 	// Parameter binding and validation
-	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
 		h.App.Logger().Error("FileHandler.GetContent.BindAndValid err", zap.Error(errs))
@@ -103,7 +102,6 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 	}
 
 	// Get UID
-	// 获取用户 ID
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
 		h.App.Logger().Error("FileHandler.GetContent err uid=0")
@@ -112,32 +110,31 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 	}
 
 	// Calculate PathHash
-	// 计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
 	// Get request context
-	// 获取请求上下文
 	ctx := c.Request.Context()
 
 	fileSvc := h.App.GetFileService(app.WebClientName, "")
-	content, contentType, mtime, etag, err := fileSvc.GetContent(ctx, uid, params)
+	savePath, contentType, mtime, etag, fileName, err := fileSvc.GetContentInfo(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "FileHandler.GetContent", err)
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
 
-	// If content is nil, means resource not found or deleted, return 404
-	// 如果内容为 nil, 表示资源未找到或已删除, 返回 404
-	if content == nil {
+	// Open file for zero-copy serving
+	file, err := os.Open(savePath)
+	if err != nil {
+		h.logError(ctx, "FileHandler.GetContent.Open", err)
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	defer file.Close()
 
 	// Set response headers
-	// 设置响应头
 	if contentType != "" {
 		c.Header("Content-Type", contentType)
 	}
@@ -146,7 +143,7 @@ func (h *FileHandler) GetContent(c *gin.Context) {
 		c.Header("ETag", etag)
 	}
 
-	http.ServeContent(c.Writer, c.Request, params.Path, time.UnixMilli(mtime), bytes.NewReader(content))
+	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), file)
 }
 
 // GetSharedContent retrieves shared file content

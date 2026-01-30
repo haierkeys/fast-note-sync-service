@@ -46,6 +46,10 @@ type ShareService interface {
 	// GetSharedFile 获取分享的文件内容
 	GetSharedFile(ctx context.Context, shareToken string, fileID int64) (content []byte, contentType string, mtime int64, etag string, fileName string, err error)
 
+	// GetSharedFileInfo retrieves shared file metadata and path for zero-copy download
+	// GetSharedFileInfo 获取分享文件的元数据和路径，用于零拷贝下载
+	GetSharedFileInfo(ctx context.Context, shareToken string, fileID int64) (savePath string, contentType string, mtime int64, etag string, fileName string, err error)
+
 	// RecordView aggregates access statistics in memory
 	// RecordView 在内存中聚合访问统计
 	RecordView(uid int64, id int64)
@@ -489,6 +493,44 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 
 	return content, contentType, file.Mtime, etag, file.Path, nil
 
+}
+
+// GetSharedFileInfo retrieves shared file metadata and path for zero-copy download
+// GetSharedFileInfo 获取分享文件的元数据和路径，用于零拷贝下载
+func (s *shareService) GetSharedFileInfo(ctx context.Context, shareToken string, fileID int64) (savePath string, contentType string, mtime int64, etag string, fileName string, err error) {
+	ridStr := strconv.FormatInt(fileID, 10)
+	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "file")
+	if err != nil {
+		return "", "", 0, "", "", code.ErrorInvalidAuthToken
+	}
+
+	// 1. Get resource owner's UID
+	ownerUID := shareEntity.UID
+
+	// 2. Confirm path hash (get file metadata from fileRepo)
+	file, err := s.fileRepo.GetByID(ctx, fileID, ownerUID)
+	if err != nil {
+		return "", "", 0, "", "", code.ErrorFileNotFound
+	}
+
+	if file.Action == domain.FileActionDelete {
+		return "", "", 0, "", "", code.ErrorFileNotFound
+	}
+
+	// Identify file MIME type
+	ext := filepath.Ext(file.Path)
+	contentType = mime.TypeByExtension(ext)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	// Use file's content hash as ETag
+	etag = file.ContentHash
+	if etag == "" {
+		etag = file.PathHash
+	}
+
+	return file.SavePath, contentType, file.Mtime, etag, filepath.Base(file.Path), nil
 }
 
 // Shutdown shuts down the service and flushes remaining data

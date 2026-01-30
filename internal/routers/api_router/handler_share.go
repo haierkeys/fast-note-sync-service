@@ -1,9 +1,9 @@
 package api_router
 
 import (
-	"bytes"
 	"context"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -131,7 +131,6 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	params := &dto.ShareResourceRequest{}
 
 	// Parameter binding and validation
-	// 参数绑定和验证
 	valid, errs := pkgapp.BindAndValid(c, params)
 	if !valid {
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
@@ -139,7 +138,6 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	}
 
 	// Get authorization Token
-	// 获取授权 Token
 	token, _ := c.Get("share_token")
 	shareToken, _ := token.(string)
 	if shareToken == "" {
@@ -148,7 +146,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	content, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFile(ctx, shareToken, params.ID)
+	savePath, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFileInfo(ctx, shareToken, params.ID)
 
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
@@ -160,13 +158,16 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
-	if content == nil {
+	// Open file for zero-copy serving
+	file, err := os.Open(savePath)
+	if err != nil {
+		h.logError(ctx, "ShareHandler.FileGet.Open", err)
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	defer file.Close()
 
 	// Set response headers and output content
-	// 设置响应头并输出内容
 	if contentType != "" {
 		c.Header("Content-Type", contentType)
 	}
@@ -175,7 +176,7 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		c.Header("ETag", etag)
 	}
 
-	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), bytes.NewReader(content))
+	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), file)
 }
 
 // logError records error log, including Trace ID
