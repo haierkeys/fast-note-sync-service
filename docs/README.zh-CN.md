@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <strong>高性能、低延迟的笔记同步, 在线管理, 远端 REST API 等服务平台</strong>
+  <strong>高性能、低延迟的笔记同步, 在线管理, 远端 REST API 服务平台</strong>
   <br>
   <em>基于 Golang + Websocket + Sqlite + React 构建</em>
 </p>
