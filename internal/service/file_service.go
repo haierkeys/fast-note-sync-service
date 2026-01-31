@@ -535,8 +535,16 @@ func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && file != nil {
-
-
+			// Check IsRecycle support
+			if params.IsRecycle {
+				if file.Action != domain.FileActionDelete {
+					return "", "", 0, "", "", code.ErrorFileNotFound
+				}
+			} else {
+				if file.Action == domain.FileActionDelete {
+					return "", "", 0, "", "", code.ErrorFileNotFound
+				}
+			}
 			// Identify file MIME type
 			ext := filepath.Ext(file.Path)
 			contentType := mime.TypeByExtension(ext)
