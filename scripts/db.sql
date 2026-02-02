@@ -170,7 +170,29 @@ CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
 CREATE INDEX "idx_user_share_rid" ON "user_share" ("rid");
 
 
+-- ----------------------------
+-- Table structure for note_link
+-- ----------------------------
+DROP TABLE IF EXISTS "note_link";
 
+CREATE TABLE "note_link" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "source_note_id" integer NOT NULL,
+    "target_path" text NOT NULL,
+    "target_path_hash" text NOT NULL,
+    "link_text" text,
+    "is_embed" integer DEFAULT 0,
+    "vault_id" integer NOT NULL,
+    "uid" integer NOT NULL,
+    "created_at" datetime DEFAULT NULL
+);
+
+-- ----------------------------
+-- Indexes structure for note_link
+-- ----------------------------
+CREATE INDEX "idx_source_note" ON "note_link" ("source_note_id");
+
+CREATE INDEX "idx_target_path_hash" ON "note_link" ("target_path_hash", "vault_id", "uid");
 
 
 DROP TABLE IF EXISTS "folder";
