@@ -19,8 +19,10 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
 		File:        newFile(db, opts...),
+		Folder:      newFolder(db, opts...),
 		Note:        newNote(db, opts...),
 		NoteHistory: newNoteHistory(db, opts...),
+		NoteLink:    newNoteLink(db, opts...),
 		Setting:     newSetting(db, opts...),
 		User:        newUser(db, opts...),
 		UserShare:   newUserShare(db, opts...),
@@ -32,8 +34,10 @@ type Query struct {
 	db *gorm.DB
 
 	File        file
+	Folder      folder
 	Note        note
 	NoteHistory noteHistory
+	NoteLink    noteLink
 	Setting     setting
 	User        user
 	UserShare   userShare
@@ -46,8 +50,10 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
 		File:        q.File.clone(db),
+		Folder:      q.Folder.clone(db),
 		Note:        q.Note.clone(db),
 		NoteHistory: q.NoteHistory.clone(db),
+		NoteLink:    q.NoteLink.clone(db),
 		Setting:     q.Setting.clone(db),
 		User:        q.User.clone(db),
 		UserShare:   q.UserShare.clone(db),
@@ -67,8 +73,10 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
 		File:        q.File.replaceDB(db),
+		Folder:      q.Folder.replaceDB(db),
 		Note:        q.Note.replaceDB(db),
 		NoteHistory: q.NoteHistory.replaceDB(db),
+		NoteLink:    q.NoteLink.replaceDB(db),
 		Setting:     q.Setting.replaceDB(db),
 		User:        q.User.replaceDB(db),
 		UserShare:   q.UserShare.replaceDB(db),
@@ -78,8 +86,10 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	File        IFileDo
+	Folder      IFolderDo
 	Note        INoteDo
 	NoteHistory INoteHistoryDo
+	NoteLink    INoteLinkDo
 	Setting     ISettingDo
 	User        IUserDo
 	UserShare   IUserShareDo
@@ -89,8 +99,10 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		File:        q.File.WithContext(ctx),
+		Folder:      q.Folder.WithContext(ctx),
 		Note:        q.Note.WithContext(ctx),
 		NoteHistory: q.NoteHistory.WithContext(ctx),
+		NoteLink:    q.NoteLink.WithContext(ctx),
 		Setting:     q.Setting.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
 		UserShare:   q.UserShare.WithContext(ctx),

@@ -8,6 +8,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"gorm.io/gorm"
 )
@@ -53,7 +54,7 @@ func (r *noteLinkRepository) toDomain(m *model.NoteLink) *domain.NoteLink {
 		TargetPath:     m.TargetPath,
 		TargetPathHash: m.TargetPathHash,
 		LinkText:       m.LinkText,
-		IsEmbed:        m.IsEmbed,
+		IsEmbed:        m.IsEmbed == 1,
 		VaultID:        m.VaultID,
 		CreatedAt:      time.Time(m.CreatedAt),
 	}
@@ -74,7 +75,7 @@ func (r *noteLinkRepository) CreateBatch(ctx context.Context, links []*domain.No
 				TargetPath:     link.TargetPath,
 				TargetPathHash: link.TargetPathHash,
 				LinkText:       link.LinkText,
-				IsEmbed:        link.IsEmbed,
+				IsEmbed:        convert.Bool2Int(link.IsEmbed),
 				VaultID:        link.VaultID,
 				UID:            uid,
 				CreatedAt:      now,

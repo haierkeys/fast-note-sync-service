@@ -1,8 +1,11 @@
+
 package model
 
 import (
 	"gorm.io/gorm"
 )
+
+
 
 func AutoMigrate(db *gorm.DB, key string) error {
 	if db == nil {
@@ -12,6 +15,9 @@ func AutoMigrate(db *gorm.DB, key string) error {
 
 	case "File":
 		return db.AutoMigrate(File{})
+
+	case "Folder":
+		return db.AutoMigrate(Folder{})
 
 	case "Note":
 		return db.AutoMigrate(Note{})
