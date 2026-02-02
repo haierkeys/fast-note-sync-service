@@ -200,6 +200,8 @@ CREATE TABLE "folder" (
     "path_hash" text DEFAULT '',
     "level" integer DEFAULT 0,
     -- 文件夹层级
+    "fid" integer DEFAULT 0,
+    -- 父级文件夹ID,0 为根目录
     "updated_timestamp" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
@@ -208,6 +210,8 @@ CREATE TABLE "folder" (
 CREATE INDEX "idx_folder_vault_id_path_hash" ON "folder" ("vault_id", "path_hash");
 
 CREATE INDEX `idx_folder_vault_id_path` ON `folder`(`vault_id`, `path`);
+
+CREATE INDEX "idx_folder_vault_id_fid_path" ON "folder" ("vault_id", "fid", "path");
 
 CREATE INDEX "idx_folder_vault_id_level_path" ON "folder" ("vault_id", "level", "path");
 
