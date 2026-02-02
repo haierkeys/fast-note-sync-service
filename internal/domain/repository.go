@@ -67,6 +67,30 @@ type NoteRepository interface {
 	CountSizeSum(ctx context.Context, vaultID, uid int64) (*CountSizeResult, error)
 }
 
+// FolderRepository 文件夹仓储接口
+type FolderRepository interface {
+	// GetByID 根据ID获取文件夹
+	GetByID(ctx context.Context, id, uid int64) (*Folder, error)
+
+	// GetByPathHash 根据路径哈希获取文件夹
+	GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*Folder, error)
+
+	// GetByFID 根据父级ID获取文件夹列表
+	GetByFID(ctx context.Context, fid int64, vaultID, uid int64) ([]*Folder, error)
+
+	// Create 创建文件夹
+	Create(ctx context.Context, folder *Folder, uid int64) (*Folder, error)
+
+	// Update 更新文件夹
+	Update(ctx context.Context, folder *Folder, uid int64) (*Folder, error)
+
+	// Delete 物理删除文件夹
+	Delete(ctx context.Context, id, uid int64) error
+
+	// ListByUpdatedTimestamp 根据更新时间戳获取文件夹列表
+	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Folder, error)
+}
+
 // VaultRepository 仓库仓储接口
 type VaultRepository interface {
 	// GetByID 根据ID获取仓库

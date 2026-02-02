@@ -57,6 +57,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// Create WebSocket Handlers (injected App Container)
 	// 创建 WebSocket Handlers（注入 App Container）
 	noteWSHandler := websocket_router.NewNoteWSHandler(appContainer)
+	folderWSHandler := websocket_router.NewFolderWSHandler(appContainer)
 	fileWSHandler := websocket_router.NewFileWSHandler(appContainer)
 	settingWSHandler := websocket_router.NewSettingWSHandler(appContainer)
 
@@ -75,6 +76,12 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// Update notification based on mtime
 	// 基于mtime的更新通知
 	wss.Use("NoteSync", noteWSHandler.NoteSync)
+
+	// Folder sync
+	wss.Use("FolderSync", folderWSHandler.FolderSync)
+	wss.Use("FolderModify", folderWSHandler.FolderModify)
+	wss.Use("FolderDelete", folderWSHandler.FolderDelete)
+	wss.Use("FolderRename", folderWSHandler.FolderRename)
 
 	// Config sync
 	// 配置同步
@@ -153,6 +160,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		userHandler := api_router.NewUserHandler(appContainer)
 		vaultHandler := api_router.NewVaultHandler(appContainer)
 		noteHandler := api_router.NewNoteHandler(appContainer, wss)
+		folderHandler := api_router.NewFolderHandler(appContainer)
 		fileHandler := api_router.NewFileHandler(appContainer, wss)
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
@@ -209,6 +217,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/note", noteHandler.Delete)
 			auth.PUT("/note/restore", noteHandler.Restore)
 			auth.GET("/notes", noteHandler.List)
+
+			auth.GET("/folder", folderHandler.List)
+			auth.POST("/folder", folderHandler.Create)
+			auth.DELETE("/folder", folderHandler.Delete)
 
 			// Note edit operations
 			auth.PATCH("/note/frontmatter", noteHandler.PatchFrontmatter)

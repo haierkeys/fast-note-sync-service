@@ -59,6 +59,8 @@ var (
 	ErrorNoMatchFound             = NewError(442)
 	ErrorInvalidRegex             = NewError(443)
 	ErrorInvalidPath              = NewError(444)
+	ErrorFolderNotFound           = NewError(445)
+	ErrorFolderExist              = NewError(446)
 
 	// --- File/Attachment Related (450-464) ---
 	ErrorFileNotFound              = NewError(450)

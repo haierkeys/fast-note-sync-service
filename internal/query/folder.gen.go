@@ -34,6 +34,7 @@ func newFolder(db *gorm.DB, opts ...gen.DOOption) folder {
 	_folder.Path = field.NewString(tableName, "path")
 	_folder.PathHash = field.NewString(tableName, "path_hash")
 	_folder.Level = field.NewInt64(tableName, "level")
+	_folder.FID = field.NewInt64(tableName, "fid")
 	_folder.UpdatedTimestamp = field.NewInt64(tableName, "updated_timestamp")
 	_folder.CreatedAt = field.NewField(tableName, "created_at")
 	_folder.UpdatedAt = field.NewField(tableName, "updated_at")
@@ -53,6 +54,7 @@ type folder struct {
 	Path             field.String
 	PathHash         field.String
 	Level            field.Int64
+	FID              field.Int64
 	UpdatedTimestamp field.Int64
 	CreatedAt        field.Field
 	UpdatedAt        field.Field
@@ -78,6 +80,7 @@ func (f *folder) updateTableName(table string) *folder {
 	f.Path = field.NewString(table, "path")
 	f.PathHash = field.NewString(table, "path_hash")
 	f.Level = field.NewInt64(table, "level")
+	f.FID = field.NewInt64(table, "fid")
 	f.UpdatedTimestamp = field.NewInt64(table, "updated_timestamp")
 	f.CreatedAt = field.NewField(table, "created_at")
 	f.UpdatedAt = field.NewField(table, "updated_at")
@@ -112,6 +115,7 @@ func (f *folder) fillFieldMap() {
 	f.fieldMap["path"] = f.Path
 	f.fieldMap["path_hash"] = f.PathHash
 	f.fieldMap["level"] = f.Level
+	f.fieldMap["fid"] = f.FID
 	f.fieldMap["updated_timestamp"] = f.UpdatedTimestamp
 	f.fieldMap["created_at"] = f.CreatedAt
 	f.fieldMap["updated_at"] = f.UpdatedAt
