@@ -5,6 +5,8 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -87,9 +89,22 @@ func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *dto.NoteH
 	}
 
 	dmp := diffmatchpatch.New()
-	parsedPatches, _ := dmp.PatchFromText(history.DiffPatch)
-	restoredNewVersion, _ := dmp.PatchApply(parsedPatches, history.Content)
-	diffResults := dmp.DiffMain(history.Content, restoredNewVersion, false)
+
+	// Add recover protection as a second line of defense
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("Panic recovered in domainToDTO",
+				zap.Any("panic", r),
+				zap.Int64("historyID", history.ID))
+		}
+	}()
+
+	content := s.ensureValidUTF8(history.Content)
+	diffPatch := s.ensureValidUTF8(history.DiffPatch)
+
+	parsedPatches, _ := dmp.PatchFromText(diffPatch)
+	restoredNewVersion, _ := dmp.PatchApply(parsedPatches, content)
+	diffResults := dmp.DiffMain(content, restoredNewVersion, false)
 
 	return &dto.NoteHistoryDTO{
 		ID:          history.ID,
@@ -208,8 +223,30 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 	// Calculate diff
 	// 计算 diff
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(note.ContentLastSnapshot, note.Content, false)
-	patchText := dmp.PatchToText(dmp.PatchMake(note.ContentLastSnapshot, diffs))
+
+	// Add recover protection
+	var patchText string
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("Panic recovered in ProcessDelay during diff calculation",
+					zap.Any("panic", r),
+					zap.Int64("noteID", noteID))
+			}
+		}()
+
+		content1 := s.ensureValidUTF8(note.ContentLastSnapshot)
+		content2 := s.ensureValidUTF8(note.Content)
+
+		diffs := dmp.DiffMain(content1, content2, false)
+		patchText = dmp.PatchToText(dmp.PatchMake(content1, diffs))
+	}()
+
+	if patchText == "" && note.Content != note.ContentLastSnapshot {
+		// If patch calculation failed (due to panic and recover), we don't proceed with history creation
+		// to avoid saving corrupted data.
+		return nil
+	}
 
 	latestVersion, err := s.historyRepo.GetLatestVersion(ctx, note.ID, uid)
 	if err != nil {
@@ -284,8 +321,28 @@ func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, 
 	// history.DiffPatch 是从修改前到修改后的差异补丁
 	// 应用补丁得到该版本修改后的完整内容
 	dmp := diffmatchpatch.New()
-	parsedPatches, _ := dmp.PatchFromText(history.DiffPatch)
-	restoredContent, _ := dmp.PatchApply(parsedPatches, history.Content)
+
+	// Add recover protection
+	var restoredContent string
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("Panic recovered in RestoreFromHistory during patch application",
+					zap.Any("panic", r),
+					zap.Int64("historyID", historyID))
+			}
+		}()
+
+		historyContent := s.ensureValidUTF8(history.Content)
+		diffPatch := s.ensureValidUTF8(history.DiffPatch)
+
+		parsedPatches, _ := dmp.PatchFromText(diffPatch)
+		restoredContent, _ = dmp.PatchApply(parsedPatches, historyContent)
+	}()
+
+	if restoredContent == "" {
+		return nil, code.ErrorHistoryNotFound.WithDetails("failed to restore content from history due to internal error")
+	}
 
 	// 4. Calculate hash of restored content
 	// 4. 计算恢复内容的哈希
@@ -428,6 +485,15 @@ func (s *noteHistoryService) cleanupExcessVersions(ctx context.Context, noteID i
 	}
 
 	return nil
+}
+
+// ensureValidUTF8 ensures the string is valid UTF-8
+// ensureValidUTF8 确保字符串是有效的 UTF-8 编码
+func (s *noteHistoryService) ensureValidUTF8(str string) string {
+	if utf8.ValidString(str) {
+		return str
+	}
+	return strings.ToValidUTF8(str, "")
 }
 
 // Verify noteHistoryService implements NoteHistoryService interface
