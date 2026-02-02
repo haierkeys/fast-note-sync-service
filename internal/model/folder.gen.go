@@ -11,13 +11,14 @@ const TableNameFolder = "folder"
 // Folder mapped from table <folder>
 type Folder struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_folder_vault_id_path,priority:1;index:idx_folder_vault_id_updated_timestamp,priority:1;index:idx_folder_vault_id_updated_at,priority:1;index:idx_folder_vault_id_path_hash,priority:1;default:0" json:"vaultId" form:"vaultId"`
+	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_folder_vault_id_updated_timestamp,priority:1;index:idx_folder_vault_id_level_path,priority:1;index:idx_folder_vault_id_path,priority:1;index:idx_folder_vault_id_path_hash,priority:1;default:0" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action;default:''" json:"action" form:"action"`
-	Path             string     `gorm:"column:path;index:idx_folder_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	Path             string     `gorm:"column:path;index:idx_folder_vault_id_level_path,priority:3;index:idx_folder_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;index:idx_folder_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
-	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_folder_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
+	Level            int64      `gorm:"column:level;index:idx_folder_vault_id_level_path,priority:2;default:0" json:"level" form:"level"`
+	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;type:INTEGER;index:idx_folder_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
 	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_folder_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName Folder's table name
