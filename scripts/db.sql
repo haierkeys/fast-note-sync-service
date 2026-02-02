@@ -169,7 +169,6 @@ CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
 
 CREATE INDEX "idx_user_share_rid" ON "user_share" ("rid");
 
-
 -- ----------------------------
 -- Table structure for note_link
 -- ----------------------------
@@ -187,13 +186,9 @@ CREATE TABLE "note_link" (
     "created_at" datetime DEFAULT NULL
 );
 
--- ----------------------------
--- Indexes structure for note_link
--- ----------------------------
 CREATE INDEX "idx_source_note" ON "note_link" ("source_note_id");
 
 CREATE INDEX "idx_target_path_hash" ON "note_link" ("target_path_hash", "vault_id", "uid");
-
 
 DROP TABLE IF EXISTS "folder";
 
@@ -203,15 +198,17 @@ CREATE TABLE "folder" (
     "action" text DEFAULT '',
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
+    "level" integer DEFAULT 0,
+    -- 文件夹层级
     "updated_timestamp" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
 
-CREATE INDEX "idx_folder_vault_id_path_hash" ON "folder" ("vault_id", "path_hash" DESC);
-
-CREATE INDEX "idx_folder_vault_id_updated_at" ON "folder" ("vault_id", "updated_at" DESC);
-
-CREATE INDEX "idx_folder_vault_id_updated_timestamp" ON "folder" ("vault_id", "updated_timestamp" DESC);
+CREATE INDEX "idx_folder_vault_id_path_hash" ON "folder" ("vault_id", "path_hash");
 
 CREATE INDEX `idx_folder_vault_id_path` ON `folder`(`vault_id`, `path`);
+
+CREATE INDEX "idx_folder_vault_id_level_path" ON "folder" ("vault_id", "level", "path");
+
+CREATE INDEX "idx_folder_vault_id_updated_timestamp" ON "folder" ("vault_id", "updated_timestamp" DESC);
