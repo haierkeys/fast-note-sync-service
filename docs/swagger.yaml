@@ -116,6 +116,18 @@ definitions:
       size:
         type: integer
     type: object
+  dto.FileRestoreRequest:
+    properties:
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
   dto.NoteAppendRequest:
     properties:
       content:
@@ -664,6 +676,38 @@ paths:
       security:
       - UserAuthToken: []
       summary: Get attachment info
+      tags:
+      - File
+  /api/file/restore:
+    put:
+      description: Restore deleted attachment from trash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Restore Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.FileRestoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FileDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Restore attachment
       tags:
       - File
   /api/files:
