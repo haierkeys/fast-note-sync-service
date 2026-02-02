@@ -317,6 +317,61 @@
                 }
             }
         },
+        "/api/file/restore": {
+            "put": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Restore deleted attachment from trash",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "Restore attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Restore Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.FileRestoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FileDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/files": {
             "get": {
                 "security": [
@@ -2131,6 +2186,24 @@
                 },
                 "size": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.FileRestoreRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "vault": {
+                    "type": "string"
                 }
             }
         },

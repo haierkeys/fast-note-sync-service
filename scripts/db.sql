@@ -168,3 +168,28 @@ CREATE TABLE "user_share" (
 CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
 
 CREATE INDEX "idx_user_share_rid" ON "user_share" ("rid");
+
+
+
+
+
+DROP TABLE IF EXISTS "folder";
+
+CREATE TABLE "folder" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "vault_id" integer NOT NULL DEFAULT 0,
+    "action" text DEFAULT '',
+    "path" text DEFAULT '',
+    "path_hash" text DEFAULT '',
+    "updated_timestamp" integer NOT NULL DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_folder_vault_id_path_hash" ON "folder" ("vault_id", "path_hash" DESC);
+
+CREATE INDEX "idx_folder_vault_id_updated_at" ON "folder" ("vault_id", "updated_at" DESC);
+
+CREATE INDEX "idx_folder_vault_id_updated_timestamp" ON "folder" ("vault_id", "updated_timestamp" DESC);
+
+CREATE INDEX `idx_folder_vault_id_path` ON `folder`(`vault_id`, `path`);
