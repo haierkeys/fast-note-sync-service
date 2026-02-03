@@ -22,9 +22,23 @@ CREATE TABLE "user" (
 
 CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
 
-/*
- 动作 create modify delete
- */
+
+DROP TABLE IF EXISTS "vault";
+
+CREATE TABLE "vault" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "vault" text DEFAULT '',
+    "note_count" integer DEFAULT 0,
+    "note_size" integer DEFAULT 0,
+    "file_count" integer DEFAULT 0,
+    "file_size" integer DEFAULT 0,
+    "is_deleted" integer DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_vault_uid" ON "vault" ("vault" ASC);
+
 DROP TABLE IF EXISTS "note";
 
 CREATE TABLE "note" (
@@ -32,6 +46,8 @@ CREATE TABLE "note" (
     "vault_id" integer NOT NULL DEFAULT 0,
     "action" text DEFAULT '',
     "rename" integer DEFAULT 0,
+    "fid" integer DEFAULT 0,
+    -- note table : parent folder id, 0 : root
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',
@@ -47,6 +63,9 @@ CREATE TABLE "note" (
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
+
+
+CREATE INDEX "idx_vault_id_action_fid" ON "note" ("vault_id", "action", "fid" DESC);
 
 CREATE INDEX "idx_vault_id_action_rename" ON "note" ("vault_id", "action", "rename" DESC);
 
@@ -80,28 +99,14 @@ CREATE INDEX "idx_note_history_version" ON "note_history" ("note_id", "version")
 
 CREATE INDEX "idx_note_history_content_hash" ON "note_history" ("note_id", "content_hash");
 
-DROP TABLE IF EXISTS "vault";
-
-CREATE TABLE "vault" (
-    "id" integer PRIMARY KEY AUTOINCREMENT,
-    "vault" text DEFAULT '',
-    "note_count" integer DEFAULT 0,
-    "note_size" integer DEFAULT 0,
-    "file_count" integer DEFAULT 0,
-    "file_size" integer DEFAULT 0,
-    "is_deleted" integer DEFAULT 0,
-    "created_at" datetime DEFAULT NULL,
-    "updated_at" datetime DEFAULT NULL
-);
-
-CREATE INDEX "idx_vault_uid" ON "vault" ("vault" ASC);
-
 DROP TABLE IF EXISTS "file";
 
 CREATE TABLE "file" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault_id" integer NOT NULL DEFAULT 0,
     "action" text DEFAULT '',
+    "fid" integer DEFAULT 0,
+    -- folder table : parent folder id, 0 : root
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
     "content_hash" text DEFAULT '',
@@ -113,6 +118,8 @@ CREATE TABLE "file" (
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
+
+CREATE INDEX "idx_file_vault_id_action_fid" ON "file" ("vault_id", "action", "fid" DESC);
 
 CREATE INDEX "idx_file_vault_id_path_hash" ON "file" ("vault_id", "path_hash" DESC);
 

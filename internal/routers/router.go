@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/haierkeys/fast-note-sync-service/docs"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
@@ -104,12 +105,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	// Attachment chunk upload
 	// 附件上传分块
-	wss.UseBinary(websocket_router.VaultFileSync, fileWSHandler.FileUploadChunkBinary)
-
-	// WebGUI config (using injected config)
-	// WebGUI 配置（使用注入的配置）
-	webGUIWSHandler := websocket_router.NewWebGUIWSHandler(appContainer)
-	wss.Use("WebGUIConfigGet", webGUIWSHandler.WebGUIConfigGet)
+	wss.UseBinary(dto.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
 
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 

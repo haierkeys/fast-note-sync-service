@@ -71,7 +71,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			}
 			cDelFoldersKeys[delFolder.PathHash] = struct{}{}
 			// Broadcast deletion to other clients
-			c.BroadcastResponse(code.Success.WithData(delFolder).WithVault(params.Vault), true, "FolderSyncDelete")
+			c.BroadcastResponse(code.Success.WithData(delFolder).WithVault(params.Vault), true, dto.FolderSyncDelete)
 		}
 	}
 
@@ -88,7 +88,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			}
 			if folder != nil && folder.Action != "delete" {
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "FolderSyncModify",
+					Action: dto.FolderSyncModify,
 					Data:   folder,
 				})
 				needModifyCount++
@@ -111,16 +111,16 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 
 		if folder.Action == "delete" {
 			messageQueue = append(messageQueue, queuedMessage{
-				Action: "FolderSyncDelete",
+				Action: dto.FolderSyncDelete,
 				Data:   folder,
 			})
 			needDeleteCount++
 		} else {
 			// Compare with client version
-			clientFolder, exists := cFolders[folder.PathHash]
-			if !exists || folder.UpdatedTimestamp > clientFolder.Mtime {
+			_, exists := cFolders[folder.PathHash]
+			if !exists {
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "FolderSyncModify",
+					Action: dto.FolderSyncModify,
 					Data:   folder,
 				})
 				needModifyCount++
@@ -133,7 +133,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		NeedModifyCount: needModifyCount,
 		NeedDeleteCount: needDeleteCount,
 		Messages:        messageQueue,
-	}).WithVault(params.Vault), "FolderSyncEnd")
+	}).WithVault(params.Vault), dto.FolderSyncEnd)
 }
 
 // FolderModify handles folder modification/creation
@@ -152,11 +152,12 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(folder), "FolderModify")
-	c.BroadcastResponse(code.Success.WithData(folder).WithVault(params.Vault), true, "FolderSyncModify")
+	c.ToResponse(code.Success.WithData(folder), dto.FolderModify)
+	c.BroadcastResponse(code.Success.WithData(folder).WithVault(params.Vault), true, dto.FolderSyncModify)
 }
 
 // FolderDelete handles folder deletion
+// 删除
 func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.FolderDeleteRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -172,11 +173,12 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success, "FolderDelete")
-	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, "FolderSyncDelete")
+	c.ToResponse(code.Success, dto.FolderDelete)
+	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, dto.FolderSyncDelete)
 }
 
 // FolderRename handles folder renaming
+// 重命名文件夹
 func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.FolderRenameRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
@@ -192,6 +194,6 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success, "FolderRename")
-	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, "FolderSyncRename")
+	c.ToResponse(code.Success, dto.FolderRename)
+	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, dto.FolderSyncRename)
 }

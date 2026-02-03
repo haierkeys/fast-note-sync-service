@@ -11,10 +11,11 @@ const TableNameNote = "note"
 // Note mapped from table <note>
 type Note struct {
 	ID                      int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	VaultID                 int64      `gorm:"column:vault_id;not null;index:idx_vault_id_path,priority:1;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_rename,priority:1;index:idx_vault_id_action_rename,priority:1;default:0" json:"vaultId" form:"vaultId"`
-	Action                  string     `gorm:"column:action;index:idx_vault_id_action_rename,priority:2;default:''" json:"action" form:"action"`
+	VaultID                 int64      `gorm:"column:vault_id;not null;index:idx_vault_id_path,priority:1;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_rename,priority:1;index:idx_vault_id_action_rename,priority:1;index:idx_vault_id_action_fid,priority:1;default:0" json:"vaultId" form:"vaultId"`
+	Action                  string     `gorm:"column:action;index:idx_vault_id_action_rename,priority:2;index:idx_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
 	Rename                  int64      `gorm:"column:rename;index:idx_vault_id_rename,priority:2;index:idx_vault_id_action_rename,priority:3;default:0" json:"rename" form:"rename"`
-	Path                    string     `gorm:"column:path;index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	Fid                     int64      `gorm:"column:fid;index:idx_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
+	Path                    string     `gorm:"column:path;type:TEXT;index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash                string     `gorm:"column:path_hash;default:''" json:"pathHash" form:"pathHash"`
 	Content                 string     `gorm:"column:content;default:''" json:"content" form:"content"`
 	ContentHash             string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
