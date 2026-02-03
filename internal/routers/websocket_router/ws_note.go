@@ -418,7 +418,7 @@ func (h *NoteWSHandler) handleNoteModify(c *pkgapp.WebsocketClient, params *dto.
 		}
 
 		c.ToResponse(code.Success)
-		c.BroadcastResponse(code.Success.WithData(noteMessage).WithVault(params.Vault), isExcludeSelf, "NoteSyncModify")
+		c.BroadcastResponse(code.Success.WithData(noteMessage).WithVault(params.Vault), isExcludeSelf, dto.NoteSyncModify)
 		return
 
 	case "UpdateMtime":
@@ -429,7 +429,7 @@ func (h *NoteWSHandler) handleNoteModify(c *pkgapp.WebsocketClient, params *dto.
 			Ctime: nodeCheck.Ctime,
 			Mtime: nodeCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), dto.NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -491,7 +491,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		noteSyncNeedPushMessage := &NoteOnlyPathMessage{
 			Path: nodeCheck.Path,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncNeedPushMessage), "NoteSyncNeedPush")
+		c.ToResponse(code.Success.WithData(noteSyncNeedPushMessage), dto.NoteSyncNeedPush)
 		return
 	case "UpdateMtime":
 		// Force client to update mtime without transferring note content
@@ -501,7 +501,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 			Ctime: nodeCheck.Ctime,
 			Mtime: nodeCheck.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), "NoteSyncMtime")
+		c.ToResponse(code.Success.WithData(noteSyncMtimeMessage), dto.NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -561,7 +561,7 @@ func (h *NoteWSHandler) handleNoteDelete(c *pkgapp.WebsocketClient, params *dto.
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
+	c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, dto.NoteSyncDelete)
 }
 
 // NoteRename handles WebSocket messages for file renaming
@@ -748,7 +748,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			cDelNotesKeys[delNote.PathHash] = struct{}{}
 			// Broadcast deletion to other clients
 			// 将删除消息广播给其他客户端
-			c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, "NoteSyncDelete")
+			c.BroadcastResponse(code.Success.WithData(note).WithVault(params.Vault), true, dto.NoteSyncDelete)
 		}
 	}
 
@@ -779,7 +779,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					UpdatedTimestamp: note.UpdatedTimestamp,
 				}
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "NoteSyncModify",
+					Action: dto.NoteSyncModify,
 					Data:   noteMessage,
 				})
 				needModifyCount++
@@ -809,7 +809,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				}
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "NoteSyncDelete",
+					Action: dto.NoteSyncDelete,
 					Data:   noteDeleteMessage,
 				})
 				needDeleteCount++
@@ -845,7 +845,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 							// Add message to queue instead of sending immediately
 							// 将消息添加到队列而非立即发送
 							messageQueue = append(messageQueue, queuedMessage{
-								Action: "NoteSyncNeedPush",
+								Action: dto.NoteSyncNeedPush,
 								Data:   noteSyncNeedPushMessage,
 							})
 							needUploadCount++
@@ -866,7 +866,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 							// 将消息添加到队列而非立即发送
 							messageQueue = append(messageQueue, queuedMessage{
-								Action: "NoteSyncModify",
+								Action: dto.NoteSyncModify,
 								Data:   noteMessage,
 							})
 							needModifyCount++
@@ -896,7 +896,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						// Add message to queue instead of sending immediately
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							Action: "NoteSyncNeedPush",
+							Action: dto.NoteSyncNeedPush,
 							Data:   noteSyncNeedPushMessage,
 						})
 						needUploadCount++
@@ -912,7 +912,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					// Add message to queue instead of sending immediately
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
-						Action: "NoteSyncMtime",
+						Action: dto.NoteSyncMtime,
 						Data:   noteSyncMtimeMessage,
 					})
 					needSyncMtimeCount++
@@ -931,7 +931,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				}
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "NoteSyncModify",
+					Action: dto.NoteSyncModify,
 					Data:   noteMessage,
 				})
 				needModifyCount++
@@ -953,7 +953,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送
 			messageQueue = append(messageQueue, queuedMessage{
-				Action: "NoteSyncNeedPush",
+				Action: dto.NoteSyncNeedPush,
 				Data:   data,
 			})
 
@@ -973,7 +973,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		NeedDeleteCount:    needDeleteCount,
 		Messages:           messageQueue,
 	}
-	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "NoteSyncEnd")
+	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), dto.NoteSyncEnd)
 }
 
 // UserInfo verifies and retrieves user info

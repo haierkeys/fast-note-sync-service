@@ -209,7 +209,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 			return
 		}
 
-		c.ToResponse(code.Success.WithData(fileUploadMessage), "FileUpload")
+		c.ToResponse(code.Success.WithData(fileUploadMessage), dto.FileUpload)
 		return
 
 	case "UpdateMtime":
@@ -219,7 +219,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 			Ctime: fileSvc.Ctime,
 			Mtime: fileSvc.Mtime,
 		}
-		c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), "FileSyncMtime")
+		c.ToResponse(code.Success.WithData(fileSyncMtimeMessage), dto.FileSyncMtime)
 		return
 	default:
 		// 无需更新
@@ -365,7 +365,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		c.ToResponse(code.Success)
 		// Broadcast file update message
 		// 广播文件更新消息
-		c.BroadcastResponse(code.Success.WithData(fileMsg).WithVault(session.Vault), true, "FileSyncUpdate")
+		c.BroadcastResponse(code.Success.WithData(fileMsg).WithVault(session.Vault), true, dto.FileSyncUpdate)
 	}
 }
 
@@ -401,7 +401,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	fileDeleteMessage := convert.StructAssign(fileSvc, &dto.FileDeleteMessage{}).(*dto.FileDeleteMessage)
 	// Broadcast file deletion message
 	// 广播文件删除消息
-	c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
+	c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, dto.FileSyncDelete)
 }
 
 // FileChunkDownload handles file chunk download request.
@@ -474,7 +474,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// Send download ready message
 	// 发送下载准备消息
-	c.ToResponse(code.Success.WithData(fileDownloadMessage), "FileSyncChunkDownload")
+	c.ToResponse(code.Success.WithData(fileDownloadMessage), dto.FileSyncChunkDownload)
 
 	// Start chunk sending, pass timeout and logger
 	// 启动分片发送,传入超时时间和 logger
@@ -557,7 +557,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// Broadcast deletion to other clients
 			// 将删除消息广播给其他客户端
 			fileDeleteMessage := convert.StructAssign(fileSvc, &dto.FileDeleteMessage{}).(*dto.FileDeleteMessage)
-			c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, "FileSyncDelete")
+			c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, dto.FileSyncDelete)
 		}
 	}
 
@@ -590,7 +590,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 				}
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "FileSyncUpdate",
+					Action: dto.FileSyncUpdate,
 					Data:   fileMessage,
 				})
 				needModifyCount++
@@ -619,7 +619,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				delete(cFilesKeys, file.PathHash)
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "FileSyncDelete",
+					Action: dto.FileSyncDelete,
 					Data:   file,
 				})
 				needDeleteCount++
@@ -653,7 +653,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						}
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							Action: "FileSyncUpdate",
+							Action: dto.FileSyncUpdate,
 							Data:   fileMessage,
 						})
 						needModifyCount++
@@ -666,7 +666,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						}
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, queuedMessage{
-							Action: "FileUpload",
+							Action: dto.FileUpload,
 							Data:   fileUploadMessage,
 						})
 						needUploadCount++
@@ -682,7 +682,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					// Add message to queue instead of sending immediately
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, queuedMessage{
-						Action: "FileSyncMtime",
+						Action: dto.FileSyncMtime,
 						Data:   fileSyncMtimeMessage,
 					})
 					needSyncMtimeCount++
@@ -702,7 +702,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				}
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, queuedMessage{
-					Action: "FileSyncUpdate",
+					Action: dto.FileSyncUpdate,
 					Data:   fileMessage,
 				})
 				needModifyCount++
@@ -728,7 +728,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送
 			messageQueue = append(messageQueue, queuedMessage{
-				Action: "FileUpload",
+				Action: dto.FileUpload,
 				Data:   fileUploadMessage,
 			})
 			needUploadCount++
@@ -746,7 +746,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		Messages:           messageQueue,
 	}
 
-	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), "FileSyncEnd")
+	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), dto.FileSyncEnd)
 }
 
 // cleanupSession cleans up discarded upload sessions due to completion or timeout.
@@ -976,7 +976,7 @@ func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketCli
 		copy(packet[40:], chunkData[:n])
 
 		// 发送二进制消息
-		err = c.SendBinary(VaultFileSync, packet)
+		err = c.SendBinary(dto.VaultFileMsgType, packet)
 		if err != nil {
 			LogErrorWithLogger(logger, c, "sendFileChunks: failed to send chunk", err)
 			return
