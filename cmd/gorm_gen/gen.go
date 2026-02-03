@@ -181,6 +181,7 @@ func main() {
 
 	// 基础配置
 	opts := []gen.ModelOpt{
+		gen.FieldRename("fid", "FID"),
 		//gen.FieldType("uid", "int64"),
 		gen.FieldType("created_at", "timex.Time"),
 		gen.FieldType("updated_at", "timex.Time"),
