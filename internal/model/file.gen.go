@@ -13,7 +13,7 @@ type File struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_file_vault_id_path,priority:1;index:idx_file_vault_id_updated_timestamp,priority:1;index:idx_file_vault_id_updated_at,priority:1;index:idx_file_vault_id_path_hash,priority:1;index:idx_file_vault_id_action_fid,priority:1;default:0" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action;index:idx_file_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
-	Fid              int64      `gorm:"column:fid;index:idx_file_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
+	FID              int64      `gorm:"column:fid;index:idx_file_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
 	Path             string     `gorm:"column:path;type:TEXT;index:idx_file_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;index:idx_file_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
 	ContentHash      string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
