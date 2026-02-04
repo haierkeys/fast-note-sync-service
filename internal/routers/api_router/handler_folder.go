@@ -198,3 +198,32 @@ func (h *FolderHandler) ListFiles(c *gin.Context) {
 
 	response.ToResponseList(code.Success, res, count)
 }
+
+// Tree returns the complete folder tree structure
+// @Summary Get folder tree
+// @Description Get the complete folder tree structure for a vault
+// @Tags Folder
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Param params query dto.FolderTreeRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FolderTreeResponse} "Success"
+// @Router /api/folder/tree [get]
+func (h *FolderHandler) Tree(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FolderTreeRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.Tree.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	res, err := h.appContainer.FolderService.GetTree(c.Request.Context(), uid, params)
+	if err != nil {
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(res))
+}
