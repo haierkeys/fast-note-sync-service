@@ -72,6 +72,12 @@ type NoteRepository interface {
 	// ListByFIDCount 根据文件夹ID获取笔记数量
 	ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error)
 
+	// ListByFIDs 根据多个文件夹ID获取笔记列表（处理重复文件夹记录）
+	ListByFIDs(ctx context.Context, fids []int64, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*Note, error)
+
+	// ListByFIDsCount 根据多个文件夹ID获取笔记数量
+	ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error)
+
 	// ListByIDs 根据ID列表获取笔记列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)
 
@@ -86,6 +92,9 @@ type FolderRepository interface {
 
 	// GetByPathHash 根据路径哈希获取文件夹
 	GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*Folder, error)
+
+	// GetAllByPathHash 根据路径哈希获取所有匹配的文件夹（处理重复记录）
+	GetAllByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*Folder, error)
 
 	// GetByFID 根据父级ID获取文件夹列表
 	GetByFID(ctx context.Context, fid int64, vaultID, uid int64) ([]*Folder, error)
@@ -209,6 +218,12 @@ type FileRepository interface {
 
 	// ListByFIDCount 根据文件夹ID获取文件数量
 	ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error)
+
+	// ListByFIDs 根据多个文件夹ID获取文件列表（处理重复文件夹记录）
+	ListByFIDs(ctx context.Context, fids []int64, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*File, error)
+
+	// ListByFIDsCount 根据多个文件夹ID获取文件数量
+	ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error)
 
 	// ListByIDs 根据ID列表获取文件列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*File, error)

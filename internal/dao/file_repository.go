@@ -529,6 +529,45 @@ func (r *fileRepository) ListByFIDCount(ctx context.Context, fid, vaultID, uid i
 	return q.Count()
 }
 
+func (r *fileRepository) ListByFIDs(ctx context.Context, fids []int64, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*domain.File, error) {
+	u := r.file(uid).File
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.In(fids...),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	)
+
+	orderClause := buildFileOrderClause(sortBy, sortOrder)
+
+	var modelList []*model.File
+	err := q.UnderlyingDB().
+		Order(orderClause).
+		Limit(pageSize).
+		Offset(app.GetPageOffset(page, pageSize)).
+		Find(&modelList).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*domain.File
+	for _, m := range modelList {
+		list = append(list, r.toDomain(m, uid))
+	}
+	return list, nil
+}
+
+func (r *fileRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error) {
+	u := r.file(uid).File
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.In(fids...),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	)
+
+	return q.Count()
+}
+
 // ListByIDs 根据ID列表获取文件列表
 func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.File, error) {
 	if len(ids) == 0 {

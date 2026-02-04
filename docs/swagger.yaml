@@ -184,6 +184,32 @@ definitions:
     - path
     - vault
     type: object
+  dto.FolderTreeNode:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/dto.FolderTreeNode'
+        type: array
+      fileCount:
+        type: integer
+      name:
+        type: string
+      noteCount:
+        type: integer
+      path:
+        type: string
+    type: object
+  dto.FolderTreeResponse:
+    properties:
+      folders:
+        items:
+          $ref: '#/definitions/dto.FolderTreeNode'
+        type: array
+      rootFileCount:
+        type: integer
+      rootNoteCount:
+        type: integer
+    type: object
   dto.NoteAppendRequest:
     properties:
       content:
@@ -1037,6 +1063,40 @@ paths:
       security:
       - UserAuthToken: []
       summary: List notes in folder
+      tags:
+      - Folder
+  /api/folder/tree:
+    get:
+      description: Get the complete folder tree structure for a vault
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: 0 or negative = unlimited
+        in: query
+        name: depth
+        type: integer
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FolderTreeResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get folder tree
       tags:
       - Folder
   /api/folders:
