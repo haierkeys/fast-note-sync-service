@@ -98,24 +98,26 @@ type FileService interface {
 // fileService implementation of FileService interface
 // fileService 实现 FileService 接口
 type fileService struct {
-	fileRepo     domain.FileRepository // File repository // 文件仓库
-	noteRepo     domain.NoteRepository // Note repository // 笔记仓库
-	vaultService VaultService          // Vault service // 仓库服务
-	sf           *singleflight.Group   // Singleflight group // 并发请求合并组
-	clientName   string                // Client name // 客户端名称
-	clientVer    string                // Client version // 客户端版本
-	config       *ServiceConfig        // Service configuration // 服务配置
+	fileRepo      domain.FileRepository // File repository // 文件仓库
+	noteRepo      domain.NoteRepository // Note repository // 笔记仓库
+	vaultService  VaultService          // Vault service // 仓库服务
+	folderService FolderService         // Folder service // 文件夹服务
+	sf            *singleflight.Group   // Singleflight group // 并发请求合并组
+	clientName    string                // Client name // 客户端名称
+	clientVer     string                // Client version // 客户端版本
+	config        *ServiceConfig        // Service configuration // 服务配置
 }
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, config *ServiceConfig) FileService {
+func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, config *ServiceConfig) FileService {
 	return &fileService{
-		fileRepo:     fileRepo,
-		noteRepo:     noteRepo,
-		vaultService: vaultSvc,
-		sf:           &singleflight.Group{},
-		config:       config,
+		fileRepo:      fileRepo,
+		noteRepo:      noteRepo,
+		vaultService:  vaultSvc,
+		folderService: folderSvc,
+		sf:            &singleflight.Group{},
+		config:        config,
 	}
 }
 
@@ -264,6 +266,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
 		return isNew, s.domainToDTO(updated), nil
 	}
 
@@ -288,6 +291,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
 	return isNew, s.domainToDTO(created), nil
 }
 
@@ -423,7 +427,11 @@ func (s *fileService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
-		return nil, s.vaultService.UpdateFileStats(ctx, result.Size, result.Count, vaultID, uid)
+		err = s.vaultService.UpdateFileStats(ctx, result.Size, result.Count, vaultID, uid)
+		if err == nil {
+			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, nil)
+		}
+		return nil, err
 	})
 	return err
 }

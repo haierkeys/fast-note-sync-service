@@ -40,6 +40,23 @@ func (r *noteRepository) note(uid int64) *query.Query {
 	}, r.GetKey(uid)+"#note", r.GetKey(uid))
 }
 
+// ListByIDs 根据ID列表获取笔记列表
+func (r *noteRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.Note, error) {
+	if len(ids) == 0 {
+		return []*domain.Note{}, nil
+	}
+	u := r.note(uid).Note
+	ms, err := u.WithContext(ctx).Where(u.ID.In(ids...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Note
+	for _, m := range ms {
+		res = append(res, r.toDomain(m, uid))
+	}
+	return res, nil
+}
+
 // EnsureFTSIndex 确保 FTS 索引存在（公开方法，可手动调用）
 func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {

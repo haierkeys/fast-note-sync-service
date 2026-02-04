@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +26,8 @@ type FolderService interface {
 	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) error
 	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.NoteDTO, error)
 	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.FileDTO, error)
+	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
+	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 }
 
 type folderService struct {
@@ -31,6 +35,7 @@ type folderService struct {
 	noteRepo     domain.NoteRepository
 	fileRepo     domain.FileRepository
 	vaultService VaultService
+	sf           singleflight.Group
 }
 
 func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService) FolderService {
@@ -39,6 +44,7 @@ func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRe
 		noteRepo:     noteRepo,
 		fileRepo:     fileRepo,
 		vaultService: vaultSvc,
+		sf:           singleflight.Group{},
 	}
 }
 
@@ -343,4 +349,105 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		})
 	}
 	return res, nil
+}
+
+// EnsurePathFID 确保资源的父目录存在并返回其 ID
+func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error) {
+	path = strings.Trim(path, "/")
+	if path == "" || !strings.Contains(path, "/") {
+		return 0, nil
+	}
+
+	lastSlash := strings.LastIndex(path, "/")
+	parentPath := path[:lastSlash]
+
+	// 补全目录逻辑
+	parts := strings.Split(parentPath, "/")
+	var currentFID int64 = 0
+
+	for i := range parts {
+		currentPath := strings.Join(parts[:i+1], "/")
+		pathHash := util.EncodeHash32(currentPath)
+
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				newFolder := &domain.Folder{
+					VaultID:  vaultID,
+					Action:   domain.FolderActionCreate,
+					Path:     currentPath,
+					PathHash: pathHash,
+					Level:    int64(i + 1),
+					FID:      currentFID,
+				}
+				f, err = s.folderRepo.Create(ctx, newFolder, uid)
+				if err != nil {
+					return 0, err
+				}
+			} else {
+				return 0, err
+			}
+		} else if f.Action == domain.FolderActionDelete {
+			f.Action = domain.FolderActionCreate
+
+			f, err = s.folderRepo.Update(ctx, f, uid)
+			if err != nil {
+				return 0, err
+			}
+		}
+		currentFID = f.ID
+	}
+	return currentFID, nil
+}
+
+// SyncResourceFID 同步 Vault 下资源的 FID（支持全量或部分同步）
+func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {
+	key := fmt.Sprintf("sync_resource_fid_%d_%d", uid, vaultID)
+	// 如果是部分同步，不使用 singleflight，或者使用不同的 key
+	if len(noteIDs) > 0 || len(fileIDs) > 0 {
+		key = fmt.Sprintf("sync_resource_fid_%d_%d_%v_%v", uid, vaultID, noteIDs, fileIDs)
+	}
+
+	_, err, _ := s.sf.Do(key, func() (any, error) {
+		// 同步笔记
+		var notes []*domain.Note
+		var err error
+		if len(noteIDs) > 0 {
+			notes, err = s.noteRepo.ListByIDs(ctx, noteIDs, uid)
+		} else if len(noteIDs) == 0 && len(fileIDs) == 0 {
+			// 全量同步
+			notes, err = s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+		}
+
+		if err == nil {
+			for _, n := range notes {
+				fid, err := s.EnsurePathFID(ctx, uid, vaultID, n.Path)
+				if err == nil && n.FID != fid {
+					n.FID = fid
+					_, _ = s.noteRepo.Update(ctx, n, uid)
+				}
+			}
+		}
+
+		// 同步文件
+		var files []*domain.File
+		if len(fileIDs) > 0 {
+			files, err = s.fileRepo.ListByIDs(ctx, fileIDs, uid)
+		} else if len(noteIDs) == 0 && len(fileIDs) == 0 {
+			// 全量同步
+			files, err = s.fileRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+		}
+
+		if err == nil {
+			for _, f := range files {
+				fid, err := s.EnsurePathFID(ctx, uid, vaultID, f.Path)
+				if err == nil && f.FID != fid {
+					f.FID = fid
+					_, _ = s.fileRepo.Update(ctx, f, uid)
+				}
+			}
+		}
+		return nil, nil
+	})
+	return err
 }
