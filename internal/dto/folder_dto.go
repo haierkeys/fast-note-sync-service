@@ -63,3 +63,14 @@ type FolderRenameRequest struct {
 	Path    string `json:"path" form:"path" binding:"required"`
 	OldPath string `json:"oldPath" form:"oldPath" binding:"required"`
 }
+
+// FolderContentRequest 获取文件夹内容的请求参数
+type FolderContentRequest struct {
+	Vault     string `json:"vault" form:"vault" binding:"required"`
+	Path      string `json:"path" form:"path"`
+	PathHash  string `json:"pathHash" form:"pathHash"`
+	Page      int    `json:"page" form:"page"`
+	PageSize  int    `json:"pageSize" form:"pageSize"`
+	SortBy    string `json:"sortBy" form:"sortBy"`
+	SortOrder string `json:"sortOrder" form:"sortOrder"`
+}

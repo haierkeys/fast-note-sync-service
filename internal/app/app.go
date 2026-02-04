@@ -203,7 +203,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
-	a.FolderService = service.NewFolderService(a.FolderRepo, a.VaultService)
+	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),

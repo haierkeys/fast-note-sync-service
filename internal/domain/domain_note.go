@@ -18,6 +18,7 @@ type Note struct {
 	VaultID                 int64
 	Action                  NoteAction
 	Rename                  int64
+	FID                     int64
 	Path                    string
 	PathHash                string
 	Content                 string
@@ -32,25 +33,6 @@ type Note struct {
 	UpdatedTimestamp        int64
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
-}
-
-// NoteNoContent 不包含内容的笔记（用于列表查询）
-type NoteNoContent struct {
-	ID               int64
-	VaultID          int64
-	Action           NoteAction
-	Rename           int64
-	Path             string
-	PathHash         string
-	ContentHash      string
-	Version          int64
-	ClientName       string
-	Size             int64
-	Ctime            int64
-	Mtime            int64
-	UpdatedTimestamp int64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
 }
 
 // CountSizeResult 统计结果

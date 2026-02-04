@@ -65,6 +65,9 @@ type NoteRepository interface {
 
 	// CountSizeSum 获取笔记数量和大小总和
 	CountSizeSum(ctx context.Context, vaultID, uid int64) (*CountSizeResult, error)
+
+	// ListByFID 根据文件夹ID获取笔记列表
+	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*Note, error)
 }
 
 // FolderRepository 文件夹仓储接口
@@ -188,6 +191,9 @@ type FileRepository interface {
 
 	// CountSizeSum 获取文件数量和大小总和
 	CountSizeSum(ctx context.Context, vaultID, uid int64) (*CountSizeResult, error)
+
+	// ListByFID 根据文件夹ID获取文件列表
+	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*File, error)
 }
 
 // SettingRepository 配置仓储接口
