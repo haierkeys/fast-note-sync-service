@@ -39,6 +39,7 @@ func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 // @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FileListRequest true "Query Parameters"
+// @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "Success"
 // @Router /api/files [get]
 func (h *FileHandler) List(c *gin.Context) {
@@ -67,7 +68,7 @@ func (h *FileHandler) List(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	pager := &pkgapp.Pager{Page: pkgapp.GetPage(c), PageSize: pkgapp.GetPageSize(c)}
+	pager := pkgapp.NewPager(c)
 	fileSvc := h.App.GetFileService(app.WebClientName, "")
 	files, count, err := fileSvc.List(ctx, uid, params, pager)
 	if err != nil {

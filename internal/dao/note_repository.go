@@ -343,6 +343,7 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 			u.Version,
 			u.UpdatedAt,
 			u.UpdatedTimestamp,
+			u.FID,
 		).Save(m)
 
 		if updateErr != nil {
@@ -723,7 +724,7 @@ func (r *noteRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 // ListByFID 根据文件夹ID获取笔记列表
 func (r *noteRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*domain.Note, error) {
 	u := r.note(uid).Note
-	q := u.WithContext(ctx).Where(
+	q := u.WithContext(ctx).Debug().Where(
 		u.VaultID.Eq(vaultID),
 		u.FID.Eq(fid),
 		u.Action.Neq("delete"),

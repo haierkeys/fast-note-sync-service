@@ -20,7 +20,7 @@ func NewFolderRepository(d *Dao) domain.FolderRepository {
 }
 
 func (r *folderRepository) GetKey(uid int64) string {
-	return "user_" + fmt.Sprintf("%d", uid)
+	return "user_folder_" + fmt.Sprintf("%d", uid)
 }
 
 func (r *folderRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Folder, error) {

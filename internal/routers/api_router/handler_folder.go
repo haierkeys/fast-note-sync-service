@@ -7,6 +7,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type FolderHandler struct {
@@ -29,14 +30,15 @@ func NewFolderHandler(appContainer *app.App) *FolderHandler {
 // @Router /api/folder [get]
 func (h *FolderHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	var params dto.FolderListRequest
-	if err := c.ShouldBindQuery(&params); err != nil {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	params := &dto.FolderListRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.List.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.List(c.Request.Context(), uid, &params)
+	res, err := h.appContainer.FolderService.List(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -58,14 +60,15 @@ func (h *FolderHandler) List(c *gin.Context) {
 // @Router /api/folder [post]
 func (h *FolderHandler) Create(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	var params dto.FolderCreateRequest
-	if err := c.ShouldBindJSON(&params); err != nil {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	params := &dto.FolderCreateRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.Create.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.UpdateOrCreate(c.Request.Context(), uid, &params)
+	res, err := h.appContainer.FolderService.UpdateOrCreate(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -87,14 +90,15 @@ func (h *FolderHandler) Create(c *gin.Context) {
 // @Router /api/folder [delete]
 func (h *FolderHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	var params dto.FolderDeleteRequest
-	if err := c.ShouldBindJSON(&params); err != nil {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	params := &dto.FolderDeleteRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.Delete.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	err := h.appContainer.FolderService.Delete(c.Request.Context(), uid, &params)
+	err := h.appContainer.FolderService.Delete(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -111,18 +115,22 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
+// @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "Success"
 // @Router /api/folder/notes [get]
 func (h *FolderHandler) ListNotes(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	var params dto.FolderContentRequest
-	if err := c.ShouldBindQuery(&params); err != nil {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	params := &dto.FolderContentRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.ListNotes.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.ListNotes(c.Request.Context(), uid, &params)
+	pager := pkgapp.NewPager(c)
+
+	res, err := h.appContainer.FolderService.ListNotes(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -139,18 +147,21 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
+// @Param params query pkgapp.PaginationRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "Success"
 // @Router /api/folder/files [get]
 func (h *FolderHandler) ListFiles(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-	var params dto.FolderContentRequest
-	if err := c.ShouldBindQuery(&params); err != nil {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	params := &dto.FolderContentRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.ListFiles.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.ListFiles(c.Request.Context(), uid, &params)
+	pager := pkgapp.NewPager(c)
+	res, err := h.appContainer.FolderService.ListFiles(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
