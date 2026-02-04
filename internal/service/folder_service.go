@@ -24,7 +24,7 @@ type FolderService interface {
 	ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error)
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
 	Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) error
-	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) error
+	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) (*dto.FolderDTO, *dto.FolderDTO, error)
 	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, error)
 	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, error)
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
@@ -60,6 +60,8 @@ func (s *folderService) domainToDTO(f *domain.Folder) *dto.FolderDTO {
 		PathHash:         f.PathHash,
 		Level:            f.Level,
 		FID:              f.FID,
+		Ctime:            f.Ctime,
+		Mtime:            f.Mtime,
 		UpdatedTimestamp: f.UpdatedTimestamp,
 		UpdatedAt:        timex.Time(f.UpdatedAt),
 		CreatedAt:        timex.Time(f.CreatedAt),
@@ -137,6 +139,8 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 					PathHash:         pathHash,
 					Level:            int64(i + 1),
 					FID:              currentFID,
+					Ctime:            time.Now().UnixMilli(),
+					Mtime:            time.Now().UnixMilli(),
 					UpdatedTimestamp: time.Now().UnixMilli(),
 				}
 				f, err = s.folderRepo.Create(ctx, newFolder, uid)
@@ -149,6 +153,8 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 		} else if f.Action == domain.FolderActionDelete {
 			// 如果已被删除，恢复它
 			f.Action = domain.FolderActionCreate
+			f.Ctime = time.Now().UnixMilli()
+			f.Mtime = time.Now().UnixMilli()
 			f.UpdatedTimestamp = time.Now().UnixMilli()
 			f, err = s.folderRepo.Update(ctx, f, uid)
 			if err != nil {
@@ -216,33 +222,77 @@ func (s *folderService) ListByUpdatedTimestamp(ctx context.Context, uid int64, v
 	return res, nil
 }
 
-func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) error {
+func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) (*dto.FolderDTO, *dto.FolderDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	oldPathHash := util.EncodeHash32(params.OldPath)
+	newPath := strings.Trim(params.Path, "/")
+	newPathHash := util.EncodeHash32(newPath)
+
+	// 1. 判断目标目录是否存在
+	existFolder, _ := s.folderRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
+	if existFolder != nil && existFolder.Action != domain.FolderActionDelete {
+		return nil, nil, code.ErrorFolderExist
+	}
+
+	oldPath := strings.Trim(params.OldPath, "/")
+	oldPathHash := params.OldPathHash
+	if oldPathHash == "" {
+		oldPathHash = util.EncodeHash32(oldPath)
+	}
+
+	// 2. 获取旧文件夹
 	f, err := s.folderRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return code.ErrorFolderNotFound
+			return nil, nil, code.ErrorFolderNotFound
 		}
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Update folder itself
-	f.Path = params.Path
-	f.PathHash = util.EncodeHash32(params.Path)
+	// 3. 标记旧文件夹删除
+	f.Action = domain.FolderActionDelete
 	f.UpdatedTimestamp = timex.Now().UnixMilli()
-	f.Action = domain.FolderActionModify
-
-	_, err = s.folderRepo.Update(ctx, f, uid)
+	oldFolder, err := s.folderRepo.Update(ctx, f, uid)
 	if err != nil {
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	return nil
+	// 4. 新建或复用文件夹记录
+	var newFolderCreated *domain.Folder
+	if existFolder != nil {
+		// 复用已删除的记录
+		existFolder.Action = domain.FolderActionCreate
+		existFolder.Path = newPath
+		existFolder.PathHash = newPathHash
+		existFolder.Level = f.Level
+		existFolder.FID = f.FID
+		existFolder.Mtime = timex.Now().UnixMilli()
+		existFolder.UpdatedTimestamp = timex.Now().UnixMilli()
+		newFolderCreated, err = s.folderRepo.Update(ctx, existFolder, uid)
+	} else {
+		// 创建新记录
+		newFolder := &domain.Folder{
+			VaultID:          vaultID,
+			Action:           domain.FolderActionCreate,
+			Path:             newPath,
+			PathHash:         newPathHash,
+			Level:            f.Level,
+			FID:              f.FID,
+			Ctime:            f.Ctime,
+			Mtime:            timex.Now().UnixMilli(),
+			UpdatedTimestamp: timex.Now().UnixMilli(),
+		}
+		newFolderCreated, err = s.folderRepo.Create(ctx, newFolder, uid)
+	}
+
+	if err != nil {
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	return s.domainToDTO(oldFolder), s.domainToDTO(newFolderCreated), nil
 }
 
 func (s *folderService) Get(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error) {

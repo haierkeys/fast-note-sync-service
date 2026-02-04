@@ -10,6 +10,8 @@ type FolderDTO struct {
 	PathHash         string     `json:"pathHash" form:"pathHash"`
 	Level            int64      `json:"-" form:"level"`
 	FID              int64      `json:"-" form:"fid"`
+	Ctime            int64      `json:"-" form:"ctime"`
+	Mtime            int64      `json:"-" form:"mtime"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
 	UpdatedAt        timex.Time `json:"-"`
 	CreatedAt        timex.Time `json:"-"`
@@ -59,9 +61,11 @@ type FolderSyncRequest struct {
 
 // FolderRenameRequest 文件夹重命名请求参数
 type FolderRenameRequest struct {
-	Vault   string `json:"vault" form:"vault" binding:"required"`
-	Path    string `json:"path" form:"path" binding:"required"`
-	OldPath string `json:"oldPath" form:"oldPath" binding:"required"`
+	Vault       string `json:"vault" form:"vault" binding:"required"`
+	Path        string `json:"path" form:"path" binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required"`
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"`
 }
 
 // FolderContentRequest 获取文件夹内容的请求参数
