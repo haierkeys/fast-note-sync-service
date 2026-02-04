@@ -25,8 +25,8 @@ type FolderService interface {
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
 	Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) error
 	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) (*dto.FolderDTO, *dto.FolderDTO, error)
-	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, error)
-	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, error)
+	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, int, error)
+	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, int, error)
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 }
@@ -133,15 +133,14 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// 创建缺失的目录
 				newFolder := &domain.Folder{
-					VaultID:          vaultID,
-					Action:           domain.FolderActionCreate,
-					Path:             currentPath,
-					PathHash:         pathHash,
-					Level:            int64(i + 1),
-					FID:              currentFID,
-					Ctime:            time.Now().UnixMilli(),
-					Mtime:            time.Now().UnixMilli(),
-					UpdatedTimestamp: time.Now().UnixMilli(),
+					VaultID:  vaultID,
+					Action:   domain.FolderActionCreate,
+					Path:     currentPath,
+					PathHash: pathHash,
+					Level:    int64(i + 1),
+					FID:      currentFID,
+					Ctime:    time.Now().UnixMilli(),
+					Mtime:    time.Now().UnixMilli(),
 				}
 				f, err = s.folderRepo.Create(ctx, newFolder, uid)
 				if err != nil {
@@ -155,7 +154,6 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 			f.Action = domain.FolderActionCreate
 			f.Ctime = time.Now().UnixMilli()
 			f.Mtime = time.Now().UnixMilli()
-			f.UpdatedTimestamp = time.Now().UnixMilli()
 			f, err = s.folderRepo.Update(ctx, f, uid)
 			if err != nil {
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
@@ -270,6 +268,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		existFolder.Level = f.Level
 		existFolder.FID = f.FID
 		existFolder.Mtime = timex.Now().UnixMilli()
+		existFolder.Ctime = timex.Now().UnixMilli()
 		existFolder.UpdatedTimestamp = timex.Now().UnixMilli()
 		newFolderCreated, err = s.folderRepo.Update(ctx, existFolder, uid)
 	} else {
@@ -281,7 +280,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 			PathHash:         newPathHash,
 			Level:            f.Level,
 			FID:              f.FID,
-			Ctime:            f.Ctime,
+			Ctime:            timex.Now().UnixMilli(),
 			Mtime:            timex.Now().UnixMilli(),
 			UpdatedTimestamp: timex.Now().UnixMilli(),
 		}
@@ -321,10 +320,10 @@ func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGe
 	return s.domainToDTO(f), nil
 }
 
-func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, error) {
+func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, int, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var fid int64 = 0
@@ -342,9 +341,13 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 	}
 
 	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
-
 	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+	if err != nil {
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var res []*dto.NoteNoContentDTO
@@ -362,13 +365,13 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 			CreatedAt:        timex.Time(n.CreatedAt),
 		})
 	}
-	return res, nil
+	return res, int(count), nil
 }
 
-func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, error) {
+func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, int, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var fid int64 = 0
@@ -387,7 +390,12 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 
 	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+	if err != nil {
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var res []*dto.FileDTO
@@ -407,7 +415,7 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 			CreatedAt:        timex.Time(f.CreatedAt),
 		})
 	}
-	return res, nil
+	return res, int(count), nil
 }
 
 // EnsurePathFID 确保资源的父目录存在并返回其 ID
@@ -438,6 +446,8 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 					PathHash: pathHash,
 					Level:    int64(i + 1),
 					FID:      currentFID,
+					Ctime:    timex.Now().UnixMilli(),
+					Mtime:    timex.Now().UnixMilli(),
 				}
 				f, err = s.folderRepo.Create(ctx, newFolder, uid)
 				if err != nil {
@@ -448,6 +458,8 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 			}
 		} else if f.Action == domain.FolderActionDelete {
 			f.Action = domain.FolderActionCreate
+			f.Ctime = timex.Now().UnixMilli()
+			f.Mtime = timex.Now().UnixMilli()
 
 			f, err = s.folderRepo.Update(ctx, f, uid)
 			if err != nil {

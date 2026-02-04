@@ -10,8 +10,8 @@ type FolderDTO struct {
 	PathHash         string     `json:"pathHash" form:"pathHash"`
 	Level            int64      `json:"-" form:"level"`
 	FID              int64      `json:"-" form:"fid"`
-	Ctime            int64      `json:"-" form:"ctime"`
-	Mtime            int64      `json:"-" form:"mtime"`
+	Ctime            int64      `json:"ctime" form:"ctime"`
+	Mtime            int64      `json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
 	UpdatedAt        timex.Time `json:"-"`
 	CreatedAt        timex.Time `json:"-"`
@@ -30,7 +30,6 @@ type FolderListRequest struct {
 	Path     string `json:"path" form:"path"`
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
-
 
 // FolderCreateRequest 创建文件夹请求参数
 type FolderCreateRequest struct {

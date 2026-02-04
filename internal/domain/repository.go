@@ -69,6 +69,9 @@ type NoteRepository interface {
 	// ListByFID 根据文件夹ID获取笔记列表
 	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*Note, error)
 
+	// ListByFIDCount 根据文件夹ID获取笔记数量
+	ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error)
+
 	// ListByIDs 根据ID列表获取笔记列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)
 
@@ -203,6 +206,9 @@ type FileRepository interface {
 
 	// ListByFID 根据文件夹ID获取文件列表
 	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*File, error)
+
+	// ListByFIDCount 根据文件夹ID获取文件数量
+	ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error)
 
 	// ListByIDs 根据ID列表获取文件列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*File, error)

@@ -40,7 +40,7 @@ func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 // @Produce json
 // @Param params query dto.FileListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
-// @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "Success"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.FileDTO}} "Success"
 // @Router /api/files [get]
 func (h *FileHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

@@ -454,10 +454,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.FileDTO"
-                                            }
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.FileDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -703,10 +715,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.FileDTO"
-                                            }
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.FileDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -790,10 +814,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.NoteDTO"
-                                            }
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.NoteDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -1325,10 +1361,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.NoteHistoryDTO"
-                                            }
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.NoteHistoryDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -1833,10 +1881,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.NoteDTO"
-                                            }
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.NoteDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -2565,6 +2625,39 @@ const docTemplate = `{
                 }
             }
         },
+        "app.ListRes": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "description": "Data list // 数据清单"
+                },
+                "pager": {
+                    "description": "Pagination info // 翻页信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/app.Pager"
+                        }
+                    ]
+                }
+            }
+        },
+        "app.Pager": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "description": "Page number // 页码",
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "description": "Page size // 每页数量",
+                    "type": "integer"
+                },
+                "totalRows": {
+                    "description": "Total rows // 总行数",
+                    "type": "integer"
+                }
+            }
+        },
         "app.Res": {
             "type": "object",
             "properties": {
@@ -2668,7 +2761,13 @@ const docTemplate = `{
         "dto.FolderDTO": {
             "type": "object",
             "properties": {
+                "ctime": {
+                    "type": "integer"
+                },
                 "lastTime": {
+                    "type": "integer"
+                },
+                "mtime": {
                     "type": "integer"
                 },
                 "path": {

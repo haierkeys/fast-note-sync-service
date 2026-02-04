@@ -770,6 +770,18 @@ func (r *noteRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 	return list, nil
 }
 
+// ListByFIDCount 根据文件夹ID获取笔记数量
+func (r *noteRepository) ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error) {
+	u := r.note(uid).Note
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.Eq(fid),
+		u.Action.Neq("delete"),
+	)
+
+	return q.Count()
+}
+
 // 确保 noteRepository 实现了 domain.NoteRepository 接口
 var _ domain.NoteRepository = (*noteRepository)(nil)
 
