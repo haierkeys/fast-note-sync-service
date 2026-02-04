@@ -833,6 +833,64 @@
                 }
             }
         },
+        "/api/folder/tree": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get the complete folder tree structure for a vault",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folder"
+                ],
+                "summary": "Get folder tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "0 or negative = unlimited",
+                        "name": "depth",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FolderTreeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/folders": {
             "get": {
                 "security": [
@@ -2787,6 +2845,46 @@
                 },
                 "vault": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.FolderTreeNode": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FolderTreeNode"
+                    }
+                },
+                "fileCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "noteCount": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FolderTreeResponse": {
+            "type": "object",
+            "properties": {
+                "folders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FolderTreeNode"
+                    }
+                },
+                "rootFileCount": {
+                    "type": "integer"
+                },
+                "rootNoteCount": {
+                    "type": "integer"
                 }
             }
         },

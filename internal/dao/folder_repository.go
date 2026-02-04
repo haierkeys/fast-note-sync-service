@@ -49,6 +49,19 @@ func (r *folderRepository) GetByPathHash(ctx context.Context, pathHash string, v
 	return r.modelToDomain(m), nil
 }
 
+func (r *folderRepository) GetAllByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*domain.Folder, error) {
+	f := r.folder(uid).Folder
+	ms, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.PathHash.Eq(pathHash), f.Action.Neq("delete")).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Folder
+	for _, m := range ms {
+		res = append(res, r.modelToDomain(m))
+	}
+	return res, nil
+}
+
 func (r *folderRepository) GetByFID(ctx context.Context, fid int64, vaultID, uid int64) ([]*domain.Folder, error) {
 	var ms []*model.Folder
 	f := r.folder(uid).Folder

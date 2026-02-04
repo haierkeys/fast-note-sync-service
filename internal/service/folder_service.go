@@ -75,35 +75,56 @@ func (s *folderService) List(ctx context.Context, uid int64, params *dto.FolderL
 		return nil, err
 	}
 
-	var fid int64 = 0
+	// Collect all FIDs to query. Concurrent note sync can create duplicate
+	// folder records for the same path (race in EnsurePathFID), so a single
+	// path may map to multiple DB IDs. We need to query children by all of
+	// them to get complete results.
+	fids := []int64{0}
 	if params.PathHash != "" {
-		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, code.ErrorFolderNotFound
-			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
-		fid = f.ID
+		if len(matches) == 0 {
+			return nil, code.ErrorFolderNotFound
+		}
+		fids = make([]int64, 0, len(matches))
+		for _, f := range matches {
+			fids = append(fids, f.ID)
+		}
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, code.ErrorFolderNotFound
-			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
-		fid = f.ID
+		if len(matches) == 0 {
+			return nil, code.ErrorFolderNotFound
+		}
+		fids = make([]int64, 0, len(matches))
+		for _, f := range matches {
+			fids = append(fids, f.ID)
+		}
 	}
 
-	folders, err := s.folderRepo.GetByFID(ctx, fid, vaultID, uid)
-	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	// Query children across all matching parent FIDs
+	var allFolders []*domain.Folder
+	for _, fid := range fids {
+		folders, err := s.folderRepo.GetByFID(ctx, fid, vaultID, uid)
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+		allFolders = append(allFolders, folders...)
 	}
 
+	// Deduplicate by PathHash (same pattern as ListByUpdatedTimestamp)
 	var res []*dto.FolderDTO
-	for _, f := range folders {
+	seen := make(map[string]bool)
+	for _, f := range allFolders {
+		if seen[f.PathHash] {
+			continue
+		}
+		seen[f.PathHash] = true
 		res = append(res, s.domainToDTO(f))
 	}
 	return res, nil
@@ -327,26 +348,33 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	var fid int64 = 0
+	// Resolve all FIDs for the path (handles duplicate folder records)
+	fids := []int64{0}
 	if params.PathHash != "" {
-		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil && len(matches) > 0 {
+			fids = make([]int64, 0, len(matches))
+			for _, f := range matches {
+				fids = append(fids, f.ID)
+			}
 		}
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil && len(matches) > 0 {
+			fids = make([]int64, 0, len(matches))
+			for _, f := range matches {
+				fids = append(fids, f.ID)
+			}
 		}
 	}
 
-	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
+	notes, err := s.noteRepo.ListByFIDs(ctx, fids, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+	count, err := s.noteRepo.ListByFIDsCount(ctx, fids, vaultID, uid)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -375,26 +403,33 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	var fid int64 = 0
+	// Resolve all FIDs for the path (handles duplicate folder records)
+	fids := []int64{0}
 	if params.PathHash != "" {
-		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil && len(matches) > 0 {
+			fids = make([]int64, 0, len(matches))
+			for _, f := range matches {
+				fids = append(fids, f.ID)
+			}
 		}
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil && len(matches) > 0 {
+			fids = make([]int64, 0, len(matches))
+			for _, f := range matches {
+				fids = append(fids, f.ID)
+			}
 		}
 	}
 
-	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
+	files, err := s.fileRepo.ListByFIDs(ctx, fids, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+	count, err := s.fileRepo.ListByFIDsCount(ctx, fids, vaultID, uid)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -420,6 +455,20 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 }
 
 // EnsurePathFID 确保资源的父目录存在并返回其 ID
+//
+// NOTE: Race condition — when multiple notes sync concurrently (even from a
+// single device), each goroutine calls EnsurePathFID independently. The
+// check-then-create below (GetByPathHash → Create) is not atomic, so two
+// goroutines can both see "not found" and both insert a folder record for the
+// same path. This produces duplicate rows in the folder table (confirmed via
+// direct DB inspection — e.g. 3 rows for "projects" with IDs 4,5,6).
+//
+// The query-side methods (List, ListNotes, ListFiles, GetTree) handle this by
+// resolving all folder IDs per path (GetAllByPathHash + FID IN queries).
+//
+// A proper fix would be to either:
+//   - Use singleflight keyed by (vaultID, path) to coalesce concurrent creates
+//   - Add a UNIQUE constraint on (vault_id, path_hash) and handle conflict
 func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error) {
 	path = strings.Trim(path, "/")
 	if path == "" || !strings.Contains(path, "/") {
