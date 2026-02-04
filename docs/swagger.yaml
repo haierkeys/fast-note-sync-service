@@ -69,6 +69,27 @@ definitions:
         description: Registration enablement // 是否开启注册
         type: boolean
     type: object
+  app.ListRes:
+    properties:
+      list:
+        description: Data list // 数据清单
+      pager:
+        allOf:
+        - $ref: '#/definitions/app.Pager'
+        description: Pagination info // 翻页信息
+    type: object
+  app.Pager:
+    properties:
+      page:
+        description: Page number // 页码
+        type: integer
+      pageSize:
+        description: Page size // 每页数量
+        type: integer
+      totalRows:
+        description: Total rows // 总行数
+        type: integer
+    type: object
   app.Res:
     properties:
       code:
@@ -140,7 +161,11 @@ definitions:
     type: object
   dto.FolderDTO:
     properties:
+      ctime:
+        type: integer
       lastTime:
+        type: integer
+      mtime:
         type: integer
       path:
         type: string
@@ -787,9 +812,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.FileDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.FileDTO'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []
@@ -937,9 +967,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.FileDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.FileDTO'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []
@@ -990,9 +1025,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.NoteDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.NoteDTO'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []
@@ -1308,9 +1348,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.NoteHistoryDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.NoteHistoryDTO'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []
@@ -1610,9 +1655,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.NoteDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.NoteDTO'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []

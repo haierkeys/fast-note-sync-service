@@ -145,7 +145,7 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
-// @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "Success"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.NoteDTO}} "Success"
 // @Router /api/folder/notes [get]
 func (h *FolderHandler) ListNotes(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -159,13 +159,13 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	pager := pkgapp.NewPager(c)
 
-	res, err := h.appContainer.FolderService.ListNotes(c.Request.Context(), uid, params, pager)
+	res, count, err := h.appContainer.FolderService.ListNotes(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
 	}
 
-	response.ToResponse(code.Success.WithData(res))
+	response.ToResponseList(code.Success, res, count)
 }
 
 // ListFiles retrieves files in a folder
@@ -177,7 +177,7 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
 // @Param params query pkgapp.PaginationRequest true "Query Parameters"
-// @Success 200 {object} pkgapp.Res{data=[]dto.FileDTO} "Success"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.FileDTO}} "Success"
 // @Router /api/folder/files [get]
 func (h *FolderHandler) ListFiles(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -190,11 +190,11 @@ func (h *FolderHandler) ListFiles(c *gin.Context) {
 
 	uid := pkgapp.GetUID(c)
 	pager := pkgapp.NewPager(c)
-	res, err := h.appContainer.FolderService.ListFiles(c.Request.Context(), uid, params, pager)
+	res, count, err := h.appContainer.FolderService.ListFiles(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
 	}
 
-	response.ToResponse(code.Success.WithData(res))
+	response.ToResponseList(code.Success, res, count)
 }

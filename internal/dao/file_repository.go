@@ -517,6 +517,18 @@ func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 	return list, nil
 }
 
+// ListByFIDCount 根据文件夹ID获取文件数量
+func (r *fileRepository) ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error) {
+	u := r.file(uid).File
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.Eq(fid),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	)
+
+	return q.Count()
+}
+
 // ListByIDs 根据ID列表获取文件列表
 func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.File, error) {
 	if len(ids) == 0 {

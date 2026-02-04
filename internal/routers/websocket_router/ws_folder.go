@@ -80,6 +80,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		for _, missingFolder := range params.MissingFolders {
 			folder, err := h.App.FolderService.Get(ctx, uid, &dto.FolderGetRequest{
 				Vault:    params.Vault,
+				Path:     missingFolder.Path,
 				PathHash: missingFolder.PathHash,
 			})
 			if err != nil {
