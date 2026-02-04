@@ -19,7 +19,7 @@ import (
 
 // FolderService 文件夹业务服务接口
 type FolderService interface {
-	Get(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error)
+	Get(ctx context.Context, uid int64, params *dto.FolderGetRequest) (*dto.FolderDTO, error)
 	List(ctx context.Context, uid int64, params *dto.FolderListRequest) ([]*dto.FolderDTO, error)
 	ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error)
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
@@ -245,10 +245,19 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 	return nil
 }
 
-func (s *folderService) Get(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error) {
-	vaultID, err := s.vaultService.MustGetID(ctx, uid, vault)
+func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGetRequest) (*dto.FolderDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
+	}
+
+	pathHash := params.PathHash
+	if pathHash == "" && params.Path != "" {
+		pathHash = util.EncodeHash32(params.Path)
+	}
+
+	if pathHash == "" {
+		return nil, code.ErrorInvalidParams.WithDetails("path or pathHash is required")
 	}
 
 	f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)

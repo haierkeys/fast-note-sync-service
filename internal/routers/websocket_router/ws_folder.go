@@ -78,7 +78,10 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Handle missing folders on client
 	if params.LastTime > 0 && len(params.MissingFolders) > 0 {
 		for _, missingFolder := range params.MissingFolders {
-			folder, err := h.App.FolderService.Get(ctx, uid, params.Vault, missingFolder.PathHash)
+			folder, err := h.App.FolderService.Get(ctx, uid, &dto.FolderGetRequest{
+				Vault:    params.Vault,
+				PathHash: missingFolder.PathHash,
+			})
 			if err != nil {
 				h.App.Logger().Warn("failed to fetch missing folder during sync",
 					zap.String(logpkg.FieldTraceID, c.TraceID),

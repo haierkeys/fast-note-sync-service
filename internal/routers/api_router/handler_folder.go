@@ -18,6 +18,35 @@ func NewFolderHandler(appContainer *app.App) *FolderHandler {
 	return &FolderHandler{appContainer: appContainer}
 }
 
+// Get retrieves a folder
+// @Summary Get folder info
+// @Description Get folder info for current user by path or pathHash
+// @Tags Folder
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Param params query dto.FolderGetRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FolderDTO} "Success"
+// @Router /api/folder [get]
+func (h *FolderHandler) Get(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FolderGetRequest{}
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.appContainer.Logger().Error("FolderHandler.Get.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	res, err := h.appContainer.FolderService.Get(c.Request.Context(), uid, params)
+	if err != nil {
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(res))
+}
+
 // List retrieves folder list
 // @Summary Get folder list
 // @Description Get folder list for current user by parent path or pathHash
@@ -27,7 +56,7 @@ func NewFolderHandler(appContainer *app.App) *FolderHandler {
 // @Produce json
 // @Param params query dto.FolderListRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.FolderDTO} "Success"
-// @Router /api/folder [get]
+// @Router /api/folders [get]
 func (h *FolderHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderListRequest{}
