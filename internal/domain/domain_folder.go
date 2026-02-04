@@ -20,6 +20,8 @@ type Folder struct {
 	PathHash         string
 	Level            int64
 	FID              int64
+	Ctime            int64
+	Mtime            int64
 	UpdatedTimestamp int64
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
