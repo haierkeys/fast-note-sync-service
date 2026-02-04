@@ -7,6 +7,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"gorm.io/gorm"
 )
@@ -23,8 +24,15 @@ func (r *folderRepository) GetKey(uid int64) string {
 	return "user_folder_" + fmt.Sprintf("%d", uid)
 }
 
+// folder returns the query with auto-migration
+func (r *folderRepository) folder(uid int64) *query.Query {
+	return r.Dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+		model.AutoMigrate(g, "Folder")
+	}, r.GetKey(uid)+"#folder", r.GetKey(uid))
+}
+
 func (r *folderRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Folder, error) {
-	f := r.UseQuery(r.GetKey(uid)).Folder
+	f := r.folder(uid).Folder
 	m, err := f.WithContext(ctx).Where(f.ID.Eq(id)).First()
 	if err != nil {
 		return nil, err
@@ -33,7 +41,7 @@ func (r *folderRepository) GetByID(ctx context.Context, id, uid int64) (*domain.
 }
 
 func (r *folderRepository) GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*domain.Folder, error) {
-	f := r.UseQuery(r.GetKey(uid)).Folder
+	f := r.folder(uid).Folder
 	m, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.PathHash.Eq(pathHash)).First()
 	if err != nil {
 		return nil, err
@@ -43,7 +51,7 @@ func (r *folderRepository) GetByPathHash(ctx context.Context, pathHash string, v
 
 func (r *folderRepository) GetByFID(ctx context.Context, fid int64, vaultID, uid int64) ([]*domain.Folder, error) {
 	var ms []*model.Folder
-	f := r.UseQuery(r.GetKey(uid)).Folder
+	f := r.folder(uid).Folder
 	ms, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.FID.Eq(fid), f.Action.Neq("delete")).Find()
 	if err != nil {
 		return nil, err
@@ -62,7 +70,7 @@ func (r *folderRepository) Create(ctx context.Context, folder *domain.Folder, ui
 		m.CreatedAt = timex.Now()
 		m.UpdatedAt = timex.Now()
 		m.UpdatedTimestamp = time.Now().UnixMilli()
-		f := r.UseQuery(r.GetKey(uid)).Folder
+		f := r.folder(uid).Folder
 		err := f.WithContext(ctx).Create(m)
 		if err != nil {
 			return err
@@ -82,7 +90,7 @@ func (r *folderRepository) Update(ctx context.Context, folder *domain.Folder, ui
 		m := r.domainToModel(folder)
 		m.UpdatedAt = timex.Now()
 		m.UpdatedTimestamp = time.Now().UnixMilli()
-		f := r.UseQuery(r.GetKey(uid)).Folder
+		f := r.folder(uid).Folder
 		_, err := f.WithContext(ctx).Where(f.ID.Eq(m.ID)).Updates(m)
 		if err != nil {
 			return err
@@ -98,7 +106,7 @@ func (r *folderRepository) Update(ctx context.Context, folder *domain.Folder, ui
 
 func (r *folderRepository) Delete(ctx context.Context, id, uid int64) error {
 	return r.Dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		f := r.UseQuery(r.GetKey(uid)).Folder
+		f := r.folder(uid).Folder
 		_, err := f.WithContext(ctx).Where(f.ID.Eq(id)).Delete()
 		return err
 	})
@@ -106,7 +114,7 @@ func (r *folderRepository) Delete(ctx context.Context, id, uid int64) error {
 
 func (r *folderRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Folder, error) {
 	var ms []*model.Folder
-	f := r.UseQuery(r.GetKey(uid)).Folder
+	f := r.folder(uid).Folder
 	ms, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.UpdatedTimestamp.Gt(timestamp)).Find()
 	if err != nil {
 		return nil, err
@@ -120,7 +128,7 @@ func (r *folderRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp
 
 func (r *folderRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Folder, error) {
 	var ms []*model.Folder
-	f := r.UseQuery(r.GetKey(uid)).Folder
+	f := r.folder(uid).Folder
 	// 使用 LIKE 'prefix/%' 来查找所有子目录
 	pattern := pathPrefix + "/%"
 	ms, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.Path.Like(pattern), f.Action.Neq("delete")).Find()
