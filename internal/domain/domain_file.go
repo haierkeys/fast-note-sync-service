@@ -16,6 +16,7 @@ type File struct {
 	ID               int64
 	VaultID          int64
 	Action           FileAction
+	FID              int64
 	Path             string
 	PathHash         string
 	ContentHash      string

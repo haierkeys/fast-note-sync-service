@@ -16,22 +16,28 @@ import (
 
 // FolderService 文件夹业务服务接口
 type FolderService interface {
+	Get(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error)
 	List(ctx context.Context, uid int64, params *dto.FolderListRequest) ([]*dto.FolderDTO, error)
+	ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error)
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
 	Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) error
-	ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error)
 	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) error
-	GetInfo(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error)
+	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.NoteDTO, error)
+	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.FileDTO, error)
 }
 
 type folderService struct {
 	folderRepo   domain.FolderRepository
+	noteRepo     domain.NoteRepository
+	fileRepo     domain.FileRepository
 	vaultService VaultService
 }
 
-func NewFolderService(folderRepo domain.FolderRepository, vaultSvc VaultService) FolderService {
+func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService) FolderService {
 	return &folderService{
 		folderRepo:   folderRepo,
+		noteRepo:     noteRepo,
+		fileRepo:     fileRepo,
 		vaultService: vaultSvc,
 	}
 }
@@ -232,7 +238,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 	return nil
 }
 
-func (s *folderService) GetInfo(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error) {
+func (s *folderService) Get(ctx context.Context, uid int64, vault string, pathHash string) (*dto.FolderDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, vault)
 	if err != nil {
 		return nil, err
@@ -247,4 +253,94 @@ func (s *folderService) GetInfo(ctx context.Context, uid int64, vault string, pa
 	}
 
 	return s.domainToDTO(f), nil
+}
+
+func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	var fid int64 = 0
+	if params.PathHash != "" {
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
+		}
+	} else if params.Path != "" {
+		pathHash := util.EncodeHash32(params.Path)
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
+		}
+	}
+
+	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, params.Page, params.PageSize, params.SortBy, params.SortOrder)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	var res []*dto.NoteDTO
+	for _, n := range notes {
+		res = append(res, &dto.NoteDTO{
+			ID:               n.ID,
+			Action:           string(n.Action),
+			Path:             n.Path,
+			PathHash:         n.PathHash,
+			Content:          n.Content,
+			ContentHash:      n.ContentHash,
+			Version:          n.Version,
+			Ctime:            n.Ctime,
+			Mtime:            n.Mtime,
+			UpdatedTimestamp: n.UpdatedTimestamp,
+			UpdatedAt:        timex.Time(n.UpdatedAt),
+			CreatedAt:        timex.Time(n.CreatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.FileDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	var fid int64 = 0
+	if params.PathHash != "" {
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
+		}
+	} else if params.Path != "" {
+		pathHash := util.EncodeHash32(params.Path)
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
+		}
+	}
+
+	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, params.Page, params.PageSize, params.SortBy, params.SortOrder)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	var res []*dto.FileDTO
+	for _, f := range files {
+		res = append(res, &dto.FileDTO{
+			ID:               f.ID,
+			Action:           string(f.Action),
+			Path:             f.Path,
+			PathHash:         f.PathHash,
+			ContentHash:      f.ContentHash,
+			SavePath:         f.SavePath,
+			Size:             f.Size,
+			Ctime:            f.Ctime,
+			Mtime:            f.Mtime,
+			UpdatedTimestamp: f.UpdatedTimestamp,
+			UpdatedAt:        timex.Time(f.UpdatedAt),
+			CreatedAt:        timex.Time(f.CreatedAt),
+		})
+	}
+	return res, nil
 }

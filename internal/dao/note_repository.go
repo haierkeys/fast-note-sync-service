@@ -94,6 +94,7 @@ func (r *noteRepository) toDomain(m *model.Note, uid int64) *domain.Note {
 		VaultID:                 m.VaultID,
 		Action:                  domain.NoteAction(m.Action),
 		Rename:                  m.Rename,
+		FID:                     m.FID,
 		Path:                    m.Path,
 		PathHash:                m.PathHash,
 		Content:                 m.Content,
@@ -123,6 +124,7 @@ func (r *noteRepository) toModel(note *domain.Note) *model.Note {
 		VaultID:                 note.VaultID,
 		Action:                  string(note.Action),
 		Rename:                  note.Rename,
+		FID:                     note.FID,
 		Path:                    note.Path,
 		PathHash:                note.PathHash,
 		Content:                 note.Content,
@@ -699,6 +701,36 @@ func (r *noteRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 		Count: result.Count,
 		Size:  result.Size,
 	}, nil
+}
+
+// ListByFID 根据文件夹ID获取笔记列表
+func (r *noteRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.Eq(fid),
+		u.Action.Neq("delete"),
+	)
+
+	// 构建排序语句
+	orderClause := buildOrderClause(sortBy, sortOrder)
+
+	var modelList []*model.Note
+	err := q.UnderlyingDB().
+		Order(orderClause).
+		Limit(pageSize).
+		Offset(app.GetPageOffset(page, pageSize)).
+		Find(&modelList).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*domain.Note
+	for _, m := range modelList {
+		list = append(list, r.toDomain(m, uid))
+	}
+	return list, nil
 }
 
 // 确保 noteRepository 实现了 domain.NoteRepository 接口

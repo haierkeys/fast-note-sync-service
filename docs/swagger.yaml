@@ -128,6 +128,37 @@ definitions:
     - path
     - vault
     type: object
+  dto.FolderCreateRequest:
+    properties:
+      path:
+        type: string
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.FolderDTO:
+    properties:
+      lastTime:
+        type: integer
+      path:
+        type: string
+      pathHash:
+        type: string
+    type: object
+  dto.FolderDeleteRequest:
+    properties:
+      path:
+        type: string
+      pathHash:
+        type: string
+      vault:
+        type: string
+    required:
+    - path
+    - vault
+    type: object
   dto.NoteAppendRequest:
     properties:
       content:
@@ -757,6 +788,207 @@ paths:
       summary: Get file list
       tags:
       - File
+  /api/folder:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete a folder by path or pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Delete Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.FolderDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Delete folder
+      tags:
+      - Folder
+    get:
+      description: Get folder list for current user by parent path or pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.FolderDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get folder list
+      tags:
+      - Folder
+    post:
+      consumes:
+      - application/json
+      description: Create a new folder or restore a deleted one by path
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Create Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.FolderCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FolderDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Create folder
+      tags:
+      - Folder
+  /api/folder/files:
+    get:
+      description: List non-deleted files in a specific folder with pagination and
+        sorting
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: path
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.FileDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: List files in folder
+      tags:
+      - Folder
+  /api/folder/notes:
+    get:
+      description: List non-deleted notes in a specific folder with pagination and
+        sorting
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      - in: query
+        name: path
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: sortBy
+        type: string
+      - in: query
+        name: sortOrder
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.NoteDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: List notes in folder
+      tags:
+      - Folder
   /api/health:
     get:
       description: Check service health status, including database connection

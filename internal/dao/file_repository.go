@@ -49,6 +49,7 @@ func (r *fileRepository) toDomain(m *model.File, uid int64) *domain.File {
 		ID:               m.ID,
 		VaultID:          m.VaultID,
 		Action:           domain.FileAction(m.Action),
+		FID:              m.FID,
 		Path:             m.Path,
 		PathHash:         m.PathHash,
 		ContentHash:      m.ContentHash,
@@ -73,6 +74,7 @@ func (r *fileRepository) toModel(file *domain.File) *model.File {
 		ID:               file.ID,
 		VaultID:          file.VaultID,
 		Action:           string(file.Action),
+		FID:              file.FID,
 		Path:             file.Path,
 		PathHash:         file.PathHash,
 		ContentHash:      file.ContentHash,
@@ -485,5 +487,65 @@ func (r *fileRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 	}, nil
 }
 
+// ListByFID 根据文件夹ID获取文件列表
+func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*domain.File, error) {
+	u := r.file(uid).File
+	q := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.Eq(fid),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	)
+
+	// 构建排序语句
+	orderClause := buildFileOrderClause(sortBy, sortOrder)
+
+	var modelList []*model.File
+	err := q.UnderlyingDB().
+		Order(orderClause).
+		Limit(pageSize).
+		Offset(app.GetPageOffset(page, pageSize)).
+		Find(&modelList).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*domain.File
+	for _, m := range modelList {
+		list = append(list, r.toDomain(m, uid))
+	}
+	return list, nil
+}
+
 // 确保 fileRepository 实现了 domain.FileRepository 接口
 var _ domain.FileRepository = (*fileRepository)(nil)
+
+func buildFileOrderClause(sortBy, sortOrder string) string {
+	// 默认值
+	if sortBy == "" {
+		sortBy = "mtime"
+	}
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
+
+	// 验证排序方向
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	// 映射排序字段
+	var field string
+	switch sortBy {
+	case "ctime":
+		field = "ctime"
+	case "path":
+		field = "path"
+	case "mtime":
+		fallthrough
+	default:
+		field = "mtime"
+	}
+
+	return field + " " + sortOrder
+}
