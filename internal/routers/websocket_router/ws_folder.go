@@ -197,7 +197,7 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(newFolder))
+	c.ToResponse(code.Success.WithData(newFolder), dto.FolderRename)
 	c.BroadcastResponse(code.Success.WithData(oldFolder).WithVault(params.Vault), true, dto.FolderSyncDelete)
 	c.BroadcastResponse(code.Success.WithData(newFolder).WithVault(params.Vault), true, dto.FolderSyncModify)
 }

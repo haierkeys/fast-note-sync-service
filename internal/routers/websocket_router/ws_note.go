@@ -585,77 +585,25 @@ func (h *NoteWSHandler) handleNoteDelete(c *pkgapp.WebsocketClient, params *dto.
 // 返回值说明:
 //   - 无
 func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
-
-	params := &dto.NoteModifyOrCreateRequest{}
-
+	params := &dto.NoteRenameRequest{}
 	valid, errs := c.BindAndValid(msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModify.BindAndValid")
-		return
-	}
-	if params.PathHash == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("pathHash is required"))
-		return
-	}
-	if params.ContentHash == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("contentHash is required"))
-		return
-	}
-	if params.Mtime == 0 {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("mtime is required"))
-		return
-	}
-	if params.Ctime == 0 {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("ctime is required"))
-		return
-	}
-
-	if params.OldPath == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("oldPath is required"))
-		return
-	}
-
-	if params.OldPathHash == "" {
-		c.ToResponse(code.ErrorInvalidParams.WithDetails("oldPathHash is required"))
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteRename.BindAndValid")
 		return
 	}
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRename", params.Path, params.Vault)
 
-	// Create first
-	// 先创建
-	h.handleNoteModify(c, params)
-
-	// Delete note
-	// 删除笔记
-	h.handleNoteDelete(c, &dto.NoteDeleteRequest{
-		Vault:    params.Vault,
-		Path:     params.OldPath,
-		PathHash: params.OldPathHash,
-	})
-
-	// Merge note traces
-	// Merge note traces
-	// 合并笔记痕迹
-	ctx := c.Context()
-	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
-
-	err := noteSvc.Rename(ctx, c.User.UID, &dto.NoteRenameRequest{
-		Vault:       params.Vault,
-		Path:        params.Path,
-		PathHash:    params.PathHash,
-		OldPath:     params.OldPath,
-		OldPathHash: params.OldPathHash,
-	})
-
+	uid := c.User.UID
+	oldNote, newNote, err := h.App.GetNoteService(c.ClientName, c.ClientVersion).Rename(c.Context(), uid, params)
 	if err != nil {
-		h.respondError(c, code.ErrorNoteRenameFailed, err, "websocket_router.note.NoteRename.Rename")
+		h.respondError(c, code.ErrorNoteRenameFailed, err, "NoteRename")
 		return
 	}
-	// Respond success
-	// 相应成功
-	c.ToResponse(code.Success)
 
+	c.ToResponse(code.Success.WithData(newNote))
+	c.BroadcastResponse(code.Success.WithData(oldNote).WithVault(params.Vault), true, dto.NoteSyncDelete)
+	c.BroadcastResponse(code.Success.WithData(newNote).WithVault(params.Vault), true, dto.NoteSyncModify)
 }
 
 // NoteSync handles full or incremental note sync

@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -18,9 +19,11 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 )
 
 // FileService defines the file business service interface
@@ -89,7 +92,8 @@ type FileService interface {
 	// Restore restores a file (from recycle bin)
 	// Restore 恢复文件（从回收站恢复）
 	Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error)
-
+	// Rename 重命名文件
+	Rename(ctx context.Context, uid int64, params *dto.FileRenameRequest) (*dto.FileDTO, *dto.FileDTO, error)
 	// WithClient sets client info
 	// WithClient 设置客户端信息
 	WithClient(name, version string) FileService
@@ -640,6 +644,93 @@ func (s *fileService) UploadCheck(ctx context.Context, uid int64, params *dto.Fi
 // UploadComplete 完成文件上传（UpdateOrCreate 的别名，用于 WebSocket 上传完成）
 func (s *fileService) UploadComplete(ctx context.Context, uid int64, params *dto.FileUpdateRequest) (bool, *dto.FileDTO, error) {
 	return s.UpdateOrCreate(ctx, uid, params, true)
+}
+
+// Rename renames a file
+// Rename 重命名文件
+func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRenameRequest) (*dto.FileDTO, *dto.FileDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	newPath := strings.Trim(params.Path, "/")
+	newPathHash := params.PathHash
+	if newPathHash == "" {
+		newPathHash = util.EncodeHash32(newPath)
+	}
+
+	// 1. 判断目标路径是否存在有效文件
+	existFile, _ := s.fileRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
+	if existFile != nil && existFile.Action != domain.FileActionDelete {
+		return nil, nil, code.ErrorFileExist
+	}
+
+	oldPath := strings.Trim(params.OldPath, "/")
+	oldPathHash := params.OldPathHash
+	if oldPathHash == "" {
+		oldPathHash = util.EncodeHash32(oldPath)
+	}
+
+	// 2. 获取旧文件
+	f, err := s.fileRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, code.ErrorFileNotFound
+		}
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 3. 标记旧文件删除
+	f.Action = domain.FileActionDelete
+	f.UpdatedTimestamp = timex.Now().UnixMilli()
+	oldFile, err := s.fileRepo.Update(ctx, f, uid)
+	if err != nil {
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 4. 新建或复用文件记录
+	var newFileCreated *domain.File
+	if existFile != nil {
+		// 复用已删除的记录
+		existFile.Action = domain.FileActionCreate
+		existFile.Path = newPath
+		existFile.PathHash = newPathHash
+		existFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		existFile.ContentHash = f.ContentHash
+		existFile.SavePath = f.SavePath
+		existFile.Size = f.Size
+		existFile.Mtime = timex.Now().UnixMilli()
+		existFile.UpdatedTimestamp = timex.Now().UnixMilli()
+		newFileCreated, err = s.fileRepo.Update(ctx, existFile, uid)
+	} else {
+		// 创建新记录
+		newFile := &domain.File{
+			VaultID:          vaultID,
+			Action:           domain.FileActionCreate,
+			Path:             newPath,
+			PathHash:         newPathHash,
+			FID:              f.FID,
+			Ctime:            f.Ctime,
+			Mtime:            timex.Now().UnixMilli(),
+			UpdatedTimestamp: timex.Now().UnixMilli(),
+			ContentHash:      f.ContentHash,
+			SavePath:         f.SavePath,
+			Size:             f.Size,
+		}
+		// 确保 FID 正确
+		newFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newFileCreated, err = s.fileRepo.Create(ctx, newFile, uid)
+	}
+
+	if err != nil {
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 修正目录FID
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
+
+	return s.domainToDTO(oldFile), s.domainToDTO(newFileCreated), nil
 }
 
 // WithClient sets client info, returns new FileService instance

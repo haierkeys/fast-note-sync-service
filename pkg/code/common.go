@@ -75,6 +75,7 @@ var (
 	ErrorFileSaveFailed            = NewError(459)
 	ErrorFileMoveFailed            = NewError(460)
 	ErrorFileReadFailed            = NewError(461)
+	ErrorFileExist                 = NewError(462)
 
 	// --- Setting Related (465-474) ---
 	ErrorSettingNotFound             = NewError(465)

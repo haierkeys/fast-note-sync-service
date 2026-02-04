@@ -47,7 +47,7 @@ type NoteService interface {
 
 	// Rename renames a note
 	// Rename 重命名笔记
-	Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) error
+	Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) (*dto.NoteDTO, *dto.NoteDTO, error)
 
 	// List retrieves note list
 	// List 获取笔记列表
@@ -456,50 +456,89 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 
 // Rename renames a note
 // Rename 重命名笔记
-func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) error {
-	// Use VaultService.MustGetID to retrieve VaultID
-	// 使用 VaultService.MustGetID 获取 VaultID
+func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRenameRequest) (*dto.NoteDTO, *dto.NoteDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	if params.PathHash == "" {
-		params.PathHash = util.EncodeHash32(params.Path)
-	}
-	if params.OldPathHash == "" {
-		params.OldPathHash = util.EncodeHash32(params.OldPath)
+	newPath := strings.Trim(params.Path, "/")
+	newPathHash := params.PathHash
+	if newPathHash == "" {
+		newPathHash = util.EncodeHash32(newPath)
 	}
 
-	// Get old note
-	// 获取旧笔记
-	oldNote, err := s.noteRepo.GetAllByPathHash(ctx, params.OldPathHash, vaultID, uid)
+	// 1. 判断目标路径是否存在有效笔记
+	existNote, _ := s.noteRepo.GetAllByPathHash(ctx, newPathHash, vaultID, uid)
+	if existNote != nil && existNote.Action != domain.NoteActionDelete {
+		return nil, nil, code.ErrorNoteExist
+	}
+
+	oldPath := strings.Trim(params.OldPath, "/")
+	oldPathHash := params.OldPathHash
+	if oldPathHash == "" {
+		oldPathHash = util.EncodeHash32(oldPath)
+	}
+
+	// 2. 获取旧笔记
+	n, err := s.noteRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return code.ErrorNoteNotFound
+			return nil, nil, code.ErrorNoteNotFound
 		}
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Get new note
-	// 获取新笔记
-	newNote, err := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	// 3. 标记旧笔记删除
+	n.Action = domain.NoteActionDelete
+	n.UpdatedTimestamp = timex.Now().UnixMilli()
+	oldNote, err := s.noteRepo.Update(ctx, n, uid)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return code.ErrorNoteNotFound
-		}
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Trigger folder sync
-	// 触发文件夹同步
-	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNote.ID}, nil)
+	// 4. 新建或复用笔记记录
+	var newNoteCreated *domain.Note
+	if existNote != nil {
+		// 复用已删除的记录
+		existNote.Action = domain.NoteActionCreate
+		existNote.Path = newPath
+		existNote.PathHash = newPathHash
+		existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		existNote.Content = n.Content
+		existNote.ContentHash = n.ContentHash
+		existNote.Version = n.Version
+		existNote.Mtime = timex.Now().UnixMilli()
+		existNote.UpdatedTimestamp = timex.Now().UnixMilli()
+		newNoteCreated, err = s.noteRepo.Update(ctx, existNote, uid)
+	} else {
+		// 创建新记录
+		newNote := &domain.Note{
+			VaultID:          vaultID,
+			Action:           domain.NoteActionCreate,
+			Path:             newPath,
+			PathHash:         newPathHash,
+			FID:              n.FID,
+			Ctime:            n.Ctime,
+			Mtime:            timex.Now().UnixMilli(),
+			UpdatedTimestamp: timex.Now().UnixMilli(),
+			Content:          n.Content,
+			ContentHash:      n.ContentHash,
+			Version:          n.Version,
+		}
+		// 确保 FID 正确
+		newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newNoteCreated, err = s.noteRepo.Create(ctx, newNote, uid)
+	}
 
-	// Trigger history migration
-	// 触发历史记录迁移
-	s.MigratePush(oldNote.ID, newNote.ID, uid)
+	if err != nil {
+		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
 
-	return nil
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
+	go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
+
+	return s.domainToDTO(oldNote), s.domainToDTO(newNoteCreated), nil
 }
 
 // List retrieves note list
