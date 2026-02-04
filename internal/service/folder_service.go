@@ -543,98 +543,94 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Filter out deleted folders and build lookup maps
-	folderByID := make(map[int64]*domain.Folder)
-	childrenByFID := make(map[int64][]*domain.Folder)
+	// Deduplicate by path, collect all IDs per path for counting
+	type folderInfo struct {
+		path   string
+		ids    []int64 // all DB IDs for this path (for counting notes/files)
+		parent string  // parent path ("" for root)
+	}
+	infoByPath := make(map[string]*folderInfo)
 
 	for _, f := range folders {
 		if f.Action == domain.FolderActionDelete {
 			continue
 		}
-		folderByID[f.ID] = f
-		childrenByFID[f.FID] = append(childrenByFID[f.FID], f)
+		info, exists := infoByPath[f.Path]
+		if !exists {
+			parent := ""
+			if idx := strings.LastIndex(f.Path, "/"); idx >= 0 {
+				parent = f.Path[:idx]
+			}
+			info = &folderInfo{path: f.Path, parent: parent}
+			infoByPath[f.Path] = info
+		}
+		info.ids = append(info.ids, f.ID)
 	}
 
-	// Count notes per folder (by FID)
-	noteCountByFID := make(map[int64]int)
-	rootNoteCount := 0
-	for fid := range childrenByFID {
-		count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
-		if err == nil {
-			noteCountByFID[fid] = int(count)
-		}
-	}
-	// Also count for folders with no children but may have notes
-	for _, f := range folderByID {
-		if _, counted := noteCountByFID[f.ID]; !counted {
-			count, err := s.noteRepo.ListByFIDCount(ctx, f.ID, vaultID, uid)
+	// Count notes and files per folder (sum across all duplicate IDs)
+	noteCountByPath := make(map[string]int)
+	fileCountByPath := make(map[string]int)
+	for path, info := range infoByPath {
+		for _, id := range info.ids {
+			nc, err := s.noteRepo.ListByFIDCount(ctx, id, vaultID, uid)
 			if err == nil {
-				noteCountByFID[f.ID] = int(count)
+				noteCountByPath[path] += int(nc)
+			}
+			fc, err := s.fileRepo.ListByFIDCount(ctx, id, vaultID, uid)
+			if err == nil {
+				fileCountByPath[path] += int(fc)
 			}
 		}
 	}
-	// Root notes (FID = 0)
+
+	// Root counts (FID = 0)
+	rootNoteCount := 0
+	rootFileCount := 0
 	count, err := s.noteRepo.ListByFIDCount(ctx, 0, vaultID, uid)
 	if err == nil {
 		rootNoteCount = int(count)
-	}
-
-	// Count files per folder (by FID)
-	fileCountByFID := make(map[int64]int)
-	rootFileCount := 0
-	for fid := range childrenByFID {
-		count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
-		if err == nil {
-			fileCountByFID[fid] = int(count)
-		}
-	}
-	for _, f := range folderByID {
-		if _, counted := fileCountByFID[f.ID]; !counted {
-			count, err := s.fileRepo.ListByFIDCount(ctx, f.ID, vaultID, uid)
-			if err == nil {
-				fileCountByFID[f.ID] = int(count)
-			}
-		}
 	}
 	count, err = s.fileRepo.ListByFIDCount(ctx, 0, vaultID, uid)
 	if err == nil {
 		rootFileCount = int(count)
 	}
 
+	// Build parent→children map by path
+	childrenByParent := make(map[string][]string)
+	for path, info := range infoByPath {
+		childrenByParent[info.parent] = append(childrenByParent[info.parent], path)
+	}
+
 	// Build tree recursively
-	var buildNode func(folder *domain.Folder, currentDepth int) *dto.FolderTreeNode
-	buildNode = func(folder *domain.Folder, currentDepth int) *dto.FolderTreeNode {
-		// Extract folder name from path
-		name := folder.Path
-		if idx := strings.LastIndex(folder.Path, "/"); idx >= 0 {
-			name = folder.Path[idx+1:]
+	var buildNode func(path string, currentDepth int) *dto.FolderTreeNode
+	buildNode = func(path string, currentDepth int) *dto.FolderTreeNode {
+		name := path
+		if idx := strings.LastIndex(path, "/"); idx >= 0 {
+			name = path[idx+1:]
 		}
 
 		node := &dto.FolderTreeNode{
-			Path:      folder.Path,
+			Path:      path,
 			Name:      name,
-			NoteCount: noteCountByFID[folder.ID],
-			FileCount: fileCountByFID[folder.ID],
+			NoteCount: noteCountByPath[path],
+			FileCount: fileCountByPath[path],
 		}
 
-		// Check depth limit (0 or negative = unlimited)
 		if params.Depth > 0 && currentDepth >= params.Depth {
 			return node
 		}
 
-		// Add children
-		children := childrenByFID[folder.ID]
-		for _, child := range children {
-			node.Children = append(node.Children, buildNode(child, currentDepth+1))
+		for _, childPath := range childrenByParent[path] {
+			node.Children = append(node.Children, buildNode(childPath, currentDepth+1))
 		}
 
 		return node
 	}
 
-	// Build root level folders (FID = 0)
+	// Build root level folders (parent = "")
 	var rootFolders []*dto.FolderTreeNode
-	for _, f := range childrenByFID[0] {
-		rootFolders = append(rootFolders, buildNode(f, 1))
+	for _, path := range childrenByParent[""] {
+		rootFolders = append(rootFolders, buildNode(path, 1))
 	}
 
 	return &dto.FolderTreeResponse{
