@@ -71,6 +71,9 @@ type NoteRepository interface {
 
 	// ListByIDs 根据ID列表获取笔记列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)
+
+	// ListByPathPrefix 根据路径前缀获取笔记列表
+	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*Note, error)
 }
 
 // FolderRepository 文件夹仓储接口
@@ -95,6 +98,9 @@ type FolderRepository interface {
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取文件夹列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Folder, error)
+
+	// ListByPathPrefix 根据路径前缀获取文件夹列表
+	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*Folder, error)
 }
 
 // VaultRepository 仓库仓储接口
@@ -200,6 +206,9 @@ type FileRepository interface {
 
 	// ListByIDs 根据ID列表获取文件列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*File, error)
+
+	// ListByPathPrefix 根据路径前缀获取文件列表
+	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*File, error)
 }
 
 // SettingRepository 配置仓储接口

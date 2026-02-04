@@ -25,18 +25,7 @@ const (
 	// FolderSyncEnd folder synchronization finished
 	// FolderSyncEnd 文件夹同步结束
 	FolderSyncEnd WebSocketAction = "FolderSyncEnd"
-	// FolderSyncRename folder synchronization renaming
-	// FolderSyncRename 文件夹同步重命名
-	FolderSyncRename WebSocketAction = "FolderSyncRename"
-	// FolderModify individual folder modification
-	// FolderModify 单个文件夹修改
-	FolderModify WebSocketAction = "FolderModify"
-	// FolderDelete individual folder deletion
-	// FolderDelete 单个文件夹删除
-	FolderDelete WebSocketAction = "FolderDelete"
-	// FolderRename individual folder renaming
-	// FolderRename 单个文件夹重命名
-	FolderRename WebSocketAction = "FolderRename"
+
 
 	// Note related
 	// 笔记相关

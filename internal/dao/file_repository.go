@@ -537,6 +537,25 @@ func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) 
 // 确保 fileRepository 实现了 domain.FileRepository 接口
 var _ domain.FileRepository = (*fileRepository)(nil)
 
+func (r *fileRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.File, error) {
+	u := r.file(uid).File
+	// 使用 LIKE 'prefix/%'
+	pattern := pathPrefix + "/%"
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.Path.Like(pattern),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.File
+	for _, m := range ms {
+		res = append(res, r.toDomain(m, uid))
+	}
+	return res, nil
+}
+
 func buildFileOrderClause(sortBy, sortOrder string) string {
 	// 默认值
 	if sortBy == "" {

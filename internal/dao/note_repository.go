@@ -576,6 +576,25 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	return list, nil
 }
 
+func (r *noteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	// 使用 LIKE 'prefix/%'
+	pattern := pathPrefix + "/%"
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.Path.Like(pattern),
+		u.Action.Neq("delete"),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Note
+	for _, m := range ms {
+		res = append(res, r.toDomain(m, uid))
+	}
+	return res, nil
+}
+
 // buildOrderClause 构建排序语句
 func buildOrderClause(sortBy, sortOrder string) string {
 	// 默认值

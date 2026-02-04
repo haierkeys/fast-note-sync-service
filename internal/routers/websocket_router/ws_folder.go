@@ -155,7 +155,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(folder), dto.FolderModify)
+	c.ToResponse(code.Success.WithData(folder))
 	c.BroadcastResponse(code.Success.WithData(folder).WithVault(params.Vault), true, dto.FolderSyncModify)
 }
 
@@ -176,7 +176,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success, dto.FolderDelete)
+	c.ToResponse(code.Success)
 	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, dto.FolderSyncDelete)
 }
 
@@ -191,12 +191,13 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	err := h.App.FolderService.Rename(c.Context(), uid, params)
+	oldFolder, newFolder, err := h.App.FolderService.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorDBQuery, err, "FolderRename")
 		return
 	}
 
-	c.ToResponse(code.Success, dto.FolderRename)
-	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, dto.FolderSyncRename)
+	c.ToResponse(code.Success.WithData(newFolder))
+	c.BroadcastResponse(code.Success.WithData(oldFolder).WithVault(params.Vault), true, dto.FolderSyncDelete)
+	c.BroadcastResponse(code.Success.WithData(newFolder).WithVault(params.Vault), true, dto.FolderSyncModify)
 }
