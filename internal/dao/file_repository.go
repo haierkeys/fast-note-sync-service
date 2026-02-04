@@ -517,6 +517,23 @@ func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 	return list, nil
 }
 
+// ListByIDs 根据ID列表获取文件列表
+func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.File, error) {
+	if len(ids) == 0 {
+		return []*domain.File{}, nil
+	}
+	u := r.file(uid).File
+	ms, err := u.WithContext(ctx).Where(u.ID.In(ids...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.File
+	for _, m := range ms {
+		res = append(res, r.toDomain(m, uid))
+	}
+	return res, nil
+}
+
 // 确保 fileRepository 实现了 domain.FileRepository 接口
 var _ domain.FileRepository = (*fileRepository)(nil)
 

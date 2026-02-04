@@ -68,6 +68,9 @@ type NoteRepository interface {
 
 	// ListByFID 根据文件夹ID获取笔记列表
 	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*Note, error)
+
+	// ListByIDs 根据ID列表获取笔记列表
+	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)
 }
 
 // FolderRepository 文件夹仓储接口
@@ -194,6 +197,9 @@ type FileRepository interface {
 
 	// ListByFID 根据文件夹ID获取文件列表
 	ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*File, error)
+
+	// ListByIDs 根据ID列表获取文件列表
+	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*File, error)
 }
 
 // SettingRepository 配置仓储接口

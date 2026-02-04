@@ -195,15 +195,15 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 
 	// Initialize Service layer (dependency injection)
 	a.VaultService = service.NewVaultService(a.VaultRepo)
-	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, svcConfig)
+	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService)
+	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, a.FolderService, svcConfig)
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
-	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, svcConfig)
+	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, svcConfig)
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
 	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, logger, &svcConfig.App)
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
-	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),

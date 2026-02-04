@@ -113,26 +113,28 @@ type NoteService interface {
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
-	noteRepo     domain.NoteRepository     // Note repository // 笔记仓库
-	noteLinkRepo domain.NoteLinkRepository // Note link repository // 笔记链接仓库
-	fileRepo     domain.FileRepository     // File repository // 文件仓库
-	vaultService VaultService              // Vault service // 仓库服务
-	sf           *singleflight.Group       // Singleflight group // 并发请求合并组
-	clientName   string                    // Client name // 客户端名称
-	clientVer    string                    // Client version // 客户端版本
-	config       *ServiceConfig            // Service configuration // 服务配置
+	noteRepo      domain.NoteRepository     // Note repository // 笔记仓库
+	noteLinkRepo  domain.NoteLinkRepository // Note link repository // 笔记链接仓库
+	fileRepo      domain.FileRepository     // File repository // 文件仓库
+	vaultService  VaultService              // Vault service // 仓库服务
+	folderService FolderService             // Folder service // 文件夹服务
+	sf            *singleflight.Group       // Singleflight group // 并发请求合并组
+	clientName    string                    // Client name // 客户端名称
+	clientVer     string                    // Client version // 客户端版本
+	config        *ServiceConfig            // Service configuration // 服务配置
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, config *ServiceConfig) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, config *ServiceConfig) NoteService {
 	return &noteService{
-		noteRepo:     noteRepo,
-		noteLinkRepo: noteLinkRepo,
-		fileRepo:     fileRepo,
-		vaultService: vaultSvc,
-		sf:           &singleflight.Group{},
-		config:       config,
+		noteRepo:      noteRepo,
+		noteLinkRepo:  noteLinkRepo,
+		fileRepo:      fileRepo,
+		vaultService:  vaultSvc,
+		folderService: folderSvc,
+		sf:            &singleflight.Group{},
+		config:        config,
 	}
 }
 
@@ -324,6 +326,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
 		go s.CountSizeSum(context.Background(), vaultID, uid)
 		go s.updateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
 		NoteHistoryDelayPush(updated.ID, uid)
@@ -351,6 +354,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	go s.updateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
@@ -485,6 +489,10 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		}
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
+
+	// Trigger folder sync
+	// 触发文件夹同步
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNote.ID}, nil)
 
 	// Trigger history migration
 	// 触发历史记录迁移
