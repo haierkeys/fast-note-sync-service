@@ -214,9 +214,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.PUT("/note/restore", noteHandler.Restore)
 			auth.GET("/notes", noteHandler.List)
 
-			auth.GET("/folder", folderHandler.List)
+			auth.GET("/folder", folderHandler.Get)
 			auth.POST("/folder", folderHandler.Create)
 			auth.DELETE("/folder", folderHandler.Delete)
+			auth.GET("/folders", folderHandler.List)
 			auth.GET("/folder/notes", folderHandler.ListNotes)
 			auth.GET("/folder/files", folderHandler.ListFiles)
 

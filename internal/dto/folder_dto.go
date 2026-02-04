@@ -15,12 +15,20 @@ type FolderDTO struct {
 	CreatedAt        timex.Time `json:"-"`
 }
 
+// FolderGetRequest 获取文件夹的请求参数
+type FolderGetRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path"`
+	PathHash string `json:"pathHash" form:"pathHash"`
+}
+
 // FolderListRequest 获取文件夹列表的请求参数
 type FolderListRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required"`
 	Path     string `json:"path" form:"path"`
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
+
 
 // FolderCreateRequest 创建文件夹请求参数
 type FolderCreateRequest struct {

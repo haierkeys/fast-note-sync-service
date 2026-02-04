@@ -826,7 +826,7 @@ paths:
       tags:
       - Folder
     get:
-      description: Get folder list for current user by parent path or pathHash
+      description: Get folder info for current user by path or pathHash
       parameters:
       - description: Auth Token
         in: header
@@ -853,13 +853,11 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.FolderDTO'
-                  type: array
+                  $ref: '#/definitions/dto.FolderDTO'
               type: object
       security:
       - UserAuthToken: []
-      summary: Get folder list
+      summary: Get folder info
       tags:
       - Folder
     post:
@@ -999,6 +997,44 @@ paths:
       security:
       - UserAuthToken: []
       summary: List notes in folder
+      tags:
+      - Folder
+  /api/folders:
+    get:
+      description: Get folder list for current user by parent path or pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: path
+        type: string
+      - in: query
+        name: pathHash
+        type: string
+      - in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.FolderDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get folder list
       tags:
       - Folder
   /api/health:

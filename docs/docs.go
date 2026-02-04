@@ -474,14 +474,14 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Get folder list for current user by parent path or pathHash",
+                "description": "Get folder info for current user by path or pathHash",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Folder"
                 ],
-                "summary": "Get folder list",
+                "summary": "Get folder info",
                 "parameters": [
                     {
                         "type": "string",
@@ -519,10 +519,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.FolderDTO"
-                                            }
+                                            "$ref": "#/definitions/dto.FolderDTO"
                                         }
                                     }
                                 }
@@ -796,6 +793,71 @@ const docTemplate = `{
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/definitions/dto.NoteDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/folders": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get folder list for current user by parent path or pathHash",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folder"
+                ],
+                "summary": "Get folder list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "path",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "pathHash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.FolderDTO"
                                             }
                                         }
                                     }
