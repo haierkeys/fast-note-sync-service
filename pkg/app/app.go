@@ -35,6 +35,12 @@ type Pager struct {
 	TotalRows int `json:"totalRows"` // Total rows // 总行数
 }
 
+// PaginationRequest pagination request parameters for Swagger // 分页请求参数（用于 Swagger）
+type PaginationRequest struct {
+	Page     int `json:"page" form:"page" query:"page"`             // Page number // 页码
+	PageSize int `json:"pageSize" form:"pageSize" query:"pageSize"` // Page size // 每页数量
+}
+
 type ListRes struct {
 	List  interface{} `json:"list"`  // Data list // 数据清单
 	Pager Pager       `json:"pager"` // Pagination info // 翻页信息
@@ -136,12 +142,8 @@ func (r *Response) ToResponseList(codeObj *code.Code, list interface{}, totalRow
 		Status:  codeObj.Status(),
 		Message: codeObj.Lang.GetMessage(),
 		Data: ListRes{
-			List: list,
-			Pager: Pager{
-				Page:      GetPage(r.Ctx),
-				PageSize:  GetPageSize(r.Ctx),
-				TotalRows: totalRows,
-			},
+			List:  list,
+			Pager: *NewPager(r.Ctx, totalRows),
 		},
 	}
 

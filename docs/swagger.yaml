@@ -769,6 +769,14 @@ paths:
         name: vault
         required: true
         type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -898,12 +906,6 @@ paths:
         required: true
         type: string
       - in: query
-        name: page
-        type: integer
-      - in: query
-        name: pageSize
-        type: integer
-      - in: query
         name: path
         type: string
       - in: query
@@ -919,6 +921,14 @@ paths:
         name: vault
         required: true
         type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -949,12 +959,6 @@ paths:
         required: true
         type: string
       - in: query
-        name: page
-        type: integer
-      - in: query
-        name: pageSize
-        type: integer
-      - in: query
         name: path
         type: string
       - in: query
@@ -970,6 +974,14 @@ paths:
         name: vault
         required: true
         type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -1242,6 +1254,14 @@ paths:
         name: vault
         required: true
         type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -1536,6 +1556,14 @@ paths:
         name: vault
         required: true
         type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:

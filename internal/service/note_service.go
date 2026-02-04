@@ -142,14 +142,15 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 // WithClient 设置客户端信息，返回新 NoteService 实例
 func (s *noteService) WithClient(name, version string) NoteService {
 	return &noteService{
-		noteRepo:     s.noteRepo,
-		noteLinkRepo: s.noteLinkRepo,
-		fileRepo:     s.fileRepo,
-		vaultService: s.vaultService,
-		sf:           s.sf,
-		clientName:   name,
-		clientVer:    version,
-		config:       s.config,
+		noteRepo:      s.noteRepo,
+		noteLinkRepo:  s.noteLinkRepo,
+		fileRepo:      s.fileRepo,
+		vaultService:  s.vaultService,
+		folderService: s.folderService,
+		sf:            s.sf,
+		clientName:    name,
+		clientVer:     version,
+		config:        s.config,
 	}
 }
 

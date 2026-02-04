@@ -27,16 +27,16 @@ type NoteDTO struct {
 // NoteNoContentDTO Note DTO without content
 // NoteNoContentDTO 不包含内容的笔记 DTO
 type NoteNoContentDTO struct {
-	ID               int64      `json:"id" form:"id"`
-	Action           string     `json:"action" form:"action"`
+	ID               int64      `json:"-" form:"id"`
+	Action           string     `json:"-" form:"action"`
 	Path             string     `json:"path" form:"path"`
 	PathHash         string     `json:"pathHash" form:"pathHash"`
 	Version          int64      `json:"version" form:"version"`
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"updatedTimestamp" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"updatedAt"`
-	CreatedAt        timex.Time `json:"createdAt"`
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
+	UpdatedAt        timex.Time `json:"-"`
+	CreatedAt        timex.Time `json:"-"`
 }
 
 // NoteUpdateCheckRequest Client request parameters for checking if updates are needed

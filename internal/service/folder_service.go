@@ -9,6 +9,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -24,8 +25,8 @@ type FolderService interface {
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
 	Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) error
 	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) error
-	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.NoteDTO, error)
-	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.FileDTO, error)
+	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, error)
+	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, error)
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 }
@@ -261,7 +262,7 @@ func (s *folderService) Get(ctx context.Context, uid int64, vault string, pathHa
 	return s.domainToDTO(f), nil
 }
 
-func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.NoteDTO, error) {
+func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
@@ -281,20 +282,19 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 		}
 	}
 
-	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, params.Page, params.PageSize, params.SortBy, params.SortOrder)
+	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
+
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	var res []*dto.NoteDTO
+	var res []*dto.NoteNoContentDTO
 	for _, n := range notes {
-		res = append(res, &dto.NoteDTO{
+		res = append(res, &dto.NoteNoContentDTO{
 			ID:               n.ID,
 			Action:           string(n.Action),
 			Path:             n.Path,
 			PathHash:         n.PathHash,
-			Content:          n.Content,
-			ContentHash:      n.ContentHash,
 			Version:          n.Version,
 			Ctime:            n.Ctime,
 			Mtime:            n.Mtime,
@@ -306,7 +306,7 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 	return res, nil
 }
 
-func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest) ([]*dto.FileDTO, error) {
+func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
@@ -326,7 +326,7 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		}
 	}
 
-	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, params.Page, params.PageSize, params.SortBy, params.SortOrder)
+	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -421,6 +421,9 @@ func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID 
 
 		if err == nil {
 			for _, n := range notes {
+				if n.Action == domain.NoteActionDelete {
+					continue
+				}
 				fid, err := s.EnsurePathFID(ctx, uid, vaultID, n.Path)
 				if err == nil && n.FID != fid {
 					n.FID = fid
@@ -440,6 +443,9 @@ func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID 
 
 		if err == nil {
 			for _, f := range files {
+				if f.Action == domain.FileActionDelete {
+					continue
+				}
 				fid, err := s.EnsurePathFID(ctx, uid, vaultID, f.Path)
 				if err == nil && f.FID != fid {
 					f.FID = fid

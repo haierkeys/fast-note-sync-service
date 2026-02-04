@@ -90,6 +90,7 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.NoteHistoryListRequest true "Query Parameters"
+// @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.NoteHistoryDTO} "Success"
 // @Router /api/note/histories [get]
 func (h *NoteHistoryHandler) List(c *gin.Context) {
@@ -122,7 +123,7 @@ func (h *NoteHistoryHandler) List(c *gin.Context) {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
-	pager := &pkgapp.Pager{Page: pkgapp.GetPage(c), PageSize: pkgapp.GetPageSize(c)}
+	pager := pkgapp.NewPager(c)
 
 	list, count, err := h.App.NoteHistoryService.List(ctx, uid, params, pager)
 	if err != nil {

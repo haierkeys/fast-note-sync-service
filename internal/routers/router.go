@@ -242,18 +242,18 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.PUT("/note/history/restore", noteHistoryHandler.Restore)
 		}
 
-		// Swagger UI (outside auth group to ensure public access)
-		// Swagger UI (放在 auth 组外，确保可以公开访问)
-		api.GET("/docs/*any", func(c *gin.Context) {
-			p := c.Param("any")
-			if p == "" || p == "/" {
-				c.Redirect(http.StatusMovedPermanently, "/api/docs/index.html")
-				return
-			}
-			ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
-		})
 	}
 
+	// Swagger UI (outside auth group to ensure public access)
+	// Swagger UI (放在 auth 组外，确保可以公开访问)
+	r.GET("/docs/*any", func(c *gin.Context) {
+		p := c.Param("any")
+		if p == "" || p == "/" {
+			c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+			return
+		}
+		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+	})
 	if cfg.App.UploadSavePath != "" {
 		r.StaticFS(cfg.App.UploadSavePath, http.Dir(cfg.App.UploadSavePath))
 	}

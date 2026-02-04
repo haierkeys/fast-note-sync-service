@@ -646,13 +646,14 @@ func (s *fileService) UploadComplete(ctx context.Context, uid int64, params *dto
 // WithClient 设置客户端信息，返回新的 FileService 实例
 func (s *fileService) WithClient(name, version string) FileService {
 	return &fileService{
-		fileRepo:     s.fileRepo,
-		noteRepo:     s.noteRepo,
-		vaultService: s.vaultService,
-		sf:           s.sf,
-		clientName:   name,
-		clientVer:    version,
-		config:       s.config,
+		fileRepo:      s.fileRepo,
+		noteRepo:      s.noteRepo,
+		vaultService:  s.vaultService,
+		folderService: s.folderService,
+		sf:            s.sf,
+		clientName:    name,
+		clientVer:     version,
+		config:        s.config,
 	}
 }
 

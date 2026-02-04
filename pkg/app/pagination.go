@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,16 +16,7 @@ var DefaultPaginationConfig = PaginationConfig{
 	MaxPageSize:     100,
 }
 
-func GetPage(c *gin.Context) int {
-
-	var page int
-
-	if s, exist := c.GetQuery("page"); exist {
-		page = convert.StrTo(s).MustInt()
-	} else if s := c.PostForm("page"); s != "" {
-		page = convert.StrTo(s).MustInt()
-	}
-
+func GetPage(page int) int {
 	if page <= 0 {
 		return 1
 	}
@@ -35,31 +24,18 @@ func GetPage(c *gin.Context) int {
 	return page
 }
 
-// GetPageSizeWithConfig gets page size (using injected configuration)
-// GetPageSizeWithConfig 获取分页大小（使用注入的配置）
-func GetPageSizeWithConfig(c *gin.Context, cfg PaginationConfig) int {
-	var pageSize int
-
-	if s, exist := c.GetQuery("pageSize"); exist {
-		pageSize = convert.StrTo(s).MustInt()
-	} else if s := c.PostForm("pageSize"); s != "" {
-		pageSize = convert.StrTo(s).MustInt()
-	}
+// GetPageSize gets page size (using default configuration)
+// GetPageSize 获取分页大小（使用默认配置）
+func GetPageSize(pageSize int) int {
 
 	if pageSize <= 0 {
-		return cfg.DefaultPageSize
+		return DefaultPaginationConfig.DefaultPageSize
 	}
-	if pageSize > cfg.MaxPageSize {
-		return cfg.MaxPageSize
+	if pageSize > DefaultPaginationConfig.MaxPageSize {
+		return DefaultPaginationConfig.MaxPageSize
 	}
 
 	return pageSize
-}
-
-// GetPageSize gets page size (using default configuration)
-// GetPageSize 获取分页大小（使用默认配置）
-func GetPageSize(c *gin.Context) int {
-	return GetPageSizeWithConfig(c, DefaultPaginationConfig)
 }
 
 func GetPageOffset(page, pageSize int) int {
@@ -67,6 +43,26 @@ func GetPageOffset(page, pageSize int) int {
 	if page > 0 {
 		result = (page - 1) * pageSize
 	}
-
 	return result
+}
+
+// NewPager creates a new Pager instance from gin.Context
+// NewPager 从 gin.Context 创建一个新的 Pager 实例
+func NewPager(c *gin.Context, count ...int) *Pager {
+
+	params := &PaginationRequest{}
+	if valid, errs := BindAndValid(c, params); !valid {
+		log(LogError, errs.Error())
+	}
+
+	var totalRows int
+	if len(count) > 0 {
+		totalRows = count[0]
+	}
+
+	return &Pager{
+		Page:      GetPage(params.Page),
+		PageSize:  GetPageSize(params.PageSize),
+		TotalRows: totalRows,
+	}
 }

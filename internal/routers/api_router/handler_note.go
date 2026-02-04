@@ -124,6 +124,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.NoteListRequest true "Query Parameters"
+// @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.NoteDTO} "Success"
 // @Router /api/notes [get]
 func (h *NoteHandler) List(c *gin.Context) {
@@ -153,7 +154,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
-	pager := &pkgapp.Pager{Page: pkgapp.GetPage(c), PageSize: pkgapp.GetPageSize(c)}
+	pager := pkgapp.NewPager(c)
 
 	notes, count, err := noteSvc.List(ctx, uid, params, pager)
 	if err != nil {
