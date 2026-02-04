@@ -118,6 +118,22 @@ func (r *folderRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp
 	return res, nil
 }
 
+func (r *folderRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Folder, error) {
+	var ms []*model.Folder
+	f := r.UseQuery(r.GetKey(uid)).Folder
+	// 使用 LIKE 'prefix/%' 来查找所有子目录
+	pattern := pathPrefix + "/%"
+	ms, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID), f.Path.Like(pattern), f.Action.Neq("delete")).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Folder
+	for _, m := range ms {
+		res = append(res, r.modelToDomain(m))
+	}
+	return res, nil
+}
+
 func (r *folderRepository) modelToDomain(m *model.Folder) *domain.Folder {
 	if m == nil {
 		return nil
@@ -130,6 +146,8 @@ func (r *folderRepository) modelToDomain(m *model.Folder) *domain.Folder {
 		PathHash:         m.PathHash,
 		Level:            m.Level,
 		FID:              m.FID,
+		Ctime:            m.Ctime,
+		Mtime:            m.Mtime,
 		UpdatedTimestamp: m.UpdatedTimestamp,
 		CreatedAt:        time.Time(m.CreatedAt),
 		UpdatedAt:        time.Time(m.UpdatedAt),
@@ -148,6 +166,8 @@ func (r *folderRepository) domainToModel(d *domain.Folder) *model.Folder {
 		PathHash:         d.PathHash,
 		Level:            d.Level,
 		FID:              d.FID,
+		Ctime:            d.Ctime,
+		Mtime:            d.Mtime,
 		UpdatedTimestamp: d.UpdatedTimestamp,
 		CreatedAt:        timex.Time(d.CreatedAt),
 		UpdatedAt:        timex.Time(d.UpdatedAt),

@@ -209,6 +209,8 @@ CREATE TABLE "folder" (
     -- 文件夹层级
     "fid" integer DEFAULT 0,
     -- 父级文件夹ID,0 为根目录
+    "ctime" integer NOT NULL DEFAULT 0,
+    "mtime" integer NOT NULL DEFAULT 0,
     "updated_timestamp" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
