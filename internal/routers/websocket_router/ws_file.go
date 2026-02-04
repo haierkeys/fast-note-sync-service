@@ -404,6 +404,28 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.BroadcastResponse(code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), true, dto.FileSyncDelete)
 }
 
+// FileRename handles file rename request.
+// FileRename 处理文件重命名请求。
+func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.FileRenameRequest{}
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileRename.BindAndValid")
+		return
+	}
+
+	uid := c.User.UID
+	oldFile, newFile, err := h.App.FileService.WithClient(c.ClientName, c.ClientVersion).Rename(c.Context(), uid, params)
+	if err != nil {
+		h.respondError(c, code.ErrorFileMoveFailed, err, "FileRename")
+		return
+	}
+
+	c.ToResponse(code.Success.WithData(newFile))
+	c.BroadcastResponse(code.Success.WithData(oldFile).WithVault(params.Vault), true, dto.FileSyncDelete)
+	c.BroadcastResponse(code.Success.WithData(newFile).WithVault(params.Vault), true, dto.FileSyncUpdate)
+}
+
 // FileChunkDownload handles file chunk download request.
 // Client requests file download via this interface, server creates download session and starts sending chunks.
 // FileChunkDownload 处理文件分片下载请求。

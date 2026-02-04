@@ -62,49 +62,32 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	fileWSHandler := websocket_router.NewFileWSHandler(appContainer)
 	settingWSHandler := websocket_router.NewSettingWSHandler(appContainer)
 
-	// Modify/Create
-	// 修改 创建
-	wss.Use("NoteModify", noteWSHandler.NoteModify)
-	// Delete
-	// 删除
-	wss.Use("NoteDelete", noteWSHandler.NoteDelete)
-	// Rename
-	// 重命名
-	wss.Use("NoteRename", noteWSHandler.NoteRename)
-	// Note check
-	// 笔记检查
-	wss.Use("NoteCheck", noteWSHandler.NoteModifyCheck)
-	// Update notification based on mtime
-	// 基于mtime的更新通知
-	wss.Use("NoteSync", noteWSHandler.NoteSync)
+	// Note
+	wss.Use(dto.NoteReceiveModify, noteWSHandler.NoteModify)
+	wss.Use(dto.NoteReceiveDelete, noteWSHandler.NoteDelete)
+	wss.Use(dto.NoteReceiveRename, noteWSHandler.NoteRename)
+	wss.Use(dto.NoteReceiveCheck, noteWSHandler.NoteModifyCheck)
+	wss.Use(dto.NoteReceiveSync, noteWSHandler.NoteSync)
 
-	// Folder sync
-	wss.Use("FolderSync", folderWSHandler.FolderSync)
-	wss.Use("FolderModify", folderWSHandler.FolderModify)
-	wss.Use("FolderDelete", folderWSHandler.FolderDelete)
-	wss.Use("FolderRename", folderWSHandler.FolderRename)
+	// Folder
+	wss.Use(dto.FolderReceiveSync, folderWSHandler.FolderSync)
+	wss.Use(dto.FolderReceiveModify, folderWSHandler.FolderModify)
+	wss.Use(dto.FolderReceiveDelete, folderWSHandler.FolderDelete)
+	wss.Use(dto.FolderReceiveRename, folderWSHandler.FolderRename)
 
-	// Config sync
-	// 配置同步
-	wss.Use("SettingModify", settingWSHandler.SettingModify)
-	wss.Use("SettingDelete", settingWSHandler.SettingDelete)
-	wss.Use("SettingCheck", settingWSHandler.SettingModifyCheck)
-	wss.Use("SettingSync", settingWSHandler.SettingSync)
+	// Setting
+	wss.Use(dto.SettingReceiveModify, settingWSHandler.SettingModify)
+	wss.Use(dto.SettingReceiveDelete, settingWSHandler.SettingDelete)
+	wss.Use(dto.SettingReceiveCheck, settingWSHandler.SettingModifyCheck)
+	wss.Use(dto.SettingReceiveSync, settingWSHandler.SettingSync)
 
-	// Attachment sync
-	// 附件同步
-	wss.Use("FileSync", fileWSHandler.FileSync)
-	// Pre-upload check for attachments
-	// 附件上传前检查
-	wss.Use("FileUploadCheck", fileWSHandler.FileUploadCheck)
-	// Attachment deletion
-	// 附件删除
-	wss.Use("FileDelete", fileWSHandler.FileDelete)
-
-	wss.Use("FileChunkDownload", fileWSHandler.FileChunkDownload)
+	// Attachment
+	wss.Use(dto.FileReceiveSync, fileWSHandler.FileSync)
+	wss.Use(dto.FileReceiveUploadCheck, fileWSHandler.FileUploadCheck)
+	wss.Use(dto.FileReceiveDelete, fileWSHandler.FileDelete)
+	wss.Use(dto.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
 
 	// Attachment chunk upload
-	// 附件上传分块
 	wss.UseBinary(dto.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
 
 	wss.UseUserVerify(noteWSHandler.UserInfo)

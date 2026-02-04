@@ -101,6 +101,16 @@ type FileListRequest struct {
 	SortOrder string `json:"sortOrder" form:"sortOrder"` // Sorting order: desc(default), asc
 }
 
+// FileRenameRequest Parameters required for renaming a file
+// 重命名文件所需参数
+type FileRenameRequest struct {
+	Vault       string `json:"vault" form:"vault" binding:"required"`
+	Path        string `json:"path" form:"path" binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required"`
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"`
+}
+
 // FileDTO File Data Transfer Object
 // FileDTO 文件数据传输对象
 type FileDTO struct {
