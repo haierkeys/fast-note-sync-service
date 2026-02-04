@@ -203,6 +203,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/folders", folderHandler.List)
 			auth.GET("/folder/notes", folderHandler.ListNotes)
 			auth.GET("/folder/files", folderHandler.ListFiles)
+			auth.GET("/folder/tree", folderHandler.Tree)
 
 			// Note edit operations
 			auth.PATCH("/note/frontmatter", noteHandler.PatchFrontmatter)

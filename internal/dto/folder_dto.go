@@ -83,3 +83,25 @@ type FolderContentRequest struct {
 	SortBy    string `json:"sortBy" form:"sortBy"`
 	SortOrder string `json:"sortOrder" form:"sortOrder"`
 }
+
+// FolderTreeRequest 获取文件夹树的请求参数
+type FolderTreeRequest struct {
+	Vault string `json:"vault" form:"vault" binding:"required"`
+	Depth int    `json:"depth" form:"depth"` // 0 or negative = unlimited
+}
+
+// FolderTreeNode 文件夹树节点
+type FolderTreeNode struct {
+	Path      string            `json:"path"`
+	Name      string            `json:"name"`
+	NoteCount int               `json:"noteCount"`
+	FileCount int               `json:"fileCount"`
+	Children  []*FolderTreeNode `json:"children,omitempty"`
+}
+
+// FolderTreeResponse 文件夹树响应
+type FolderTreeResponse struct {
+	Folders       []*FolderTreeNode `json:"folders"`
+	RootNoteCount int               `json:"rootNoteCount"`
+	RootFileCount int               `json:"rootFileCount"`
+}

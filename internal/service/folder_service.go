@@ -29,6 +29,7 @@ type FolderService interface {
 	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, int, error)
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
+	GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error)
 }
 
 type folderService struct {
@@ -527,4 +528,118 @@ func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID 
 		return nil, nil
 	})
 	return err
+}
+
+// GetTree returns the complete folder tree structure for a vault
+func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all non-deleted folders
+	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Filter out deleted folders and build lookup maps
+	folderByID := make(map[int64]*domain.Folder)
+	childrenByFID := make(map[int64][]*domain.Folder)
+
+	for _, f := range folders {
+		if f.Action == domain.FolderActionDelete {
+			continue
+		}
+		folderByID[f.ID] = f
+		childrenByFID[f.FID] = append(childrenByFID[f.FID], f)
+	}
+
+	// Count notes per folder (by FID)
+	noteCountByFID := make(map[int64]int)
+	rootNoteCount := 0
+	for fid := range childrenByFID {
+		count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+		if err == nil {
+			noteCountByFID[fid] = int(count)
+		}
+	}
+	// Also count for folders with no children but may have notes
+	for _, f := range folderByID {
+		if _, counted := noteCountByFID[f.ID]; !counted {
+			count, err := s.noteRepo.ListByFIDCount(ctx, f.ID, vaultID, uid)
+			if err == nil {
+				noteCountByFID[f.ID] = int(count)
+			}
+		}
+	}
+	// Root notes (FID = 0)
+	count, err := s.noteRepo.ListByFIDCount(ctx, 0, vaultID, uid)
+	if err == nil {
+		rootNoteCount = int(count)
+	}
+
+	// Count files per folder (by FID)
+	fileCountByFID := make(map[int64]int)
+	rootFileCount := 0
+	for fid := range childrenByFID {
+		count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
+		if err == nil {
+			fileCountByFID[fid] = int(count)
+		}
+	}
+	for _, f := range folderByID {
+		if _, counted := fileCountByFID[f.ID]; !counted {
+			count, err := s.fileRepo.ListByFIDCount(ctx, f.ID, vaultID, uid)
+			if err == nil {
+				fileCountByFID[f.ID] = int(count)
+			}
+		}
+	}
+	count, err = s.fileRepo.ListByFIDCount(ctx, 0, vaultID, uid)
+	if err == nil {
+		rootFileCount = int(count)
+	}
+
+	// Build tree recursively
+	var buildNode func(folder *domain.Folder, currentDepth int) *dto.FolderTreeNode
+	buildNode = func(folder *domain.Folder, currentDepth int) *dto.FolderTreeNode {
+		// Extract folder name from path
+		name := folder.Path
+		if idx := strings.LastIndex(folder.Path, "/"); idx >= 0 {
+			name = folder.Path[idx+1:]
+		}
+
+		node := &dto.FolderTreeNode{
+			Path:      folder.Path,
+			Name:      name,
+			NoteCount: noteCountByFID[folder.ID],
+			FileCount: fileCountByFID[folder.ID],
+		}
+
+		// Check depth limit (0 or negative = unlimited)
+		if params.Depth > 0 && currentDepth >= params.Depth {
+			return node
+		}
+
+		// Add children
+		children := childrenByFID[folder.ID]
+		for _, child := range children {
+			node.Children = append(node.Children, buildNode(child, currentDepth+1))
+		}
+
+		return node
+	}
+
+	// Build root level folders (FID = 0)
+	var rootFolders []*dto.FolderTreeNode
+	for _, f := range childrenByFID[0] {
+		rootFolders = append(rootFolders, buildNode(f, 1))
+	}
+
+	return &dto.FolderTreeResponse{
+		Folders:       rootFolders,
+		RootNoteCount: rootNoteCount,
+		RootFileCount: rootFileCount,
+	}, nil
 }
