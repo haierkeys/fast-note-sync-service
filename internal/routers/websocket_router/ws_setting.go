@@ -27,40 +27,6 @@ func NewSettingWSHandler(a *app.App) *SettingWSHandler {
 	}
 }
 
-type SettingMessage struct {
-	Vault            string `json:"vault" form:"vault"`               // Vault ID // 仓库标识
-	Path             string `json:"path" form:"path"`                 // Setting path // 配置路径
-	PathHash         string `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希
-	Content          string `json:"content" form:"content"`           // Setting content // 配置内容
-	ContentHash      string `json:"contentHash" form:"contentHash"`   // Content hash // 内容哈希
-	Ctime            int64  `json:"ctime" form:"ctime"`               // Creation time // 创建时间
-	Mtime            int64  `json:"mtime" form:"mtime"`               // Modification time // 修改时间
-	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // Update timestamp // 更新时间戳
-}
-
-type SettingSyncEndMessage struct {
-	LastTime           int64           `json:"lastTime" form:"lastTime"`                     // Last sync time // 最后同步时间
-	NeedUploadCount    int64           `json:"needUploadCount" form:"needUploadCount"`       // Number of items needing upload // 需要上传的数量
-	NeedModifyCount    int64           `json:"needModifyCount" form:"needModifyCount"`       // Number of items needing modification // 需要修改的数量
-	NeedSyncMtimeCount int64           `json:"needSyncMtimeCount" form:"needSyncMtimeCount"` // Number of items needing mtime sync // 需要同步修改时间的数量
-	NeedDeleteCount    int64           `json:"needDeleteCount" form:"needDeleteCount"`       // Number of items needing deletion // 需要删除的数量
-	Messages           []queuedMessage `json:"messages"`                                     // Merged message queue // 合并的消息队列
-}
-
-type SettingSyncNeedUploadMessage struct {
-	Path string `json:"path" form:"path"`
-}
-
-type SettingSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path"`
-	Ctime int64  `json:"ctime" form:"ctime"`
-	Mtime int64  `json:"mtime" form:"mtime"`
-}
-
-type SettingDeleteMessage struct {
-	Path string `json:"path" form:"path"`
-}
-
 // SettingModify handles setting modification messages
 // SettingModify 处理配置修改消息
 func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
@@ -92,7 +58,8 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			return
 		}
 
-		settingMessage := &SettingMessage{
+		settingMessage := &dto.SettingSyncModifyMessage{
+			Vault:            params.Vault,
 			Path:             setting.Path,
 			PathHash:         setting.PathHash,
 			Content:          setting.Content,
@@ -106,7 +73,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 		return
 
 	case "UpdateMtime":
-		settingSyncMtimeMessage := &SettingSyncMtimeMessage{
+		settingSyncMtimeMessage := &dto.SettingSyncMtimeMessage{
 			Path:  settingCheck.Path,
 			Ctime: settingCheck.Ctime,
 			Mtime: settingCheck.Mtime,
@@ -143,13 +110,13 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	switch updateMode {
 	case "UpdateContent", "Create":
-		settingSyncNeedPushMessage := &SettingSyncNeedUploadMessage{
+		settingSyncNeedPushMessage := &dto.SettingSyncNeedUploadMessage{
 			Path: settingCheck.Path,
 		}
 		c.ToResponse(code.Success.WithData(settingSyncNeedPushMessage), dto.SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
-		settingSyncMtimeMessage := &SettingSyncMtimeMessage{
+		settingSyncMtimeMessage := &dto.SettingSyncMtimeMessage{
 			Path:  settingCheck.Path,
 			Ctime: settingCheck.Ctime,
 			Mtime: settingCheck.Mtime,
@@ -221,7 +188,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// 创建消息队列，用于收集所有待发送的消息
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
-	var messageQueue []queuedMessage
+	var messageQueue []dto.WSQueuedMessage
 
 	var lastTime int64
 	var needUploadCount int64
@@ -275,7 +242,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			}
 
 			if setting != nil && setting.Action != "delete" {
-				settingMessage := &SettingMessage{
+				settingMessage := &dto.SettingSyncModifyMessage{
 					Vault:            params.Vault,
 					Path:             setting.Path,
 					PathHash:         setting.PathHash,
@@ -285,7 +252,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					Mtime:            setting.Mtime,
 					UpdatedTimestamp: setting.UpdatedTimestamp,
 				}
-				messageQueue = append(messageQueue, queuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncModify,
 					Data:   settingMessage,
 				})
@@ -310,9 +277,9 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			if _, ok := cSettings[s.PathHash]; ok {
 				delete(cSettingsKeys, s.PathHash)
 				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, queuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncDelete,
-					Data:   &SettingDeleteMessage{Path: s.Path},
+					Data:   &dto.SettingSyncDeleteMessage{Path: s.Path},
 				})
 				needDeleteCount++
 			}
@@ -325,9 +292,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 强制覆盖连接端
 				if params.Cover {
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, queuedMessage{
+					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.SettingSyncModify,
-						Data: &SettingMessage{
+						Data: &dto.SettingSyncModifyMessage{
+							Vault:            params.Vault,
 							Path:             s.Path,
 							PathHash:         s.PathHash,
 							Content:          s.Content,
@@ -347,9 +315,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, queuedMessage{
+						messageQueue = append(messageQueue, dto.WSQueuedMessage{
 							Action: dto.SettingSyncModify,
-							Data: &SettingMessage{
+							Data: &dto.SettingSyncModifyMessage{
+								Vault:            params.Vault,
 								Path:             s.Path,
 								PathHash:         s.PathHash,
 								Content:          s.Content,
@@ -365,9 +334,9 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, queuedMessage{
+						messageQueue = append(messageQueue, dto.WSQueuedMessage{
 							Action: dto.SettingSyncNeedUpload,
-							Data: &SettingSyncNeedUploadMessage{
+							Data: &dto.SettingSyncNeedUploadMessage{
 								Path: s.Path,
 							},
 						})
@@ -378,9 +347,9 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					// 将消息添加到队列而非立即发送
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, queuedMessage{
+					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.SettingSyncMtime,
-						Data: &SettingSyncMtimeMessage{
+						Data: &dto.SettingSyncMtimeMessage{
 							Path:  s.Path,
 							Ctime: s.Ctime,
 							Mtime: s.Mtime,
@@ -390,9 +359,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				}
 			} else {
 				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, queuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncModify,
-					Data: &SettingMessage{
+					Data: &dto.SettingSyncModifyMessage{
+						Vault:            params.Vault,
 						Path:             s.Path,
 						PathHash:         s.PathHash,
 						Content:          s.Content,
@@ -414,16 +384,16 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		s := cSettings[pathHash]
 		// Add message to queue instead of sending immediately
 		// 将消息添加到队列而非立即发送
-		messageQueue = append(messageQueue, queuedMessage{
+		messageQueue = append(messageQueue, dto.WSQueuedMessage{
 			Action: dto.SettingSyncNeedUpload,
-			Data:   &SettingSyncNeedUploadMessage{Path: s.Path},
+			Data:   &dto.SettingSyncNeedUploadMessage{Path: s.Path},
 		})
 		needUploadCount++
 	}
 
 	// Send SettingSyncEnd message, containing all merged messages
 	// 发送 SettingSyncEnd 消息，包含所有合并的消息
-	message := &SettingSyncEndMessage{
+	message := &dto.SettingSyncEndMessage{
 		LastTime:           lastTime,
 		NeedUploadCount:    needUploadCount,
 		NeedModifyCount:    needModifyCount,

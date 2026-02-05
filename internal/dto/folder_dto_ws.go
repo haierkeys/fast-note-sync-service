@@ -1,2 +1,19 @@
 package dto
 
+// FolderSyncEndMessage defines the folder sync end message structure
+// FolderSyncEndMessage 定义文件夹同步结束的消息结构。
+type FolderSyncEndMessage struct {
+	LastTime        int64             `json:"lastTime"`
+	NeedModifyCount int64             `json:"needModifyCount"`
+	NeedDeleteCount int64             `json:"needDeleteCount"`
+	Messages        []WSQueuedMessage `json:"messages"`
+}
+
+type FolderSyncRenameMessage struct {
+	Path        string `json:"path" form:"path" binding:"required"`
+	PathHash    string `json:"pathHash" form:"pathHash"`
+	Ctime       int64  `json:"ctime" form:"ctime"`
+	Mtime       int64  `json:"mtime" form:"mtime"`
+	OldPath     string `json:"oldPath" form:"oldPath"`
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`
+}

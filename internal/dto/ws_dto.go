@@ -88,7 +88,7 @@ const (
 	FolderSyncEnd WebSocketSendAction = "FolderSyncEnd"
 	// FolderRename folder rename action
 	// FolderRename 文件夹重命名动作
-	FolderRename WebSocketSendAction = "FolderRename"
+	FolderSyncRename WebSocketSendAction = "FolderSyncRename"
 
 	// Note related
 	// 笔记相关
@@ -99,6 +99,9 @@ const (
 	// NoteSyncDelete note synchronization deletion
 	// NoteSyncDelete 笔记同步删除
 	NoteSyncDelete WebSocketSendAction = "NoteSyncDelete"
+	// NoteSyncRename note synchronization rename
+	// NoteSyncRename 笔记同步重命名
+	NoteSyncRename WebSocketSendAction = "NoteSyncRename"
 	// NoteSyncMtime note modification time synchronization
 	// NoteSyncMtime 笔记修改时间同步
 	NoteSyncMtime WebSocketSendAction = "NoteSyncMtime"
@@ -118,6 +121,9 @@ const (
 	// FileSyncDelete file synchronization deletion
 	// FileSyncDelete 文件同步删除
 	FileSyncDelete WebSocketSendAction = "FileSyncDelete"
+	// FileSyncRename file synchronization rename
+	// FileSyncRename 文件同步重命名
+	FileSyncRename WebSocketSendAction = "FileSyncRename"
 	// FileSyncMtime file modification time synchronization
 	// FileSyncMtime 文件修改时间同步
 	FileSyncMtime WebSocketSendAction = "FileSyncMtime"
@@ -150,3 +156,12 @@ const (
 	// SettingSyncNeedUpload 表示客户端需要上传设置
 	SettingSyncNeedUpload WebSocketSendAction = "SettingSyncNeedUpload"
 )
+
+// WSQueuedMessage represents a message item to be sent
+// Used to collect messages during sync process, and sent together in SyncEnd message
+// WSQueuedMessage 表示待发送的消息项
+// 用于在同步过程中收集消息,在 SyncEnd 消息中统一合并发送
+type WSQueuedMessage struct {
+	Action string `json:"action"` // Message type // 消息类型
+	Data   any    `json:"data"`   // Message content // 消息内容
+}
