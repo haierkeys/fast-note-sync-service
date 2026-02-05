@@ -85,6 +85,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// Attachment
 	wss.Use(dto.FileReceiveSync, fileWSHandler.FileSync)
 	wss.Use(dto.FileReceiveUploadCheck, fileWSHandler.FileUploadCheck)
+	wss.Use(dto.FileReceiveRename, fileWSHandler.FileRename)
 	wss.Use(dto.FileReceiveDelete, fileWSHandler.FileDelete)
 	wss.Use(dto.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
 
