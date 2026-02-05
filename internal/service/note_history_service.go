@@ -55,29 +55,33 @@ type NoteHistoryService interface {
 // noteHistoryService implementation of NoteHistoryService interface
 // noteHistoryService 实现 NoteHistoryService 接口
 type noteHistoryService struct {
-	historyRepo  domain.NoteHistoryRepository // History repository // 历史记录仓库
-	noteRepo     domain.NoteRepository        // Note repository // 笔记仓库
-	userRepo     domain.UserRepository        // User repository // 用户仓库
-	vaultService VaultService                 // Vault service // 仓库服务
-	sf           *singleflight.Group          // Singleflight group // 并发请求合并组
-	logger       *zap.Logger                  // Logger // 日志对象
-	config       *AppServiceConfig            // Service configuration // 服务配置
+	historyRepo   domain.NoteHistoryRepository // History repository // 历史记录仓库
+	noteRepo      domain.NoteRepository        // Note repository // 笔记仓库
+	userRepo      domain.UserRepository        // User repository // 用户仓库
+	vaultService  VaultService                 // Vault service // 仓库服务
+	folderService FolderService                // Folder service // 文件夹服务
+	noteService   NoteService                  // Note service // 笔记服务
+	sf            *singleflight.Group          // Singleflight group // 并发请求合并组
+	logger        *zap.Logger                  // Logger // 日志对象
+	config        *AppServiceConfig            // Service configuration // 服务配置
 }
 
 // NewNoteHistoryService creates NoteHistoryService instance
 // NewNoteHistoryService 创建 NoteHistoryService 实例
-func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
+func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, folderSvc FolderService, noteSvc NoteService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
 	if config == nil {
 		config = &AppServiceConfig{HistoryKeepVersions: 100}
 	}
 	return &noteHistoryService{
-		historyRepo:  historyRepo,
-		noteRepo:     noteRepo,
-		userRepo:     userRepo,
-		vaultService: vaultSvc,
-		sf:           &singleflight.Group{},
-		logger:       logger,
-		config:       config,
+		historyRepo:   historyRepo,
+		noteRepo:      noteRepo,
+		userRepo:      userRepo,
+		vaultService:  vaultSvc,
+		folderService: folderSvc,
+		noteService:   noteSvc,
+		sf:            &singleflight.Group{},
+		logger:        logger,
+		config:        config,
 	}
 }
 
@@ -370,6 +374,13 @@ func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, 
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
+
+	vaultID := history.VaultID
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
+	go s.noteService.CountSizeSum(context.Background(), vaultID, uid)
+	go s.noteService.UpdateNoteLinks(context.Background(), updated.ID, updated.Content, vaultID, uid)
+
+	NoteHistoryDelayPush(updated.ID, uid)
 
 	// 7. Save history record immediately (restore operation does not use delay queue, direct history version creation)
 	// 7. 立即保存历史记录（恢复操作不走延迟队列，直接创建历史版本）

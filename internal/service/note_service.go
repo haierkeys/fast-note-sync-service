@@ -108,6 +108,10 @@ type NoteService interface {
 	// Move moves a note to a new path
 	// Move 移动笔记
 	Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error)
+
+	// UpdateNoteLinks extracts wiki links from content and updates the link index
+	// UpdateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
+	UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64)
 }
 
 // noteService implementation of NoteService interface
@@ -329,7 +333,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
 		go s.CountSizeSum(context.Background(), vaultID, uid)
-		go s.updateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
+		go s.UpdateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
 		NoteHistoryDelayPush(updated.ID, uid)
 
 		return isNew, s.domainToDTO(updated), nil
@@ -357,7 +361,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
 	go s.CountSizeSum(context.Background(), vaultID, uid)
-	go s.updateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
+	go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
 
 	return isNew, s.domainToDTO(created), nil
@@ -448,7 +452,10 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	go s.UpdateNoteLinks(context.Background(), updated.ID, updated.Content, vaultID, uid)
+
 	NoteHistoryDelayPush(updated.ID, uid)
 
 	return s.domainToDTO(updated), nil
@@ -1026,9 +1033,9 @@ func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveR
 	return result, nil
 }
 
-// updateNoteLinks extracts wiki links from content and updates the link index
-// updateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
-func (s *noteService) updateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
+// UpdateNoteLinks extracts wiki links from content and updates the link index
+// UpdateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
+func (s *noteService) UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
 	if s.noteLinkRepo == nil {
 		return
 	}
