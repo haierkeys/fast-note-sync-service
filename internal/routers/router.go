@@ -66,6 +66,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	wss.Use(dto.NoteReceiveModify, noteWSHandler.NoteModify)
 	wss.Use(dto.NoteReceiveDelete, noteWSHandler.NoteDelete)
 	wss.Use(dto.NoteReceiveRename, noteWSHandler.NoteRename)
+	wss.Use(dto.NoteReceiveRePush, noteWSHandler.NoteRePush)
 	wss.Use(dto.NoteReceiveCheck, noteWSHandler.NoteModifyCheck)
 	wss.Use(dto.NoteReceiveSync, noteWSHandler.NoteSync)
 

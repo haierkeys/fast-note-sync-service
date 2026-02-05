@@ -45,11 +45,6 @@ type FileRestoreRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
-// FileDeleteMessage File deletion broadcast message
-// 文件删除广播消息
-type FileDeleteMessage struct {
-	Path string `json:"path" form:"path"` // Path info (file path)
-}
 
 // FileSyncCheckRequest/ Parameters for checking synchronization of a single record
 // 同步检查单条记录的参数

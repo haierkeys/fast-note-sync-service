@@ -43,7 +43,7 @@ var (
 	ErrorInvalidStorageType      = NewError(422)
 	ErrorInvalidCloudStorageType = NewError(423)
 
-	// --- Note Related (430-449) ---
+	// --- Note Related (430-444) ---
 	ErrorNoteNotFound             = NewError(430)
 	ErrorNoteExist                = NewError(431)
 	ErrorNoteGetFailed            = NewError(432)
@@ -59,43 +59,50 @@ var (
 	ErrorNoMatchFound             = NewError(442)
 	ErrorInvalidRegex             = NewError(443)
 	ErrorInvalidPath              = NewError(444)
-	ErrorFolderNotFound           = NewError(445)
-	ErrorFolderExist              = NewError(446)
 
-	// --- File/Attachment Related (450-464) ---
-	ErrorFileNotFound              = NewError(450)
-	ErrorFileGetFailed             = NewError(451)
-	ErrorFileModifyOrCreateFailed  = NewError(452)
-	ErrorFileContentModifyFailed   = NewError(453)
-	ErrorFileDeleteFailed          = NewError(454)
-	ErrorFileListFailed            = NewError(455)
-	ErrorFileUploadFailed          = NewError(456)
-	ErrorFileUploadCheckFailed     = NewError(457)
-	ErrorFileUploadSessionNotFound = NewError(458)
-	ErrorFileSaveFailed            = NewError(459)
-	ErrorFileMoveFailed            = NewError(460)
-	ErrorFileReadFailed            = NewError(461)
-	ErrorFileExist                 = NewError(462)
+	// --- Folder Related (445-454) ---
+	ErrorFolderNotFound             = NewError(445)
+	ErrorFolderExist                = NewError(446)
+	ErrorFolderGetFailed            = NewError(447)
+	ErrorFolderModifyOrCreateFailed = NewError(448)
+	ErrorFolderDeleteFailed         = NewError(449)
+	ErrorFolderListFailed           = NewError(450)
+	ErrorFolderRenameFailed         = NewError(451)
 
-	// --- Setting Related (465-474) ---
-	ErrorSettingNotFound             = NewError(465)
-	ErrorSettingExist                = NewError(466)
-	ErrorSettingGetFailed            = NewError(467)
-	ErrorSettingModifyOrCreateFailed = NewError(468)
-	ErrorSettingContentModifyFailed  = NewError(469)
-	ErrorSettingDeleteFailed         = NewError(470)
-	ErrorSettingListFailed           = NewError(471)
-	ErrorSettingSyncFailed           = NewError(472)
-	ErrorSettingUpdateCheckFailed    = NewError(473)
-	ErrorConfigSaveFailed            = NewError(474)
+	// --- File/Attachment Related (455-469) ---
+	ErrorFileNotFound              = NewError(455)
+	ErrorFileGetFailed             = NewError(456)
+	ErrorFileModifyOrCreateFailed  = NewError(457)
+	ErrorFileContentModifyFailed   = NewError(458)
+	ErrorFileDeleteFailed          = NewError(459)
+	ErrorFileListFailed            = NewError(460)
+	ErrorFileUploadFailed          = NewError(461)
+	ErrorFileUploadCheckFailed     = NewError(462)
+	ErrorFileUploadSessionNotFound = NewError(463)
+	ErrorFileSaveFailed            = NewError(464)
+	ErrorFileRenameFailed          = NewError(465)
+	ErrorFileReadFailed            = NewError(466)
+	ErrorFileExist                 = NewError(467)
 
-	// --- Share Related (475-484) ---
-	ErrorShareNotFound = NewError(475)
-	ErrorShareExpired  = NewError(476)
-	ErrorShareRevoked  = NewError(477)
+	// --- Setting Related (470-479) ---
+	ErrorSettingNotFound             = NewError(470)
+	ErrorSettingExist                = NewError(471)
+	ErrorSettingGetFailed            = NewError(472)
+	ErrorSettingModifyOrCreateFailed = NewError(473)
+	ErrorSettingContentModifyFailed  = NewError(474)
+	ErrorSettingDeleteFailed         = NewError(475)
+	ErrorSettingListFailed           = NewError(476)
+	ErrorSettingSyncFailed           = NewError(477)
+	ErrorSettingUpdateCheckFailed    = NewError(478)
+	ErrorConfigSaveFailed            = NewError(479)
 
-	// --- Sync & History (485-499) ---
-	ErrorSyncConflict         = NewError(485)
-	ErrorHistoryNotFound      = NewError(486)
-	ErrorHistoryRestoreFailed = NewError(487)
+	// --- Share Related (480-489) ---
+	ErrorShareNotFound = NewError(480)
+	ErrorShareExpired  = NewError(481)
+	ErrorShareRevoked  = NewError(482)
+
+	// --- Sync & History (490-499) ---
+	ErrorSyncConflict         = NewError(490)
+	ErrorHistoryNotFound      = NewError(491)
+	ErrorHistoryRestoreFailed = NewError(492)
 )

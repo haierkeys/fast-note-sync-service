@@ -97,7 +97,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Get updated folders from server
 	list, err := h.App.FolderService.ListByUpdatedTimestamp(ctx, uid, params.Vault, params.LastTime)
 	if err != nil {
-		h.respondError(c, code.ErrorDBQuery, err, "FolderSync")
+		h.respondError(c, code.ErrorFolderListFailed, err, "websocket_router.folder.FolderSync.ListByUpdatedTimestamp")
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	uid := c.User.UID
 	folder, err := h.App.FolderService.UpdateOrCreate(c.Context(), uid, params)
 	if err != nil {
-		h.respondError(c, code.ErrorDBQuery, err, "FolderModify")
+		h.respondError(c, code.ErrorFolderModifyOrCreateFailed, err, "websocket_router.folder.FolderModify.UpdateOrCreate")
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	uid := c.User.UID
 	err := h.App.FolderService.Delete(c.Context(), uid, params)
 	if err != nil {
-		h.respondError(c, code.ErrorDBQuery, err, "FolderDelete")
+		h.respondError(c, code.ErrorFolderDeleteFailed, err, "websocket_router.folder.FolderDelete.Delete")
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	uid := c.User.UID
 	oldFolder, newFolder, err := h.App.FolderService.Rename(c.Context(), uid, params)
 	if err != nil {
-		h.respondError(c, code.ErrorDBQuery, err, "FolderRename")
+		h.respondError(c, code.ErrorFolderRenameFailed, err, "websocket_router.folder.FolderRename.Rename")
 		return
 	}
 

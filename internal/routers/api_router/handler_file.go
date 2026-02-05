@@ -209,8 +209,16 @@ func (h *FileHandler) Delete(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(file))
-	fileDeleteMessage := &dto.FileDeleteMessage{Path: file.Path}
-	h.WSS.BroadcastToUser(uid, code.Success.WithData(fileDeleteMessage).WithVault(params.Vault), "FileSyncDelete")
+
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(
+		dto.FileSyncDeleteMessage{
+			Path:     file.Path,
+			PathHash: file.PathHash,
+			Ctime:    file.Ctime,
+			Mtime:    file.Mtime,
+			Size:     file.Size,
+		},
+	).WithVault(params.Vault), "FileSyncDelete")
 }
 
 // Get retrieves file metadata

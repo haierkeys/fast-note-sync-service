@@ -36,7 +36,8 @@ type NoteSyncEndMessage struct {
 // NoteSyncNeedPushMessage server informs client of file info needing push
 // NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
 type NoteSyncNeedPushMessage struct {
-	Path string `json:"path" form:"path"` // Path // 路径
+	Path     string `json:"path" form:"path"`         // Path // 路径
+	PathHash string `json:"pathHash" form:"pathHash"` // Path hash for fast lookup // 路径哈希值，用于快速查找
 }
 
 // NoteSyncMtimeMessage message structure for updating mtime during sync
@@ -50,5 +51,9 @@ type NoteSyncMtimeMessage struct {
 // NoteSyncDeleteMessage message structure for note deletion
 // NoteSyncDeleteMessage 笔记删除的消息结构
 type NoteSyncDeleteMessage struct {
-	Path string `json:"path" form:"path"` // Path info (file path) // 路径信息（文件路径）
+	Path     string `json:"path" form:"path"`         // Path info (file path) // 路径信息（文件路径）
+	PathHash string `json:"pathHash" form:"pathHash"` // Path hash for fast lookup // 路径哈希值，用于快速查找
+	Ctime    int64  `json:"ctime" form:"ctime"`       // Creation timestamp // 创建时间戳
+	Mtime    int64  `json:"mtime" form:"mtime"`       // Modification timestamp // 修改时间戳
+	Size     int64  `json:"size" form:"size"`         // File size // 文件大小
 }

@@ -42,7 +42,7 @@ var en_messages = map[int]string{
 	422: "Invalid storage type",
 	423: "Invalid cloud storage type",
 
-	// --- Note Related (430-449) ---
+	// --- Note Related (430-444) ---
 	430: "Note does not exist",
 	431: "Note already exists",
 	432: "Get note failed",
@@ -59,39 +59,49 @@ var en_messages = map[int]string{
 	443: "Invalid regex pattern",
 	444: "Invalid path: path cannot contain '..'",
 
-	// --- File/Attachment Related (450-464) ---
-	450: "File does not exist",
-	451: "Get file failed",
-	452: "File modify or create failed",
-	453: "Modify file content failed",
-	454: "Delete file failed",
-	455: "File list get failed",
-	456: "Upload file failed",
-	457: "File upload check failed",
-	458: "Upload file session not found",
-	459: "File save failed",
-	460: "File move failed",
-	461: "File read failed",
+	// --- Folder Related (445-454) ---
+	445: "Folder does not exist",
+	446: "Folder already exists",
+	447: "Get folder failed",
+	448: "Folder modify or create failed",
+	449: "Delete folder failed",
+	450: "Folder list get failed",
+	451: "Folder rename failed",
 
-	// --- Setting Related (465-474) ---
-	465: "Setting does not exist",
-	466: "Setting already exists",
-	467: "Get setting failed",
-	468: "Setting modify or create failed",
-	469: "Modify setting content failed",
-	470: "Delete setting failed",
-	471: "Setting list get failed",
-	472: "Sync setting failed",
-	473: "Setting update check failed",
-	474: "Config save failed",
+	// --- File/Attachment Related (455-469) ---
+	455: "File does not exist",
+	456: "Get file failed",
+	457: "File modify or create failed",
+	458: "Modify file content failed",
+	459: "Delete file failed",
+	460: "File list get failed",
+	461: "Upload file failed",
+	462: "File upload check failed",
+	463: "Upload file session not found",
+	464: "File save failed",
+	465: "File move failed",
+	466: "File read failed",
+	467: "File already exists",
 
-	// --- Share Related (475-484) ---
-	475: "Share link not found",
-	476: "Share link has expired",
-	477: "Share link has been revoked",
+	// --- Setting Related (470-479) ---
+	470: "Setting does not exist",
+	471: "Setting already exists",
+	472: "Get setting failed",
+	473: "Setting modify or create failed",
+	474: "Modify setting content failed",
+	475: "Delete setting failed",
+	476: "Setting list get failed",
+	477: "Sync setting failed",
+	478: "Setting update check failed",
+	479: "Config save failed",
 
-	// --- Sync & History (485-499) ---
-	485: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
-	486: "History record not found",
-	487: "History restore failed",
+	// --- Share Related (480-489) ---
+	480: "Share link not found",
+	481: "Share link has expired",
+	482: "Share link has been revoked",
+
+	// --- Sync & History (490-499) ---
+	490: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
+	491: "History record not found",
+	492: "History restore failed",
 }
