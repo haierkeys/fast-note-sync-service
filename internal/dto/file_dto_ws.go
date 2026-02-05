@@ -64,6 +64,7 @@ type FileSyncDeleteMessage struct {
 type FileSyncRenameMessage struct {
 	Path        string `json:"path" form:"path" binding:"required"`
 	PathHash    string `json:"pathHash" form:"pathHash"`
+	ContentHash string `json:"contentHash" form:"contentHash"`
 	Ctime       int64  `json:"ctime" form:"ctime"`
 	Mtime       int64  `json:"mtime" form:"mtime"`
 	OldPath     string `json:"oldPath" form:"oldPath"`
