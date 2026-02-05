@@ -168,7 +168,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 		})
 
 		if err != nil {
-			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			return nil, code.ErrorFolderModifyOrCreateFailed.WithDetails(err.Error())
 		}
 
 		f := val.(*domain.Folder)
@@ -195,7 +195,7 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return code.ErrorFolderNotFound
 		}
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return code.ErrorFolderGetFailed.WithDetails(err.Error())
 	}
 
 	// 软删除
@@ -203,7 +203,7 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 	f.UpdatedTimestamp = time.Now().UnixMilli()
 	_, err = s.folderRepo.Update(ctx, f, uid)
 	if err != nil {
-		return code.ErrorDBQuery.WithDetails(err.Error())
+		return code.ErrorFolderDeleteFailed.WithDetails(err.Error())
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func (s *folderService) ListByUpdatedTimestamp(ctx context.Context, uid int64, v
 
 	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, lastTime, vaultID, uid)
 	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, code.ErrorFolderListFailed.WithDetails(err.Error())
 	}
 
 	var res []*dto.FolderDTO
@@ -260,7 +260,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, code.ErrorFolderNotFound
 		}
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorFolderGetFailed.WithDetails(err.Error())
 	}
 
 	// 3. 标记旧文件夹删除
@@ -268,7 +268,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 	f.UpdatedTimestamp = timex.Now().UnixMilli()
 	oldFolder, err := s.folderRepo.Update(ctx, f, uid)
 	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, code.ErrorFolderRenameFailed.WithDetails(err.Error())
 	}
 
 	// 4. 新建或复用文件夹记录
@@ -327,7 +327,7 @@ func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGe
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorFolderNotFound
 		}
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, code.ErrorFolderGetFailed.WithDetails(err.Error())
 	}
 
 	return s.domainToDTO(f), nil
@@ -355,12 +355,12 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 
 	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
-		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorNoteListFailed.WithDetails(err.Error())
 	}
 
 	count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
 	if err != nil {
-		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorNoteListFailed.WithDetails(err.Error())
 	}
 
 	var res []*dto.NoteNoContentDTO
@@ -403,12 +403,12 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 
 	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
-		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorFileListFailed.WithDetails(err.Error())
 	}
 
 	count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
 	if err != nil {
-		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, 0, code.ErrorFileListFailed.WithDetails(err.Error())
 	}
 
 	var res []*dto.FileDTO
@@ -577,7 +577,7 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 	// Get all non-deleted folders
 	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, code.ErrorFolderListFailed.WithDetails(err.Error())
 	}
 
 	// Deduplicate by path, collect all IDs per path for counting

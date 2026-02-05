@@ -19,6 +19,7 @@ type NoteDTO struct {
 	Version          int64      `json:"version" form:"version"`
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`
+	Size             int64      `json:"size" form:"size"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
 	UpdatedAt        timex.Time `json:"-"`
 	CreatedAt        timex.Time `json:"-"`
@@ -34,6 +35,7 @@ type NoteNoContentDTO struct {
 	Version          int64      `json:"version" form:"version"`
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`
+	Size             int64      `json:"size" form:"size"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
 	UpdatedAt        timex.Time `json:"-"`
 	CreatedAt        timex.Time `json:"-"`

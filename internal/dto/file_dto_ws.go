@@ -3,14 +3,13 @@ package dto
 // FileSyncModifyMessage message content for file modification or creation
 // FileSyncModifyMessage 文件修改或创建的消息内容
 type FileSyncModifyMessage struct {
-	Path             string `json:"path" form:"path"`                     // Path info (file path) // 路径信息（文件路径）
-	PathHash         string `json:"pathHash" form:"pathHash"`             // Path hash for fast lookup // 路径哈希值，用于快速查找
-	ContentHash      string `json:"contentHash" form:"contentHash"`       // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
-	SavePath         string `json:"savePath" form:"savePath"  binding:""` // File save path // 文件保存路径
-	Size             int64  `json:"size" form:"size"`                     // File size // 文件大小
-	Ctime            int64  `json:"ctime" form:"ctime"`                   // Creation timestamp (seconds) // 创建时间戳（秒）
-	Mtime            int64  `json:"mtime" form:"mtime"`                   // Modification timestamp (seconds) // 文件修改时间戳（秒）
-	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"`     // Update timestamp (for sync) // 记录更新时间戳（用于同步）
+	Path             string `json:"path" form:"path"`                 // Path info (file path) // 路径信息（文件路径）
+	PathHash         string `json:"pathHash" form:"pathHash"`         // Path hash for fast lookup // 路径哈希值，用于快速查找
+	ContentHash      string `json:"contentHash" form:"contentHash"`   // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
+	Size             int64  `json:"size" form:"size"`                 // File size // 文件大小
+	Ctime            int64  `json:"ctime" form:"ctime"`               // Creation timestamp (seconds) // 创建时间戳（秒）
+	Mtime            int64  `json:"mtime" form:"mtime"`               // Modification timestamp (seconds) // 文件修改时间戳（秒）
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // Update timestamp (for sync) // 记录更新时间戳（用于同步）
 }
 
 // FileSyncEndMessage defines the message structure when file sync ends
@@ -55,13 +54,16 @@ type FileSyncMtimeMessage struct {
 // FileSyncDeleteMessage defines the message structure for file deletion during sync
 // FileSyncDeleteMessage 定义同步期间文件删除的消息结构。
 type FileSyncDeleteMessage struct {
-	Path string `json:"path" form:"path"` // Path info (file path) // 路径信息（文件路径）
+	Path     string `json:"path" form:"path"`         // Path info (file path) // 路径信息（文件路径）
+	PathHash string `json:"pathHash" form:"pathHash"` // Path hash for fast lookup // 路径哈希值，用于快速查找
+	Ctime    int64  `json:"ctime" form:"ctime"`       // Creation timestamp // 创建时间戳
+	Mtime    int64  `json:"mtime" form:"mtime"`       // Modification timestamp // 修改时间戳
+	Size     int64  `json:"size" form:"size"`         // File size // 文件大小
 }
 
 type FileSyncRenameMessage struct {
 	Path        string `json:"path" form:"path" binding:"required"`
 	PathHash    string `json:"pathHash" form:"pathHash"`
-	ContentHash string `json:"contentHash" form:"contentHash"` // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
 	Ctime       int64  `json:"ctime" form:"ctime"`
 	Mtime       int64  `json:"mtime" form:"mtime"`
 	OldPath     string `json:"oldPath" form:"oldPath"`

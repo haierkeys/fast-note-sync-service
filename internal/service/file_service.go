@@ -61,10 +61,6 @@ type FileService interface {
 	// ListByLastTime 获取在 lastTime 之后更新的文件
 	ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error)
 
-	// Sync syncs files (alias for ListByLastTime, used for WebSocket sync)
-	// Sync 同步文件（ListByLastTime 的别名，用于 WebSocket 同步）
-	Sync(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error)
-
 	// CountSizeSum counts total number and total size of files in a vault
 	// CountSizeSum 统计 vault 中文件总数与总大小
 	CountSizeSum(ctx context.Context, vaultID int64, uid int64) error

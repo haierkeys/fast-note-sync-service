@@ -17,21 +17,8 @@ type WebSocketReceiveAction = string
 type WebSocketSendAction = string
 
 const (
-	// NoteReceiveModify note modify or create request
-	// NoteReceiveModify 笔记修改或创建请求
-	NoteReceiveModify WebSocketReceiveAction = "NoteModify"
-	// NoteReceiveDelete note delete request
-	// NoteReceiveDelete 笔记删除请求
-	NoteReceiveDelete WebSocketReceiveAction = "NoteDelete"
-	// NoteReceiveRename note rename request
-	// NoteReceiveRename 笔记重命名请求
-	NoteReceiveRename WebSocketReceiveAction = "NoteRename"
-	// NoteReceiveCheck note modification check request
-	// NoteReceiveCheck 笔记修改检查请求
-	NoteReceiveCheck WebSocketReceiveAction = "NoteCheck"
-	// NoteReceiveSync note synchronization request
-	// NoteReceiveSync 笔记同步请求
-	NoteReceiveSync WebSocketReceiveAction = "NoteSync"
+
+	// ---------------- Folder ----------------
 
 	// FolderReceiveSync folder synchronization request
 	// FolderReceiveSync 文件夹同步请求
@@ -46,18 +33,28 @@ const (
 	// FolderReceiveRename 文件夹重命名请求
 	FolderReceiveRename WebSocketReceiveAction = "FolderRename"
 
-	// SettingReceiveModify setting modify or create request
-	// SettingReceiveModify 设置修改或创建请求
-	SettingReceiveModify WebSocketReceiveAction = "SettingModify"
-	// SettingReceiveDelete setting delete request
-	// SettingReceiveDelete 设置删除请求
-	SettingReceiveDelete WebSocketReceiveAction = "SettingDelete"
-	// SettingReceiveCheck setting modification check request
-	// SettingReceiveCheck 设置修改检查请求
-	SettingReceiveCheck WebSocketReceiveAction = "SettingCheck"
-	// SettingReceiveSync setting synchronization request
-	// SettingReceiveSync 设置同步请求
-	SettingReceiveSync WebSocketReceiveAction = "SettingSync"
+	// ---------------- Note ----------------
+
+	// NoteReceiveSync note synchronization request
+	// NoteReceiveSync 笔记同步请求
+	NoteReceiveSync WebSocketReceiveAction = "NoteSync"
+	// NoteReceiveModify note modify or create request
+	// NoteReceiveModify 笔记修改或创建请求
+	NoteReceiveModify WebSocketReceiveAction = "NoteModify"
+	// NoteReceiveDelete note delete request
+	// NoteReceiveDelete 笔记删除请求
+	NoteReceiveDelete WebSocketReceiveAction = "NoteDelete"
+	// NoteReceiveRename note rename request
+	// NoteReceiveRename 笔记重命名请求
+	NoteReceiveRename WebSocketReceiveAction = "NoteRename"
+	// NoteReceiveCheck note modification check request
+	// NoteReceiveCheck 笔记修改检查请求
+	NoteReceiveCheck WebSocketReceiveAction = "NoteCheck"
+	// NoteReceiveRePush Note missing pull request
+	// NoteReceiveRePush 笔记缺失请求拉取
+	NoteReceiveRePush WebSocketReceiveAction = "NoteRePush"
+
+	// ---------------- File ----------------
 
 	// FileReceiveSync file synchronization request
 	// FileReceiveSync 文件同步请求
@@ -68,14 +65,31 @@ const (
 	// FileReceiveDelete file delete request
 	// FileReceiveDelete 文件删除请求
 	FileReceiveDelete WebSocketReceiveAction = "FileDelete"
+	// FileReceiveRename file rename request
+	// FileReceiveRename 文件重命名请求
+	FileReceiveRename WebSocketReceiveAction = "FileRename"
 	// FileReceiveChunkDownload file chunk download request
 	// FileReceiveChunkDownload 文件分片下载请求
 	FileReceiveChunkDownload WebSocketReceiveAction = "FileChunkDownload"
+
+	// ---------------- Setting ----------------
+
+	// SettingReceiveSync setting synchronization request
+	// SettingReceiveSync 设置同步请求
+	SettingReceiveSync WebSocketReceiveAction = "SettingSync"
+	// SettingReceiveModify setting modify or create request
+	// SettingReceiveModify 设置修改或创建请求
+	SettingReceiveModify WebSocketReceiveAction = "SettingModify"
+	// SettingReceiveDelete setting delete request
+	// SettingReceiveDelete 设置删除请求
+	SettingReceiveDelete WebSocketReceiveAction = "SettingDelete"
+	// SettingReceiveCheck setting modification check request
+	// SettingReceiveCheck 设置修改检查请求
+	SettingReceiveCheck WebSocketReceiveAction = "SettingCheck"
 )
 
 const (
-	// Folder related
-	// 文件夹相关
+	// ---------------- Folder ----------------
 
 	// FolderSyncModify folder synchronization modification
 	// FolderSyncModify 文件夹同步修改
@@ -90,8 +104,7 @@ const (
 	// FolderRename 文件夹重命名动作
 	FolderSyncRename WebSocketSendAction = "FolderSyncRename"
 
-	// Note related
-	// 笔记相关
+	// ---------------- Note ----------------
 
 	// NoteSyncModify note synchronization modification
 	// NoteSyncModify 笔记同步修改
@@ -112,8 +125,7 @@ const (
 	// NoteSyncNeedPush 表示客户端需要推送笔记内容
 	NoteSyncNeedPush WebSocketSendAction = "NoteSyncNeedPush"
 
-	// File related
-	// 文件/附件相关
+	// ---------------- File ----------------
 
 	// FileSyncUpdate file synchronization update
 	// FileSyncUpdate 文件同步更新
@@ -137,8 +149,7 @@ const (
 	// FileSyncChunkDownload 同步时的文件块下载
 	FileSyncChunkDownload WebSocketSendAction = "FileSyncChunkDownload"
 
-	// Setting related
-	// 设置相关
+	// ---------------- Setting ----------------
 
 	// SettingSyncModify setting synchronization modification
 	// SettingSyncModify 设置同步修改

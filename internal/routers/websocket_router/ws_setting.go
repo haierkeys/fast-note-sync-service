@@ -58,27 +58,29 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			return
 		}
 
-		settingMessage := &dto.SettingSyncModifyMessage{
-			Vault:            params.Vault,
-			Path:             setting.Path,
-			PathHash:         setting.PathHash,
-			Content:          setting.Content,
-			ContentHash:      setting.ContentHash,
-			Ctime:            setting.Ctime,
-			Mtime:            setting.Mtime,
-			UpdatedTimestamp: setting.UpdatedTimestamp,
-		}
 		c.ToResponse(code.Success)
-		c.BroadcastResponse(code.Success.WithData(settingMessage).WithVault(params.Vault), true, dto.SettingSyncModify)
+		c.BroadcastResponse(code.Success.WithData(
+			dto.SettingSyncModifyMessage{
+				Vault:            params.Vault,
+				Path:             setting.Path,
+				PathHash:         setting.PathHash,
+				Content:          setting.Content,
+				ContentHash:      setting.ContentHash,
+				Ctime:            setting.Ctime,
+				Mtime:            setting.Mtime,
+				UpdatedTimestamp: setting.UpdatedTimestamp,
+			},
+		).WithVault(params.Vault), true, dto.SettingSyncModify)
 		return
 
 	case "UpdateMtime":
-		settingSyncMtimeMessage := &dto.SettingSyncMtimeMessage{
-			Path:  settingCheck.Path,
-			Ctime: settingCheck.Ctime,
-			Mtime: settingCheck.Mtime,
-		}
-		c.ToResponse(code.Success.WithData(settingSyncMtimeMessage), dto.SettingSyncMtime)
+		c.ToResponse(code.Success.WithData(
+			dto.SettingSyncMtimeMessage{
+				Path:  settingCheck.Path,
+				Ctime: settingCheck.Ctime,
+				Mtime: settingCheck.Mtime,
+			},
+		).WithVault(params.Vault), dto.SettingSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -110,18 +112,20 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	switch updateMode {
 	case "UpdateContent", "Create":
-		settingSyncNeedPushMessage := &dto.SettingSyncNeedUploadMessage{
-			Path: settingCheck.Path,
-		}
-		c.ToResponse(code.Success.WithData(settingSyncNeedPushMessage), dto.SettingSyncNeedUpload)
+		c.ToResponse(code.Success.WithData(
+			dto.SettingSyncNeedUploadMessage{
+				Path: settingCheck.Path,
+			},
+		).WithVault(params.Vault), dto.SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
-		settingSyncMtimeMessage := &dto.SettingSyncMtimeMessage{
-			Path:  settingCheck.Path,
-			Ctime: settingCheck.Ctime,
-			Mtime: settingCheck.Mtime,
-		}
-		c.ToResponse(code.Success.WithData(settingSyncMtimeMessage), dto.SettingSyncMtime)
+		c.ToResponse(code.Success.WithData(
+			dto.SettingSyncMtimeMessage{
+				Path:  settingCheck.Path,
+				Ctime: settingCheck.Ctime,
+				Mtime: settingCheck.Mtime,
+			},
+		).WithVault(params.Vault), dto.SettingSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -152,7 +156,11 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, dto.SettingSyncDelete)
+	c.BroadcastResponse(code.Success.WithData(
+		dto.SettingSyncDeleteMessage{
+			Path: setting.Path,
+		},
+	).WithVault(params.Vault), true, dto.SettingSyncDelete)
 }
 
 // SettingSync handles setting synchronization messages
@@ -220,7 +228,11 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			cDelSettingsKeys[delSetting.PathHash] = struct{}{}
 			// Broadcast deletion to other clients
 			// 将删除消息广播给其他客户端
-			c.BroadcastResponse(code.Success.WithData(setting).WithVault(params.Vault), true, dto.SettingSyncDelete)
+			c.BroadcastResponse(code.Success.WithData(
+				dto.SettingSyncDeleteMessage{
+					Path: setting.Path,
+				},
+			).WithVault(params.Vault), true, dto.SettingSyncDelete)
 		}
 	}
 
@@ -242,19 +254,19 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			}
 
 			if setting != nil && setting.Action != "delete" {
-				settingMessage := &dto.SettingSyncModifyMessage{
-					Vault:            params.Vault,
-					Path:             setting.Path,
-					PathHash:         setting.PathHash,
-					Content:          setting.Content,
-					ContentHash:      setting.ContentHash,
-					Ctime:            setting.Ctime,
-					Mtime:            setting.Mtime,
-					UpdatedTimestamp: setting.UpdatedTimestamp,
-				}
+
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncModify,
-					Data:   settingMessage,
+					Data: dto.SettingSyncModifyMessage{
+						Vault:            params.Vault,
+						Path:             setting.Path,
+						PathHash:         setting.PathHash,
+						Content:          setting.Content,
+						ContentHash:      setting.ContentHash,
+						Ctime:            setting.Ctime,
+						Mtime:            setting.Mtime,
+						UpdatedTimestamp: setting.UpdatedTimestamp,
+					},
 				})
 				needModifyCount++
 				// 加入排除索引
@@ -279,7 +291,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncDelete,
-					Data:   &dto.SettingSyncDeleteMessage{Path: s.Path},
+					Data:   dto.SettingSyncDeleteMessage{Path: s.Path},
 				})
 				needDeleteCount++
 			}
@@ -294,7 +306,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.SettingSyncModify,
-						Data: &dto.SettingSyncModifyMessage{
+						Data: dto.SettingSyncModifyMessage{
 							Vault:            params.Vault,
 							Path:             s.Path,
 							PathHash:         s.PathHash,
@@ -317,7 +329,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, dto.WSQueuedMessage{
 							Action: dto.SettingSyncModify,
-							Data: &dto.SettingSyncModifyMessage{
+							Data: dto.SettingSyncModifyMessage{
 								Vault:            params.Vault,
 								Path:             s.Path,
 								PathHash:         s.PathHash,
@@ -336,7 +348,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, dto.WSQueuedMessage{
 							Action: dto.SettingSyncNeedUpload,
-							Data: &dto.SettingSyncNeedUploadMessage{
+							Data: dto.SettingSyncNeedUploadMessage{
 								Path: s.Path,
 							},
 						})
@@ -349,7 +361,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.SettingSyncMtime,
-						Data: &dto.SettingSyncMtimeMessage{
+						Data: dto.SettingSyncMtimeMessage{
 							Path:  s.Path,
 							Ctime: s.Ctime,
 							Mtime: s.Mtime,
@@ -361,7 +373,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncModify,
-					Data: &dto.SettingSyncModifyMessage{
+					Data: dto.SettingSyncModifyMessage{
 						Vault:            params.Vault,
 						Path:             s.Path,
 						PathHash:         s.PathHash,
@@ -386,20 +398,21 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		// 将消息添加到队列而非立即发送
 		messageQueue = append(messageQueue, dto.WSQueuedMessage{
 			Action: dto.SettingSyncNeedUpload,
-			Data:   &dto.SettingSyncNeedUploadMessage{Path: s.Path},
+			Data:   dto.SettingSyncNeedUploadMessage{Path: s.Path},
 		})
 		needUploadCount++
 	}
 
 	// Send SettingSyncEnd message, containing all merged messages
 	// 发送 SettingSyncEnd 消息，包含所有合并的消息
-	message := &dto.SettingSyncEndMessage{
-		LastTime:           lastTime,
-		NeedUploadCount:    needUploadCount,
-		NeedModifyCount:    needModifyCount,
-		NeedSyncMtimeCount: needSyncMtimeCount,
-		NeedDeleteCount:    needDeleteCount,
-		Messages:           messageQueue,
-	}
-	c.ToResponse(code.Success.WithData(message).WithVault(params.Vault), dto.SettingSyncEnd)
+	c.ToResponse(code.Success.WithData(
+		dto.SettingSyncEndMessage{
+			LastTime:           lastTime,
+			NeedUploadCount:    needUploadCount,
+			NeedModifyCount:    needModifyCount,
+			NeedSyncMtimeCount: needSyncMtimeCount,
+			NeedDeleteCount:    needDeleteCount,
+			Messages:           messageQueue,
+		},
+	).WithVault(params.Vault), dto.SettingSyncEnd)
 }
