@@ -75,56 +75,35 @@ func (s *folderService) List(ctx context.Context, uid int64, params *dto.FolderL
 		return nil, err
 	}
 
-	// Collect all FIDs to query. Concurrent note sync can create duplicate
-	// folder records for the same path (race in EnsurePathFID), so a single
-	// path may map to multiple DB IDs. We need to query children by all of
-	// them to get complete results.
-	fids := []int64{0}
+	var fid int64 = 0
 	if params.PathHash != "" {
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, code.ErrorFolderNotFound
+			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
-		if len(matches) == 0 {
-			return nil, code.ErrorFolderNotFound
-		}
-		fids = make([]int64, 0, len(matches))
-		for _, f := range matches {
-			fids = append(fids, f.ID)
-		}
+		fid = f.ID
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, code.ErrorFolderNotFound
+			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
-		if len(matches) == 0 {
-			return nil, code.ErrorFolderNotFound
-		}
-		fids = make([]int64, 0, len(matches))
-		for _, f := range matches {
-			fids = append(fids, f.ID)
-		}
+		fid = f.ID
 	}
 
-	// Query children across all matching parent FIDs
-	var allFolders []*domain.Folder
-	for _, fid := range fids {
-		folders, err := s.folderRepo.GetByFID(ctx, fid, vaultID, uid)
-		if err != nil {
-			return nil, code.ErrorDBQuery.WithDetails(err.Error())
-		}
-		allFolders = append(allFolders, folders...)
+	folders, err := s.folderRepo.GetByFID(ctx, fid, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Deduplicate by PathHash (same pattern as ListByUpdatedTimestamp)
 	var res []*dto.FolderDTO
-	seen := make(map[string]bool)
-	for _, f := range allFolders {
-		if seen[f.PathHash] {
-			continue
-		}
-		seen[f.PathHash] = true
+	for _, f := range folders {
 		res = append(res, s.domainToDTO(f))
 	}
 	return res, nil
@@ -146,41 +125,53 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 	var currentFID int64 = 0
 	var lastFolder *domain.Folder
 
-	for i, _ := range parts {
+	for i := range parts {
 		currentPath := strings.Join(parts[:i+1], "/")
 		pathHash := util.EncodeHash32(currentPath)
 
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				// 创建缺失的目录
-				newFolder := &domain.Folder{
-					VaultID:  vaultID,
-					Action:   domain.FolderActionCreate,
-					Path:     currentPath,
-					PathHash: pathHash,
-					Level:    int64(i + 1),
-					FID:      currentFID,
-					Ctime:    time.Now().UnixMilli(),
-					Mtime:    time.Now().UnixMilli(),
-				}
-				f, err = s.folderRepo.Create(ctx, newFolder, uid)
-				if err != nil {
-					return nil, code.ErrorDBQuery.WithDetails(err.Error())
-				}
-			} else {
-				return nil, code.ErrorDBQuery.WithDetails(err.Error())
-			}
-		} else if f.Action == domain.FolderActionDelete {
-			// 如果已被删除，恢复它
-			f.Action = domain.FolderActionCreate
-			f.Ctime = time.Now().UnixMilli()
-			f.Mtime = time.Now().UnixMilli()
-			f, err = s.folderRepo.Update(ctx, f, uid)
+		key := fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash)
+		val, err, _ := s.sf.Do(key, func() (any, error) {
+			f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 			if err != nil {
-				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// 创建缺失的目录
+					newFolder := &domain.Folder{
+						VaultID:  vaultID,
+						Action:   domain.FolderActionCreate,
+						Path:     currentPath,
+						PathHash: pathHash,
+						Level:    int64(i + 1),
+						FID:      currentFID,
+						Ctime:    time.Now().UnixMilli(),
+						Mtime:    time.Now().UnixMilli(),
+					}
+					f, err = s.folderRepo.Create(ctx, newFolder, uid)
+					if err != nil {
+						return nil, err
+					}
+					return f, nil
+				}
+				return nil, err
+			} else if f.Action == domain.FolderActionDelete {
+				// 如果已被删除，恢复它
+				f.Action = domain.FolderActionCreate
+				f.Ctime = time.Now().UnixMilli()
+				f.Mtime = time.Now().UnixMilli()
+				f.UpdatedTimestamp = time.Now().UnixMilli()
+				f, err = s.folderRepo.Update(ctx, f, uid)
+				if err != nil {
+					return nil, err
+				}
+				return f, nil
 			}
+			return f, nil
+		})
+
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
+
+		f := val.(*domain.Folder)
 		currentFID = f.ID
 		lastFolder = f
 	}
@@ -348,33 +339,26 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	// Resolve all FIDs for the path (handles duplicate folder records)
-	fids := []int64{0}
+	var fid int64 = 0
 	if params.PathHash != "" {
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil && len(matches) > 0 {
-			fids = make([]int64, 0, len(matches))
-			for _, f := range matches {
-				fids = append(fids, f.ID)
-			}
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
 		}
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil && len(matches) > 0 {
-			fids = make([]int64, 0, len(matches))
-			for _, f := range matches {
-				fids = append(fids, f.ID)
-			}
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
 		}
 	}
 
-	notes, err := s.noteRepo.ListByFIDs(ctx, fids, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
+	notes, err := s.noteRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.noteRepo.ListByFIDsCount(ctx, fids, vaultID, uid)
+	count, err := s.noteRepo.ListByFIDCount(ctx, fid, vaultID, uid)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -403,33 +387,26 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	// Resolve all FIDs for the path (handles duplicate folder records)
-	fids := []int64{0}
+	var fid int64 = 0
 	if params.PathHash != "" {
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil && len(matches) > 0 {
-			fids = make([]int64, 0, len(matches))
-			for _, f := range matches {
-				fids = append(fids, f.ID)
-			}
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
 		}
 	} else if params.Path != "" {
 		pathHash := util.EncodeHash32(params.Path)
-		matches, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
-		if err == nil && len(matches) > 0 {
-			fids = make([]int64, 0, len(matches))
-			for _, f := range matches {
-				fids = append(fids, f.ID)
-			}
+		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		if err == nil {
+			fid = f.ID
 		}
 	}
 
-	files, err := s.fileRepo.ListByFIDs(ctx, fids, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
+	files, err := s.fileRepo.ListByFID(ctx, fid, vaultID, uid, pager.Page, pager.PageSize, params.SortBy, params.SortOrder)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.fileRepo.ListByFIDsCount(ctx, fids, vaultID, uid)
+	count, err := s.fileRepo.ListByFIDCount(ctx, fid, vaultID, uid)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -486,37 +463,48 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 		currentPath := strings.Join(parts[:i+1], "/")
 		pathHash := util.EncodeHash32(currentPath)
 
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				newFolder := &domain.Folder{
-					VaultID:  vaultID,
-					Action:   domain.FolderActionCreate,
-					Path:     currentPath,
-					PathHash: pathHash,
-					Level:    int64(i + 1),
-					FID:      currentFID,
-					Ctime:    timex.Now().UnixMilli(),
-					Mtime:    timex.Now().UnixMilli(),
-				}
-				f, err = s.folderRepo.Create(ctx, newFolder, uid)
-				if err != nil {
-					return 0, err
-				}
-			} else {
-				return 0, err
-			}
-		} else if f.Action == domain.FolderActionDelete {
-			f.Action = domain.FolderActionCreate
-			f.Ctime = timex.Now().UnixMilli()
-			f.Mtime = timex.Now().UnixMilli()
-
-			f, err = s.folderRepo.Update(ctx, f, uid)
+		key := fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash)
+		val, err, _ := s.sf.Do(key, func() (any, error) {
+			f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 			if err != nil {
-				return 0, err
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					newFolder := &domain.Folder{
+						VaultID:  vaultID,
+						Action:   domain.FolderActionCreate,
+						Path:     currentPath,
+						PathHash: pathHash,
+						Level:    int64(i + 1),
+						FID:      currentFID,
+						Ctime:    timex.Now().UnixMilli(),
+						Mtime:    timex.Now().UnixMilli(),
+					}
+					f, err = s.folderRepo.Create(ctx, newFolder, uid)
+					if err != nil {
+						return 0, err
+					}
+					return f.ID, nil
+				}
+				return nil, err
+			} else if f.Action == domain.FolderActionDelete {
+				f.Action = domain.FolderActionCreate
+				f.Ctime = timex.Now().UnixMilli()
+				f.Mtime = timex.Now().UnixMilli()
+				f.UpdatedTimestamp = timex.Now().UnixMilli()
+
+				f, err = s.folderRepo.Update(ctx, f, uid)
+				if err != nil {
+					return nil, err
+				}
+				return f.ID, nil
 			}
+			return f.ID, nil
+		})
+
+		if err != nil {
+			return 0, err
 		}
-		currentFID = f.ID
+
+		currentFID = val.(int64)
 	}
 	return currentFID, nil
 }
