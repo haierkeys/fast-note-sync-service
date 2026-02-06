@@ -88,6 +88,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	wss.Use(dto.FileReceiveRename, fileWSHandler.FileRename)
 	wss.Use(dto.FileReceiveDelete, fileWSHandler.FileDelete)
 	wss.Use(dto.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
+	wss.Use(dto.FileReceiveRePush, fileWSHandler.FileRePush)
 
 	// Attachment chunk upload
 	wss.UseBinary(dto.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
