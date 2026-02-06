@@ -127,7 +127,7 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 	}
 
 	uid := pkgapp.GetUID(c)
-	err := h.appContainer.FolderService.Delete(c.Request.Context(), uid, params)
+	_, err := h.appContainer.FolderService.Delete(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return

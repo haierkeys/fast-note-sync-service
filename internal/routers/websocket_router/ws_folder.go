@@ -34,9 +34,13 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	h.App.VaultService.GetOrCreate(ctx, uid, params.Vault)
 
 	var cFolders map[string]dto.FolderSyncCheckRequest = make(map[string]dto.FolderSyncCheckRequest)
+	var cFoldersKeys map[string]struct{} = make(map[string]struct{}, 0)
 	if len(params.Folders) > 0 {
 		for _, f := range params.Folders {
 			cFolders[f.PathHash] = f
+		}
+		for _, folder := range params.Folders {
+			cFoldersKeys[folder.PathHash] = struct{}{}
 		}
 	}
 
@@ -53,7 +57,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 				Path:     delFolder.Path,
 				PathHash: delFolder.PathHash,
 			}
-			err := h.App.FolderService.Delete(ctx, uid, delParams)
+			folder, err := h.App.FolderService.Delete(ctx, uid, delParams)
 			if err != nil {
 				h.App.Logger().Error("failed to delete folder during sync",
 					zap.String(logpkg.FieldTraceID, c.TraceID),
@@ -64,7 +68,14 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			}
 			cDelFoldersKeys[delFolder.PathHash] = struct{}{}
 			// Broadcast deletion to other clients
-			c.BroadcastResponse(code.Success.WithData(delFolder).WithVault(params.Vault), true, dto.FolderSyncDelete)
+			c.BroadcastResponse(code.Success.WithData(
+				dto.FolderSyncDeleteMessage{
+					Path:     folder.Path,
+					PathHash: folder.PathHash,
+					Ctime:    folder.Ctime,
+					Mtime:    folder.Mtime,
+				},
+			).WithVault(params.Vault), true, dto.FolderSyncDelete)
 		}
 	}
 
@@ -86,7 +97,13 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			if folder != nil && folder.Action != "delete" {
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.FolderSyncModify,
-					Data:   folder,
+					Data: dto.FolderSyncModifyMessage{
+						Path:             folder.Path,
+						PathHash:         folder.PathHash,
+						Ctime:            folder.Ctime,
+						Mtime:            folder.Mtime,
+						UpdatedTimestamp: folder.UpdatedTimestamp,
+					},
 				})
 				needModifyCount++
 				cDelFoldersKeys[folder.PathHash] = struct{}{}
@@ -107,21 +124,59 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		}
 
 		if folder.Action == "delete" {
+			delete(cFoldersKeys, folder.PathHash)
 			messageQueue = append(messageQueue, dto.WSQueuedMessage{
 				Action: dto.FolderSyncDelete,
-				Data:   folder,
+				Data: dto.FolderSyncDeleteMessage{
+					Path:     folder.Path,
+					PathHash: folder.PathHash,
+					Ctime:    folder.Ctime,
+					Mtime:    folder.Mtime,
+				},
 			})
 			needDeleteCount++
 		} else {
-			// Compare with client version
+			delete(cFoldersKeys, folder.PathHash)
 			_, exists := cFolders[folder.PathHash]
 			if !exists {
+
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.FolderSyncModify,
-					Data:   folder,
+					Data: dto.FolderSyncModifyMessage{
+						Path:             folder.Path,
+						PathHash:         folder.PathHash,
+						Ctime:            folder.Ctime,
+						Mtime:            folder.Mtime,
+						UpdatedTimestamp: folder.UpdatedTimestamp,
+					},
 				})
 				needModifyCount++
 			}
+		}
+	}
+
+	if len(cFoldersKeys) > 0 {
+		for pathHash := range cFoldersKeys {
+			folder := cFolders[pathHash]
+
+			newFolder, err := h.App.FolderService.UpdateOrCreate(ctx, uid, &dto.FolderCreateRequest{
+				Vault:    params.Vault,
+				Path:     folder.Path,
+				PathHash: folder.PathHash,
+			})
+			if err != nil {
+				h.logError(c, "websocket_router.folder.FolderSync.UpdateOrCreate", err)
+				continue
+			}
+			c.BroadcastResponse(code.Success.WithData(
+				dto.FolderSyncModifyMessage{
+					Path:             newFolder.Path,
+					PathHash:         newFolder.PathHash,
+					Ctime:            newFolder.Ctime,
+					Mtime:            newFolder.Mtime,
+					UpdatedTimestamp: newFolder.UpdatedTimestamp,
+				},
+			).WithVault(params.Vault), true, dto.FolderSyncModify)
 		}
 	}
 
@@ -149,8 +204,16 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(folder))
-	c.BroadcastResponse(code.Success.WithData(folder).WithVault(params.Vault), true, dto.FolderSyncModify)
+	c.ToResponse(code.Success)
+	c.BroadcastResponse(code.Success.WithData(
+		dto.FolderSyncModifyMessage{
+			Path:             folder.Path,
+			PathHash:         folder.PathHash,
+			Ctime:            folder.Ctime,
+			Mtime:            folder.Mtime,
+			UpdatedTimestamp: folder.UpdatedTimestamp,
+		},
+	).WithVault(params.Vault), true, dto.FolderSyncModify)
 }
 
 // FolderDelete handles folder deletion
@@ -164,14 +227,21 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	err := h.App.FolderService.Delete(c.Context(), uid, params)
+	folder, err := h.App.FolderService.Delete(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderDeleteFailed, err, "websocket_router.folder.FolderDelete.Delete")
 		return
 	}
 
 	c.ToResponse(code.Success)
-	c.BroadcastResponse(code.Success.WithData(params).WithVault(params.Vault), true, dto.FolderSyncDelete)
+	c.BroadcastResponse(code.Success.WithData(
+		dto.FolderSyncDeleteMessage{
+			Path:     folder.Path,
+			PathHash: folder.PathHash,
+			Ctime:    folder.Ctime,
+			Mtime:    folder.Mtime,
+		},
+	).WithVault(params.Vault), true, dto.FolderSyncDelete)
 }
 
 // FolderRename handles folder renaming
@@ -191,7 +261,21 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(newFolder))
+	c.ToResponse(code.Success)
+
+	// 如果 oldFolder 为空，说明是新增文件夹
+	if oldFolder == nil {
+		c.BroadcastResponse(code.Success.WithData(
+			dto.FolderSyncModifyMessage{
+				Path:             newFolder.Path,
+				PathHash:         newFolder.PathHash,
+				Ctime:            newFolder.Ctime,
+				Mtime:            newFolder.Mtime,
+				UpdatedTimestamp: newFolder.UpdatedTimestamp,
+			},
+		).WithVault(params.Vault), true, dto.FolderSyncModify)
+		return
+	}
 
 	c.BroadcastResponse(code.Success.WithData(dto.FolderSyncRenameMessage{
 		Path:        newFolder.Path,
