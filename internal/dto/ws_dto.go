@@ -71,6 +71,9 @@ const (
 	// FileReceiveChunkDownload file chunk download request
 	// FileReceiveChunkDownload 文件分片下载请求
 	FileReceiveChunkDownload WebSocketReceiveAction = "FileChunkDownload"
+	// FileReceiveRePush file missing pull request
+	// FileReceiveRePush 文件缺失请求拉取
+	FileReceiveRePush WebSocketReceiveAction = "FileRePush"
 
 	// ---------------- Setting ----------------
 

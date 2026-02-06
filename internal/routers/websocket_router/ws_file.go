@@ -1001,6 +1001,43 @@ func (h *FileWSHandler) handleFileChunkDownloadSendChunks(c *pkgapp.WebsocketCli
 		zap.Int64("totalChunks", session.TotalChunks))
 }
 
+func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.FileGetRequest{}
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileRePush.BindAndValid")
+		return
+	}
+
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileRePush", params.Path, params.Vault)
+
+	ctx := c.Context()
+	// 获取或创建仓库
+	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
+
+	fileSvc, err := h.App.FileService.Get(ctx, c.User.UID, params)
+	if err != nil {
+		h.respondError(c, code.ErrorFileGetFailed, err, "websocket_router.file.FileRePush.Get")
+		return
+	}
+
+	if fileSvc != nil && fileSvc.Action != "delete" {
+		c.ToResponse(code.Success.WithData(
+			dto.FileSyncModifyMessage{
+				Path:             fileSvc.Path,
+				PathHash:         fileSvc.PathHash,
+				ContentHash:      fileSvc.ContentHash,
+				Size:             fileSvc.Size,
+				Ctime:            fileSvc.Ctime,
+				Mtime:            fileSvc.Mtime,
+				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+			},
+		).WithVault(params.Vault), dto.FileSyncUpdate)
+	} else {
+		c.ToResponse(code.ErrorFileGetFailed)
+	}
+}
+
 // getChunkSizeFromConfig 从注入的配置获取分片大小, 默认为 512KB
 func getChunkSizeFromConfig(cfg *app.AppConfig) int64 {
 	// 从配置中读取文件分片大小的设置字符串
