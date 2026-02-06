@@ -33,8 +33,9 @@ type FolderListRequest struct {
 
 // FolderCreateRequest 创建文件夹请求参数
 type FolderCreateRequest struct {
-	Vault string `json:"vault" form:"vault" binding:"required"`
-	Path  string `json:"path" form:"path" binding:"required"`
+	Vault    string `json:"vault" form:"vault" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`
+	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
 // FolderDeleteRequest 删除文件夹请求参数
