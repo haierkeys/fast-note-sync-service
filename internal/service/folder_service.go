@@ -75,8 +75,7 @@ func (s *folderService) List(ctx context.Context, uid int64, params *dto.FolderL
 		return nil, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
@@ -109,8 +108,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 		return nil, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
@@ -182,8 +180,7 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 		return nil, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
@@ -240,13 +237,11 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		return nil, nil, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
-	oldPath := strings.Trim(params.OldPath, "/")
-	if oldPath != params.OldPath || oldPath == "" {
+	if params.OldPath != strings.Trim(params.OldPath, "/") && params.OldPath != "" {
 		return nil, nil, code.ErrorInvalidParams.WithDetails("oldPath cannot be empty")
 	}
 
@@ -337,8 +332,7 @@ func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGe
 		return nil, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
@@ -367,8 +361,7 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, 0, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
@@ -417,8 +410,7 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
-	path := strings.Trim(params.Path, "/")
-	if path != params.Path || path == "" {
+	if params.Path != strings.Trim(params.Path, "/") && params.Path != "" {
 		return nil, 0, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
