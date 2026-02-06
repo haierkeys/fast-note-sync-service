@@ -75,26 +75,20 @@ func (s *folderService) List(ctx context.Context, uid int64, params *dto.FolderL
 		return nil, err
 	}
 
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
+	}
+
 	var fid int64 = 0
-	if params.PathHash != "" {
+	if params.Path != "" {
+		if params.PathHash == "" {
+			params.PathHash = util.EncodeHash32(params.Path)
+		}
 		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, code.ErrorFolderNotFound
-			}
-			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		if err == nil {
+			fid = f.ID
 		}
-		fid = f.ID
-	} else if params.Path != "" {
-		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, code.ErrorFolderNotFound
-			}
-			return nil, code.ErrorDBQuery.WithDetails(err.Error())
-		}
-		fid = f.ID
 	}
 
 	folders, err := s.folderRepo.GetByFID(ctx, fid, vaultID, uid)
@@ -116,22 +110,26 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 	}
 
 	path := strings.Trim(params.Path, "/")
-	if path == "" {
+	if path != params.Path || path == "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
 	// 确保父级目录存在
-	parts := strings.Split(path, "/")
+	parts := strings.Split(params.Path, "/")
 	var currentFID int64 = 0
 	var lastFolder *domain.Folder
 
 	for i := range parts {
 		currentPath := strings.Join(parts[:i+1], "/")
-		pathHash := util.EncodeHash32(currentPath)
+		currentPathHash := util.EncodeHash32(currentPath)
 
-		key := fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash)
+		key := fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, currentPathHash)
 		val, err, _ := s.sf.Do(key, func() (any, error) {
-			f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+			f, err := s.folderRepo.GetByPathHash(ctx, currentPathHash, vaultID, uid)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					// 创建缺失的目录
@@ -139,7 +137,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 						VaultID:  vaultID,
 						Action:   domain.FolderActionCreate,
 						Path:     currentPath,
-						PathHash: pathHash,
+						PathHash: currentPathHash,
 						Level:    int64(i + 1),
 						FID:      currentFID,
 						Ctime:    time.Now().UnixMilli(),
@@ -184,12 +182,16 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 		return nil, err
 	}
 
-	pathHash := params.PathHash
-	if pathHash == "" {
-		pathHash = util.EncodeHash32(params.Path)
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
-	f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorFolderNotFound
@@ -238,6 +240,16 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		return nil, nil, err
 	}
 
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
+	}
+
+	oldPath := strings.Trim(params.OldPath, "/")
+	if oldPath != params.OldPath || oldPath == "" {
+		return nil, nil, code.ErrorInvalidParams.WithDetails("oldPath cannot be empty")
+	}
+
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
@@ -260,7 +272,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 			}
 			return nil, newFolder, nil
 		}
-		return nil, nil, code.ErrorFolderGetFailed.WithDetails(err.Error())
+		return nil, nil, code.ErrorFolderGetFailed.WithDetails(params.OldPathHash + "->" + params.PathHash + ":" + err.Error())
 	}
 
 	// 2. 判断目标目录是否存在
@@ -325,16 +337,20 @@ func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGe
 		return nil, err
 	}
 
-	pathHash := params.PathHash
-	if pathHash == "" && params.Path != "" {
-		pathHash = util.EncodeHash32(params.Path)
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
-	if pathHash == "" {
+	if params.Path != "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	if params.PathHash == "" {
 		return nil, code.ErrorInvalidParams.WithDetails("path or pathHash is required")
 	}
 
-	f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+	f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorFolderNotFound
@@ -351,15 +367,17 @@ func (s *folderService) ListNotes(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, 0, code.ErrorInvalidParams.WithDetails("path cannot be empty")
+	}
+
 	var fid int64 = 0
-	if params.PathHash != "" {
-		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+	if params.Path != "" {
+		if params.PathHash == "" {
+			params.PathHash = util.EncodeHash32(params.Path)
 		}
-	} else if params.Path != "" {
-		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 		if err == nil {
 			fid = f.ID
 		}
@@ -399,15 +417,17 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 		return nil, 0, err
 	}
 
+	path := strings.Trim(params.Path, "/")
+	if path != params.Path || path == "" {
+		return nil, 0, code.ErrorInvalidParams.WithDetails("path cannot be empty")
+	}
+
 	var fid int64 = 0
-	if params.PathHash != "" {
-		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-		if err == nil {
-			fid = f.ID
+	if params.Path != "" {
+		if params.PathHash == "" {
+			params.PathHash = util.EncodeHash32(params.Path)
 		}
-	} else if params.Path != "" {
-		pathHash := util.EncodeHash32(params.Path)
-		f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+		f, err := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 		if err == nil {
 			fid = f.ID
 		}
