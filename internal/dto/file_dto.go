@@ -45,7 +45,6 @@ type FileRestoreRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
-
 // FileSyncCheckRequest/ Parameters for checking synchronization of a single record
 // 同步检查单条记录的参数
 type FileSyncCheckRequest struct {
