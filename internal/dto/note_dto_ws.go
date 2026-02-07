@@ -6,6 +6,7 @@ type NoteSyncRenameMessage struct {
 	ContentHash string `json:"contentHash" form:"contentHash"` // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
 	Ctime       int64  `json:"ctime" form:"ctime"`
 	Mtime       int64  `json:"mtime" form:"mtime"`
+	Size        int64  `json:"size" form:"size"`
 	OldPath     string `json:"oldPath" form:"oldPath"`
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`
 }

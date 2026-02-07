@@ -567,6 +567,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			ContentHash: newNote.ContentHash,
 			Ctime:       newNote.Ctime,
 			Mtime:       newNote.Mtime,
+			Size:        newNote.Size,
 			OldPath:     oldNote.Path,
 			OldPathHash: oldNote.PathHash,
 		},
