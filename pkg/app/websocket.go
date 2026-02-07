@@ -521,6 +521,9 @@ func (c *WebsocketClient) sendMessage(payload []byte) {
 }
 
 func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
+	c.Server.mu.RLock()
+	defer c.Server.mu.RUnlock()
+
 	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
 	defer b.Close()
 
@@ -607,7 +610,7 @@ type WebsocketServer struct {
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
-	mu                sync.Mutex
+	mu                sync.RWMutex
 	up                *gws.Upgrader
 	config            *WSConfig
 	// Global session management (UID -> SessionID -> Session)
@@ -795,8 +798,8 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 }
 
 func (w *WebsocketServer) GetClient(conn *gws.Conn) *WebsocketClient {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 	return w.clients[conn]
 }
 
@@ -1032,10 +1035,10 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 
 func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action string) {
 	uidStr := strconv.FormatInt(uid, 10)
-	w.mu.Lock()
-	userClients, ok := w.userClients[uidStr]
-	w.mu.Unlock()
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 
+	userClients, ok := w.userClients[uidStr]
 	if !ok || len(userClients) == 0 {
 		return
 	}
