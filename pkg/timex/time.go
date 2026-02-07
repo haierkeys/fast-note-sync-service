@@ -74,25 +74,25 @@ func Now() Time {
 // Unix timestamp (seconds)
 // Unix 时间戳（秒）
 func (t Time) Unix() int64 {
-	return time.Now().Unix()
+	return time.Time(t).Unix()
 }
 
 // UnixMilli timestamp (milliseconds)
 // UnixMilli 时间戳（毫秒）
 func (t Time) UnixMilli() int64 {
-	return time.Now().UnixMilli()
+	return time.Time(t).UnixMilli()
 }
 
 // UnixMicro timestamp (microseconds)
 // UnixMicro 时间戳（微秒）
 func (t Time) UnixMicro() int64 {
-	return time.Now().UnixMicro()
+	return time.Time(t).UnixMicro()
 }
 
 // UnixNano timestamp (nanoseconds)
 // UnixNano 时间戳（纳秒）
 func (t Time) UnixNano() int64 {
-	return time.Now().UnixNano()
+	return time.Time(t).UnixNano()
 }
 
 // After reports whether the time instant t is after u.
