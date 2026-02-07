@@ -513,7 +513,11 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		existNote.Action = domain.NoteActionCreate
 		existNote.Path = newPath
 		existNote.PathHash = newPathHash
-		existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newPathDir := ""
+		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+			newPathDir = newPath[:idx]
+		}
+		existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 		existNote.Content = n.Content
 		existNote.ContentHash = n.ContentHash
 		existNote.Version = n.Version
@@ -535,8 +539,12 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			ContentHash:      n.ContentHash,
 			Version:          n.Version,
 		}
+		newPathDir := ""
+		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+			newPathDir = newPath[:idx]
+		}
 		// 确保 FID 正确
-		newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 		newNoteCreated, err = s.noteRepo.Create(ctx, newNote, uid)
 	}
 
