@@ -446,8 +446,6 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 				f.Action = domain.FolderActionCreate
 				f.Ctime = timex.Now().UnixMilli()
 				f.Mtime = timex.Now().UnixMilli()
-				f.UpdatedTimestamp = timex.Now().UnixMilli()
-
 				f, err = s.folderRepo.Update(ctx, f, uid)
 				if err != nil {
 					return nil, err
