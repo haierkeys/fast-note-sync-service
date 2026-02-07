@@ -692,7 +692,11 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		existFile.Action = domain.FileActionCreate
 		existFile.Path = newPath
 		existFile.PathHash = newPathHash
-		existFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newPathDir := ""
+		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+			newPathDir = newPath[:idx]
+		}
+		existFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 		existFile.ContentHash = f.ContentHash
 		existFile.SavePath = f.SavePath
 		existFile.Size = f.Size
@@ -714,8 +718,12 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 			SavePath:         f.SavePath,
 			Size:             f.Size,
 		}
+		newPathDir := ""
+		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+			newPathDir = newPath[:idx]
+		}
 		// 确保 FID 正确
-		newFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPath)
+		newFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 		newFileCreated, err = s.fileRepo.Create(ctx, newFile, uid)
 	}
 
