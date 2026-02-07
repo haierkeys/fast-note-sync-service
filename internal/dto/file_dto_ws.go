@@ -67,6 +67,7 @@ type FileSyncRenameMessage struct {
 	ContentHash string `json:"contentHash" form:"contentHash"`
 	Ctime       int64  `json:"ctime" form:"ctime"`
 	Mtime       int64  `json:"mtime" form:"mtime"`
+	Size        int64  `json:"size" form:"size"`
 	OldPath     string `json:"oldPath" form:"oldPath"`
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`
 }

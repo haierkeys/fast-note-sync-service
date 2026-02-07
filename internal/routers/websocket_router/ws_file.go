@@ -382,7 +382,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	c.ToResponse(code.Success.WithData(newFile))
+	c.ToResponse(code.Success)
 
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FileSyncRenameMessage{
@@ -391,6 +391,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			ContentHash: newFile.ContentHash,
 			Ctime:       newFile.Ctime,
 			Mtime:       newFile.Mtime,
+			Size:        newFile.Size,
 			OldPath:     oldFile.Path,
 			OldPathHash: oldFile.PathHash,
 		},
