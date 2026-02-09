@@ -82,7 +82,7 @@ func (r *folderRepository) Create(ctx context.Context, folder *domain.Folder, ui
 		m := r.domainToModel(folder)
 		m.CreatedAt = timex.Now()
 		m.UpdatedAt = timex.Now()
-		m.UpdatedTimestamp = time.Now().UnixMilli()
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
 		f := r.folder(uid).Folder
 		err := f.WithContext(ctx).Create(m)
 		if err != nil {
@@ -102,7 +102,7 @@ func (r *folderRepository) Update(ctx context.Context, folder *domain.Folder, ui
 	err := r.Dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		m := r.domainToModel(folder)
 		m.UpdatedAt = timex.Now()
-		m.UpdatedTimestamp = time.Now().UnixMilli()
+		m.UpdatedTimestamp = timex.Now().UnixMilli()
 		f := r.folder(uid).Folder
 		_, err := f.WithContext(ctx).Where(f.ID.Eq(m.ID)).Updates(m)
 		if err != nil {

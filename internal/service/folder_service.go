@@ -30,6 +30,7 @@ type FolderService interface {
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 	GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error)
+	CleanDuplicateFolders(ctx context.Context, uid int64, vaultID int64) error
 }
 
 type folderService struct {
@@ -639,4 +640,61 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 		RootNoteCount: rootNoteCount,
 		RootFileCount: rootFileCount,
 	}, nil
+}
+
+func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, vaultID int64) error {
+	// 1. 获取所有文件夹记录（包含已删除的，以便按逻辑清理）
+	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 2. 按 PathHash 分组
+	grouped := make(map[string][]*domain.Folder)
+	for _, f := range folders {
+		grouped[f.PathHash] = append(grouped[f.PathHash], f)
+	}
+
+	// 3. 遍历分组，识别重复项
+	for pathHash, list := range grouped {
+		if len(list) <= 1 {
+			continue
+		}
+
+		// 检查这组重复记录中是否有被标记为删除的
+		var hasDeleted bool
+		for _, f := range list {
+			if f.Action == domain.FolderActionDelete {
+				hasDeleted = true
+				break
+			}
+		}
+
+		if hasDeleted {
+			// 如果存在已删除记录，则删除所有未标记删除的记录（解决已删除但仍被 EnsurePathFID 误创出的活跃记录）
+			for _, f := range list {
+				if f.Action != domain.FolderActionDelete {
+					s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					_ = s.folderRepo.Delete(ctx, f.ID, uid)
+				}
+			}
+		} else {
+			// 如果全部都是活跃记录，保留 ID 最大的一条（假设是最后创建的）
+			var maxID int64
+			for _, f := range list {
+				if f.ID > maxID {
+					maxID = f.ID
+				}
+			}
+
+			for _, f := range list {
+				if f.ID != maxID {
+					s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					_ = s.folderRepo.Delete(ctx, f.ID, uid)
+				}
+			}
+		}
+	}
+
+	return nil
 }
