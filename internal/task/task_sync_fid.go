@@ -51,6 +51,12 @@ func (t *SyncFIDTask) Run(ctx context.Context) error {
 		for _, vault := range vaults {
 			// 3. 执行全量 FID 同步
 			t.logger.Info("SyncFIDTask: syncing FID for vault", zap.Int64("uid", uid), zap.Int64("vaultID", vault.ID), zap.String("vaultName", vault.Name))
+
+			// 先清理重复目录
+			if err := t.app.FolderService.CleanDuplicateFolders(ctx, uid, vault.ID); err != nil {
+				t.logger.Error("SyncFIDTask: failed to clean duplicate folders", zap.Int64("uid", uid), zap.Int64("vaultID", vault.ID), zap.Error(err))
+			}
+
 			if err := t.app.FolderService.SyncResourceFID(ctx, uid, vault.ID, nil, nil); err != nil {
 				t.logger.Error("SyncFIDTask: failed to sync FID for vault",
 					zap.Int64("uid", uid),
