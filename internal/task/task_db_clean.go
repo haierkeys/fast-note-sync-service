@@ -89,6 +89,9 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.String("service", "NoteHistoryService"))
 	}
 
+	// 清理闲置数据库连接 (保持 1 小时闲置)
+	t.app.Dao.CleanupConnections(time.Hour)
+
 	if len(errs) > 0 {
 		return errs[0] // 返回第一个错误
 	}

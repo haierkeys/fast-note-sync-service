@@ -92,6 +92,11 @@ func (h *WSHandler) logWarn(c *pkgapp.WebsocketClient, method string, fields ...
 // 记录错误日志并发送包含 Details 的错误响应给客户端
 func (h *WSHandler) respondError(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, method string) {
 	h.logError(c, method, err)
+	// If err is already a *code.Code, it might have more details than codeErr
+	if cErr, ok := err.(*code.Code); ok {
+		c.ToResponse(cErr)
+		return
+	}
 	c.ToResponse(codeErr.WithDetails(err.Error()))
 }
 
