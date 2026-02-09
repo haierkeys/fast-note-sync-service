@@ -501,7 +501,11 @@ func (r *noteRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp 
 	}
 
 	// 逐用户执行清理
-	for _, uid := range uids {
+	for i, uid := range uids {
+		// 增加错峰延迟，避免瞬间触发大量写事务
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
 		if err := r.DeletePhysicalByTime(ctx, timestamp, uid); err != nil {
 			// 记录错误但继续处理其他用户
 			continue

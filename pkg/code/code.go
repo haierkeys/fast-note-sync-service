@@ -3,6 +3,7 @@ package code
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Code is an immutable error code object // Code 是一个不可变的错误码对象
@@ -76,6 +77,9 @@ func getLang(code int) lang {
 }
 
 func (e *Code) Error() string {
+	if len(e.details) > 0 {
+		return fmt.Sprintf("%s: %s", e.Msg(), strings.Join(e.details, "; "))
+	}
 	return e.Msg()
 }
 

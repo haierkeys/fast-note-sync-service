@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -419,7 +420,11 @@ func (s *noteHistoryService) CleanupByTime(ctx context.Context, cutoffTime int64
 	}
 
 	var totalCleaned int64
-	for _, uid := range uids {
+	for i, uid := range uids {
+		// 增加错峰延迟，避免瞬间触发大量写事务
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
 		// Get note IDs with old history records for this user
 		// 获取该用户有旧历史记录的笔记 ID
 		noteIDs, err := s.historyRepo.GetNoteIDsWithOldHistory(ctx, cutoffTime, uid)

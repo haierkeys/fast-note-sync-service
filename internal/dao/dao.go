@@ -60,10 +60,15 @@ type DatabaseConfig struct {
 	RunMode string
 }
 
+type dbEntry struct {
+	db       *gorm.DB
+	lastUsed time.Time
+}
+
 // Dao 数据访问对象，封装数据库操作
 type Dao struct {
 	Db       *gorm.DB
-	KeyDb    map[string]*gorm.DB
+	KeyDb    map[string]*dbEntry
 	ctx      context.Context
 	onceKeys sync.Map
 	mu       sync.RWMutex // 保护 KeyDb 的并发访问
@@ -110,7 +115,7 @@ func New(db *gorm.DB, ctx context.Context, opts ...DaoOption) *Dao {
 	d := &Dao{
 		Db:    db,
 		ctx:   ctx,
-		KeyDb: make(map[string]*gorm.DB),
+		KeyDb: make(map[string]*dbEntry),
 	}
 
 	// 应用选项
@@ -184,14 +189,27 @@ func (d *Dao) UseQuery(key ...string) *query.Query {
 	return query.Use(db)
 }
 
-func (d *Dao) UseKey(key ...string) *gorm.DB {
-	var db *gorm.DB
-	if len(key) > 0 {
-		db = d.UseDb(key[0])
-	} else {
-		db = d.Db
+// CleanupConnections 清理闲置数据库连接
+func (d *Dao) CleanupConnections(maxIdle time.Duration) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	now := time.Now()
+	for k, v := range d.KeyDb {
+		if now.Sub(v.lastUsed) > maxIdle {
+			delete(d.KeyDb, k)
+			if sqlDB, err := v.db.DB(); err == nil {
+				sqlDB.Close()
+			}
+			d.Logger().Info("cleaned up idle DB connection", zap.String("key", k))
+		}
 	}
-	return db
+}
+
+func (d *Dao) UseKey(key ...string) *gorm.DB {
+	if len(key) == 0 || key[0] == "" {
+		return d.Db
+	}
+	return d.UseDb(key[0])
 }
 
 func (d *Dao) UserDB(uid int64) *gorm.DB {
@@ -211,9 +229,10 @@ func (d *Dao) getDBConfig() DatabaseConfig {
 func (d *Dao) UseDb(key string) *gorm.DB {
 	// 使用读锁检查是否已存在
 	d.mu.RLock()
-	if db, ok := d.KeyDb[key]; ok {
+	if entry, ok := d.KeyDb[key]; ok {
+		entry.lastUsed = time.Now()
 		d.mu.RUnlock()
-		return db
+		return entry.db
 	}
 	d.mu.RUnlock()
 
@@ -237,17 +256,41 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 
 	// 使用写锁存储
 	d.mu.Lock()
+	defer d.mu.Unlock()
 	// 双重检查
-	if existingDb, ok := d.KeyDb[key]; ok {
-		d.mu.Unlock()
+	if existingEntry, ok := d.KeyDb[key]; ok {
 		// 关闭新创建的连接
 		if sqlDB, err := dbNew.DB(); err == nil {
 			sqlDB.Close()
 		}
-		return existingDb
+		existingEntry.lastUsed = time.Now()
+		return existingEntry.db
 	}
-	d.KeyDb[key] = dbNew
-	d.mu.Unlock()
+
+	// 检查缓存数量限制，如果超过 100 个连接，清理最久未使用的
+	if len(d.KeyDb) >= 100 {
+		var oldestKey string
+		var oldestTime time.Time
+		for k, v := range d.KeyDb {
+			if oldestKey == "" || v.lastUsed.Before(oldestTime) {
+				oldestKey = k
+				oldestTime = v.lastUsed
+			}
+		}
+		if oldestKey != "" {
+			oldEntry := d.KeyDb[oldestKey]
+			delete(d.KeyDb, oldestKey)
+			if sqlDB, err := oldEntry.db.DB(); err == nil {
+				sqlDB.Close()
+			}
+			d.Logger().Info("evicted oldest DB connection", zap.String("key", oldestKey))
+		}
+	}
+
+	d.KeyDb[key] = &dbEntry{
+		db:       dbNew,
+		lastUsed: time.Now(),
+	}
 
 	return dbNew
 }
