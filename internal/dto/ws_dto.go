@@ -89,6 +89,9 @@ const (
 	// SettingReceiveCheck setting modification check request
 	// SettingReceiveCheck 设置修改检查请求
 	SettingReceiveCheck WebSocketReceiveAction = "SettingCheck"
+	// SettingReceiveClear clear all settings request
+	// SettingReceiveClear 清理所有设置请求
+	SettingReceiveClear WebSocketReceiveAction = "SettingClear"
 )
 
 const (
@@ -169,6 +172,9 @@ const (
 	// SettingSyncNeedUpload indicates client needs to upload setting
 	// SettingSyncNeedUpload 表示客户端需要上传设置
 	SettingSyncNeedUpload WebSocketSendAction = "SettingSyncNeedUpload"
+	// SettingSyncClear sync clear all settings
+	// SettingSyncClear 同步清理所有设置
+	SettingSyncClear WebSocketSendAction = "SettingSyncClear"
 )
 
 // WSQueuedMessage represents a message item to be sent

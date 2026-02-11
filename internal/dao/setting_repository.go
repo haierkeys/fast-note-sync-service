@@ -287,5 +287,25 @@ func (r *settingRepository) ListByUpdatedTimestamp(ctx context.Context, timestam
 	return results, nil
 }
 
+// DeleteByVault 物理删除该用户指定笔记本的所有配置
+func (r *settingRepository) DeleteByVault(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
+
+		// 1. 查找该 Vault 下的所有记录 ID，以便清理文件
+		mList, err := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Select(u.ID).Find()
+		if err == nil {
+			for _, m := range mList {
+				folder := r.dao.GetSettingFolderPath(uid, m.ID)
+				_ = r.dao.RemoveContentFolder(folder)
+			}
+		}
+
+		// 2. 物理删除数据库记录
+		_, err = u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Delete()
+		return err
+	})
+}
+
 // 确保 settingRepository 实现了 domain.SettingRepository 接口
 var _ domain.SettingRepository = (*settingRepository)(nil)

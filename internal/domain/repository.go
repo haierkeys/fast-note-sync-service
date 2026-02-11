@@ -260,6 +260,9 @@ type SettingRepository interface {
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Setting, error)
+
+	// DeleteByVault 物理删除该用户指定笔记本的所有配置
+	DeleteByVault(ctx context.Context, vaultID, uid int64) error
 }
 
 // NoteHistoryRepository 笔记历史仓储接口

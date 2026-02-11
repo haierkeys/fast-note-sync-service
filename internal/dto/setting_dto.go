@@ -35,6 +35,12 @@ type SettingDeleteRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash"`
 }
 
+// SettingClearRequest Parameters for clearing settings
+// 清除配置参数
+type SettingClearRequest struct {
+	Vault string `json:"vault" form:"vault" binding:"required"`
+}
+
 // SettingGetRequest Parameters for retrieving a single setting
 // 获取单条配置参数
 type SettingGetRequest struct {

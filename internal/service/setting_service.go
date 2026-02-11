@@ -60,6 +60,10 @@ type SettingService interface {
 	// CleanupByTime cleans up expired soft-deleted configurations for all users by cutoff time
 	// CleanupByTime 按截止时间清理所有用户的过期软删除配置
 	CleanupByTime(ctx context.Context, cutoffTime int64) error
+
+	// ClearByVault clears all settings for a specific vault of a user
+	// ClearByVault 清除用户指定笔记本的所有配置
+	ClearByVault(ctx context.Context, uid int64, vaultName string) error
 }
 
 // settingService implementation of SettingService interface
@@ -357,6 +361,18 @@ func (s *settingService) Cleanup(ctx context.Context, uid int64) error {
 // CleanupByTime 按截止时间清理所有用户的过期软删除配置
 func (s *settingService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
 	return s.settingRepo.DeletePhysicalByTimeAll(ctx, cutoffTime)
+}
+
+// ClearByVault clears all settings for a specific vault of a user
+// ClearByVault 清除用户指定笔记本的所有配置
+func (s *settingService) ClearByVault(ctx context.Context, uid int64, vaultName string) error {
+	// Use VaultService.MustGetID to retrieve VaultID
+	// 使用 VaultService.MustGetID 获取 VaultID
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, vaultName)
+	if err != nil {
+		return err
+	}
+	return s.settingRepo.DeleteByVault(ctx, vaultID, uid)
 }
 
 // Verify settingService implements SettingService interface
