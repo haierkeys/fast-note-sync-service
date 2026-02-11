@@ -416,3 +416,28 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		},
 	).WithVault(params.Vault), dto.SettingSyncEnd)
 }
+
+// SettingClear handles clear all settings messages
+// SettingClear 处理清理所有配置消息
+func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.SettingClearRequest{}
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingClear.BindAndValid")
+		return
+	}
+
+	ctx := c.Context()
+
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingClear", "", params.Vault)
+
+	err := h.App.SettingService.ClearByVault(ctx, c.User.UID, params.Vault)
+	if err != nil {
+		h.respondError(c, code.ErrorSettingDeleteFailed, err, "websocket_router.setting.SettingClear.ClearByVault")
+		return
+	}
+
+	// Broadcast clearing to other clients with vault info
+	// 将清除消息广播给其他客户端，带上笔记本信息
+	c.BroadcastResponse(code.Success.WithData(nil).WithVault(params.Vault), false, dto.SettingSyncClear)
+}

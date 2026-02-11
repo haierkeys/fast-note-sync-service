@@ -81,6 +81,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	wss.Use(dto.SettingReceiveDelete, settingWSHandler.SettingDelete)
 	wss.Use(dto.SettingReceiveCheck, settingWSHandler.SettingModifyCheck)
 	wss.Use(dto.SettingReceiveSync, settingWSHandler.SettingSync)
+	wss.Use(dto.SettingReceiveClear, settingWSHandler.SettingClear)
 
 	// Attachment
 	wss.Use(dto.FileReceiveSync, fileWSHandler.FileSync)
