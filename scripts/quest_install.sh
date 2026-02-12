@@ -102,6 +102,8 @@ load_lang() {
         L_MENU_5_D="彻底移除程序、配置及所有日志文件"
         L_MENU_6="安装脚本到系统"
         L_MENU_6_D="将管理工具添加到全局快捷命令 fns"
+        L_MENU_7="设置开机启动"
+        L_MENU_7_D="配置 Systemd (Linux) 或 Launchd (macOS) 开机自启"
         L_MENU_0="退出"
         L_MENU_L="Switch to English (切换至英文)"
         L_SELECT="请选择"
@@ -154,6 +156,12 @@ load_lang() {
         L_USAGE="用法"
         L_CUR_VER="当前版本"
         L_NOT_INSTALLED="未安装"
+
+        L_AUTO_LINUX="正在配置 Systemd 开机自启..."
+        L_AUTO_MAC="正在配置 Launchd 开机自启..."
+        L_AUTO_WIN="Windows 暂不支持自动配置服务，请手动添加计划任务。"
+        L_AUTO_DONE="开机自启配置完成"
+        L_AUTO_FAIL="开机自启配置失败"
     else
         L_MENU_1="Install / Update Service"
         L_MENU_1_D="Download service and install manager to system"
@@ -167,6 +175,8 @@ load_lang() {
         L_MENU_5_D="Remove program, config, and all logs"
         L_MENU_6="Install Self to System"
         L_MENU_6_D="Add this tool to global commands (fns)"
+        L_MENU_7="Set Auto-Start"
+        L_MENU_7_D="Configure Systemd (Linux) or Launchd (macOS) auto-start"
         L_MENU_0="Quit"
         L_MENU_L="切换至中文 (Switch to Chinese)"
         L_SELECT="Please select"
@@ -219,6 +229,12 @@ load_lang() {
         L_USAGE="Usage"
         L_CUR_VER="Installed Version"
         L_NOT_INSTALLED="Not installed"
+
+        L_AUTO_LINUX="Configuring Systemd auto-start..."
+        L_AUTO_MAC="Configuring Launchd auto-start..."
+        L_AUTO_WIN="Windows does not support auto-service config yet. Please add manually."
+        L_AUTO_DONE="Auto-start configured successfully"
+        L_AUTO_FAIL="Auto-start configuration failed"
     fi
 }
 # Initial load // 初始加载
@@ -403,15 +419,110 @@ install_binary_from_tar() {
 }
 
 
+# Auto-Start config // 开机自启配置
+enable_autostart() {
+    local os="$(detect_os)"
+
+    if [ "$os" = "linux" ]; then
+        if [ -d "/etc/systemd/system" ] && command -v systemctl >/dev/null 2>&1; then
+            step "$L_AUTO_LINUX"
+            # create service file
+            cat <<EOF | $SUDO tee /etc/systemd/system/fast-note.service >/dev/null
+[Unit]
+Description=Fast Note Sync Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$BIN_PATH run
+Restart=on-failure
+User=root
+StandardOutput=append:$LOG_FILE
+StandardError=append:$LOG_FILE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+            $SUDO systemctl daemon-reload || true
+            $SUDO systemctl enable fast-note.service || true
+            # 如果没有运行，顺便启动
+            if ! systemctl is-active --quiet fast-note.service; then
+                $SUDO systemctl start fast-note.service || true
+            fi
+            success "$L_AUTO_DONE"
+            return 0
+        fi
+    elif [ "$os" = "darwin" ]; then
+        # macOS launchd
+        step "$L_AUTO_MAC"
+        local plist_path="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
+        mkdir -p "$(dirname "$plist_path")"
+
+        cat <<EOF > "$plist_path"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.haierkeys.fast-note</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$BIN_PATH</string>
+        <string>run</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$LOG_FILE</string>
+    <key>StandardErrorPath</key>
+    <string>$LOG_FILE</string>
+</dict>
+</plist>
+EOF
+        # unload if exists
+        launchctl unload "$plist_path" 2>/dev/null || true
+        launchctl load "$plist_path" 2>/dev/null || true
+        success "$L_AUTO_DONE"
+        return 0
+    elif [ "$os" = "windows" ]; then
+        warn "$L_AUTO_WIN"
+        return 0
+    fi
+
+    warn "$L_AUTO_FAIL: No supported service manager found."
+}
+
 
 # Service control functions // 服务控制函数
 start_service() {
     ensure_root
+    local os="$(detect_os)"
+
+    # 优先尝试 Systemd
+    if [ "$os" = "linux" ] && [ -f "/etc/systemd/system/fast-note.service" ]; then
+        step "Systemd: $L_STARTING"
+        $SUDO systemctl start fast-note.service
+        sleep 2
+        if systemctl is-active --quiet fast-note.service; then
+            success "$L_START_SUCCESS"
+            return 0
+        fi
+    # 优先尝试 Launchd
+    elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        step "Launchd: $L_STARTING"
+        launchctl load "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        success "$L_START_SUCCESS"
+        return 0
+    fi
+
+    # Fallback to manual
     if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
         warn "$L_SVC_RUNNING (PID: $(pgrep -f "$BIN_PATH"))"
         return
     fi
-    step "$L_STARTING"
+    step "$L_STARTING (nohup)"
     # 保持 bash -c 包装以解决重定向权限问题
     $SUDO bash -c "set -m; cd $INSTALL_DIR && nohup $BIN_PATH run >> $LOG_FILE 2>&1 &"
 
@@ -426,6 +537,22 @@ start_service() {
 
 stop_service() {
     ensure_root
+    local os="$(detect_os)"
+
+    # 优先尝试 Systemd
+    if [ "$os" = "linux" ] && [ -f "/etc/systemd/system/fast-note.service" ]; then
+        step "Systemd: $L_STOPPING"
+        $SUDO systemctl stop fast-note.service
+        success "$L_STOP_SUCCESS"
+        return 0
+    # 优先尝试 Launchd
+    elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        step "Launchd: $L_STOPPING"
+        launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        success "$L_STOP_SUCCESS"
+        return 0
+    fi
+
     if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
         return 0
     fi
@@ -459,8 +586,22 @@ full_uninstall() {
         return 0
     fi
 
+    # Stop service first
+    stop_service 2>/dev/null || true
+
     step "$L_CLEAN_PROC"
     $SUDO pkill -f "$BIN_PATH" || true
+
+    # Cleanup auto-start
+    if [ -f "/etc/systemd/system/fast-note.service" ]; then
+        $SUDO systemctl disable fast-note.service 2>/dev/null || true
+        $SUDO rm -f "/etc/systemd/system/fast-note.service"
+        $SUDO systemctl daemon-reload 2>/dev/null || true
+    fi
+    if [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        rm -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
+    fi
 
     step "$L_CLEAN_FILES"
     $SUDO rm -rf "$INSTALL_DIR" || true
@@ -528,12 +669,14 @@ show_menu() {
     echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_5_D${_RESET}"
     echo -e "  [6] ${_BOLD}$L_MENU_6${_RESET}"
     echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_6_D${_RESET}"
+    echo -e "  [7] ${_BOLD}$L_MENU_7${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_7_D${_RESET}"
     echo -e "  [L] ${_BOLD}$L_MENU_L${_RESET}"
     echo -e "  [0] ${_BOLD}$L_MENU_0${_RESET}"
     echo -e "\n${_BLUE} ================================================ ${_RESET}"
 
     while true; do
-        read -rp "  $(echo -e "${_BOLD}$L_SELECT [0-6, L]: ${_RESET}")" opt
+        read -rp "  $(echo -e "${_BOLD}$L_SELECT [0-7, L]: ${_RESET}")" opt
         case "$opt" in
             1) read -rp "  $(echo -e "${_BOLD}$L_INPUT_VER: ${_RESET}")" v; v="${v:-latest}"; install_cmd "$v";;
             2) start_service;;
@@ -550,6 +693,7 @@ show_menu() {
                 fi
                 install_self "$raw"
                 ;;
+            7) enable_autostart;;
             L|l)
                 if [ "$CURRENT_LANG" = "en" ]; then CURRENT_LANG="zh"; else CURRENT_LANG="en"; fi
                 save_lang
@@ -580,6 +724,10 @@ install_cmd() {
     install_binary_from_tar "$tarball"
     save_version "$ver"
     install_self >&2
+
+    # Enable auto-start by default on install/update
+    enable_autostart
+
     success "$L_INST_ALL_DONE"
     info "$L_INST_TIP"
     check_path "$LINK_BIN"
@@ -614,12 +762,15 @@ case "$cmd" in
     install-self)
         install_self "${2:-}"
     ;;
+    enable-autostart)
+        enable_autostart
+    ;;
     menu)
         show_menu
     ;;
     *)
         draw_banner
-        echo -e "$L_USAGE: $0 {install|uninstall|full-uninstall|start|stop|status|update|install-self|menu}"
+        echo -e "$L_USAGE: $0 {install|uninstall|full-uninstall|start|stop|status|update|install-self|enable-autostart|menu}"
         exit 1
     ;;
 esac
