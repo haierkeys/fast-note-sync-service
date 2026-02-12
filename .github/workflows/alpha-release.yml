@@ -23,7 +23,7 @@ jobs:
       release_tag: ${{ steps.check.outputs.release_tag }}
       commit_msg: ${{ steps.check.outputs.commit_msg }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -84,7 +84,7 @@ jobs:
     outputs:
       commit_msg: ${{ steps.trans.outputs.commit_msg }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -149,9 +149,9 @@ jobs:
         run: |
           git tag ${{ needs.check-version.outputs.release_tag }}-alpha
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: 'stable'
+          go-version-file: 'go.mod'
 
       - name: Check Go Version
         run: go version
@@ -180,7 +180,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
