@@ -688,7 +688,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			}
 			note, err := noteSvc.Delete(ctx, c.User.UID, delParams)
 			if err != nil {
-				h.App.Logger().Error("failed to delete note from DelNotes during sync",
+				h.App.Logger().Error("websocket_router.note.NoteSync.noteSvc.Delete",
 					zap.String(logger.FieldTraceID, c.TraceID),
 					zap.Int64(logger.FieldUID, c.User.UID),
 					zap.String(logger.FieldPath, delNote.Path),
@@ -717,12 +717,15 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		for _, missingNote := range params.MissingNotes {
 			getParams := &dto.NoteGetRequest{
 				Vault:    params.Vault,
+				Path:     missingNote.Path,
 				PathHash: missingNote.PathHash,
 			}
 			note, err := noteSvc.Get(ctx, c.User.UID, getParams)
 			if err != nil {
-				h.App.Logger().Warn("failed to fetch missing note during sync",
+				h.App.Logger().Warn("websocket_router.note.NoteSync.noteSvc.Get",
 					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String("path", missingNote.Path),
 					zap.String("pathHash", missingNote.PathHash),
 					zap.Error(err))
 				continue
