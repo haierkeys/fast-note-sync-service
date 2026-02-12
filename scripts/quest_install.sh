@@ -278,7 +278,7 @@ _arch_map() {
 get_latest_tag() {
     if command -v curl >/dev/null 2>&1; then
         local latest
-        latest="$(curl -fsSL "$GITHUB_API/latest" 2>/dev/null | grep -oP '"tag_name"\s*:\s*"\K[^"]+' || true)"
+        latest="$(curl -fsSL "$GITHUB_API/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' || true)"
         if [ -n "$latest" ]; then
             echo "$latest"
             return 0
