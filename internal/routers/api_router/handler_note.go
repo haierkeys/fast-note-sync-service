@@ -125,7 +125,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 // @Produce json
 // @Param params query dto.NoteListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
-// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.NoteDTO}} "Success"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.NoteNoContentDTO}} "Success"
 // @Router /api/notes [get]
 func (h *NoteHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)

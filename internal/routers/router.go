@@ -101,6 +101,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
 
 	r := gin.New()
+	r.Use(middleware.Cors())
 
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/webgui")
@@ -133,7 +134,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		// Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))
 		api.Use(middleware.ContextTimeout(time.Duration(cfg.App.DefaultContextTimeout) * time.Second))
-		api.Use(middleware.Cors())
+
 		api.Use(middleware.LangWithTranslator(uni))
 		api.Use(middleware.AccessLogWithLogger(appContainer.Logger()))
 		api.Use(middleware.RecoveryWithLogger(appContainer.Logger()))
@@ -221,10 +222,13 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/note/outlinks", noteHandler.GetOutlinks)
 
 			auth.GET("/file", fileHandler.GetInfo)
+			auth.OPTIONS("/file", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 			auth.GET("/file/info", fileHandler.Get)
+			auth.OPTIONS("/file/info", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 			auth.DELETE("/file", fileHandler.Delete)
 			auth.PUT("/file/restore", fileHandler.Restore)
 			auth.GET("/files", fileHandler.List)
+			auth.OPTIONS("/files", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 
 			auth.GET("/note/history", noteHistoryHandler.Get)
 			auth.GET("/note/histories", noteHistoryHandler.List)
@@ -265,8 +269,11 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	if cfg.App.UploadSavePath != "" {
 		r.StaticFS(cfg.App.UploadSavePath, http.Dir(cfg.App.UploadSavePath))
+		r.OPTIONS(cfg.App.UploadSavePath+"/*filepath", func(c *gin.Context) {
+			c.Status(http.StatusNoContent)
+		})
 	}
-	r.Use(middleware.Cors())
+
 	r.NoRoute(middleware.NoFound())
 
 	return r
