@@ -81,6 +81,7 @@
             padding: 0.25rem;
             border-radius: 0.75rem;
             border: 1px solid var(--border);
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -93,6 +94,7 @@
             font-weight: 600;
             transition: all 0.2s;
             color: var(--text-muted);
+            min-width: 80px;
         }
 
         .tab.active {
@@ -212,13 +214,13 @@
             border-radius: 0.25rem;
             font-size: 0.75rem;
             display: none;
-            /* 默认隐藏 */
+            /* Default hidden */
             cursor: pointer;
         }
 
         #log .log-entry.expanded pre {
             display: block;
-            /* 展开状态 */
+            /* Expanded state */
         }
 
         .log-entry {
@@ -333,19 +335,19 @@
     <h1>FNSS Websocket Debug Platform</h1>
 
     <div class="container">
-        <!-- 左侧分栏 -->
+        <!-- Left Column -->
         <div class="left-column">
-            <!-- 模式切换 Tabs -->
+            <!-- Mode Tabs -->
             <div class="tabs">
-                <div class="tab active" onclick="switchMode('setting')">配置同步</div>
-                <div class="tab" onclick="switchMode('note')">笔记同步</div>
-                <div class="tab" onclick="switchMode('download')">文件下载</div>
-                <div class="tab" onclick="switchMode('upload')">文件上传</div>
+                <div class="tab active" onclick="switchMode('setting')">Config</div>
+                <div class="tab" onclick="switchMode('note')">Note</div>
+                <div class="tab" onclick="switchMode('file')">File</div>
+                <div class="tab" onclick="switchMode('folder')">Folder</div>
             </div>
 
-            <!-- 基础认证卡片 -->
+            <!-- Auth Card -->
             <div class="card">
-                <h2>🔐 核心连接</h2>
+                <h2>🔐 Connection & Auth</h2>
                 <div class="form-group">
                     <label>API URL</label>
                     <input type="text" id="apiUrl" value="ws://localhost:9000/api/user/sync">
@@ -359,26 +361,26 @@
                         <label>Password</label>
                         <input type="password" id="password" value="123456">
                     </div>
-                    <button onclick="login()" id="loginBtn" style="width: 100%;">登录获取 Token</button>
+                    <button onclick="login()" id="loginBtn" style="width: 100%;">Login & Get Token</button>
                 </div>
 
                 <div id="connPanel" style="display: none; margin-top: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div id="wsStatus" class="status-badge status-disconnected">未连接</div>
+                        <div id="wsStatus" class="status-badge status-disconnected">Disconnected</div>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button onclick="connectWS()" id="connectBtn">连接 WS</button>
+                            <button onclick="connectWS()" id="connectBtn">Connect WS</button>
                             <button onclick="disconnectWS()" class="danger" id="disconnectBtn"
-                                style="display:none">断开</button>
+                                style="display:none">Disconnect</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 功能操作卡片 -->
+            <!-- Operations Card -->
             <div class="card" id="opCard">
-                <h2 id="opTitle">⚙️ Setting 操作</h2>
+                <h2 id="opTitle">⚙️ Setting Operations</h2>
 
-                <!-- 公共字段 -->
+                <!-- Common Config -->
                 <div class="form-group">
                     <label>Vault</label>
                     <input type="text" id="vault" value="DefaultVault">
@@ -387,514 +389,542 @@
                     <label id="pathLabel">Remote Path</label>
                     <input type="text" id="path" value="config/theme.json">
                 </div>
-                <div class="form-group">
-                    <label>Sync LastTime (ms)</label>
-                    <input type="number" id="lastTime" value="0" style="font-size: 0.7rem;">
-                </div>
+                 <div class="form-group">
+                     <label>PathHash (Calculated: Hash32)</label>
+                     <input type="text" id="commonPathHash" readonly style="font-size: 0.7rem; opacity: 0.7; background: #1e293b;">
+                 </div>
 
-                <!-- Setting 专属输入 -->
+                <!-- Setting Inputs -->
                 <div id="settingInputs">
                     <div class="form-group">
-                        <label>Content (JSON or Text)</label>
-                        <textarea id="content" rows="4">{"theme": "dark", "fontSize": 14}</textarea>
+                        <label>Content (JSON/Text)</label>
+                        <textarea id="settingContent" rows="4">{"theme": "dark", "fontSize": 14}</textarea>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
-                        <div class="form-group">
-                            <label>PathHash (Readonly)</label>
-                            <input type="text" id="settingPathHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
-                        </div>
-                        <div class="form-group">
-                            <label>ContentHash (Readonly)</label>
-                            <input type="text" id="settingContentHash" readonly
-                                style="font-size: 0.7rem; opacity: 0.7;">
-                        </div>
-                        <div class="form-group">
-                            <label>Ctime (ms)</label>
-                            <input type="number" id="settingCtime" style="font-size: 0.7rem;">
-                        </div>
-                        <div class="form-group">
-                            <label>Mtime (ms)</label>
-                            <input type="number" id="settingMtime" style="font-size: 0.7rem;">
-                        </div>
+                     <div class="form-group">
+                        <label>ContentHash (Calculated: Hash32)</label>
+                        <input type="text" id="settingContentHash" readonly style="font-size: 0.7rem; opacity: 0.7; background: #1e293b;">
                     </div>
-                    <div class="btn-group">
-                        <button onclick="sendSettingWS('SettingModify')" class="success">Modify</button>
-                        <button onclick="sendSettingWS('SettingCheck')" class="outline">Check</button>
+                     <div class="btn-group">
+                        <button onclick="sendSettingWS('SettingModify')" class="success">Modify/Create</button>
+                        <button onclick="sendSettingWS('SettingModifyCheck')" class="outline">Check</button>
                         <button onclick="sendSettingWS('SettingDelete')" class="danger">Delete</button>
-                        <button onclick="sendSettingSync()" class="warning">Sync</button>
+                        <button onclick="sendSettingWS('SettingSync')" class="warning">Sync</button>
+                        <button onclick="sendSettingWS('SettingClear')" class="danger">Clear All</button>
                     </div>
                 </div>
 
-                <!-- Note 专属输入 -->
+                <!-- Note Inputs -->
                 <div id="noteInputs" style="display: none;">
                     <div class="form-group">
                         <label>Note Content</label>
-                        <textarea id="noteContent" rows="4" placeholder="写点什么..."></textarea>
+                        <textarea id="noteContent" rows="4" placeholder="Markdown content..."># Hello World</textarea>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
-                        <div class="form-group">
-                            <label>PathHash (Readonly)</label>
-                            <input type="text" id="pathHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
-                        </div>
-                        <div class="form-group">
-                            <label>ContentHash (Readonly)</label>
-                            <input type="text" id="contentHash" readonly style="font-size: 0.7rem; opacity: 0.7;">
-                        </div>
-                        <div class="form-group">
-                            <label>Ctime (ms)</label>
-                            <input type="number" id="ctime" style="font-size: 0.7rem;">
-                        </div>
-                        <div class="form-group">
-                            <label>Mtime (ms)</label>
-                            <input type="number" id="mtime" style="font-size: 0.7rem;">
-                        </div>
+                    <div class="form-group">
+                        <label>ContentHash (Calculated: Hash32)</label>
+                        <input type="text" id="noteContentHash" readonly style="font-size: 0.7rem; opacity: 0.7; background: #1e293b;">
+                    </div>
+                     <div class="form-group">
+                        <label>Old Path (For Rename)</label>
+                        <input type="text" id="noteOldPath" placeholder="Old path for rename...">
                     </div>
                     <div class="btn-group">
                         <button onclick="sendNoteWS('NoteModify')" class="success">Modify/Create</button>
                         <button onclick="sendNoteWS('NoteModifyCheck')" class="outline">Check</button>
                         <button onclick="sendNoteWS('NoteDelete')" class="danger">Delete</button>
-                        <button onclick="sendNoteSync()" class="warning">Full Sync</button>
+                        <button onclick="sendNoteWS('NoteRename')" class="warning">Rename</button>
+                        <button onclick="sendNoteWS('NoteRePush')" class="outline">RePush (Get)</button>
+                        <button onclick="sendNoteWS('NoteSync')" class="warning">Sync</button>
                     </div>
                 </div>
 
-                <!-- Download 专属 -->
-                <div id="downloadInputs" style="display: none;">
-                    <button onclick="sendDownloadRequest()" id="downloadBtn" disabled
-                        style="width: 100%; background: var(--success);">
-                        🚀 准备下载
-                    </button>
+                <!-- File Inputs -->
+                <div id="fileInputs" style="display: none;">
+                    <div class="tabs" style="margin-bottom: 1rem; font-size: 0.8rem;">
+                        <div class="tab active"  onclick="toggleFileMode('upload')">Upload</div>
+                        <div class="tab" onclick="toggleFileMode('download')">Download</div>
+                         <div class="tab" onclick="toggleFileMode('manage')">Manage</div>
+                    </div>
+
+                    <div id="fileUploadPanel">
+                         <div class="form-group">
+                            <label>Select File</label>
+                            <input type="file" id="fileInput">
+                        </div>
+                        <div class="form-group">
+                             <label>ContentHash (SHA-256)</label>
+                             <input type="text" id="fileContentHash" readonly style="font-size: 0.7rem; opacity: 0.7; background: #1e293b;">
+                        </div>
+                         <button onclick="startFileUpload()" id="uploadBtn" disabled style="width: 100%; background: var(--success);">
+                            Start Upload
+                        </button>
+                    </div>
+
+                    <div id="fileDownloadPanel" style="display: none;">
+                         <button onclick="startFileDownload()" id="downloadBtn" style="width: 100%; background: var(--primary);">
+                            Start Download
+                        </button>
+                    </div>
+
+                    <div id="fileManagePanel" style="display: none;">
+                         <div class="form-group">
+                            <label>Old Path (For Rename)</label>
+                            <input type="text" id="fileOldPath">
+                        </div>
+                        <div class="btn-group">
+                             <button onclick="sendFileWS('FileDelete')" class="danger">Delete</button>
+                             <button onclick="sendFileWS('FileRename')" class="warning">Rename</button>
+                             <button onclick="sendFileWS('FileSync')" class="outline">Sync List</button>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="progress-container" id="progressContainer">
+                        <div id="progressBar"></div>
+                    </div>
+                    <div id="progressText" style="font-size: 0.75rem; text-align: center; margin-top: 0.5rem; color: var(--text-muted); min-height: 1rem;"></div>
                 </div>
 
-                <!-- Upload 专属 -->
-                <div id="uploadInputs" style="display: none;">
+
+                <!-- Folder Inputs -->
+                 <div id="folderInputs" style="display: none;">
+                     <div class="form-group">
+                        <label>Old Path (For Rename)</label>
+                        <input type="text" id="folderOldPath">
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="sendFolderWS('FolderModify')" class="success">Create</button>
+                        <button onclick="sendFolderWS('FolderDelete')" class="danger">Delete</button>
+                        <button onclick="sendFolderWS('FolderRename')" class="warning">Rename</button>
+                        <button onclick="sendFolderWS('FolderSync')" class="outline">Sync</button>
+                    </div>
+                 </div>
+
+                 <!-- Common Timestamps -->
+                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
                     <div class="form-group">
-                        <label>选择本地文件</label>
-                        <input type="file" id="fileInput">
+                        <label>Ctime (ms)</label>
+                        <input type="number" id="ctime" style="font-size: 0.7rem;">
                     </div>
-                    <button onclick="startUploadProcess()" id="uploadBtn" disabled
-                        style="width: 100%; background: var(--success);">
-                        🚀 准备上传
-                    </button>
+                    <div class="form-group">
+                        <label>Mtime (ms)</label>
+                        <input type="number" id="mtime" style="font-size: 0.7rem;">
+                    </div>
+                     <div class="form-group">
+                        <label>LastTime (Sync)</label>
+                        <input type="number" id="lastTime" value="0" style="font-size: 0.7rem;">
+                    </div>
                 </div>
 
-                <!-- 进度条 -->
-                <div class="progress-container" id="progressContainer">
-                    <div id="progressBar"></div>
-                </div>
-                <div id="progressText"
-                    style="font-size: 0.75rem; text-align: center; margin-top: 0.5rem; color: var(--text-muted); min-height: 1rem;">
-                </div>
             </div>
         </div>
 
-        <!-- 右侧日志面板 -->
+        <!-- Log Panel -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2>📜 通讯日志</h2>
-                <button onclick="clearLog()" class="outline"
-                    style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">清空</button>
+                <h2>📜 Communication Log</h2>
+                <button onclick="clearLog()" class="outline" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear</button>
             </div>
             <div id="log"></div>
         </div>
     </div>
 
-    <!-- 逻辑脚本 -->
     <script>
         let socket = null;
         let token = '';
-        let activeMode = 'setting'; // setting, note, download, upload
+        let activeMode = 'setting';
+        let fileUploadFile = null;
 
-        // 文件传输状态
-        let currentFile = null;
-        let currentSessionId = null;
-        let downloadChunks = [];
-        let totalChunks = 0;
-        let receivedChunks = 0;
-        let fileSize = 0;
-        let fileName = '';
-
-        // 1. 模式切换
-        function switchMode(mode) {
-            activeMode = mode;
-            const modes = ['setting', 'note', 'download', 'upload'];
-            document.querySelectorAll('.tab').forEach((t, i) => {
-                t.classList.toggle('active', modes[i] === mode);
-            });
-
-            // UI 内容切换
-            const titleMap = {
-                'setting': '⚙️ Setting 操作',
-                'note': '📝 Note 笔记同步',
-                'download': '📥 下载操作',
-                'upload': '📤 上传操作'
-            };
-            const pathLabelMap = {
-                'setting': 'Remote Path',
-                'note': 'Note Path',
-                'download': 'Remote File Path',
-                'upload': 'Remote File Path'
-            };
-
-            document.getElementById('opTitle').textContent = titleMap[mode];
-            document.getElementById('pathLabel').textContent = pathLabelMap[mode];
-
-            document.getElementById('settingInputs').style.display = mode === 'setting' ? 'block' : 'none';
-            document.getElementById('noteInputs').style.display = mode === 'note' ? 'block' : 'none';
-            document.getElementById('downloadInputs').style.display = mode === 'download' ? 'block' : 'none';
-            document.getElementById('uploadInputs').style.display = mode === 'upload' ? 'block' : 'none';
-
-            // 重置进度条
-            document.getElementById('progressContainer').style.display = 'none';
-            document.getElementById('progressText').textContent = '';
-
-            if (mode === 'setting') updateSettingHashes();
-            if (mode === 'note') updateNoteHashes();
-            saveInputs();
-        }
-
-        // 2. 持久化
-        const STORAGE_KEY = 'ws_master_demo_data';
-        const inputIds = ['apiUrl', 'credentials', 'password', 'vault', 'path', 'content', 'noteContent', 'ctime', 'mtime', 'settingCtime', 'settingMtime', 'lastTime'];
-
-        function saveInputs() {
-            const data = { lastMode: activeMode };
-            inputIds.forEach(id => {
-                data[id] = document.getElementById(id).value;
-            });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-
-        function loadInputs() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                const data = JSON.parse(saved);
-                inputIds.forEach(id => {
-                    if (data[id] !== undefined) document.getElementById(id).value = data[id];
-                });
-                if (data.lastMode) switchMode(data.lastMode);
-            }
-        }
-
-        window.onload = () => {
-            loadInputs();
-            inputIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('input', () => {
-                    if (activeMode === 'setting') updateSettingHashes();
-                    if (activeMode === 'note') updateNoteHashes();
-                    saveInputs();
-                });
-            });
-            document.getElementById('fileInput').addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    currentFile = e.target.files[0];
-                    document.getElementById('path').value = currentFile.name;
-                    saveInputs();
-                }
-            });
-        };
-
-        // 3. 通用功能
-        function addLog(type, tag, content) {
-            const logEl = document.getElementById('log');
-            const entry = document.createElement('div');
-            let isError = type === 'err' || (content && content.status === false);
-            if (isError) type = 'err';
-
-            entry.className = `log-entry ${type}`;
-            let arrow = '';
-            if (type === 'send') arrow = '<span class="tag-arrow">↑</span>';
-            else if (type === 'recv') arrow = '<span class="tag-arrow">↓</span>';
-
-            let html = `<span class="time">${new Date().toLocaleTimeString()}</span>${arrow}<span class="tag">${tag}</span>`;
-
-            if (isError && typeof content === 'object') {
-                const reason = content.message || '未知错误';
-                const details = content.details || '';
-                html += `<div style="color: var(--error); font-weight: bold; margin-top: 0.5rem; font-size: 0.9em;">❌ 失败: ${reason} <span style="color: #fca5a5; font-weight: normal;">(详情: ${details})</span></div>`;
-            }
-
-            let displayContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
-            html += `<pre>${displayContent}</pre>`;
-            entry.innerHTML = html;
-            entry.onclick = () => entry.classList.toggle('expanded');
-            logEl.appendChild(entry);
-            logEl.scrollTop = logEl.scrollHeight;
-        }
-
-        function clearLog() { document.getElementById('log').innerHTML = ''; }
-
-        async function login() {
-            const apiUrl = document.getElementById('apiUrl').value;
-            const credentials = document.getElementById('credentials').value;
-            const password = document.getElementById('password').value;
-            const httpBase = apiUrl.replace(/^ws/, 'http').replace(/\/api\/user\/sync$/, '');
-            const loginUrl = `${httpBase}/api/user/login`;
-
-            addLog('info', 'Auth', `登录中: ${loginUrl}`);
-            try {
-                const res = await fetch(loginUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ credentials, password })
-                });
-                const result = await res.json();
-                if (result.status) {
-                    token = result.data.token;
-                    document.getElementById('connPanel').style.display = 'block';
-                    addLog('recv', 'Login Success', result);
-                } else {
-                    addLog('err', 'Login Failed', result);
-                }
-            } catch (err) { addLog('err', 'Auth Error', err.message); }
-        }
-
-        function connectWS() {
-            if (!token) return alert('请先登录');
-            const wsUrl = document.getElementById('apiUrl').value;
-            addLog('send', 'Ws Connect', wsUrl);
-            socket = new WebSocket(wsUrl);
-
-            socket.onopen = () => {
-                document.getElementById('wsStatus').textContent = '已连接待授权';
-                document.getElementById('wsStatus').className = 'status-badge status-connected';
-                sendWS('Authorization', token);
-            };
-
-            socket.onmessage = async (event) => {
-                if (event.data instanceof Blob) {
-                    handleBinaryMessage(event.data);
-                    return;
-                }
-                const raw = event.data;
-                const idx = raw.indexOf('|');
-                let type = '[Status]', data = raw;
-                if (idx !== -1) {
-                    type = raw.substring(0, idx);
-                    try { data = JSON.parse(raw.substring(idx + 1)); } catch (e) { }
-                }
-
-                addLog((data && data.status === false) ? 'err' : 'recv', type, data);
-
-                if (type === 'Authorization' && data.status) {
-                    document.getElementById('wsStatus').textContent = '已授权';
-                    document.getElementById('connectBtn').style.display = 'none';
-                    document.getElementById('disconnectBtn').style.display = 'block';
-                    document.getElementById('downloadBtn').disabled = false;
-                    document.getElementById('uploadBtn').disabled = false;
-                } else if (type === 'FileSyncChunkDownload') {
-                    startDownloadSession(data.data);
-                }
-            };
-
-            socket.onclose = () => {
-                document.getElementById('wsStatus').textContent = '未连接';
-                document.getElementById('wsStatus').className = 'status-badge status-disconnected';
-                document.getElementById('connectBtn').style.display = 'block';
-                document.getElementById('disconnectBtn').style.display = 'none';
-                document.getElementById('downloadBtn').disabled = true;
-                document.getElementById('uploadBtn').disabled = true;
-                addLog('err', 'Ws', '已关闭');
-            };
-        }
-
-        function disconnectWS() { if (socket) socket.close(); }
-
-        function sendWS(type, data) {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
-            socket.send(`${type}|${typeof data === 'string' ? data : JSON.stringify(data)}`);
-            if (type !== 'Authorization') addLog('send', type, data);
-        }
-
-        function getHash(content) {
+        // Hash32 Implementation (Matches Go []rune iteration)
+        function getHash32(content) {
             let hash = 0;
-            if (typeof content === 'string') {
-                for (let i = 0; i < content.length; i++) {
-                    const char = content.charCodeAt(i);
-                    hash = (hash << 5) - hash + char;
-                    hash &= hash;
-                }
-            } else if (content instanceof Uint8Array) {
-                for (let i = 0; i < content.length; i++) {
-                    const byte = content[i];
-                    hash = (hash << 5) - hash + byte;
-                    hash &= hash;
-                }
+            for (const char of content) {
+                const code = char.codePointAt(0);
+                hash = ((hash << 5) - hash) + code;
+                hash |= 0; // Force 32-bit integer
             }
             return String(hash);
         }
 
-        function updateSettingHashes() {
+        async function getFileHash(file) {
+             const buffer = await file.arrayBuffer();
+             const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+             const hashArray = Array.from(new Uint8Array(hashBuffer));
+             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+             return hashHex;
+        }
+
+        // --- UI Logic ---
+
+        function switchMode(mode) {
+            activeMode = mode;
+            // Update UI tabs
+            ['setting', 'note', 'file', 'folder'].forEach(m => {
+               // Simple toggle class logic could be added here if we assigned IDs to tabs
+            });
+            document.querySelectorAll('.tabs:first-child .tab').forEach(t => t.classList.remove('active'));
+            // Find index
+            const idx = ['setting', 'note', 'file', 'folder'].indexOf(mode);
+            if(idx >= 0) document.querySelectorAll('.tabs:first-child .tab')[idx].classList.add('active');
+
+            // Update Title
+            document.getElementById('opTitle').textContent = `⚙️ ${mode.charAt(0).toUpperCase() + mode.slice(1)} Operations`;
+
+            // Toggle Panels
+            document.getElementById('settingInputs').style.display = mode === 'setting' ? 'block' : 'none';
+            document.getElementById('noteInputs').style.display = mode === 'note' ? 'block' : 'none';
+            document.getElementById('fileInputs').style.display = mode === 'file' ? 'block' : 'none';
+            document.getElementById('folderInputs').style.display = mode === 'folder' ? 'block' : 'none';
+
+            updateHashes();
+        }
+
+        function toggleFileMode(mode) {
+            document.getElementById('fileUploadPanel').style.display = mode === 'upload' ? 'block' : 'none';
+            document.getElementById('fileDownloadPanel').style.display = mode === 'download' ? 'block' : 'none';
+            document.getElementById('fileManagePanel').style.display = mode === 'manage' ? 'block' : 'none';
+
+             // Update tabs state
+             const tabs = document.querySelectorAll('#fileInputs .tab');
+             tabs.forEach(t => t.classList.remove('active'));
+             if(mode === 'upload') tabs[0].classList.add('active');
+             if(mode === 'download') tabs[1].classList.add('active');
+             if(mode === 'manage') tabs[2].classList.add('active');
+        }
+
+        function updateHashes() {
             const path = document.getElementById('path').value;
-            const content = document.getElementById('content').value;
-            document.getElementById('settingPathHash').value = getHash(path);
-            document.getElementById('settingContentHash').value = getHash(content);
-            if (!document.getElementById('settingCtime').value) {
-                const now = Date.now();
-                document.getElementById('settingCtime').value = now;
-                document.getElementById('settingMtime').value = now;
+            document.getElementById('commonPathHash').value = getHash32(path);
+
+            if (activeMode === 'setting') {
+                const content = document.getElementById('settingContent').value;
+                document.getElementById('settingContentHash').value = getHash32(content);
+            } else if (activeMode === 'note') {
+                 const content = document.getElementById('noteContent').value;
+                document.getElementById('noteContentHash').value = getHash32(content);
+            }
+            // File hash is updated on file select
+        }
+
+        // Auto update hashes on input
+        document.getElementById('path').addEventListener('input', updateHashes);
+        document.getElementById('settingContent').addEventListener('input', updateHashes);
+        document.getElementById('noteContent').addEventListener('input', updateHashes);
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                fileUploadFile = e.target.files[0];
+                document.getElementById('path').value = fileUploadFile.name; // Auto set path
+                document.getElementById('fileContentHash').value = "Calculating...";
+                document.getElementById('fileContentHash').value = await getFileHash(fileUploadFile);
+                document.getElementById('uploadBtn').disabled = false;
+                updateHashes(); // Update path hash
+            }
+        });
+
+        // Init timestamps
+        const now = Date.now();
+        document.getElementById('ctime').value = now;
+        document.getElementById('mtime').value = now;
+
+
+        // --- Networking ---
+        function addLog(type, tag, content) {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            const json = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            entry.innerHTML = `<span class="time">${time}</span> <span class="tag">[${tag}]</span> <pre>${json}</pre>`;
+            entry.onclick = () => entry.classList.toggle('expanded');
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+        async function login() {
+            const apiUrl = document.getElementById('apiUrl').value.replace('ws://', 'http://').replace('/api/user/sync', '/api/user/login');
+            const credentials = document.getElementById('credentials').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({credentials, password})
+                });
+                const data = await res.json();
+                if(data.status && data.data.token) {
+                    token = data.data.token;
+                    addLog('recv', 'Login', 'Success, Token received.');
+                    document.getElementById('connPanel').style.display = 'block';
+                } else {
+                    addLog('err', 'Login', data);
+                }
+            } catch(e) {
+                addLog('err', 'Login', e.message);
             }
         }
 
-        // 4. Setting 逻辑
+        function connectWS() {
+             if (!token) return alert('Login first');
+             const url = document.getElementById('apiUrl').value;
+             socket = new WebSocket(url);
+             socket.onopen = () => {
+                 document.getElementById('wsStatus').className = 'status-badge status-connected';
+                 document.getElementById('wsStatus').innerText = 'Connected';
+                 sendWS('Authorization', token);
+             };
+             socket.onmessage = (e) => {
+                 if (e.data instanceof Blob) {
+                     addLog('recv', 'Binary', `Received ${e.data.size} bytes`);
+                     return;
+                 }
+                 const raw = e.data;
+                 const idx = raw.indexOf('|');
+                 if(idx > 0) {
+                     const type = raw.substring(0, idx);
+                     const body = raw.substring(idx+1);
+                     try {
+                         const json = JSON.parse(body);
+                         addLog('recv', type, json);
+                         // Handle specific responses
+                         if(type === 'Authorization' && json.status) {
+                             document.getElementById('disconnectBtn').style.display = 'block';
+                             document.getElementById('connectBtn').style.display = 'none';
+                         }
+                         if (type === 'FileSyncUpload') { // Server allowed upload
+                              handleUploadChunks(json.data);
+                         }
+                         if (type === 'FileSyncChunkDownload') { // Server ready to download
+                              handleDownloadChunks(json.data);
+                         }
+
+                     } catch(e) {
+                         addLog('recv', type, body);
+                     }
+                 } else {
+                     addLog('recv', 'Unknown', raw);
+                 }
+             };
+             socket.onclose = () => {
+                 document.getElementById('wsStatus').className = 'status-badge status-disconnected';
+                 document.getElementById('wsStatus').innerText = 'Disconnected';
+                  document.getElementById('disconnectBtn').style.display = 'none';
+                  document.getElementById('connectBtn').style.display = 'block';
+             };
+        }
+
+        function disconnectWS() { if(socket) socket.close(); }
+
+        function sendWS(type, data) {
+            if(!socket) return;
+            const payload = typeof data === 'string' ? data : JSON.stringify(data);
+             socket.send(`${type}|${payload}`);
+             if(type !== 'Authorization') addLog('send', type, data);
+        }
+
+        // --- Action Handlers ---
+
+        function getCommonParams() {
+            return {
+                vault: document.getElementById('vault').value,
+                path: document.getElementById('path').value,
+                pathHash: getHash32(document.getElementById('path').value),
+                ctime: parseInt(document.getElementById('ctime').value),
+                mtime: parseInt(document.getElementById('mtime').value)
+            };
+        }
+
         function sendSettingWS(action) {
-            const vault = document.getElementById('vault').value;
-            const path = document.getElementById('path').value;
-            const content = document.getElementById('content').value;
-            const pathHash = document.getElementById('settingPathHash').value;
-            const contentHash = document.getElementById('settingContentHash').value;
-            let ctime = parseInt(document.getElementById('settingCtime').value);
-            let mtime = parseInt(document.getElementById('settingMtime').value);
-
-            const now = Date.now();
-            if (ctime === -1) ctime = now;
-            if (mtime === -1) mtime = now;
-
-            const params = { vault, path, pathHash, contentHash, ctime, mtime };
-            if (action === 'SettingModify') params.content = content;
-            if (action === 'SettingDelete') delete params.contentHash;
-
-            sendWS(action, params);
-        }
-
-        // 5. Note 逻辑
-        function updateNoteHashes() {
-            const path = document.getElementById('path').value;
-            const content = document.getElementById('noteContent').value;
-            document.getElementById('pathHash').value = getHash(path);
-            document.getElementById('contentHash').value = getHash(content);
-            if (!document.getElementById('ctime').value) {
-                const now = Date.now();
-                document.getElementById('ctime').value = now;
-                document.getElementById('mtime').value = now;
+            const params = getCommonParams();
+            if(action === 'SettingModify' || action === 'SettingModifyCheck') {
+                const content = document.getElementById('settingContent').value;
+                params.contentHash = getHash32(content);
+                if (action === 'SettingModify') params.content = content;
             }
+             if (action === 'SettingSync') {
+                sendWS(action, {
+                    vault: params.vault,
+                    lastTime: parseInt(document.getElementById('lastTime').value),
+                    settings: []
+                });
+                return;
+            }
+             if (action === 'SettingClear') {
+                 sendWS(action, { vault: params.vault });
+                 return;
+             }
+            sendWS(action, params);
         }
 
         function sendNoteWS(action) {
-            const path = document.getElementById('path').value;
-            const vault = document.getElementById('vault').value;
-            const content = document.getElementById('noteContent').value;
-            const pathHash = document.getElementById('pathHash').value;
-            const contentHash = document.getElementById('contentHash').value;
-            let ctime = parseInt(document.getElementById('ctime').value);
-            let mtime = parseInt(document.getElementById('mtime').value);
-
-            const now = Date.now();
-            if (ctime === -1) ctime = now;
-            if (mtime === -1) mtime = now;
-
-            const params = { vault, path, pathHash, contentHash, ctime, mtime };
-            if (action === 'NoteModify') params.content = content;
-            if (action === 'NoteDelete') delete params.contentHash;
-
+            const params = getCommonParams();
+            if (action === 'NoteModify' || action === 'NoteModifyCheck') {
+                 const content = document.getElementById('noteContent').value;
+                 params.contentHash = getHash32(content);
+                 if (action === 'NoteModify') params.content = content;
+            }
+            if (action === 'NoteRename') {
+                const oldPath = document.getElementById('noteOldPath').value;
+                sendWS(action, {
+                    vault: params.vault,
+                    path: params.path,
+                    pathHash: params.pathHash,
+                    oldPath: oldPath,
+                    oldPathHash: getHash32(oldPath)
+                });
+                return;
+            }
+            if (action === 'NoteSync') {
+                 sendWS(action, {
+                    vault: params.vault,
+                    lastTime: parseInt(document.getElementById('lastTime').value),
+                    notes: []
+                });
+                return;
+            }
+             if (action === 'NoteRePush') {
+                 // NoteRePush uses NoteGetRequest structure
+                  sendWS(action, {
+                    vault: params.vault,
+                    path: params.path,
+                    pathHash: params.pathHash
+                });
+                return;
+             }
             sendWS(action, params);
         }
 
-        function sendNoteSync() {
-            const vault = document.getElementById('vault').value;
-            let lastTime = parseInt(document.getElementById('lastTime').value) || 0;
-            if (lastTime === -1) lastTime = Date.now();
-            sendWS('NoteSync', { vault, lastTime, notes: [] });
-        }
-
-        function sendSettingSync() {
-            const vault = document.getElementById('vault').value;
-            let lastTime = parseInt(document.getElementById('lastTime').value) || 0;
-            if (lastTime === -1) lastTime = Date.now();
-            sendWS('SettingSync', { vault, lastTime, cover: false, settings: [] });
-        }
-
-        // 6. 下载逻辑
-        function sendDownloadRequest() {
-            const vault = document.getElementById('vault').value;
-            const path = document.getElementById('path').value;
-            if (!path) return alert('路径不能为空');
-            sendWS('FileChunkDownload', { vault, path, pathHash: getHash(path) });
-            document.getElementById('progressContainer').style.display = 'block';
-            document.getElementById('progressBar').style.width = '0%';
-            document.getElementById('progressText').textContent = '准备下载...';
-        }
-
-        function startDownloadSession(session) {
-            currentSessionId = session.sessionId;
-            totalChunks = session.totalChunks;
-            fileSize = session.size;
-            fileName = session.path.split('/').pop() || 'file';
-            downloadChunks = new Array(totalChunks);
-            receivedChunks = 0;
-            addLog('info', 'Down', `会话开始: ${totalChunks} 分片`);
-        }
-
-        async function handleBinaryMessage(blob) {
-            const arrayBuffer = await blob.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
-            if (data.length < 42) return;
-            const decoder = new TextDecoder();
-            const sid = decoder.decode(data.slice(2, 38));
-            if (sid !== currentSessionId) return;
-            const idx = new DataView(arrayBuffer).getUint32(38, false);
-            if (!downloadChunks[idx]) {
-                downloadChunks[idx] = data.slice(42);
-                receivedChunks++;
-                const p = Math.round((receivedChunks / totalChunks) * 100);
-                document.getElementById('progressBar').style.width = `${p}%`;
-                document.getElementById('progressText').textContent = `正在下载: ${receivedChunks}/${totalChunks}`;
+        function sendFolderWS(action) {
+            const params = getCommonParams();
+             if (action === 'FolderRename') {
+                const oldPath = document.getElementById('folderOldPath').value;
+                sendWS(action, {
+                    vault: params.vault,
+                    path: params.path,
+                    pathHash: params.pathHash,
+                    oldPath: oldPath,
+                    oldPathHash: getHash32(oldPath)
+                });
+                return;
             }
-            if (receivedChunks === totalChunks) {
-                const b = new Blob(downloadChunks);
-                const url = URL.createObjectURL(b);
-                const a = document.createElement('a');
-                a.href = url; a.download = fileName; a.click();
-                addLog('success', 'DOWN', `完成: ${fileName}`);
-                currentSessionId = null;
+             if (action === 'FolderSync') {
+                 sendWS(action, {
+                    vault: params.vault,
+                    lastTime: parseInt(document.getElementById('lastTime').value),
+                    folders: []
+                });
+                return;
             }
+             // FolderCreateRequest / FolderDeleteRequest
+            sendWS(action, params);
         }
 
-        // 7. 上传逻辑
-        async function startUploadProcess() {
-            if (!currentFile) return alert('先选择文件');
-            const ab = await currentFile.arrayBuffer();
-            const ch = getHash(new Uint8Array(ab));
-            const vault = document.getElementById('vault').value;
-            const path = document.getElementById('path').value;
-            const ph = getHash(path);
-            const mtime = Math.floor(currentFile.lastModified / 1000) * 1000;
-            sendWS('FileUploadCheck', { vault, path, pathHash: ph, contentHash: ch, mtime, ctime: mtime, size: currentFile.size });
-            document.getElementById('progressContainer').style.display = 'block';
-            document.getElementById('progressBar').style.width = '0%';
-        }
-
-        async function startUpload(session) {
-            currentSessionId = session.sessionId;
-            const cs = session.chunkSize || 1024 * 1024;
-            const total = Math.ceil(currentFile.size / cs);
-            for (let i = 0; i < total; i++) {
-                const chunk = currentFile.slice(i * cs, (i + 1) * cs);
-                const data = await chunk.arrayBuffer();
-                await sendChunk(currentSessionId, i, data);
-                const p = Math.round(((i + 1) / total) * 100);
-                document.getElementById('progressBar').style.width = `${p}%`;
-                document.getElementById('progressText').textContent = `正在上传: ${i + 1}/${total}`;
+        function sendFileWS(action) {
+             const params = getCommonParams();
+             if (action === 'FileRename') {
+                const oldPath = document.getElementById('fileOldPath').value;
+                sendWS(action, {
+                    vault: params.vault,
+                    path: params.path,
+                    pathHash: params.pathHash,
+                    oldPath: oldPath,
+                    oldPathHash: getHash32(oldPath)
+                });
+                return;
             }
-            sendWS('FileUploadComplete', { sessionId: currentSessionId });
+             if (action === 'FileSync') {
+                 sendWS(action, {
+                    vault: params.vault,
+                    lastTime: parseInt(document.getElementById('lastTime').value),
+                    files: []
+                });
+                return;
+            }
+             if (action === 'FileDelete') {
+                 sendWS(action, params);
+                 return;
+             }
         }
 
-        function sendChunk(sid, idx, ab) {
-            return new Promise(resolve => {
-                const packet = new Uint8Array(42 + ab.byteLength);
-                packet.set([48, 48], 0);
-                packet.set(new TextEncoder().encode(sid), 2);
-                new DataView(packet.buffer).setUint32(38, idx, false);
-                packet.set(new Uint8Array(ab), 42);
+        // --- File Upload / Download Logic ---
+
+        function startFileUpload() {
+            if(!fileUploadFile) return alert('Select file first');
+            const params = getCommonParams();
+            params.size = fileUploadFile.size;
+            params.contentHash = document.getElementById('fileContentHash').value;
+            // First check
+            sendWS('FileUploadCheck', params);
+        }
+
+        function handleUploadChunks(sessionData) {
+            // sessionData: { sessionId, chunkSize, path }
+            const chunkSize = sessionData.chunkSize;
+            const sessionId = sessionData.sessionId;
+            const file = fileUploadFile;
+            let offset = 0;
+            let chunkIndex = 0;
+
+            addLog('info', 'Upload', `Starting upload for session ${sessionId}, chunk size ${chunkSize}`);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const chunkBuffer = e.target.result; // ArrayBuffer
+                // Construct binary message: SessionID(36) + ChunkIndex(4 BigEndian) + Data
+                const header = new Uint8Array(40);
+                // SessionID string to bytes
+                for(let i=0; i<36; i++) header[i] = sessionId.charCodeAt(i);
+                // ChunkIndex BigEndian uint32
+                new DataView(header.buffer).setUint32(36, chunkIndex, false);
+
+                const chunkData = new Uint8Array(chunkBuffer);
+                const packet = new Uint8Array(header.length + chunkData.length);
+                packet.set(header, 0);
+                packet.set(chunkData, 40);
+
                 socket.send(packet);
-                if (socket.bufferedAmount > 5 * 1024 * 1024) {
-                    const ck = () => socket.bufferedAmount < 1 * 1024 * 1024 ? resolve() : setTimeout(ck, 50);
-                    ck();
-                } else resolve();
-            });
+
+                offset += chunkData.length;
+                chunkIndex++;
+                updateProgress(offset, file.size);
+
+                if (offset < file.size) {
+                    readNextChunk();
+                } else {
+                    addLog('success', 'Upload', 'All chunks sent');
+                }
+            };
+
+            function readNextChunk() {
+                const slice = file.slice(offset, offset + chunkSize);
+                reader.readAsArrayBuffer(slice);
+            }
+            readNextChunk();
         }
+
+        function startFileDownload() {
+             const params = getCommonParams();
+             sendWS('FileChunkDownload', params);
+        }
+
+        function handleDownloadChunks(sessionData) {
+            // sessionData: { sessionId, chunkSize, totalChunks, size, path }
+            // For now, browser receiving binary chunks via WebSocket is tricky if mixed with text frames.
+            // The server sends binary frames for file chunks?
+            // Checking server code: `c.Conn.WriteMessage(websocket.BinaryMessage, ...)`
+            // Yes.
+            addLog('info', 'Download', `Server prepared download: ${sessionData.size} bytes`);
+        }
+
+
+        function updateProgress(loaded, total) {
+            const percent = Math.floor((loaded / total) * 100);
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressText').innerText = `${percent}% (${loaded}/${total})`;
+            document.getElementById('progressContainer').style.display = 'block';
+        }
+
     </script>
 </body>
-
 </html>
