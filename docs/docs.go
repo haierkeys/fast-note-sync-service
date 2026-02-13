@@ -1949,7 +1949,7 @@ const docTemplate = `{
                                                         "list": {
                                                             "type": "array",
                                                             "items": {
-                                                                "$ref": "#/definitions/dto.NoteDTO"
+                                                                "$ref": "#/definitions/dto.NoteNoContentDTO"
                                                             }
                                                         }
                                                     }
@@ -2763,6 +2763,9 @@ const docTemplate = `{
                 "contentHash": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2780,6 +2783,9 @@ const docTemplate = `{
                 },
                 "size": {
                     "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -2811,6 +2817,9 @@ const docTemplate = `{
                 "path": {
                     "type": "string"
                 },
+                "pathHash": {
+                    "type": "string"
+                },
                 "vault": {
                     "type": "string"
                 }
@@ -2819,6 +2828,9 @@ const docTemplate = `{
         "dto.FolderDTO": {
             "type": "object",
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2832,6 +2844,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "pathHash": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -2925,6 +2940,9 @@ const docTemplate = `{
                 "contentHash": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2938,6 +2956,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "pathHash": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "version": {
@@ -3095,6 +3119,38 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.NoteNoContentDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "ctime": {
+                    "type": "integer"
+                },
+                "lastTime": {
+                    "type": "integer"
+                },
+                "mtime": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.NotePatchFrontmatterRequest": {
             "type": "object",
             "required": [
@@ -3227,7 +3283,7 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "id": {
+                "lastTime": {
                     "type": "integer"
                 },
                 "mtime": {
@@ -3240,9 +3296,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {},
-                "updatedTimestamp": {
-                    "type": "integer"
-                },
                 "version": {
                     "type": "integer"
                 }
@@ -3385,9 +3438,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "fileSize": {
-                    "type": "integer"
-                },
-                "id": {
                     "type": "integer"
                 },
                 "noteCount": {

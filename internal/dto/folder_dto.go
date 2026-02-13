@@ -13,8 +13,8 @@ type FolderDTO struct {
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
+	UpdatedAt        timex.Time `json:"updatedAt"`
+	CreatedAt        timex.Time `json:"createdAt"`
 }
 
 // FolderGetRequest 获取文件夹的请求参数

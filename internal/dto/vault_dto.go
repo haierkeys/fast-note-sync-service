@@ -18,7 +18,7 @@ type VaultGetRequest struct {
 // VaultDTO Vault data transfer object
 // VaultDTO Vault 数据传输对象
 type VaultDTO struct {
-	ID        int64  `json:"id"`
+	ID        int64  `json:"-"`
 	Name      string `json:"vault"`
 	NoteCount int64  `json:"noteCount"`
 	NoteSize  int64  `json:"noteSize"`
