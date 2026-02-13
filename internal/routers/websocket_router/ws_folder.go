@@ -52,30 +52,55 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Handle deleted folders from client
 	if len(params.DelFolders) > 0 {
 		for _, delFolder := range params.DelFolders {
-			delParams := &dto.FolderDeleteRequest{
+
+			// Check if folder exists before deleting
+			checkFolder, err := h.App.FolderService.Get(ctx, uid, &dto.FolderGetRequest{
 				Vault:    params.Vault,
-				Path:     delFolder.Path,
 				PathHash: delFolder.PathHash,
-			}
-			folder, err := h.App.FolderService.Delete(ctx, uid, delParams)
-			if err != nil {
-				h.App.Logger().Error("failed to delete folder during sync",
+			})
+
+			if err == nil && checkFolder != nil && checkFolder.Action != "delete" {
+				delParams := &dto.FolderDeleteRequest{
+					Vault:    params.Vault,
+					Path:     delFolder.Path,
+					PathHash: delFolder.PathHash,
+				}
+				folder, err := h.App.FolderService.Delete(ctx, uid, delParams)
+				if err != nil {
+					h.App.Logger().Error("websocket_router.folder.FolderSync.FolderService.Delete",
+						zap.String(logpkg.FieldTraceID, c.TraceID),
+						zap.Int64(logpkg.FieldUID, uid),
+						zap.String(logpkg.FieldPath, delFolder.Path),
+						zap.Error(err))
+					continue
+				}
+				cDelFoldersKeys[delFolder.PathHash] = struct{}{}
+				// Broadcast deletion to other clients
+				c.BroadcastResponse(code.Success.WithData(
+					dto.FolderSyncDeleteMessage{
+						Path:     folder.Path,
+						PathHash: folder.PathHash,
+						Ctime:    folder.Ctime,
+						Mtime:    folder.Mtime,
+					},
+				).WithVault(params.Vault), true, dto.FolderSyncDelete)
+			} else {
+				h.App.Logger().Debug("websocket_router.folder.FolderSync.FolderService.Get check failed (not found or already deleted), broadcasting delete anyway",
 					zap.String(logpkg.FieldTraceID, c.TraceID),
-					zap.Int64(logpkg.FieldUID, uid),
-					zap.String(logpkg.FieldPath, delFolder.Path),
-					zap.Error(err))
-				continue
+					zap.String("pathHash", delFolder.PathHash))
+
+				cDelFoldersKeys[delFolder.PathHash] = struct{}{}
+				// Broadcast deletion with available info
+				c.BroadcastResponse(code.Success.WithData(
+					dto.FolderSyncDeleteMessage{
+						Path:     delFolder.Path,
+						PathHash: delFolder.PathHash,
+						Ctime:    0,
+						Mtime:    0,
+					},
+				).WithVault(params.Vault), true, dto.FolderSyncDelete)
 			}
-			cDelFoldersKeys[delFolder.PathHash] = struct{}{}
-			// Broadcast deletion to other clients
-			c.BroadcastResponse(code.Success.WithData(
-				dto.FolderSyncDeleteMessage{
-					Path:     folder.Path,
-					PathHash: folder.PathHash,
-					Ctime:    folder.Ctime,
-					Mtime:    folder.Mtime,
-				},
-			).WithVault(params.Vault), true, dto.FolderSyncDelete)
+
 		}
 	}
 
@@ -88,7 +113,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 				PathHash: missingFolder.PathHash,
 			})
 			if err != nil {
-				h.App.Logger().Warn("failed to fetch missing folder during sync",
+				h.App.Logger().Warn("websocket_router.folder.FolderSync.FolderService.Get",
 					zap.String(logpkg.FieldTraceID, c.TraceID),
 					zap.String("pathHash", missingFolder.PathHash),
 					zap.Error(err))

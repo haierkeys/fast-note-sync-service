@@ -530,34 +530,72 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// 处理客户端删除的文件
 	if len(params.DelFiles) > 0 {
 		for _, delFile := range params.DelFiles {
-			delParams := &dto.FileDeleteRequest{
+			// Check if file exists before deleting
+			// 删除前检查文件是否存在
+			getParams := &dto.FileGetRequest{
 				Vault:    params.Vault,
-				Path:     delFile.Path,
 				PathHash: delFile.PathHash,
 			}
-			fileSvc, err := h.App.FileService.Delete(ctx, c.User.UID, delParams)
-			if err != nil {
-				h.App.Logger().Error("failed to delete file from DelFiles during sync",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, delFile.Path),
-					zap.Error(err))
-				continue
-			}
-			// 记录客户端已主动删除的 PathHash，避免重复下发
-			cDelFilesKeys[delFile.PathHash] = struct{}{}
-			// Broadcast deletion to other clients
-			// 将删除消息广播给其他客户端
+			checkFile, err := h.App.FileService.Get(ctx, c.User.UID, getParams)
 
-			c.BroadcastResponse(code.Success.WithData(
-				dto.FileSyncDeleteMessage{
-					Path:     fileSvc.Path,
-					PathHash: fileSvc.PathHash,
-					Ctime:    fileSvc.Ctime,
-					Mtime:    fileSvc.Mtime,
-					Size:     fileSvc.Size,
-				},
-			).WithVault(params.Vault), true, dto.FileSyncDelete)
+			// If file exists, execute delete
+			// 如果文件存在，执行删除
+			if err == nil && checkFile != nil && checkFile.Action != "delete" {
+				delParams := &dto.FileDeleteRequest{
+					Vault:    params.Vault,
+					Path:     delFile.Path,
+					PathHash: delFile.PathHash,
+				}
+				fileSvc, err := h.App.FileService.Delete(ctx, c.User.UID, delParams)
+				if err != nil {
+					h.App.Logger().Error("websocket_router.file.FileSync.FileService.Delete",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delFile.Path),
+						zap.Error(err))
+					continue
+				}
+
+				// Record PathHash deleted by client to avoid duplicate sending
+				// 记录客户端已主动删除的 PathHash，避免重复下发
+				cDelFilesKeys[delFile.PathHash] = struct{}{}
+
+				// Broadcast deletion to other clients
+				// 将删除消息广播给其他客户端
+				c.BroadcastResponse(code.Success.WithData(
+					dto.FileSyncDeleteMessage{
+						Path:     fileSvc.Path,
+						PathHash: fileSvc.PathHash,
+						Ctime:    fileSvc.Ctime,
+						Mtime:    fileSvc.Mtime,
+						Size:     fileSvc.Size,
+					},
+				).WithVault(params.Vault), true, dto.FileSyncDelete)
+
+			} else {
+				// File does not exist, but we still need to record exclusion and broadcast delete message to ensure data consistency
+				// 文件不存在，但仍需记录排除并广播删除消息，以确保数据一致性
+
+				h.App.Logger().Debug("websocket_router.file.FileSync.FileService.Get check failed (not found or already deleted), broadcasting delete anyway",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String("pathHash", delFile.PathHash))
+
+				// Record PathHash
+				// 记录 PathHash
+				cDelFilesKeys[delFile.PathHash] = struct{}{}
+
+				// Broadcast deletion with available info (Path/PathHash)
+				// 使用现有信息(Path/PathHash)广播删除
+				c.BroadcastResponse(code.Success.WithData(
+					dto.FileSyncDeleteMessage{
+						Path:     delFile.Path,
+						PathHash: delFile.PathHash,
+						Ctime:    0,
+						Mtime:    0,
+						Size:     0,
+					},
+				).WithVault(params.Vault), true, dto.FileSyncDelete)
+			}
 		}
 	}
 
@@ -571,7 +609,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			}
 			fileSvc, err := h.App.FileService.Get(ctx, c.User.UID, getParams)
 			if err != nil {
-				h.App.Logger().Warn("failed to fetch missing file during sync",
+				h.App.Logger().Warn("websocket_router.file.FileSync.FileService.Get",
 					zap.String(logger.FieldTraceID, c.TraceID),
 					zap.String("pathHash", missingFile.PathHash),
 					zap.Error(err))
