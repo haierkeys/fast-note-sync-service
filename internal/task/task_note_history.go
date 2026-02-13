@@ -117,6 +117,15 @@ func (t *NoteHistoryTask) handleNoteHistoryProcess(noteID, uid int64, key string
 	delete(t.timers, key)
 	t.mu.Unlock()
 
+	// 检查应用是否正在关闭
+	if t.app.IsShuttingDown() {
+		t.logger.Debug("task log: app is shutting down, skipping note history process",
+			zap.String("task", "NoteHistory"),
+			zap.Int64("noteID", noteID),
+			zap.Int64("uid", uid))
+		return
+	}
+
 	// 使用 App Container 中的 NoteHistoryService
 	ctx := context.Background()
 	err := t.app.NoteHistoryService.ProcessDelay(ctx, noteID, uid)

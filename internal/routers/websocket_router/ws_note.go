@@ -342,7 +342,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 					params.Content = mergeResult.Content
 					params.ContentHash = util.EncodeHash32(params.Content)
-					params.Mtime = timex.Now().Unix()
+					params.Mtime = timex.Now().UnixMilli()
 
 					isExcludeSelf = false
 				}
