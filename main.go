@@ -6,7 +6,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/cmd"
 )
 
-//go:embed frontend
+//go:embed frontend docs
 var efs embed.FS
 
 //go:embed config/config.yaml

@@ -243,6 +243,26 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		}
 		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
 	})
+
+	// Read debug page from embedded FS
+	debugPageContent, _ := frontendFiles.ReadFile("docs/test_ws_debug.html")
+	r.GET("/ws_debug", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", debugPageContent)
+	})
+
+	// Read swagger files from embedded FS
+	swaggerJSON, _ := frontendFiles.ReadFile("docs/swagger.json")
+	r.GET("/rest_doc/", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/rest_doc.json")
+	})
+	r.GET("/rest_doc.json", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/json; charset=utf-8", swaggerJSON)
+	})
+	swaggerYAML, _ := frontendFiles.ReadFile("docs/swagger.yaml")
+	r.GET("/rest_doc.yaml", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/x-yaml; charset=utf-8", swaggerYAML)
+	})
+
 	if cfg.App.UploadSavePath != "" {
 		r.StaticFS(cfg.App.UploadSavePath, http.Dir(cfg.App.UploadSavePath))
 	}
