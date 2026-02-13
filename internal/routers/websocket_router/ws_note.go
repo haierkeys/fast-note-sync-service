@@ -681,33 +681,72 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// 处理客户端删除的笔记
 	if len(params.DelNotes) > 0 {
 		for _, delNote := range params.DelNotes {
-			delParams := &dto.NoteDeleteRequest{
+			// Check if note exists before deleting
+			// 删除前检查笔记是否存在
+			getCheckParams := &dto.NoteGetRequest{
 				Vault:    params.Vault,
-				Path:     delNote.Path,
 				PathHash: delNote.PathHash,
 			}
-			note, err := noteSvc.Delete(ctx, c.User.UID, delParams)
-			if err != nil {
-				h.App.Logger().Error("websocket_router.note.NoteSync.noteSvc.Delete",
+			checkNote, err := noteSvc.Get(ctx, c.User.UID, getCheckParams)
+
+			// If note exists, execute delete
+			// 如果笔记存在，执行删除
+			if err == nil && checkNote != nil && checkNote.Action != "delete" {
+				delParams := &dto.NoteDeleteRequest{
+					Vault:    params.Vault,
+					Path:     delNote.Path,
+					PathHash: delNote.PathHash,
+				}
+				note, err := noteSvc.Delete(ctx, c.User.UID, delParams)
+				if err != nil {
+					h.App.Logger().Error("websocket_router.note.NoteSync.noteSvc.Delete",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delNote.Path),
+						zap.Error(err))
+					continue
+				}
+
+				// Record PathHash deleted by client to avoid duplicate sending
+				// 记录客户端已主动删除的 PathHash，避免重复下发
+				cDelNotesKeys[delNote.PathHash] = struct{}{}
+
+				// Broadcast deletion to other clients
+				// 将删除消息广播给其他客户端
+				c.BroadcastResponse(code.Success.WithData(
+					dto.NoteSyncDeleteMessage{
+						Path:     note.Path,
+						PathHash: note.PathHash,
+						Ctime:    note.Ctime,
+						Mtime:    note.Mtime,
+						Size:     note.Size,
+					},
+				).WithVault(params.Vault), true, dto.NoteSyncDelete)
+
+			} else {
+				// Note does not exist, but we still need to record exclusion and broadcast delete message to ensure data consistency
+				// 笔记不存在，但仍需记录排除并广播删除消息，以确保数据一致性
+
+				h.App.Logger().Debug("websocket_router.note.NoteSync.noteSvc.Get check failed (not found or already deleted), broadcasting delete anyway",
 					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, delNote.Path),
-					zap.Error(err))
-				continue
+					zap.String("pathHash", delNote.PathHash))
+
+				// Record PathHash
+				// 记录 PathHash
+				cDelNotesKeys[delNote.PathHash] = struct{}{}
+
+				// Broadcast deletion with available info (Path/PathHash)
+				// 使用现有信息(Path/PathHash)广播删除
+				c.BroadcastResponse(code.Success.WithData(
+					dto.NoteSyncDeleteMessage{
+						Path:     delNote.Path,
+						PathHash: delNote.PathHash,
+						Ctime:    0,
+						Mtime:    0,
+						Size:     0,
+					},
+				).WithVault(params.Vault), true, dto.NoteSyncDelete)
 			}
-			// 记录客户端已主动删除的 PathHash，避免重复下发
-			cDelNotesKeys[delNote.PathHash] = struct{}{}
-			// Broadcast deletion to other clients
-			// 将删除消息广播给其他客户端
-			c.BroadcastResponse(code.Success.WithData(
-				dto.NoteSyncDeleteMessage{
-					Path:     note.Path,
-					PathHash: note.PathHash,
-					Ctime:    note.Ctime,
-					Mtime:    note.Mtime,
-					Size:     note.Size,
-				},
-			).WithVault(params.Vault), true, dto.NoteSyncDelete)
 		}
 	}
 

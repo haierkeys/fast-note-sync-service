@@ -210,29 +210,57 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// 处理客户端删除的配置
 	if len(params.DelSettings) > 0 {
 		for _, delSetting := range params.DelSettings {
-			delParams := &dto.SettingDeleteRequest{
+
+			// Check if setting exists before deleting
+			getCheckParams := &dto.SettingGetRequest{
 				Vault:    params.Vault,
-				Path:     delSetting.Path,
 				PathHash: delSetting.PathHash,
 			}
-			setting, err := h.App.SettingService.Delete(ctx, c.User.UID, delParams)
-			if err != nil {
-				h.App.Logger().Error("failed to delete setting from DelSettings during sync",
+			checkSetting, err := h.App.SettingService.Get(ctx, c.User.UID, getCheckParams)
+
+			if err == nil && checkSetting != nil && checkSetting.Action != "delete" {
+				delParams := &dto.SettingDeleteRequest{
+					Vault:    params.Vault,
+					Path:     delSetting.Path,
+					PathHash: delSetting.PathHash,
+				}
+				setting, err := h.App.SettingService.Delete(ctx, c.User.UID, delParams)
+				if err != nil {
+					h.App.Logger().Error("websocket_router.setting.SettingSync.SettingService.Delete",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delSetting.Path),
+						zap.Error(err))
+					continue
+				}
+
+				// 记录客户端已主动删除的 PathHash,避免重复下发
+				cDelSettingsKeys[delSetting.PathHash] = struct{}{}
+				// Broadcast deletion to other clients
+				// 将删除消息广播给其他客户端
+				c.BroadcastResponse(code.Success.WithData(
+					dto.SettingSyncDeleteMessage{
+						Path: setting.Path,
+					},
+				).WithVault(params.Vault), true, dto.SettingSyncDelete)
+			} else {
+				h.App.Logger().Debug("websocket_router.setting.SettingSync.SettingService.Get check failed (not found or already deleted), broadcasting delete anyway",
 					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, delSetting.Path),
-					zap.Error(err))
-				continue
+					zap.String("pathHash", delSetting.PathHash))
+
+				// Record PathHash
+				// 记录 PathHash
+				cDelSettingsKeys[delSetting.PathHash] = struct{}{}
+
+				// Broadcast deletion with available info (Path)
+				// 使用现有信息(Path)广播删除
+				c.BroadcastResponse(code.Success.WithData(
+					dto.SettingSyncDeleteMessage{
+						Path: delSetting.Path,
+					},
+				).WithVault(params.Vault), true, dto.SettingSyncDelete)
 			}
-			// 记录客户端已主动删除的 PathHash,避免重复下发
-			cDelSettingsKeys[delSetting.PathHash] = struct{}{}
-			// Broadcast deletion to other clients
-			// 将删除消息广播给其他客户端
-			c.BroadcastResponse(code.Success.WithData(
-				dto.SettingSyncDeleteMessage{
-					Path: setting.Path,
-				},
-			).WithVault(params.Vault), true, dto.SettingSyncDelete)
+
 		}
 	}
 
@@ -246,7 +274,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			}
 			setting, err := h.App.SettingService.Get(ctx, c.User.UID, getParams)
 			if err != nil {
-				h.App.Logger().Warn("failed to fetch missing setting during sync",
+				h.App.Logger().Warn("websocket_router.setting.SettingSync.SettingService.Get",
 					zap.String(logger.FieldTraceID, c.TraceID),
 					zap.String("pathHash", missingSetting.PathHash),
 					zap.Error(err))
