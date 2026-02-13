@@ -1943,7 +1943,7 @@
                                                         "list": {
                                                             "type": "array",
                                                             "items": {
-                                                                "$ref": "#/definitions/dto.NoteDTO"
+                                                                "$ref": "#/definitions/dto.NoteNoContentDTO"
                                                             }
                                                         }
                                                     }
@@ -2757,6 +2757,9 @@
                 "contentHash": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2774,6 +2777,9 @@
                 },
                 "size": {
                     "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -2805,6 +2811,9 @@
                 "path": {
                     "type": "string"
                 },
+                "pathHash": {
+                    "type": "string"
+                },
                 "vault": {
                     "type": "string"
                 }
@@ -2813,6 +2822,9 @@
         "dto.FolderDTO": {
             "type": "object",
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2826,6 +2838,9 @@
                     "type": "string"
                 },
                 "pathHash": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -2919,6 +2934,9 @@
                 "contentHash": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "ctime": {
                     "type": "integer"
                 },
@@ -2932,6 +2950,12 @@
                     "type": "string"
                 },
                 "pathHash": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "version": {
@@ -3089,6 +3113,38 @@
                 }
             }
         },
+        "dto.NoteNoContentDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "ctime": {
+                    "type": "integer"
+                },
+                "lastTime": {
+                    "type": "integer"
+                },
+                "mtime": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "pathHash": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.NotePatchFrontmatterRequest": {
             "type": "object",
             "required": [
@@ -3221,7 +3277,7 @@
                         "type": "string"
                     }
                 },
-                "id": {
+                "lastTime": {
                     "type": "integer"
                 },
                 "mtime": {
@@ -3234,9 +3290,6 @@
                     "type": "string"
                 },
                 "updatedAt": {},
-                "updatedTimestamp": {
-                    "type": "integer"
-                },
                 "version": {
                     "type": "integer"
                 }
@@ -3379,9 +3432,6 @@
                     "type": "integer"
                 },
                 "fileSize": {
-                    "type": "integer"
-                },
-                "id": {
                     "type": "integer"
                 },
                 "noteCount": {

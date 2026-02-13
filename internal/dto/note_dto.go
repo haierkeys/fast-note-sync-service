@@ -20,9 +20,9 @@ type NoteDTO struct {
 	Ctime            int64      `json:"ctime" form:"ctime"`
 	Mtime            int64      `json:"mtime" form:"mtime"`
 	Size             int64      `json:"size" form:"size"`
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
+	UpdatedTimestamp int64      `json:"lastTime"`
+	UpdatedAt        timex.Time `json:"updatedAt"`
+	CreatedAt        timex.Time `json:"createdAt"`
 }
 
 // NoteNoContentDTO Note DTO without content
@@ -37,8 +37,8 @@ type NoteNoContentDTO struct {
 	Mtime            int64      `json:"mtime" form:"mtime"`
 	Size             int64      `json:"size" form:"size"`
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"-"`
-	CreatedAt        timex.Time `json:"-"`
+	UpdatedAt        timex.Time `json:"updatedAt"`
+	CreatedAt        timex.Time `json:"createdAt"`
 }
 
 // NoteUpdateCheckRequest Client request parameters for checking if updates are needed
@@ -239,7 +239,7 @@ type NoteListRequest struct {
 // NoteWithFileLinksResponse Note response structure with file links
 // 带有文件链接的笔记响应结构体
 type NoteWithFileLinksResponse struct {
-	ID               int64             `json:"id"`
+	ID               int64             `json:"-"`
 	Path             string            `json:"path"`
 	PathHash         string            `json:"pathHash"`
 	Content          string            `json:"content"`
@@ -248,7 +248,7 @@ type NoteWithFileLinksResponse struct {
 	Version          int64             `json:"version"`
 	Ctime            int64             `json:"ctime"`
 	Mtime            int64             `json:"mtime"`
-	UpdatedTimestamp int64             `json:"updatedTimestamp"`
+	UpdatedTimestamp int64             `json:"lastTime"`
 	UpdatedAt        interface{}       `json:"updatedAt"`
 	CreatedAt        interface{}       `json:"createdAt"`
 }
