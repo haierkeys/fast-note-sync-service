@@ -63,6 +63,13 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Cancel timeout timer
+	// 取消超时定时器
+	if s.CancelFunc != nil {
+		s.CancelFunc()
+		s.CancelFunc = nil
+	}
+
 	if s.FileHandle != nil {
 		if err := s.FileHandle.Close(); err != nil {
 			zap.L().Warn("cleanup: failed to close file handle",
@@ -232,6 +239,9 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
 	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
+		// Cleanup session on fatal error
+		// 致命错误时清理会话
+		h.handleFileUploadSessionCleanup(c, sessionID)
 		h.respondErrorWithData(c, code.ErrorFileUploadFailed, err, map[string]string{"sessionID": sessionID}, "websocket_router.file.FileUploadChunkBinary.WriteAt")
 		return
 	}
