@@ -102,6 +102,8 @@ var en_messages = map[int]string{
 
 	// --- Sync & History (490-499) ---
 	490: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
-	491: "History record not found",
+	491: "History not found",
 	492: "History restore failed",
+
+	500: "Storage configuration not found",
 }

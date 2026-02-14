@@ -56,6 +56,7 @@ type App struct {
 	NoteLinkRepo    domain.NoteLinkRepository
 	ShareRepo       domain.UserShareRepository
 	FolderRepo      domain.FolderRepository
+	StorageRepo     domain.StorageRepository
 
 	// Service layer
 	// Service 层
@@ -69,6 +70,7 @@ type App struct {
 	ShareService       service.ShareService
 	NoteLinkService    service.NoteLinkService
 	FolderService      service.FolderService
+	StorageService     service.StorageService
 
 	// Infrastructure components
 	// 基础设施组件
@@ -178,6 +180,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.NoteLinkRepo = dao.NewNoteLinkRepository(a.Dao)
 	a.ShareRepo = dao.NewUserShareRepository(a.Dao)
 	a.FolderRepo = dao.NewFolderRepository(a.Dao)
+	a.StorageRepo = dao.NewStorageRepository(a.Dao)
 
 	// Create ServiceConfig (extract config needed by Service layer from AppConfig)
 	// 创建 ServiceConfig（从 AppConfig 提取 Service 层需要的配置）
@@ -204,6 +207,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
+	a.StorageService = service.NewStorageService(a.StorageRepo)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),

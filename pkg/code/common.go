@@ -105,4 +105,7 @@ var (
 	ErrorSyncConflict         = NewError(490)
 	ErrorHistoryNotFound      = NewError(491)
 	ErrorHistoryRestoreFailed = NewError(492)
+
+	// --- Storage Related (500-509) ---
+	ErrorStorageNotFound = NewError(500)
 )

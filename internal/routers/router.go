@@ -150,6 +150,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		versionHandler := api_router.NewVersionHandler(appContainer)
 		webGUIHandler := api_router.NewWebGUIHandler(appContainer)
 		shareHandler := api_router.NewShareHandler(appContainer)
+		storageHandler := api_router.NewStorageHandler(appContainer)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -234,6 +235,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/note/history", noteHistoryHandler.Get)
 			auth.GET("/note/histories", noteHistoryHandler.List)
 			auth.PUT("/note/history/restore", noteHistoryHandler.Restore)
+
+			auth.GET("/storage", storageHandler.List)
+			auth.POST("/storage", storageHandler.CreateOrUpdate)
+			auth.DELETE("/storage", storageHandler.Delete)
 		}
 
 	}
