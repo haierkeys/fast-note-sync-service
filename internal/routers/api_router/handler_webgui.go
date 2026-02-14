@@ -130,6 +130,7 @@ type RuntimeInfo struct {
 	MemAlloc     uint64 `json:"memAlloc"`     // Allocated memory (bytes) // 已分配内存（字节）
 	MemTotal     uint64 `json:"memTotal"`     // Total memory allocated (bytes) // 累计分配内存（字节）
 	MemSys       uint64 `json:"memSys"`       // Memory obtained from system (bytes) // 从系统获取的内存（字节）
+	HeapReleased uint64 `json:"heapReleased"` // Memory released to OS (bytes) // 释放回操作系统的内存（字节）
 	NumGC        uint32 `json:"numGc"`        // Number of completed GC cycles // GC 次数
 }
 
@@ -356,8 +357,8 @@ func (h *WebGUIHandler) GetSystemInfo(c *gin.Context) {
 			MemAlloc:     m.Alloc,
 			MemTotal:     m.TotalAlloc,
 			MemSys:       m.Sys,
+			HeapReleased: m.HeapReleased,
 			NumGC:        m.NumGC,
-			
 		},
 		CPU: CPUInfo{
 			ModelName:     cpuModel,
