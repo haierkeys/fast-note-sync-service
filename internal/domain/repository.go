@@ -317,3 +317,21 @@ type NoteLinkRepository interface {
 	// GetOutlinks gets all links from a source note
 	GetOutlinks(ctx context.Context, sourceNoteID, uid int64) ([]*NoteLink, error)
 }
+
+// StorageRepository 存储仓储接口
+type StorageRepository interface {
+	// GetByID 根据ID获取存储配置
+	GetByID(ctx context.Context, id, uid int64) (*Storage, error)
+
+	// Create 创建存储配置
+	Create(ctx context.Context, storage *Storage, uid int64) (*Storage, error)
+
+	// Update 更新存储配置
+	Update(ctx context.Context, storage *Storage, uid int64) (*Storage, error)
+
+	// List 获取用户的存储配置列表
+	List(ctx context.Context, uid int64) ([]*Storage, error)
+
+	// Delete 删除存储配置（软删除）
+	Delete(ctx context.Context, id, uid int64) error
+}

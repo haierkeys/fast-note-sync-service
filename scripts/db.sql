@@ -22,7 +22,6 @@ CREATE TABLE "user" (
 
 CREATE INDEX `idx_pre_user_email` ON "user"(`email`);
 
-
 DROP TABLE IF EXISTS "vault";
 
 CREATE TABLE "vault" (
@@ -63,7 +62,6 @@ CREATE TABLE "note" (
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
-
 
 CREATE INDEX "idx_vault_id_action_fid" ON "note" ("vault_id", "action", "fid" DESC);
 
@@ -225,3 +223,44 @@ CREATE INDEX "idx_folder_vault_id_fid_path" ON "folder" ("vault_id", "fid", "pat
 CREATE INDEX "idx_folder_vault_id_level_path" ON "folder" ("vault_id", "level", "path");
 
 CREATE INDEX "idx_folder_vault_id_updated_timestamp" ON "folder" ("vault_id", "updated_timestamp" DESC);
+
+DROP TABLE IF EXISTS "storage";
+
+CREATE TABLE "storage" (
+    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "type" text DEFAULT '',
+    "endpoint" text DEFAULT '',
+    "region" text DEFAULT '',
+    "account_id" text DEFAULT '',
+    "bucket_name" text DEFAULT '',
+    "access_key_id" text DEFAULT '',
+    "access_key_secret" text DEFAULT '',
+    "custom_path" text DEFAULT '',
+    "access_url_prefix" text DEFAULT '',
+    "user" text DEFAULT '',
+    "password" text DEFAULT '',
+    "is_deleted" integer NOT NULL DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL,
+    "deleted_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_storage_uid" ON "storage" ("uid" DESC);
+
+DROP TABLE IF EXISTS "storage";
+
+CREATE TABLE "storage" (
+    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    -- 0: 备份 1: 同步
+    "type" integer NOT NULL DEFAULT 0,
+    "sync" text DEFAULT '',
+    "sync_delay" integer NOT NULL DEFAULT 0, -- 延迟
+    "backup" text DEFAULT '',
+    "backup" text DEFAULT '',
+    "is_deleted" integer NOT NULL DEFAULT 0,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL,
+    "deleted_at" datetime DEFAULT NULL
+);
