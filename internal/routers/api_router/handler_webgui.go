@@ -357,6 +357,7 @@ func (h *WebGUIHandler) GetSystemInfo(c *gin.Context) {
 			MemTotal:     m.TotalAlloc,
 			MemSys:       m.Sys,
 			NumGC:        m.NumGC,
+			
 		},
 		CPU: CPUInfo{
 			ModelName:     cpuModel,
