@@ -31,13 +31,14 @@ func NewUserHandler(a *app.App) *UserHandler {
 
 // Register user registration
 // @Summary User registration
-// @Description Handle user registration HTTP request, validate parameters and call UserService
+// @Description Handle user registration HTTP request, validate parameters and call UserService. Registration may be disabled in server settings.
+// @Description 处理用户注册 HTTP 请求，验证参数并调用 UserService。注册功能可能在服务器设置中被禁用。
 // @Tags User
 // @Accept json
 // @Produce json
 // @Param params body dto.UserCreateRequest true "Register Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
-// @Failure 400 {object} pkgapp.Res "Invalid Parameters"
+// @Failure 400 {object} pkgapp.Res "Invalid Parameters / Registration Disabled / User Already Exists"
 // @Router /api/user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -70,13 +71,14 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 // Login user login
 // @Summary User login
-// @Description Handle user login HTTP request, validate parameters and return auth token
+// @Description Handle user login HTTP request, validate parameters and return auth token.
+// @Description 处理用户登录 HTTP 请求，验证参数并返回认证 Token。
 // @Tags User
 // @Accept json
 // @Produce json
 // @Param params body dto.UserLoginRequest true "Login Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
-// @Failure 400 {object} pkgapp.Res "Invalid Parameters"
+// @Failure 400 {object} pkgapp.Res "Invalid Parameters / Invalid Credentials"
 // @Router /api/user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -110,7 +112,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 // UserChangePassword changes user password
 // @Summary Change user password
-// @Description Handle password change request for current user, validate old password and update new password
+// @Description Handle password change request for current user, validate old password and update new password.
+// @Description 处理当前用户的修改密码请求，验证旧密码并更新新密码。
 // @Tags User
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
@@ -118,6 +121,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 // @Produce json
 // @Param params body dto.UserChangePasswordRequest true "Change Password Parameters"
 // @Success 200 {object} pkgapp.Res "Success"
+// @Failure 400 {object} pkgapp.Res "Invalid Parameters / Old Password Incorrect"
+// @Failure 401 {object} pkgapp.Res "Unauthorized"
 // @Router /api/user/change_password [post]
 func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -159,7 +164,8 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 
 // UserInfo retrieves user info
 // @Summary Get user info
-// @Description Handle request to get current user info
+// @Description Handle request to get current user info.
+// @Description 处理获取当前用户信息的请求。
 // @Tags User
 // @Accept json
 // @Produce json

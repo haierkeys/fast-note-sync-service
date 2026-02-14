@@ -189,6 +189,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			// 管理员配置接口
 			auth.GET("/admin/config", webGUIHandler.GetConfig)
 			auth.POST("/admin/config", webGUIHandler.UpdateConfig)
+			auth.GET("/admin/systeminfo", webGUIHandler.GetSystemInfo)
 
 			auth.POST("/user/change_password", userHandler.UserChangePassword)
 			auth.GET("/user/info", userHandler.UserInfo)
