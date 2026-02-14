@@ -14,6 +14,8 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"golang.org/x/sync/singleflight"
 
+	"runtime/debug"
+
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	validatorV10 "github.com/go-playground/validator/v10"
@@ -242,7 +244,7 @@ type WebsocketClient struct {
 	WsCancel            context.CancelFunc        // Used to cancel WsCtx // 用于取消 WsCtx
 	TraceID             string                    // Trace ID of the connection // 连接的追踪 ID
 	User                *UserEntity               // Authenticated user info // 已认证用户信息，通常在握手阶段绑定
-	UserClients         *ConnStorage              // User connection pool // 用户连接池，支持多设备在线时广播或单点通信
+	UserClients         ConnStorage               // User connection pool // 用户连接池，支持多设备在线时广播或单点通信
 	SF                  *singleflight.Group       // Concurrency control // 并发控制：相同 key 的请求只执行一次，其余等待结果
 	BinaryMu            sync.Mutex                // Synchronization lock when reading and writing data // 用于读写数据时的同步锁 (不再保护 map 存储)
 	ClientName          string                    // Client name (e.g., "Mac", "Windows", "iPhone") // 客户端名称 (例如 "Mac", "Windows", "iPhone")
@@ -389,6 +391,12 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 	ticker := time.NewTicker(PingInterval * time.Second) // Send Ping every 25 seconds
 	// 每 25 秒发送一次 Ping
 	defer ticker.Stop()
+
+	// Periodic cleanup of expired conflict merge paths
+	// 定期清理已过期的冲突合并路径
+	cleanupTicker := time.NewTicker(10 * time.Minute)
+	defer cleanupTicker.Stop()
+
 	for {
 		select {
 		case <-c.done:
@@ -409,6 +417,14 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 				return
 			}
 			// log(LogInfo, "WS Client Ping", zap.String("uid", c.User.ID))
+		case <-cleanupTicker.C:
+			// Cleanup items expired for more than 1 hour
+			// 清理过期超过 1 小时的项
+			if count := c.CleanupExpiredDiffMergePaths(1 * time.Hour); count > 0 {
+				log(LogDebug, "PingLoop: cleaned up expired DiffMergePaths",
+					zap.Int("count", count),
+					zap.String("traceID", c.TraceID))
+			}
 		}
 	}
 }
@@ -474,7 +490,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		actionType = options[1].(string)
 	}
 
-	if len(*c.UserClients) <= 0 {
+	if len(c.UserClients) <= 0 {
 		return
 	}
 
@@ -527,7 +543,7 @@ func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
 	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
 	defer b.Close()
 
-	for _, uc := range *c.UserClients {
+	for _, uc := range c.UserClients {
 		if uc.conn == nil {
 			continue
 		}
@@ -747,18 +763,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		log(LogInfo, "WS Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname))
 		c.User = user
-		w.AddUserClient(c)
-
-		userClients := w.userClients[user.ID]
-
-		c.BinaryMu.Lock()
-		// Do not clean up global sessions when logging in, to ensure sessions still exist after reconnection
-		// 登录时不清理全局会话，确保重连后会话依然存在
-		// Empty critical section intended here for synchronization logic
-		// 此处空临界区用于同步逻辑
-		c.BinaryMu.Unlock()
-
-		c.UserClients = &userClients
+		c.UserClients = w.AddUserClient(c)
 
 		versionInfo := w.app.Version()
 
@@ -767,7 +772,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			"gitTag":    versionInfo.GitTag,
 			"buildTime": versionInfo.BuildTime,
 		}), "Authorization")
-		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(userClients)))
+		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(c.UserClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}
 }
@@ -815,19 +820,25 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 	delete(w.clients, conn)
 }
 
-func (w *WebsocketServer) AddUserClient(c *WebsocketClient) {
+func (w *WebsocketServer) AddUserClient(c *WebsocketClient) ConnStorage {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.userClients[c.User.ID] == nil {
 		w.userClients[c.User.ID] = make(ConnStorage)
 	}
 	w.userClients[c.User.ID][c.conn] = c
+	return w.userClients[c.User.ID]
 }
 
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	delete(w.userClients[c.User.ID], c.conn)
+	if clients, ok := w.userClients[c.User.ID]; ok {
+		delete(clients, c.conn)
+		if len(clients) == 0 {
+			delete(w.userClients, c.User.ID)
+		}
+	}
 	log(LogInfo, "WS Client Remove", zap.Int("userCount", len(w.clients)))
 }
 
@@ -912,6 +923,8 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	log(LogInfo, "WS Client Leave", zap.Int("Count", len(w.clients)), zap.String("traceID", c.TraceID))
 
+	// 释放内存
+	debug.FreeOSMemory()
 }
 
 func (w *WebsocketServer) OnPing(socket *gws.Conn, payload []byte) {
