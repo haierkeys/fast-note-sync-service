@@ -7,117 +7,121 @@ import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 // FileUpdateCheckRequest Client request parameters for checking if updates are needed
 // 客户端用于检查是否需要更新的请求参数
 type FileUpdateCheckRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required"`
-	Path        string `json:"path" form:"path" binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
-	ContentHash string `json:"contentHash" form:"contentHash" binding:""`
-	Size        int64  `json:"size" form:"size" binding:""`
-	Ctime       int64  `json:"ctime" form:"ctime" binding:"required"`
-	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
+	Vault       string `json:"vault" form:"vault" binding:"required"`       // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required"`         // File path // 文件路径
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"` // Path hash // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash" binding:""`   // Content hash // 内容哈希
+	Size        int64  `json:"size" form:"size" binding:""`                 // File size // 文件大小
+	Ctime       int64  `json:"ctime" form:"ctime" binding:"required"`       // Creation timestamp // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`       // Modification timestamp // 修改时间戳
 }
 
 // FileUpdateRequest Request parameters for creating or modifying a file
 // 用于创建或修改文件的请求参数
 type FileUpdateRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required"`
-	Path        string `json:"path" form:"path" binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash"`
-	ContentHash string `json:"contentHash" form:"contentHash" binding:""`
-	SavePath    string `json:"savePath" form:"savePath" binding:""`
-	Size        int64  `json:"size" form:"size"`
-	Ctime       int64  `json:"ctime" form:"ctime"`
-	Mtime       int64  `json:"mtime" form:"mtime"`
+	Vault       string `json:"vault" form:"vault" binding:"required"`     // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required"`       // File path // 文件路径
+	PathHash    string `json:"pathHash" form:"pathHash"`                  // Path hash // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash" binding:""` // Content hash // 内容哈希
+	SavePath    string `json:"savePath" form:"savePath" binding:""`       // Save path on server // 服务器保存路径
+	Size        int64  `json:"size" form:"size"`                          // File size // 文件大小
+	Ctime       int64  `json:"ctime" form:"ctime"`                        // Creation timestamp // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"`                        // Modification timestamp // 修改时间戳
 }
 
 // FileDeleteRequest Parameters required for deleting a file
 // 删除文件所需参数
 type FileDeleteRequest struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"`
-	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+	Vault    string `json:"vault" form:"vault" binding:"required"`       // Vault name // 保险库名称
+	Path     string `json:"path" form:"path" binding:"required"`         // File path // 文件路径
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"` // Path hash // 路径哈希
 }
 
 // FileRestoreRequest parameters for restoring a file
 // FileRestoreRequest 恢复文件请求参数
 type FileRestoreRequest struct {
-	Vault    string `json:"vault" form:"vault" binding:"required"`
-	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash"`
+	Vault    string `json:"vault" form:"vault" binding:"required"` // Vault name // 保险库名称
+	Path     string `json:"path" form:"path" binding:"required"`   // File path // 文件路径
+	PathHash string `json:"pathHash" form:"pathHash"`              // Path hash // 路径哈希
 }
 
 // FileSyncCheckRequest/ Parameters for checking synchronization of a single record
 // 同步检查单条记录的参数
 type FileSyncCheckRequest struct {
-	Path        string `json:"path" form:"path"`
-	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
-	ContentHash string `json:"contentHash" form:"contentHash" binding:""`
-	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`
-	Size        int64  `json:"size" form:"size"`
+	Path        string `json:"path" form:"path"`                            // File path // 文件路径
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"` // Path hash // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash" binding:""`   // Content hash // 内容哈希
+	Mtime       int64  `json:"mtime" form:"mtime" binding:"required"`       // Modification timestamp // 修改时间戳
+	Size        int64  `json:"size" form:"size"`                            // File size // 文件大小
 }
 
+// FileSyncDelFile parameters for deleting a file during sync
+// 同步删除文件参数
 type FileSyncDelFile struct {
-	Path     string `json:"path" form:"path" binding:"required"`
-	PathHash string `json:"pathHash" form:"pathHash" binding:"required"`
+	Path     string `json:"path" form:"path" binding:"required"`         // File path // 文件路径
+	PathHash string `json:"pathHash" form:"pathHash" binding:"required"` // Path hash // 路径哈希
 }
 
 // FileSyncRequest Synchronization request body
 // 同步请求主体
 type FileSyncRequest struct {
-	Vault        string                 `json:"vault" form:"vault" binding:"required"`
-	LastTime     int64                  `json:"lastTime" form:"lastTime"`
-	Files        []FileSyncCheckRequest `json:"files" form:"files"`
-	DelFiles     []FileSyncDelFile      `json:"delFiles" form:"delFiles"`
-	MissingFiles []FileSyncDelFile      `json:"missingFiles" form:"missingFiles"`
+	Vault        string                 `json:"vault" form:"vault" binding:"required"` // Vault name // 保险库名称
+	LastTime     int64                  `json:"lastTime" form:"lastTime"`              // Last sync time // 最后同步时间
+	Files        []FileSyncCheckRequest `json:"files" form:"files"`                    // Files to check // 待检查文件列表
+	DelFiles     []FileSyncDelFile      `json:"delFiles" form:"delFiles"`              // Files to delete // 待删除文件列表
+	MissingFiles []FileSyncDelFile      `json:"missingFiles" form:"missingFiles"`      // Missing files // 缺失文件列表
 }
 
 // FileUploadCompleteRequest Parameters for file upload completion
 // 文件上传完成参数
 type FileUploadCompleteRequest struct {
-	SessionID string `json:"sessionId" binding:"required"`
+	SessionID string `json:"sessionId" binding:"required"` // Upload session ID // 上传会话 ID
 }
 
 // FileGetRequest Request parameters for retrieving a single file
 // 用于获取单条文件的请求参数
 type FileGetRequest struct {
-	Vault     string `json:"vault" form:"vault" binding:"required"`
-	Path      string `json:"path" form:"path" binding:"required"`
-	PathHash  string `json:"pathHash" form:"pathHash"`
-	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
+	Vault     string `json:"vault" form:"vault" binding:"required"` // Vault name // 保险库名称
+	Path      string `json:"path" form:"path" binding:"required"`   // File path // 文件路径
+	PathHash  string `json:"pathHash" form:"pathHash"`              // Path hash // 路径哈希
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`            // Is in recycle bin // 是否在回收站
 }
 
 // FileListRequest Pagination parameters for retrieving the file list
 // 获取文件列表的分页参数
 type FileListRequest struct {
-	Vault     string `json:"vault" form:"vault" binding:"required"`
-	Keyword   string `json:"keyword" form:"keyword"`
-	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`
-	SortBy    string `json:"sortBy" form:"sortBy"`       // Sorting field: mtime(default), ctime, path
-	SortOrder string `json:"sortOrder" form:"sortOrder"` // Sorting order: desc(default), asc
+	Vault     string `json:"vault" form:"vault" binding:"required"` // Vault name // 保险库名称
+	Keyword   string `json:"keyword" form:"keyword"`                // Search keyword // 搜索关键词
+	IsRecycle bool   `json:"isRecycle" form:"isRecycle"`            // Is in recycle bin // 是否在回收站
+	SortBy    string `json:"sortBy" form:"sortBy"`                  // Sort by field // 排序字段
+	SortOrder string `json:"sortOrder" form:"sortOrder"`            // Sort order // 排序顺序
 }
 
 // FileRenameRequest Parameters required for renaming a file
 // 重命名文件所需参数
 type FileRenameRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required"`
-	Path        string `json:"path" form:"path" binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`
-	OldPath     string `json:"oldPath" form:"oldPath" binding:"required"`
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"`
+	Vault       string `json:"vault" form:"vault" binding:"required"`             // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required"`               // Current path // 当前路径
+	PathHash    string `json:"pathHash" form:"pathHash" binding:"required"`       // Current path hash // 当前路径哈希
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required"`         // Old path // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required"` // Old path hash // 旧路径哈希
 }
+
+// ---------------- DTO / Response ----------------
 
 // FileDTO File Data Transfer Object
 // FileDTO 文件数据传输对象
 type FileDTO struct {
-	ID               int64      `json:"-"`
-	Action           string     `json:"-"`
-	Path             string     `json:"path" form:"path"`
-	PathHash         string     `json:"pathHash" form:"pathHash"`
-	ContentHash      string     `json:"contentHash" form:"contentHash"`
-	SavePath         string     `json:"-"`
-	Size             int64      `json:"size" form:"size"`
-	Ctime            int64      `json:"ctime" form:"ctime"`
-	Mtime            int64      `json:"mtime" form:"mtime"`
-	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"`
-	UpdatedAt        timex.Time `json:"updatedAt"`
-	CreatedAt        timex.Time `json:"createdAt"`
+	ID               int64      `json:"-"`                                // File ID // 文件 ID
+	Action           string     `json:"-"`                                // Action // 动作
+	Path             string     `json:"path" form:"path"`                 // File path // 文件路径
+	PathHash         string     `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希
+	ContentHash      string     `json:"contentHash" form:"contentHash"`   // Content hash // 内容哈希
+	SavePath         string     `json:"-"`                                // Internal save path // 内部保存路径
+	Size             int64      `json:"size" form:"size"`                 // File size // 文件大小
+	Ctime            int64      `json:"ctime" form:"ctime"`               // Creation timestamp // 创建时间戳
+	Mtime            int64      `json:"mtime" form:"mtime"`               // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // Updated timestamp // 更新时间戳
+	UpdatedAt        timex.Time `json:"updatedAt"`                        // Updated at time // 更新时间
+	CreatedAt        timex.Time `json:"createdAt"`                        // Created at time // 创建时间
 }

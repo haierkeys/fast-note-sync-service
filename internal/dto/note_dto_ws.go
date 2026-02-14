@@ -1,30 +1,32 @@
 package dto
 
+// NoteSyncRenameMessage message structure for note rename during sync
+// 同步过程中笔记重命名的消息结构
 type NoteSyncRenameMessage struct {
-	Path        string `json:"path" form:"path" binding:"required"`
-	PathHash    string `json:"pathHash" form:"pathHash"`
-	ContentHash string `json:"contentHash" form:"contentHash"` // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
-	Ctime       int64  `json:"ctime" form:"ctime"`
-	Mtime       int64  `json:"mtime" form:"mtime"`
-	Size        int64  `json:"size" form:"size"`
-	OldPath     string `json:"oldPath" form:"oldPath"`
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`
+	Path        string `json:"path" form:"path" binding:"required"` // New path // 新路径
+	PathHash    string `json:"pathHash" form:"pathHash"`            // New path hash // 新路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash"`      // Content hash // 内容哈希
+	Ctime       int64  `json:"ctime" form:"ctime"`                  // Creation timestamp // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime"`                  // Modification timestamp // 修改时间戳
+	Size        int64  `json:"size" form:"size"`                    // File size // 文件大小
+	OldPath     string `json:"oldPath" form:"oldPath"`              // Old path // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash"`      // Old path hash // 旧路径哈希
 }
 
 // NoteSyncModifyMessage message content for note modification or creation
 // NoteSyncModifyMessage 笔记修改或创建的消息内容
 type NoteSyncModifyMessage struct {
-	Path             string `json:"path" form:"path"`                 // Path info (file path) // 路径信息（文件路径）
-	PathHash         string `json:"pathHash" form:"pathHash"`         // Path hash for fast lookup // 路径哈希值，用于快速查找
-	Content          string `json:"content" form:"content"`           // Content details (full text) // 内容详情（完整文本）
-	ContentHash      string `json:"contentHash" form:"contentHash"`   // Content hash to determine if content changed // 内容哈希，用于判定内容是否变更
-	Ctime            int64  `json:"ctime" form:"ctime"`               // Creation timestamp (seconds) // 创建时间戳（秒）
-	Mtime            int64  `json:"mtime" form:"mtime"`               // Modification timestamp (seconds) // 文件修改时间戳（秒）
-	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // Update timestamp (for sync) // 记录更新时间戳（用于同步）
+	Path             string `json:"path" form:"path"`                 // Note path // 笔记路径
+	PathHash         string `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希值
+	Content          string `json:"content" form:"content"`           // Note content // 笔记内容
+	ContentHash      string `json:"contentHash" form:"contentHash"`   // Content hash // 内容哈希
+	Ctime            int64  `json:"ctime" form:"ctime"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime"`               // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp"` // Record update timestamp // 记录更新时间戳
 }
 
 // NoteSyncEndMessage message structure returned when sync ends
-// NoteSyncEndMessage 同步结束时返回的信息结构。
+// NoteSyncEndMessage 同步结束时返回的信息结构
 type NoteSyncEndMessage struct {
 	LastTime           int64             `json:"lastTime" form:"lastTime"`                     // Current sync update time // 本次同步更新时间
 	NeedUploadCount    int64             `json:"needUploadCount" form:"needUploadCount"`       // Number of notes needing upload // 需要上传的笔记数量
@@ -35,16 +37,16 @@ type NoteSyncEndMessage struct {
 }
 
 // NoteSyncNeedPushMessage server informs client of file info needing push
-// NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息。
+// NoteSyncNeedPushMessage 服务端告知客户端需要推送的文件信息
 type NoteSyncNeedPushMessage struct {
-	Path     string `json:"path" form:"path"`         // Path // 路径
-	PathHash string `json:"pathHash" form:"pathHash"` // Path hash for fast lookup // 路径哈希值，用于快速查找
+	Path     string `json:"path" form:"path"`         // Note path // 笔记路径
+	PathHash string `json:"pathHash" form:"pathHash"` // Path hash // 路径哈希值
 }
 
 // NoteSyncMtimeMessage message structure for updating mtime during sync
-// NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构。
+// NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构
 type NoteSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path"`   // Path // 路径
+	Path  string `json:"path" form:"path"`   // Note path // 笔记路径
 	Ctime int64  `json:"ctime" form:"ctime"` // Creation timestamp // 创建时间戳
 	Mtime int64  `json:"mtime" form:"mtime"` // Modification timestamp // 修改时间戳
 }
@@ -52,8 +54,8 @@ type NoteSyncMtimeMessage struct {
 // NoteSyncDeleteMessage message structure for note deletion
 // NoteSyncDeleteMessage 笔记删除的消息结构
 type NoteSyncDeleteMessage struct {
-	Path     string `json:"path" form:"path"`         // Path info (file path) // 路径信息（文件路径）
-	PathHash string `json:"pathHash" form:"pathHash"` // Path hash for fast lookup // 路径哈希值，用于快速查找
+	Path     string `json:"path" form:"path"`         // Note path // 笔记路径
+	PathHash string `json:"pathHash" form:"pathHash"` // Path hash // 路径哈希值
 	Ctime    int64  `json:"ctime" form:"ctime"`       // Creation timestamp // 创建时间戳
 	Mtime    int64  `json:"mtime" form:"mtime"`       // Modification timestamp // 修改时间戳
 	Size     int64  `json:"size" form:"size"`         // File size // 文件大小

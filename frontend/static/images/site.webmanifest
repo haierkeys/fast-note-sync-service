@@ -3,17 +3,17 @@
   "short_name": "FastNoteSync",
   "icons": [
     {
-      "src": "/static/favicon-32x32.png",
+      "src": "/static/images/favicon-32x32.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "/static/apple-touch-icon.png",
+      "src": "/static/images/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
     },
     {
-      "src": "/static/icon.svg",
+      "src": "/static/images/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
