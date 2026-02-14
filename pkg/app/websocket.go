@@ -14,8 +14,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"golang.org/x/sync/singleflight"
 
-	"runtime/debug"
-
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	validatorV10 "github.com/go-playground/validator/v10"
@@ -923,8 +921,6 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	log(LogInfo, "WS Client Leave", zap.Int("Count", len(w.clients)), zap.String("traceID", c.TraceID))
 
-	// 释放内存
-	debug.FreeOSMemory()
 }
 
 func (w *WebsocketServer) OnPing(socket *gws.Conn, payload []byte) {
