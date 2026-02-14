@@ -1,5 +1,26 @@
 basePath: /
 definitions:
+  api_router.CPUInfo:
+    properties:
+      loadAvg:
+        allOf:
+        - $ref: '#/definitions/api_router.LoadInfo'
+        description: Load average // 平均负载
+      logicalCores:
+        description: Logical cores // 逻辑核心数
+        type: integer
+      modelName:
+        description: Model name // 型号
+        type: string
+      percent:
+        description: Usage percentage per core // 每个核心的使用率
+        items:
+          type: number
+        type: array
+      physicalCores:
+        description: Physical cores // 物理核心数
+        type: integer
+    type: object
   api_router.HealthResponse:
     properties:
       database:
@@ -14,6 +35,137 @@ definitions:
       version:
         description: Service version number // 服务版本号
         type: string
+    type: object
+  api_router.HostInfo:
+    properties:
+      arch:
+        description: Architecture // 架构
+        type: string
+      currentTime:
+        description: Current system time // 当前系统时间
+        type: string
+      hostname:
+        description: Hostname // 主机名
+        type: string
+      kernelVersion:
+        description: Kernel version // 内核版本
+        type: string
+      os:
+        description: Operating system // 操作系统
+        type: string
+      osPretty:
+        description: Detailed OS name // 详细操作系统名称
+        type: string
+      platform:
+        description: Platform name // 平台
+        type: string
+      timezone:
+        description: Time zone name // 时区名称
+        type: string
+      timezoneOffset:
+        description: Time zone offset in seconds // 时区偏移（秒）
+        type: integer
+      uptime:
+        description: System uptime // 系统运行时间
+        type: integer
+    type: object
+  api_router.LoadInfo:
+    properties:
+      load1:
+        type: number
+      load5:
+        type: number
+      load15:
+        type: number
+    type: object
+  api_router.MemoryInfo:
+    properties:
+      available:
+        description: Available memory // 可用内存
+        type: integer
+      swapTotal:
+        description: Total swap space // 交换区总量
+        type: integer
+      swapUsed:
+        description: Used swap space // 交换区已用
+        type: integer
+      swapUsedPercent:
+        description: Swap usage percentage // 交换区使用率
+        type: number
+      total:
+        description: Total physical memory // 系统总内存
+        type: integer
+      used:
+        description: Used memory // 已用内存
+        type: integer
+      usedPercent:
+        description: Memory usage percentage // 内存使用率
+        type: number
+    type: object
+  api_router.ProcessInfo:
+    properties:
+      cpuPercent:
+        description: CPU Usage percentage
+        type: number
+      memoryPercent:
+        description: Memory Usage percentage
+        type: number
+      name:
+        description: Process Name
+        type: string
+      pid:
+        description: Process ID
+        type: integer
+      ppid:
+        description: Parent Process ID
+        type: integer
+    type: object
+  api_router.RuntimeInfo:
+    properties:
+      memAlloc:
+        description: Allocated memory (bytes) // 已分配内存（字节）
+        type: integer
+      memSys:
+        description: Memory obtained from system (bytes) // 从系统获取的内存（字节）
+        type: integer
+      memTotal:
+        description: Total memory allocated (bytes) // 累计分配内存（字节）
+        type: integer
+      numGc:
+        description: Number of completed GC cycles // GC 次数
+        type: integer
+      numGoroutine:
+        description: Number of goroutines // Goroutine 数量
+        type: integer
+    type: object
+  api_router.SystemInfo:
+    properties:
+      cpu:
+        allOf:
+        - $ref: '#/definitions/api_router.CPUInfo'
+        description: CPU information // CPU 信息
+      host:
+        allOf:
+        - $ref: '#/definitions/api_router.HostInfo'
+        description: Host information // 主机信息
+      memory:
+        allOf:
+        - $ref: '#/definitions/api_router.MemoryInfo'
+        description: Memory information // 内存信息
+      process:
+        allOf:
+        - $ref: '#/definitions/api_router.ProcessInfo'
+        description: Process information // 进程信息
+      runtimeStatus:
+        allOf:
+        - $ref: '#/definitions/api_router.RuntimeInfo'
+        description: Go runtime status // Go 运行时状态
+      startTime:
+        description: Start time // 启动时间
+        type: string
+      uptime:
+        description: Uptime (seconds) // 运行时间（秒）
+        type: number
     type: object
   api_router.webGUIAdminConfig:
     properties:
@@ -123,31 +275,43 @@ definitions:
   dto.FileDTO:
     properties:
       contentHash:
+        description: Content hash // 内容哈希
         type: string
       createdAt:
+        description: Created at time // 创建时间
         type: string
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       lastTime:
+        description: Updated timestamp // 更新时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       path:
+        description: File path // 文件路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       size:
+        description: File size // 文件大小
         type: integer
       updatedAt:
+        description: Updated at time // 更新时间
         type: string
     type: object
   dto.FileRestoreRequest:
     properties:
       path:
+        description: File path // 文件路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -156,10 +320,13 @@ definitions:
   dto.FolderCreateRequest:
     properties:
       path:
+        description: Folder path // 文件夹路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -168,27 +335,37 @@ definitions:
   dto.FolderDTO:
     properties:
       createdAt:
+        description: Created at time // 创建时间
         type: string
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       lastTime:
+        description: Record update timestamp // 记录更新时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       path:
+        description: Folder path // 文件夹路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希值
         type: string
       updatedAt:
+        description: Updated at time // 更新时间
         type: string
     type: object
   dto.FolderDeleteRequest:
     properties:
       path:
+        description: Folder path // 文件夹路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -197,38 +374,50 @@ definitions:
   dto.FolderTreeNode:
     properties:
       children:
+        description: Child nodes // 子节点
         items:
           $ref: '#/definitions/dto.FolderTreeNode'
         type: array
       fileCount:
+        description: File count // 文件数量
         type: integer
       name:
+        description: Node name // 节点名称
         type: string
       noteCount:
+        description: Note count // 笔记数量
         type: integer
       path:
+        description: Node path // 节点路径
         type: string
     type: object
   dto.FolderTreeResponse:
     properties:
       folders:
+        description: Folder tree // 文件夹树
         items:
           $ref: '#/definitions/dto.FolderTreeNode'
         type: array
       rootFileCount:
+        description: File count in root // 根目录中的文件数量
         type: integer
       rootNoteCount:
+        description: Note count in root // 根目录中的笔记数量
         type: integer
     type: object
   dto.NoteAppendRequest:
     properties:
       content:
+        description: Content to append // 追加内容
         type: string
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - content
@@ -238,58 +427,81 @@ definitions:
   dto.NoteDTO:
     properties:
       content:
+        description: Note content // 笔记内容
         type: string
       contentHash:
+        description: Content hash // 内容哈希
         type: string
       createdAt:
+        description: Created at time // 创建时间
         type: string
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       lastTime:
+        description: Record update timestamp // 记录更新时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       size:
+        description: Note size // 笔记大小
         type: integer
       updatedAt:
+        description: Updated at time // 更新时间
         type: string
       version:
+        description: Version number // 版本号
         type: integer
     type: object
   dto.NoteHistoryDTO:
     properties:
       clientName:
+        description: Client that made changes // 产生变更的客户端
         type: string
       content:
+        description: Full historical content // 完整历史内容
         type: string
       contentHash:
+        description: Content hash // 内容哈希
         type: string
       createdAt:
+        description: Creation time of this version // 此版本的创建时间
         type: string
       diffs:
+        description: Text differences // 文本差异内容
         items:
           $ref: '#/definitions/diffmatchpatch.Diff'
         type: array
       id:
+        description: History entry ID // 历史项 ID
         type: integer
       noteId:
+        description: Associated note ID // 笔记 ID
         type: integer
       path:
+        description: Note path at that time // 当时的笔记路径
         type: string
       vaultId:
+        description: Associated vault ID // 保险库 ID
         type: integer
       version:
+        description: Historical version number // 历史版本号
         type: integer
     type: object
   dto.NoteHistoryRestoreRequest:
     properties:
       historyId:
+        description: History version ID // 历史版本 ID
         type: integer
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - historyId
@@ -298,47 +510,61 @@ definitions:
   dto.NoteLinkItem:
     properties:
       context:
-        description: snippet around link
+        description: Text context around link // 链接文本上下文
         type: string
       isEmbed:
-        description: true if embed (![[...]]) vs regular link ([[...]])
+        description: Is it an embed (![[...]]) // 是否为嵌入
         type: boolean
       linkText:
+        description: Raw link text (optional) // 原始链接文本（可选）
         type: string
       path:
+        description: Target path // 目标路径
         type: string
     type: object
   dto.NoteModifyOrCreateRequest:
     properties:
       baseHash:
+        description: Base hash for sync // 同步基准哈希
         type: string
       baseHashMissing:
-        description: Marks if baseHash is unavailable
+        description: Marks if baseHash is unavailable // 标记基准哈希是否缺失
         type: boolean
       content:
+        description: Note content // 笔记内容
         type: string
       contentHash:
+        description: Content hash // 内容哈希
         type: string
       createOnly:
-        description: If true, fail if note already exists
+        description: If true, fail if note already exists // 如果为 true，笔记已存在则失败
         type: boolean
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       oldPath:
+        description: Old path // 旧路径
         type: string
       oldPathHash:
+        description: Old path hash // 旧路径哈希
         type: string
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       srcPath:
+        description: Source path (for rename) // 源路径（用于重命名）
         type: string
       srcPathHash:
+        description: Source path hash // 源路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -347,14 +573,19 @@ definitions:
   dto.NoteMoveRequest:
     properties:
       destination:
+        description: Destination path // 目标路径
         type: string
       overwrite:
+        description: Overwrite existing // 覆盖现有
         type: boolean
       path:
+        description: Current path // 当前路径
         type: string
       pathHash:
+        description: Current path hash // 当前路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - destination
@@ -364,38 +595,52 @@ definitions:
   dto.NoteNoContentDTO:
     properties:
       createdAt:
+        description: Created at time // 创建时间
         type: string
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       lastTime:
+        description: Record update timestamp // 记录更新时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       size:
+        description: Note size // 笔记大小
         type: integer
       updatedAt:
+        description: Updated at time // 更新时间
         type: string
       version:
+        description: Version number // 版本号
         type: integer
     type: object
   dto.NotePatchFrontmatterRequest:
     properties:
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       remove:
+        description: Fields to remove // 待移除字段
         items:
           type: string
         type: array
       updates:
         additionalProperties: true
+        description: Fields to update // 待更新字段
         type: object
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -404,12 +649,16 @@ definitions:
   dto.NotePrependRequest:
     properties:
       content:
+        description: Content to prepend // 头部添加内容
         type: string
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - content
@@ -419,20 +668,28 @@ definitions:
   dto.NoteReplaceRequest:
     properties:
       all:
+        description: Replace all matches // 替换所有
         type: boolean
       failIfNoMatch:
+        description: Fail if no match found // 若无匹配则失败
         type: boolean
       find:
+        description: String to find // 查找内容
         type: string
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       regex:
+        description: Use regex // 使用正则
         type: boolean
       replace:
+        description: String to replace with // 替换内容
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - find
@@ -442,17 +699,23 @@ definitions:
   dto.NoteReplaceResponse:
     properties:
       matchCount:
+        description: Number of matches found // 匹配数量
         type: integer
       note:
-        $ref: '#/definitions/dto.NoteDTO'
+        allOf:
+        - $ref: '#/definitions/dto.NoteDTO'
+        description: Updated note data // 更新后的笔记数据
     type: object
   dto.NoteRestoreRequest:
     properties:
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - path
@@ -461,38 +724,49 @@ definitions:
   dto.NoteWithFileLinksResponse:
     properties:
       content:
+        description: Note content // 笔记内容
         type: string
       contentHash:
+        description: Content hash // 内容哈希
         type: string
-      createdAt: {}
+      createdAt:
+        description: Created at time // 创建时间
       ctime:
+        description: Creation timestamp // 创建时间戳
         type: integer
       fileLinks:
         additionalProperties:
           type: string
+        description: Map of file link to actual path // 文件链接到实际路径的映射
         type: object
       lastTime:
+        description: Record update timestamp // 记录更新时间戳
         type: integer
       mtime:
+        description: Modification timestamp // 修改时间戳
         type: integer
       path:
+        description: Note path // 笔记路径
         type: string
       pathHash:
+        description: Path hash // 路径哈希
         type: string
-      updatedAt: {}
+      updatedAt:
+        description: Updated at time // 更新时间
       version:
+        description: Version number // 版本号
         type: integer
     type: object
   dto.ShareCreateRequest:
     properties:
       path:
-        description: Resource path
+        description: Resource path // 资源路径
         type: string
       path_hash:
-        description: Resource path Hash
+        description: Resource path Hash // 资源路径哈希
         type: string
       vault:
-        description: Vault name
+        description: Vault name // 保险库名称
         example: defaultVault
         type: string
     required:
@@ -503,25 +777,29 @@ definitions:
   dto.ShareCreateResponse:
     properties:
       expires_at:
-        description: Expiration time
+        description: Expiration time // 过期时间
         type: string
       id:
-        description: ID of the note or file table (primary resource ID)
+        description: ID of the note or file table (primary resource ID) // 笔记或文件表
+          ID（主资源 ID）
         type: integer
       token:
-        description: Share Token
+        description: Share Token // 分享 Token
         type: string
       type:
-        description: 'Resource type: note or file'
+        description: 'Resource type: note or file // 资源类型：笔记（note）或文件（file）'
         type: string
     type: object
   dto.UserChangePasswordRequest:
     properties:
       confirmPassword:
+        description: Confirm password // 校验密码
         type: string
       oldPassword:
+        description: Old password // 旧密码
         type: string
       password:
+        description: New password // 新密码
         type: string
     required:
     - confirmPassword
@@ -531,12 +809,16 @@ definitions:
   dto.UserCreateRequest:
     properties:
       confirmPassword:
+        description: Confirm password // 校验密码
         type: string
       email:
+        description: User email // 用户邮件
         type: string
       password:
+        description: User password // 用户密码
         type: string
       username:
+        description: User name // 用户名
         type: string
     required:
     - confirmPassword
@@ -547,25 +829,34 @@ definitions:
   dto.UserDTO:
     properties:
       avatar:
+        description: Avatar URL or handle // 头像路径或名称
         type: string
       createdAt:
+        description: Account created time // 账号创建时间
         type: string
       email:
+        description: Email address // 邮件地址
         type: string
       token:
+        description: Authentication Token // 认证 Token
         type: string
       uid:
+        description: User ID (primary key) // 用户唯一标识（主键）
         type: integer
       updatedAt:
+        description: Last updated time // 最后更新时间
         type: string
       username:
+        description: Username // 用户名
         type: string
     type: object
   dto.UserLoginRequest:
     properties:
       credentials:
+        description: Username or Email // 登录凭证（用户名或邮件）
         type: string
       password:
+        description: Password // 密码
         type: string
     required:
     - credentials
@@ -574,30 +865,64 @@ definitions:
   dto.VaultDTO:
     properties:
       createdAt:
+        description: Creation time // 创建时间
         type: string
       fileCount:
+        description: Number of files // 文件数量
         type: integer
       fileSize:
+        description: Size of files // 文件大小
+        type: integer
+      id:
+        description: Vault ID // 保险库 ID
         type: integer
       noteCount:
+        description: Number of notes // 笔记数量
         type: integer
       noteSize:
+        description: Size of notes // 笔记大小
         type: integer
       size:
+        description: Total size // 总大小
         type: integer
       updatedAt:
+        description: Updated time // 更新时间
         type: string
       vault:
+        description: Vault name // 保险库名称
         type: string
     type: object
   dto.VaultPostRequest:
     properties:
       id:
+        description: Vault ID (optional for update) // 保险库 ID（可选，用于更新）
         type: integer
       vault:
+        description: Vault name // 保险库名称
         type: string
     required:
     - vault
+    type: object
+  dto.VersionDTO:
+    properties:
+      buildTime:
+        description: Build time // 构建时间
+        type: string
+      gitTag:
+        description: Git tag // Git 标签
+        type: string
+      version:
+        description: Current version // 当前版本
+        type: string
+      versionIsNew:
+        description: Is there a new version // 是否有新版本
+        type: boolean
+      versionNewLink:
+        description: New version download link // 新版本下载链接
+        type: string
+      versionNewName:
+        description: New version name // 新版本名称
+        type: string
     type: object
 host: localhost:9000
 info:
@@ -679,6 +1004,36 @@ paths:
       summary: Update admin config
       tags:
       - Config
+  /api/admin/systeminfo:
+    get:
+      description: Get system information and Go runtime data, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.SystemInfo'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get system and runtime info
+      tags:
+      - System
   /api/file:
     delete:
       description: Permanently delete a specific attachment record and its physical
@@ -689,15 +1044,18 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: File path // 文件路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         required: true
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -727,17 +1085,21 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: File path // 文件路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -762,17 +1124,21 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: File path // 文件路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -835,21 +1201,24 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: Search keyword // 搜索关键词
+        in: query
         name: keyword
         type: string
-      - description: 'Sorting field: mtime(default), ctime, path'
+      - description: Sort by field // 排序字段
         in: query
         name: sortBy
         type: string
-      - description: 'Sorting order: desc(default), asc'
+      - description: Sort order // 排序顺序
         in: query
         name: sortOrder
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -922,13 +1291,16 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Folder path // 文件夹路径
+        in: query
         name: path
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -992,19 +1364,24 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Folder path // 文件夹路径
+        in: query
         name: path
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Sort by field // 排序字段
+        in: query
         name: sortBy
         type: string
-      - in: query
+      - description: Sort order // 排序顺序
+        in: query
         name: sortOrder
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1050,19 +1427,24 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Folder path // 文件夹路径
+        in: query
         name: path
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Sort by field // 排序字段
+        in: query
         name: sortBy
         type: string
-      - in: query
+      - description: Sort order // 排序顺序
+        in: query
         name: sortOrder
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1107,11 +1489,12 @@ paths:
         name: token
         required: true
         type: string
-      - description: 0 or negative = unlimited
+      - description: Tree depth // 树深度
         in: query
         name: depth
         type: integer
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1141,13 +1524,16 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Folder path // 文件夹路径
+        in: query
         name: path
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1192,14 +1578,17 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Note path // 笔记路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1228,17 +1617,21 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: Note path // 笔记路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1336,14 +1729,17 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Note path // 笔记路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1409,17 +1805,21 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: Note path // 笔记路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1564,14 +1964,17 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Note path // 笔记路径
+        in: query
         name: path
         required: true
         type: string
-      - in: query
+      - description: Path hash // 路径哈希
+        in: query
         name: pathHash
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1704,29 +2107,32 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Is in recycle bin // 是否在回收站
+        in: query
         name: isRecycle
         type: boolean
-      - in: query
+      - description: Search keyword // 搜索关键词
+        in: query
         name: keyword
         type: string
-      - description: Whether to search content
+      - description: Whether to search content // 是否搜索内容
         in: query
         name: searchContent
         type: boolean
-      - description: 'Search mode: path(default), content, regex'
+      - description: Search mode (path, content, regex) // 搜索模式（路径、内容、正则）
         in: query
         name: searchMode
         type: string
-      - description: 'Sorting field: mtime(default), ctime, path'
+      - description: Sort by field // 排序字段
         in: query
         name: sortBy
         type: string
-      - description: 'Sorting order: desc(default), asc'
+      - description: Sort order // 排序顺序
         in: query
         name: sortOrder
         type: string
-      - in: query
+      - description: Vault name // 保险库名称
+        in: query
         name: vault
         required: true
         type: string
@@ -1806,7 +2212,7 @@ paths:
         name: Share-Token
         required: true
         type: string
-      - description: Resource ID
+      - description: Resource ID // 资源 ID
         in: query
         name: id
         required: true
@@ -1833,7 +2239,7 @@ paths:
         name: Share-Token
         required: true
         type: string
-      - description: Resource ID
+      - description: Resource ID // 资源 ID
         in: query
         name: id
         required: true
@@ -1859,8 +2265,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Handle password change request for current user, validate old password
-        and update new password
+      description: |-
+        Handle password change request for current user, validate old password and update new password.
+        处理当前用户的修改密码请求，验证旧密码并更新新密码。
       parameters:
       - description: Auth Token
         in: header
@@ -1880,6 +2287,14 @@ paths:
           description: Success
           schema:
             $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Parameters / Old Password Incorrect
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Res'
       security:
       - UserAuthToken: []
       summary: Change user password
@@ -1889,7 +2304,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: Handle request to get current user info
+      description: |-
+        Handle request to get current user info.
+        处理获取当前用户信息的请求。
       parameters:
       - description: Auth Token
         in: header
@@ -1921,8 +2338,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Handle user login HTTP request, validate parameters and return
-        auth token
+      description: |-
+        Handle user login HTTP request, validate parameters and return auth token.
+        处理用户登录 HTTP 请求，验证参数并返回认证 Token。
       parameters:
       - description: Login Parameters
         in: body
@@ -1943,7 +2361,7 @@ paths:
                   $ref: '#/definitions/dto.UserDTO'
               type: object
         "400":
-          description: Invalid Parameters
+          description: Invalid Parameters / Invalid Credentials
           schema:
             $ref: '#/definitions/app.Res'
       summary: User login
@@ -1953,8 +2371,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Handle user registration HTTP request, validate parameters and
-        call UserService
+      description: |-
+        Handle user registration HTTP request, validate parameters and call UserService. Registration may be disabled in server settings.
+        处理用户注册 HTTP 请求，验证参数并调用 UserService。注册功能可能在服务器设置中被禁用。
       parameters:
       - description: Register Parameters
         in: body
@@ -1975,7 +2394,7 @@ paths:
                   $ref: '#/definitions/dto.UserDTO'
               type: object
         "400":
-          description: Invalid Parameters
+          description: Invalid Parameters / Registration Disabled / User Already Exists
           schema:
             $ref: '#/definitions/app.Res'
       summary: User registration
@@ -1991,7 +2410,8 @@ paths:
         name: token
         required: true
         type: string
-      - in: query
+      - description: Vault ID // 保险库 ID
+        in: query
         minimum: 1
         name: id
         required: true
@@ -2114,9 +2534,7 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  additionalProperties:
-                    type: string
-                  type: object
+                  $ref: '#/definitions/dto.VersionDTO'
               type: object
       summary: Get server version info
       tags:

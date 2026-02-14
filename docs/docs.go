@@ -137,6 +137,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/admin/systeminfo": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get system information and Go runtime data, requires admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get system and runtime info",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api_router.SystemInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/file": {
             "get": {
                 "security": [
@@ -162,22 +214,26 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "File path // 文件路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -216,18 +272,21 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "File path // 文件路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -280,22 +339,26 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "File path // 文件路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -403,28 +466,31 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Search keyword // 搜索关键词",
                         "name": "keyword",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sorting field: mtime(default), ctime, path",
+                        "description": "Sort by field // 排序字段",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sorting order: desc(default), asc",
+                        "description": "Sort order // 排序顺序",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -504,16 +570,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Folder path // 文件夹路径",
                         "name": "path",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -666,26 +735,31 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Folder path // 文件夹路径",
                         "name": "path",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Sort by field // 排序字段",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Sort order // 排序顺序",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -765,26 +839,31 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Folder path // 文件夹路径",
                         "name": "path",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Sort by field // 排序字段",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Sort order // 排序顺序",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -864,12 +943,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "0 or negative = unlimited",
+                        "description": "Tree depth // 树深度",
                         "name": "depth",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -922,16 +1002,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Folder path // 文件夹路径",
                         "name": "path",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1007,22 +1090,26 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Note path // 笔记路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1129,17 +1216,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Note path // 笔记路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1250,17 +1340,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Note path // 笔记路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1374,22 +1467,26 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Note path // 笔记路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1639,17 +1736,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Note path // 笔记路径",
                         "name": "path",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "description": "Path hash // 路径哈希",
                         "name": "pathHash",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -1876,40 +1976,43 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Is in recycle bin // 是否在回收站",
                         "name": "isRecycle",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Search keyword // 搜索关键词",
                         "name": "keyword",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Whether to search content",
+                        "description": "Whether to search content // 是否搜索内容",
                         "name": "searchContent",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Search mode: path(default), content, regex",
+                        "description": "Search mode (path, content, regex) // 搜索模式（路径、内容、正则）",
                         "name": "searchMode",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sorting field: mtime(default), ctime, path",
+                        "description": "Sort by field // 排序字段",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sorting order: desc(default), asc",
+                        "description": "Sort order // 排序顺序",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "description": "Vault name // 保险库名称",
                         "name": "vault",
                         "in": "query",
                         "required": true
@@ -2047,7 +2150,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Resource ID",
+                        "description": "Resource ID // 资源 ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -2088,7 +2191,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Resource ID",
+                        "description": "Resource ID // 资源 ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -2123,7 +2226,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Handle password change request for current user, validate old password and update new password",
+                "description": "Handle password change request for current user, validate old password and update new password.\n处理当前用户的修改密码请求，验证旧密码并更新新密码。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2158,6 +2261,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
+                    },
+                    "400": {
+                        "description": "Invalid Parameters / Old Password Incorrect",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
                     }
                 }
             }
@@ -2169,7 +2284,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Handle request to get current user info",
+                "description": "Handle request to get current user info.\n处理获取当前用户信息的请求。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2219,7 +2334,7 @@ const docTemplate = `{
         },
         "/api/user/login": {
             "post": {
-                "description": "Handle user login HTTP request, validate parameters and return auth token",
+                "description": "Handle user login HTTP request, validate parameters and return auth token.\n处理用户登录 HTTP 请求，验证参数并返回认证 Token。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2261,7 +2376,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid Parameters",
+                        "description": "Invalid Parameters / Invalid Credentials",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -2271,7 +2386,7 @@ const docTemplate = `{
         },
         "/api/user/register": {
             "post": {
-                "description": "Handle user registration HTTP request, validate parameters and call UserService",
+                "description": "Handle user registration HTTP request, validate parameters and call UserService. Registration may be disabled in server settings.\n处理用户注册 HTTP 请求，验证参数并调用 UserService。注册功能可能在服务器设置中被禁用。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2313,7 +2428,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid Parameters",
+                        "description": "Invalid Parameters / Registration Disabled / User Already Exists",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -2450,6 +2565,7 @@ const docTemplate = `{
                     {
                         "minimum": 1,
                         "type": "integer",
+                        "description": "Vault ID // 保险库 ID",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -2541,10 +2657,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "type": "string"
-                                            }
+                                            "$ref": "#/definitions/dto.VersionDTO"
                                         }
                                     }
                                 }
@@ -2588,6 +2701,38 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api_router.CPUInfo": {
+            "type": "object",
+            "properties": {
+                "loadAvg": {
+                    "description": "Load average // 平均负载",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.LoadInfo"
+                        }
+                    ]
+                },
+                "logicalCores": {
+                    "description": "Logical cores // 逻辑核心数",
+                    "type": "integer"
+                },
+                "modelName": {
+                    "description": "Model name // 型号",
+                    "type": "string"
+                },
+                "percent": {
+                    "description": "Usage percentage per core // 每个核心的使用率",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "physicalCores": {
+                    "description": "Physical cores // 物理核心数",
+                    "type": "integer"
+                }
+            }
+        },
         "api_router.HealthResponse": {
             "type": "object",
             "properties": {
@@ -2606,6 +2751,201 @@ const docTemplate = `{
                 "version": {
                     "description": "Service version number // 服务版本号",
                     "type": "string"
+                }
+            }
+        },
+        "api_router.HostInfo": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "description": "Architecture // 架构",
+                    "type": "string"
+                },
+                "currentTime": {
+                    "description": "Current system time // 当前系统时间",
+                    "type": "string"
+                },
+                "hostname": {
+                    "description": "Hostname // 主机名",
+                    "type": "string"
+                },
+                "kernelVersion": {
+                    "description": "Kernel version // 内核版本",
+                    "type": "string"
+                },
+                "os": {
+                    "description": "Operating system // 操作系统",
+                    "type": "string"
+                },
+                "osPretty": {
+                    "description": "Detailed OS name // 详细操作系统名称",
+                    "type": "string"
+                },
+                "platform": {
+                    "description": "Platform name // 平台",
+                    "type": "string"
+                },
+                "timezone": {
+                    "description": "Time zone name // 时区名称",
+                    "type": "string"
+                },
+                "timezoneOffset": {
+                    "description": "Time zone offset in seconds // 时区偏移（秒）",
+                    "type": "integer"
+                },
+                "uptime": {
+                    "description": "System uptime // 系统运行时间",
+                    "type": "integer"
+                }
+            }
+        },
+        "api_router.LoadInfo": {
+            "type": "object",
+            "properties": {
+                "load1": {
+                    "type": "number"
+                },
+                "load15": {
+                    "type": "number"
+                },
+                "load5": {
+                    "type": "number"
+                }
+            }
+        },
+        "api_router.MemoryInfo": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "description": "Available memory // 可用内存",
+                    "type": "integer"
+                },
+                "swapTotal": {
+                    "description": "Total swap space // 交换区总量",
+                    "type": "integer"
+                },
+                "swapUsed": {
+                    "description": "Used swap space // 交换区已用",
+                    "type": "integer"
+                },
+                "swapUsedPercent": {
+                    "description": "Swap usage percentage // 交换区使用率",
+                    "type": "number"
+                },
+                "total": {
+                    "description": "Total physical memory // 系统总内存",
+                    "type": "integer"
+                },
+                "used": {
+                    "description": "Used memory // 已用内存",
+                    "type": "integer"
+                },
+                "usedPercent": {
+                    "description": "Memory usage percentage // 内存使用率",
+                    "type": "number"
+                }
+            }
+        },
+        "api_router.ProcessInfo": {
+            "type": "object",
+            "properties": {
+                "cpuPercent": {
+                    "description": "CPU Usage percentage",
+                    "type": "number"
+                },
+                "memoryPercent": {
+                    "description": "Memory Usage percentage",
+                    "type": "number"
+                },
+                "name": {
+                    "description": "Process Name",
+                    "type": "string"
+                },
+                "pid": {
+                    "description": "Process ID",
+                    "type": "integer"
+                },
+                "ppid": {
+                    "description": "Parent Process ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "api_router.RuntimeInfo": {
+            "type": "object",
+            "properties": {
+                "memAlloc": {
+                    "description": "Allocated memory (bytes) // 已分配内存（字节）",
+                    "type": "integer"
+                },
+                "memSys": {
+                    "description": "Memory obtained from system (bytes) // 从系统获取的内存（字节）",
+                    "type": "integer"
+                },
+                "memTotal": {
+                    "description": "Total memory allocated (bytes) // 累计分配内存（字节）",
+                    "type": "integer"
+                },
+                "numGc": {
+                    "description": "Number of completed GC cycles // GC 次数",
+                    "type": "integer"
+                },
+                "numGoroutine": {
+                    "description": "Number of goroutines // Goroutine 数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "api_router.SystemInfo": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "description": "CPU information // CPU 信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.CPUInfo"
+                        }
+                    ]
+                },
+                "host": {
+                    "description": "Host information // 主机信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.HostInfo"
+                        }
+                    ]
+                },
+                "memory": {
+                    "description": "Memory information // 内存信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.MemoryInfo"
+                        }
+                    ]
+                },
+                "process": {
+                    "description": "Process information // 进程信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.ProcessInfo"
+                        }
+                    ]
+                },
+                "runtimeStatus": {
+                    "description": "Go runtime status // Go 运行时状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api_router.RuntimeInfo"
+                        }
+                    ]
+                },
+                "startTime": {
+                    "description": "Start time // 启动时间",
+                    "type": "string"
+                },
+                "uptime": {
+                    "description": "Uptime (seconds) // 运行时间（秒）",
+                    "type": "number"
                 }
             }
         },
@@ -2761,30 +3101,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "contentHash": {
+                    "description": "Content hash // 内容哈希",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "Created at time // 创建时间",
                     "type": "string"
                 },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "lastTime": {
+                    "description": "Updated timestamp // 更新时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "File path // 文件路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "size": {
+                    "description": "File size // 文件大小",
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Updated at time // 更新时间",
                     "type": "string"
                 }
             }
@@ -2797,12 +3146,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
+                    "description": "File path // 文件路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -2815,12 +3167,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
+                    "description": "Folder path // 文件夹路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -2829,24 +3184,31 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Created at time // 创建时间",
                     "type": "string"
                 },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "lastTime": {
+                    "description": "Record update timestamp // 记录更新时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Folder path // 文件夹路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希值",
                     "type": "string"
                 },
                 "updatedAt": {
+                    "description": "Updated at time // 更新时间",
                     "type": "string"
                 }
             }
@@ -2859,12 +3221,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
+                    "description": "Folder path // 文件夹路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -2873,21 +3238,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "children": {
+                    "description": "Child nodes // 子节点",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dto.FolderTreeNode"
                     }
                 },
                 "fileCount": {
+                    "description": "File count // 文件数量",
                     "type": "integer"
                 },
                 "name": {
+                    "description": "Node name // 节点名称",
                     "type": "string"
                 },
                 "noteCount": {
+                    "description": "Note count // 笔记数量",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Node path // 节点路径",
                     "type": "string"
                 }
             }
@@ -2896,15 +3266,18 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "folders": {
+                    "description": "Folder tree // 文件夹树",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dto.FolderTreeNode"
                     }
                 },
                 "rootFileCount": {
+                    "description": "File count in root // 根目录中的文件数量",
                     "type": "integer"
                 },
                 "rootNoteCount": {
+                    "description": "Note count in root // 根目录中的笔记数量",
                     "type": "integer"
                 }
             }
@@ -2918,15 +3291,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
+                    "description": "Content to append // 追加内容",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -2935,36 +3312,47 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
+                    "description": "Note content // 笔记内容",
                     "type": "string"
                 },
                 "contentHash": {
+                    "description": "Content hash // 内容哈希",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "Created at time // 创建时间",
                     "type": "string"
                 },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "lastTime": {
+                    "description": "Record update timestamp // 记录更新时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "size": {
+                    "description": "Note size // 笔记大小",
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Updated at time // 更新时间",
                     "type": "string"
                 },
                 "version": {
+                    "description": "Version number // 版本号",
                     "type": "integer"
                 }
             }
@@ -2973,36 +3361,46 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "clientName": {
+                    "description": "Client that made changes // 产生变更的客户端",
                     "type": "string"
                 },
                 "content": {
+                    "description": "Full historical content // 完整历史内容",
                     "type": "string"
                 },
                 "contentHash": {
+                    "description": "Content hash // 内容哈希",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "Creation time of this version // 此版本的创建时间",
                     "type": "string"
                 },
                 "diffs": {
+                    "description": "Text differences // 文本差异内容",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/diffmatchpatch.Diff"
                     }
                 },
                 "id": {
+                    "description": "History entry ID // 历史项 ID",
                     "type": "integer"
                 },
                 "noteId": {
+                    "description": "Associated note ID // 笔记 ID",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Note path at that time // 当时的笔记路径",
                     "type": "string"
                 },
                 "vaultId": {
+                    "description": "Associated vault ID // 保险库 ID",
                     "type": "integer"
                 },
                 "version": {
+                    "description": "Historical version number // 历史版本号",
                     "type": "integer"
                 }
             }
@@ -3015,9 +3413,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "historyId": {
+                    "description": "History version ID // 历史版本 ID",
                     "type": "integer"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3026,17 +3426,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "context": {
-                    "description": "snippet around link",
+                    "description": "Text context around link // 链接文本上下文",
                     "type": "string"
                 },
                 "isEmbed": {
-                    "description": "true if embed (![[...]]) vs regular link ([[...]])",
+                    "description": "Is it an embed (![[...]]) // 是否为嵌入",
                     "type": "boolean"
                 },
                 "linkText": {
+                    "description": "Raw link text (optional) // 原始链接文本（可选）",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Target path // 目标路径",
                     "type": "string"
                 }
             }
@@ -3049,47 +3451,59 @@ const docTemplate = `{
             ],
             "properties": {
                 "baseHash": {
+                    "description": "Base hash for sync // 同步基准哈希",
                     "type": "string"
                 },
                 "baseHashMissing": {
-                    "description": "Marks if baseHash is unavailable",
+                    "description": "Marks if baseHash is unavailable // 标记基准哈希是否缺失",
                     "type": "boolean"
                 },
                 "content": {
+                    "description": "Note content // 笔记内容",
                     "type": "string"
                 },
                 "contentHash": {
+                    "description": "Content hash // 内容哈希",
                     "type": "string"
                 },
                 "createOnly": {
-                    "description": "If true, fail if note already exists",
+                    "description": "If true, fail if note already exists // 如果为 true，笔记已存在则失败",
                     "type": "boolean"
                 },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "oldPath": {
+                    "description": "Old path // 旧路径",
                     "type": "string"
                 },
                 "oldPathHash": {
+                    "description": "Old path hash // 旧路径哈希",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "srcPath": {
+                    "description": "Source path (for rename) // 源路径（用于重命名）",
                     "type": "string"
                 },
                 "srcPathHash": {
+                    "description": "Source path hash // 源路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3103,18 +3517,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "destination": {
+                    "description": "Destination path // 目标路径",
                     "type": "string"
                 },
                 "overwrite": {
+                    "description": "Overwrite existing // 覆盖现有",
                     "type": "boolean"
                 },
                 "path": {
+                    "description": "Current path // 当前路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Current path hash // 当前路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3123,30 +3542,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Created at time // 创建时间",
                     "type": "string"
                 },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "lastTime": {
+                    "description": "Record update timestamp // 记录更新时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "size": {
+                    "description": "Note size // 笔记大小",
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Updated at time // 更新时间",
                     "type": "string"
                 },
                 "version": {
+                    "description": "Version number // 版本号",
                     "type": "integer"
                 }
             }
@@ -3159,22 +3587,27 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "remove": {
+                    "description": "Fields to remove // 待移除字段",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "updates": {
+                    "description": "Fields to update // 待更新字段",
                     "type": "object",
                     "additionalProperties": true
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3188,15 +3621,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
+                    "description": "Content to prepend // 头部添加内容",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3210,27 +3647,35 @@ const docTemplate = `{
             ],
             "properties": {
                 "all": {
+                    "description": "Replace all matches // 替换所有",
                     "type": "boolean"
                 },
                 "failIfNoMatch": {
+                    "description": "Fail if no match found // 若无匹配则失败",
                     "type": "boolean"
                 },
                 "find": {
+                    "description": "String to find // 查找内容",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "regex": {
+                    "description": "Use regex // 使用正则",
                     "type": "boolean"
                 },
                 "replace": {
+                    "description": "String to replace with // 替换内容",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3239,10 +3684,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "matchCount": {
+                    "description": "Number of matches found // 匹配数量",
                     "type": "integer"
                 },
                 "note": {
-                    "$ref": "#/definitions/dto.NoteDTO"
+                    "description": "Updated note data // 更新后的笔记数据",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.NoteDTO"
+                        }
+                    ]
                 }
             }
         },
@@ -3254,12 +3705,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3268,35 +3722,48 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
+                    "description": "Note content // 笔记内容",
                     "type": "string"
                 },
                 "contentHash": {
+                    "description": "Content hash // 内容哈希",
                     "type": "string"
                 },
-                "createdAt": {},
+                "createdAt": {
+                    "description": "Created at time // 创建时间"
+                },
                 "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
                     "type": "integer"
                 },
                 "fileLinks": {
+                    "description": "Map of file link to actual path // 文件链接到实际路径的映射",
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
                 },
                 "lastTime": {
+                    "description": "Record update timestamp // 记录更新时间戳",
                     "type": "integer"
                 },
                 "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
                     "type": "integer"
                 },
                 "path": {
+                    "description": "Note path // 笔记路径",
                     "type": "string"
                 },
                 "pathHash": {
+                    "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
-                "updatedAt": {},
+                "updatedAt": {
+                    "description": "Updated at time // 更新时间"
+                },
                 "version": {
+                    "description": "Version number // 版本号",
                     "type": "integer"
                 }
             }
@@ -3310,15 +3777,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "path": {
-                    "description": "Resource path",
+                    "description": "Resource path // 资源路径",
                     "type": "string"
                 },
                 "path_hash": {
-                    "description": "Resource path Hash",
+                    "description": "Resource path Hash // 资源路径哈希",
                     "type": "string"
                 },
                 "vault": {
-                    "description": "Vault name",
+                    "description": "Vault name // 保险库名称",
                     "type": "string",
                     "example": "defaultVault"
                 }
@@ -3328,19 +3795,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "expires_at": {
-                    "description": "Expiration time",
+                    "description": "Expiration time // 过期时间",
                     "type": "string"
                 },
                 "id": {
-                    "description": "ID of the note or file table (primary resource ID)",
+                    "description": "ID of the note or file table (primary resource ID) // 笔记或文件表 ID（主资源 ID）",
                     "type": "integer"
                 },
                 "token": {
-                    "description": "Share Token",
+                    "description": "Share Token // 分享 Token",
                     "type": "string"
                 },
                 "type": {
-                    "description": "Resource type: note or file",
+                    "description": "Resource type: note or file // 资源类型：笔记（note）或文件（file）",
                     "type": "string"
                 }
             }
@@ -3354,12 +3821,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "confirmPassword": {
+                    "description": "Confirm password // 校验密码",
                     "type": "string"
                 },
                 "oldPassword": {
+                    "description": "Old password // 旧密码",
                     "type": "string"
                 },
                 "password": {
+                    "description": "New password // 新密码",
                     "type": "string"
                 }
             }
@@ -3374,15 +3844,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "confirmPassword": {
+                    "description": "Confirm password // 校验密码",
                     "type": "string"
                 },
                 "email": {
+                    "description": "User email // 用户邮件",
                     "type": "string"
                 },
                 "password": {
+                    "description": "User password // 用户密码",
                     "type": "string"
                 },
                 "username": {
+                    "description": "User name // 用户名",
                     "type": "string"
                 }
             }
@@ -3391,24 +3865,31 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avatar": {
+                    "description": "Avatar URL or handle // 头像路径或名称",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "Account created time // 账号创建时间",
                     "type": "string"
                 },
                 "email": {
+                    "description": "Email address // 邮件地址",
                     "type": "string"
                 },
                 "token": {
+                    "description": "Authentication Token // 认证 Token",
                     "type": "string"
                 },
                 "uid": {
+                    "description": "User ID (primary key) // 用户唯一标识（主键）",
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Last updated time // 最后更新时间",
                     "type": "string"
                 },
                 "username": {
+                    "description": "Username // 用户名",
                     "type": "string"
                 }
             }
@@ -3421,9 +3902,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "credentials": {
+                    "description": "Username or Email // 登录凭证（用户名或邮件）",
                     "type": "string"
                 },
                 "password": {
+                    "description": "Password // 密码",
                     "type": "string"
                 }
             }
@@ -3432,27 +3915,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Creation time // 创建时间",
                     "type": "string"
                 },
                 "fileCount": {
+                    "description": "Number of files // 文件数量",
                     "type": "integer"
                 },
                 "fileSize": {
+                    "description": "Size of files // 文件大小",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Vault ID // 保险库 ID",
                     "type": "integer"
                 },
                 "noteCount": {
+                    "description": "Number of notes // 笔记数量",
                     "type": "integer"
                 },
                 "noteSize": {
+                    "description": "Size of notes // 笔记大小",
                     "type": "integer"
                 },
                 "size": {
+                    "description": "Total size // 总大小",
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Updated time // 更新时间",
                     "type": "string"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
                     "type": "string"
                 }
             }
@@ -3464,9 +3959,40 @@ const docTemplate = `{
             ],
             "properties": {
                 "id": {
+                    "description": "Vault ID (optional for update) // 保险库 ID（可选，用于更新）",
                     "type": "integer"
                 },
                 "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.VersionDTO": {
+            "type": "object",
+            "properties": {
+                "buildTime": {
+                    "description": "Build time // 构建时间",
+                    "type": "string"
+                },
+                "gitTag": {
+                    "description": "Git tag // Git 标签",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Current version // 当前版本",
+                    "type": "string"
+                },
+                "versionIsNew": {
+                    "description": "Is there a new version // 是否有新版本",
+                    "type": "boolean"
+                },
+                "versionNewLink": {
+                    "description": "New version download link // 新版本下载链接",
+                    "type": "string"
+                },
+                "versionNewName": {
+                    "description": "New version name // 新版本名称",
                     "type": "string"
                 }
             }
