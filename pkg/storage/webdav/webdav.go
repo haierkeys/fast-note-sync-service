@@ -6,19 +6,18 @@ import (
 	"github.com/studio-b12/gowebdav"
 )
 
-// Config struct is used to store WebDAV connection information.
-// Config 结构体用于存储 WebDAV 连接信息。
+// Config 结构体用于存�?WebDAV 连接信息�?
 type Config struct {
-	IsEnabled  bool   `yaml:"is-enable"`
-	Endpoint   string `yaml:"endpoint"`
-	Path       string `yaml:"path"`
-	User       string `yaml:"user"`
-	Password   string `yaml:"password"`
-	CustomPath string `yaml:"custom-path"`
+	IsEnabled     bool   `yaml:"is-enable"`
+	IsUserEnabled bool   `yaml:"is-user-enable"`
+	Endpoint      string `yaml:"endpoint"`
+	Path          string `yaml:"path"`
+	User          string `yaml:"user"`
+	Password      string `yaml:"password"`
+	CustomPath    string `yaml:"custom-path"`
 }
 
-// WebDAV struct represents WebDAV client.
-// WebDAV 结构体表示 WebDAV 客户端。
+// WebDAV 结构体表�?WebDAV 客户端�?
 type WebDAV struct {
 	Client *gowebdav.Client
 	Config *Config
@@ -26,8 +25,7 @@ type WebDAV struct {
 
 var clients = make(map[string]*WebDAV)
 
-// NewClient creates a new WebDAV client instance.
-// NewClient 创建一个新的 WebDAV 客户端实例。
+// NewClient 创建一个新�?WebDAV 客户端实例�?
 func NewClient(cf map[string]any) (*WebDAV, error) {
 	// New client
 
@@ -43,12 +41,25 @@ func NewClient(cf map[string]any) (*WebDAV, error) {
 		IsEnabled = t
 	}
 
+	var IsUserEnabled bool
+	switch t := cf["IsUserEnabled"].(type) {
+	case int64:
+		if t == 0 {
+			IsUserEnabled = false
+		} else {
+			IsUserEnabled = true
+		}
+	case bool:
+		IsUserEnabled = t
+	}
+
 	conf := &Config{
-		IsEnabled:  IsEnabled,
-		Endpoint:   cf["Endpoint"].(string),
-		User:       cf["User"].(string),
-		Password:   cf["Password"].(string),
-		CustomPath: cf["CustomPath"].(string),
+		IsEnabled:     IsEnabled,
+		IsUserEnabled: IsUserEnabled,
+		Endpoint:      cf["Endpoint"].(string),
+		User:          cf["User"].(string),
+		Password:      cf["Password"].(string),
+		CustomPath:    cf["CustomPath"].(string),
 	}
 
 	var endpoint = conf.Endpoint

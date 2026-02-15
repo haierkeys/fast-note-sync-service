@@ -3,25 +3,33 @@ package cloudflare_r2
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
-	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
-// UploadByFile uploads file
+func (p *R2) GetBucket(bucketName string) string {
+
+	// Get bucket
+	if len(bucketName) <= 0 {
+		bucketName = p.Config.BucketName
+	}
+
+	return bucketName
+}
+
 // UploadByFile 上传文件
-func (p *R2) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
+func (p *R2) SendFile(fileKey string, file io.Reader, itype string) (string, error) {
 
 	ctx := context.Background()
-	bucket := p.Config.BucketName
+	bucket := p.GetBucket("")
 
 	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
 	// k, _ := h.Open()
@@ -39,10 +47,10 @@ func (p *R2) PutFile(fileKey string, file io.Reader, itype string) (string, erro
 	return fileKey, nil
 }
 
-func (p *R2) PutContent(fileKey string, content []byte) (string, error) {
+func (p *R2) SendContent(fileKey string, content []byte) (string, error) {
 
 	ctx := context.Background()
-	bucket := p.Config.BucketName
+	bucket := p.GetBucket("")
 
 	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
 
@@ -56,10 +64,7 @@ func (p *R2) PutContent(fileKey string, content []byte) (string, error) {
 	if err != nil {
 		var noBucket *types.NoSuchBucket
 		if errors.As(err, &noBucket) {
-			p.logger.Warn("Bucket does not exist",
-				zap.String(logger.FieldBucket, bucket),
-				zap.Error(err),
-			)
+			fmt.Printf("Bucket %s does not exist.\n", bucket)
 			err = noBucket
 		}
 	} else {
@@ -68,30 +73,11 @@ func (p *R2) PutContent(fileKey string, content []byte) (string, error) {
 			Key:    aws.String(fileKey),
 		}, time.Minute)
 		if err != nil {
-			p.logger.Warn("Failed attempt to wait for object to exist",
-				zap.String(logger.FieldFileKey, fileKey),
-				zap.String(logger.FieldBucket, bucket),
-				zap.Error(err),
-			)
+			fmt.Printf("Failed attempt to wait for object %s to exist in %s.\n", fileKey, bucket)
 		} else {
 			_ = *output.Key
 		}
 	}
 
 	return fileKey, errors.Wrap(err, "cloudflare_r2")
-}
-
-func (w *R2) DeleteFile(fileKey string) error {
-
-	fileKey = fileurl.PathSuffixCheckAdd(w.Config.CustomPath, "/") + fileKey
-
-	_, err := w.S3Client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
-		Bucket: aws.String(w.Config.BucketName),
-		Key:    aws.String(fileKey),
-	})
-	if err != nil {
-		return errors.Wrap(err, "cloudflare_r2: failed to delete file")
-		// return errors.Wrap(err, "cloudflare_r2: 删除文件失败")
-	}
-	return nil
 }

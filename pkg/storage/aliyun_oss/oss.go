@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	IsEnabled       bool   `yaml:"is-enable"`
+	IsUserEnabled   bool   `yaml:"is-user-enable"`
 	Endpoint        string `yaml:"endpoint"`
 	BucketName      string `yaml:"bucket-name"`
 	AccessKeyID     string `yaml:"access-key-id"`
@@ -35,8 +36,21 @@ func NewClient(cf map[string]any) (*OSS, error) {
 		IsEnabled = t
 	}
 
+	var IsUserEnabled bool
+	switch t := cf["IsUserEnabled"].(type) {
+	case int64:
+		if t == 0 {
+			IsUserEnabled = false
+		} else {
+			IsUserEnabled = true
+		}
+	case bool:
+		IsUserEnabled = t
+	}
+
 	conf := &Config{
 		IsEnabled:       IsEnabled,
+		IsUserEnabled:   IsUserEnabled,
 		Endpoint:        cf["Endpoint"].(string),
 		BucketName:      cf["BucketName"].(string),
 		AccessKeyID:     cf["AccessKeyID"].(string),

@@ -2,7 +2,6 @@ package aliyun_oss
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
@@ -18,7 +17,7 @@ func (p *OSS) GetBucket(bucketName string) error {
 	return err
 }
 
-func (p *OSS) PutFile(fileKey string, file io.Reader, itype string) (string, error) {
+func (p *OSS) SendFile(fileKey string, file io.Reader, itype string) (string, error) {
 	if p.Bucket == nil {
 		err := p.GetBucket("")
 		if err != nil {
@@ -33,7 +32,7 @@ func (p *OSS) PutFile(fileKey string, file io.Reader, itype string) (string, err
 	return fileKey, nil
 }
 
-func (p *OSS) PutContent(fileKey string, content []byte) (string, error) {
+func (p *OSS) SendContent(fileKey string, content []byte) (string, error) {
 
 	if p.Bucket == nil {
 		err := p.GetBucket("")
@@ -47,14 +46,4 @@ func (p *OSS) PutContent(fileKey string, content []byte) (string, error) {
 		return "", err
 	}
 	return fileKey, nil
-}
-
-func (p *OSS) DeleteFile(fileKey string) error {
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
-
-	err := p.Bucket.DeleteObject(fileKey)
-	if err != nil {
-		return fmt.Errorf("删除文件失败: %v", err)
-	}
-	return nil
 }
