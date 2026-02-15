@@ -122,6 +122,9 @@ definitions:
     type: object
   api_router.RuntimeInfo:
     properties:
+      heapReleased:
+        description: Memory released to OS (bytes) // 释放回操作系统的内存（字节）
+        type: integer
       memAlloc:
         description: Allocated memory (bytes) // 已分配内存（字节）
         type: integer
@@ -789,6 +792,50 @@ definitions:
       type:
         description: 'Resource type: note or file // 资源类型：笔记（note）或文件（file）'
         type: string
+    type: object
+  dto.StorageDTO:
+    properties:
+      accessKeyId:
+        type: string
+      accessKeySecret:
+        type: string
+      accessUrlPrefix:
+        type: string
+      accountId:
+        type: string
+      bucketName:
+        type: string
+      createdAt:
+        type: string
+      customPath:
+        type: string
+      endpoint:
+        type: string
+      id:
+        type: integer
+      isDeleted:
+        type: boolean
+      password:
+        type: string
+      region:
+        type: string
+      type:
+        type: string
+      uid:
+        type: integer
+      updatedAt:
+        type: string
+      user:
+        type: string
+    type: object
+  dto.StoragePostRequest:
+    properties:
+      id:
+        type: integer
+      storage:
+        $ref: '#/definitions/dto.StorageDTO'
+    required:
+    - storage
     type: object
   dto.UserChangePasswordRequest:
     properties:
@@ -2261,6 +2308,90 @@ paths:
       summary: Get shared note details
       tags:
       - Share
+  /api/storage:
+    delete:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Storage ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Delete storage configuration
+      tags:
+      - Storage
+    get:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.StorageDTO'
+                  type: array
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get storage configuration list
+      tags:
+      - Storage
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Storage Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.StoragePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.StorageDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Create or update storage configuration
+      tags:
+      - Storage
   /api/user/change_password:
     post:
       consumes:
