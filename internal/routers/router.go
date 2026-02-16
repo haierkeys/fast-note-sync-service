@@ -274,9 +274,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		c.Data(http.StatusOK, "application/x-yaml; charset=utf-8", swaggerYAML)
 	})
 
-	if cfg.App.UploadSavePath != "" {
-		r.StaticFS(cfg.App.UploadSavePath, http.Dir(cfg.App.UploadSavePath))
-		r.OPTIONS(cfg.App.UploadSavePath+"/*filepath", func(c *gin.Context) {
+	if cfg.Storage.LocalFS.HttpfsIsEnable && cfg.Storage.LocalFS.IsEnabled {
+		r.StaticFS(cfg.Storage.LocalFS.SavePath, http.Dir(cfg.Storage.LocalFS.SavePath))
+		r.OPTIONS(cfg.Storage.LocalFS.SavePath+"/*filepath", func(c *gin.Context) {
 			c.Status(http.StatusNoContent)
 		})
 	}
