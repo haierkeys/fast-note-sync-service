@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
@@ -84,12 +83,27 @@ func (e *AppError) WithDetails(details ...string) *AppError {
 	return e
 }
 
+// getTraceIDFromGin retrieves Trace ID from gin.Context
+// getTraceIDFromGin 从 gin.Context 获取 Trace ID
+func getTraceIDFromGin(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	// "trace_id" is the key used in internal/middleware/tracer.go
+	if id, exists := c.Get("trace_id"); exists {
+		if traceID, ok := id.(string); ok {
+			return traceID
+		}
+	}
+	return ""
+}
+
 // ErrorResponse unified error response processing
 // ErrorResponse 统一错误响应处理
 // Get TraceID from gin.Context, convert error to AppError and return JSON response
 // 从 gin.Context 获取 TraceID，将错误转换为 AppError 并返回 JSON 响应
 func ErrorResponse(c *gin.Context, err error) {
-	traceID := middleware.GetTraceIDFromGin(c)
+	traceID := getTraceIDFromGin(c)
 
 	var appErr *AppError
 	if errors.As(err, &appErr) {
@@ -128,7 +142,7 @@ func ErrorResponse(c *gin.Context, err error) {
 // ErrorResponseWithCode returns error response using specified Code object
 // ErrorResponseWithCode 使用指定的 Code 对象返回错误响应
 func ErrorResponseWithCode(c *gin.Context, codeErr *code.Code, cause error) {
-	traceID := middleware.GetTraceIDFromGin(c)
+	traceID := getTraceIDFromGin(c)
 
 	response := &AppError{
 		Code:      codeErr.Code(),

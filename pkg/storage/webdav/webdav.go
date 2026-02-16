@@ -1,12 +1,10 @@
-// webdav.go
-
 package webdav
 
 import (
 	"github.com/studio-b12/gowebdav"
 )
 
-// Config 结构体用于存�?WebDAV 连接信息�?
+// Config 结构体用于存储 WebDAV 连接信息。
 type Config struct {
 	IsEnabled     bool   `yaml:"is-enable"`
 	IsUserEnabled bool   `yaml:"is-user-enable"`
@@ -17,7 +15,7 @@ type Config struct {
 	CustomPath    string `yaml:"custom-path"`
 }
 
-// WebDAV 结构体表�?WebDAV 客户端�?
+// WebDAV 结构体表示 WebDAV 客户端。
 type WebDAV struct {
 	Client *gowebdav.Client
 	Config *Config
@@ -25,54 +23,18 @@ type WebDAV struct {
 
 var clients = make(map[string]*WebDAV)
 
-// NewClient 创建一个新�?WebDAV 客户端实例�?
-func NewClient(cf map[string]any) (*WebDAV, error) {
-	// New client
-
-	var IsEnabled bool
-	switch t := cf["IsEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsEnabled = false
-		} else {
-			IsEnabled = true
-		}
-	case bool:
-		IsEnabled = t
-	}
-
-	var IsUserEnabled bool
-	switch t := cf["IsUserEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsUserEnabled = false
-		} else {
-			IsUserEnabled = true
-		}
-	case bool:
-		IsUserEnabled = t
-	}
-
-	conf := &Config{
-		IsEnabled:     IsEnabled,
-		IsUserEnabled: IsUserEnabled,
-		Endpoint:      cf["Endpoint"].(string),
-		User:          cf["User"].(string),
-		Password:      cf["Password"].(string),
-		CustomPath:    cf["CustomPath"].(string),
-	}
-
+// NewClient 创建一个新的 WebDAV 客户端实例。
+func NewClient(conf *Config) (*WebDAV, error) {
 	var endpoint = conf.Endpoint
 	var path = conf.Path
 	var user = conf.User
-	var password = conf.Password
 	var customPath = conf.CustomPath
 
 	if clients[endpoint+path+user+customPath] != nil {
 		return clients[endpoint+path+user+customPath], nil
 	}
 
-	c := gowebdav.NewClient(endpoint, user, password)
+	c := gowebdav.NewClient(endpoint, user, conf.Password)
 	c.Connect()
 
 	clients[endpoint+path+user+customPath] = &WebDAV{

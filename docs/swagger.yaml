@@ -2392,6 +2392,27 @@ paths:
       summary: Create or update storage configuration
       tags:
       - Storage
+  /api/storage/enabled_types:
+    get:
+      description: 'Get list of enabled storage types. Possible values: localfs, oss,
+        s3, r2, minio, webdav'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Success. Data contains: localfs, oss, s3, r2, minio, webdav'
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      summary: Get enabled storage types
+      tags:
+      - Storage
   /api/user/change_password:
     post:
       consumes:

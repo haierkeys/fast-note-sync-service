@@ -28,43 +28,7 @@ type S3 struct {
 
 var clients = make(map[string]*S3)
 
-func NewClient(cf map[string]any) (*S3, error) {
-	// New client
-
-	var IsEnabled bool
-	switch t := cf["IsEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsEnabled = false
-		} else {
-			IsEnabled = true
-		}
-	case bool:
-		IsEnabled = t
-	}
-
-	var IsUserEnabled bool
-	switch t := cf["IsUserEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsUserEnabled = false
-		} else {
-			IsUserEnabled = true
-		}
-	case bool:
-		IsUserEnabled = t
-	}
-
-	conf := &Config{
-		IsEnabled:       IsEnabled,
-		IsUserEnabled:   IsUserEnabled,
-		Region:          cf["Region"].(string),
-		BucketName:      cf["BucketName"].(string),
-		AccessKeyID:     cf["AccessKeyID"].(string),
-		AccessKeySecret: cf["AccessKeySecret"].(string),
-		CustomPath:      cf["CustomPath"].(string),
-	}
-
+func NewClient(conf *Config) (*S3, error) {
 	var region = conf.Region
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret

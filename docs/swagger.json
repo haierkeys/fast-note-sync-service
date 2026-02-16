@@ -2355,6 +2355,41 @@
                 }
             }
         },
+        "/api/storage/enabled_types": {
+            "get": {
+                "description": "Get list of enabled storage types. Possible values: localfs, oss, s3, r2, minio, webdav",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get enabled storage types",
+                "responses": {
+                    "200": {
+                        "description": "Success. Data contains: localfs, oss, s3, r2, minio, webdav",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/user/change_password": {
             "post": {
                 "security": [

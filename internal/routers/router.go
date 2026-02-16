@@ -238,6 +238,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 			auth.GET("/storage", storageHandler.List)
 			auth.POST("/storage", storageHandler.CreateOrUpdate)
+			auth.GET("/storage/enabled_types", storageHandler.EnabledTypes)
 			auth.DELETE("/storage", storageHandler.Delete)
 		}
 

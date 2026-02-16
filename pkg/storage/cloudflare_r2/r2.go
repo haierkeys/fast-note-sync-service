@@ -30,42 +30,7 @@ type R2 struct {
 
 var clients = make(map[string]*R2)
 
-func NewClient(cf map[string]any) (*R2, error) {
-
-	var IsEnabled bool
-	switch t := cf["IsEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsEnabled = false
-		} else {
-			IsEnabled = true
-		}
-	case bool:
-		IsEnabled = t
-	}
-
-	var IsUserEnabled bool
-	switch t := cf["IsUserEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsUserEnabled = false
-		} else {
-			IsUserEnabled = true
-		}
-	case bool:
-		IsUserEnabled = t
-	}
-
-	conf := &Config{
-		IsEnabled:       IsEnabled,
-		IsUserEnabled:   IsUserEnabled,
-		AccountID:       cf["AccountID"].(string),
-		BucketName:      cf["BucketName"].(string),
-		AccessKeyID:     cf["AccessKeyID"].(string),
-		AccessKeySecret: cf["AccessKeySecret"].(string),
-		CustomPath:      cf["CustomPath"].(string),
-	}
-
+func NewClient(conf *Config) (*R2, error) {
 	var accountId = conf.AccountID
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret

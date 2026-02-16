@@ -3,7 +3,6 @@ package storage
 import (
 	"io"
 
-	"github.com/haierkeys/fast-note-sync-service/global"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/storage/aliyun_oss"
 	"github.com/haierkeys/fast-note-sync-service/pkg/storage/aws_s3"
@@ -39,72 +38,108 @@ var CloudStorageTypeMap = map[Type]bool{
 	MinIO: true,
 }
 
+// Config Unified storage configuration
+type Config struct {
+	Type Type `yaml:"type"`
+
+	// Common settings
+	IsEnabled     bool   `yaml:"is-enable"`
+	IsUserEnabled bool   `yaml:"is-user-enable"`
+	CustomPath    string `yaml:"custom-path"`
+
+	// Cloud Storage (S3/OSS/MinIO/R2)
+	Endpoint        string `yaml:"endpoint"`
+	Region          string `yaml:"region"`
+	BucketName      string `yaml:"bucket-name"`
+	AccessKeyID     string `yaml:"access-key-id"`
+	AccessKeySecret string `yaml:"access-key-secret"`
+	AccountID       string `yaml:"account-id"` // Cloudflare R2 specific
+
+	// WebDAV
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Path     string `yaml:"path"` // WebDAV specific path if needed
+
+	// Local FS
+	SavePath       string `yaml:"save-path"`
+	HttpfsIsEnable bool   `yaml:"httpfs-is-enable"`
+}
+
 type Storager interface {
 	SendFile(pathKey string, file io.Reader, cType string) (string, error)
 	SendContent(pathKey string, content []byte) (string, error)
 }
 
-var Instance map[Type]Storager
+func NewClient(config *Config) (Storager, error) {
+	if config == nil {
+		return nil, code.ErrorInvalidStorageType
+	}
 
-func NewClient(cType Type, config map[string]any) (Storager, error) {
-
+	cType := config.Type
 	if cType == LOCAL {
-		return local_fs.NewClient(config)
+		cfg := &local_fs.Config{
+			IsEnabled:      config.IsEnabled,
+			IsUserEnabled:  config.IsUserEnabled,
+			HttpfsIsEnable: config.HttpfsIsEnable,
+			SavePath:       config.SavePath,
+		}
+		return local_fs.NewClient(cfg)
 	} else if cType == OSS {
-		return aliyun_oss.NewClient(config)
+		cfg := &aliyun_oss.Config{
+			IsEnabled:       config.IsEnabled,
+			IsUserEnabled:   config.IsUserEnabled,
+			Endpoint:        config.Endpoint,
+			BucketName:      config.BucketName,
+			AccessKeyID:     config.AccessKeyID,
+			AccessKeySecret: config.AccessKeySecret,
+			CustomPath:      config.CustomPath,
+		}
+		return aliyun_oss.NewClient(cfg)
 	} else if cType == R2 {
-		return cloudflare_r2.NewClient(config)
+		cfg := &cloudflare_r2.Config{
+			IsEnabled:       config.IsEnabled,
+			IsUserEnabled:   config.IsUserEnabled,
+			AccountID:       config.AccountID,
+			BucketName:      config.BucketName,
+			AccessKeyID:     config.AccessKeyID,
+			AccessKeySecret: config.AccessKeySecret,
+			CustomPath:      config.CustomPath,
+		}
+		return cloudflare_r2.NewClient(cfg)
 	} else if cType == S3 {
-		return aws_s3.NewClient(config)
+		cfg := &aws_s3.Config{
+			IsEnabled:       config.IsEnabled,
+			IsUserEnabled:   config.IsUserEnabled,
+			Region:          config.Region,
+			BucketName:      config.BucketName,
+			AccessKeyID:     config.AccessKeyID,
+			AccessKeySecret: config.AccessKeySecret,
+			CustomPath:      config.CustomPath,
+		}
+		return aws_s3.NewClient(cfg)
 	} else if cType == MinIO {
-		return minio.NewClient(config)
+		cfg := &minio.Config{
+			IsEnabled:       config.IsEnabled,
+			IsUserEnabled:   config.IsUserEnabled,
+			Endpoint:        config.Endpoint,
+			Region:          config.Region,
+			BucketName:      config.BucketName,
+			AccessKeyID:     config.AccessKeyID,
+			AccessKeySecret: config.AccessKeySecret,
+			CustomPath:      config.CustomPath,
+		}
+		return minio.NewClient(cfg)
 	} else if cType == WebDAV {
-		return webdav.NewClient(config)
+		cfg := &webdav.Config{
+			IsEnabled:     config.IsEnabled,
+			IsUserEnabled: config.IsUserEnabled,
+			Endpoint:      config.Endpoint,
+			Path:          config.Path,
+			User:          config.User,
+			Password:      config.Password,
+			CustomPath:    config.CustomPath,
+		}
+		return webdav.NewClient(cfg)
 	}
 	return nil, code.ErrorInvalidStorageType
-}
-
-func IsUserEnabled(cType Type) error {
-
-	// 检查云存储类型是否有效
-	if !StorageTypeMap[cType] {
-		return code.ErrorInvalidCloudStorageType
-	}
-
-	if cType == LOCAL && !global.Config.LocalFS.IsUserEnabled {
-		return code.ErrorUserLocalFSDisabled
-	} else if cType == OSS && !global.Config.OSS.IsUserEnabled {
-		return code.ErrorUserALIOSSDisabled
-	} else if cType == R2 && !global.Config.CloudflueR2.IsUserEnabled {
-		return code.ErrorUserCloudflueR2Disabled
-	} else if cType == S3 && !global.Config.AWSS3.IsUserEnabled {
-		return code.ErrorUserAWSS3Disabled
-	} else if cType == MinIO && !global.Config.MinIO.IsUserEnabled {
-		return code.ErrorUserMinIODisabled
-	}
-	return nil
-}
-
-func GetIsUserEnabledStorageTypes() []CloudType {
-
-	var list []CloudType
-	if global.Config.CloudflueR2.IsUserEnabled {
-		list = append(list, R2)
-	}
-	if global.Config.OSS.IsUserEnabled {
-		list = append(list, OSS)
-	}
-	if global.Config.AWSS3.IsUserEnabled {
-		list = append(list, S3)
-	}
-	if global.Config.MinIO.IsUserEnabled {
-		list = append(list, MinIO)
-	}
-	if global.Config.LocalFS.IsUserEnabled {
-		list = append(list, LOCAL)
-	}
-	if global.Config.WebDAV.IsUserEnabled {
-		list = append(list, WebDAV)
-	}
-	return list
 }
