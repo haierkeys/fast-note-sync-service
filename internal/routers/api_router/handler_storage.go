@@ -51,7 +51,7 @@ func (h *StorageHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
-	storage, err := h.App.StorageService.CreateOrUpdate(c.Request.Context(), uid, params.ID, params.Storage)
+	storage, err := h.App.StorageService.CreateOrUpdate(c.Request.Context(), uid, params.ID, params)
 	if err != nil {
 		h.logError(c.Request.Context(), "StorageHandler.CreateOrUpdate", err)
 		apperrors.ErrorResponse(c, err)

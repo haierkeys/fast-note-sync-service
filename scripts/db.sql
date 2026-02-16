@@ -240,6 +240,7 @@ CREATE TABLE "storage" (
     "access_url_prefix" text DEFAULT '',
     "user" text DEFAULT '',
     "password" text DEFAULT '',
+    "is_enabled" integer NOT NULL DEFAULT 0,
     "is_deleted" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL,
@@ -256,7 +257,8 @@ CREATE TABLE "storage" (
     -- 0: 备份 1: 同步
     "type" integer NOT NULL DEFAULT 0,
     "sync" text DEFAULT '',
-    "sync_delay" integer NOT NULL DEFAULT 0, -- 延迟
+    "sync_delay" integer NOT NULL DEFAULT 0,
+    -- 延迟
     "backup" text DEFAULT '',
     "backup" text DEFAULT '',
     "is_deleted" integer NOT NULL DEFAULT 0,

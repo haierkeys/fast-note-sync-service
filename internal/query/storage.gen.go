@@ -41,6 +41,7 @@ func newStorage(db *gorm.DB, opts ...gen.DOOption) storage {
 	_storage.AccessURLPrefix = field.NewString(tableName, "access_url_prefix")
 	_storage.User = field.NewString(tableName, "user")
 	_storage.Password = field.NewString(tableName, "password")
+	_storage.IsEnabled = field.NewInt64(tableName, "is_enabled")
 	_storage.IsDeleted = field.NewInt64(tableName, "is_deleted")
 	_storage.CreatedAt = field.NewField(tableName, "created_at")
 	_storage.UpdatedAt = field.NewField(tableName, "updated_at")
@@ -68,6 +69,7 @@ type storage struct {
 	AccessURLPrefix field.String
 	User            field.String
 	Password        field.String
+	IsEnabled       field.Int64
 	IsDeleted       field.Int64
 	CreatedAt       field.Field
 	UpdatedAt       field.Field
@@ -101,6 +103,7 @@ func (s *storage) updateTableName(table string) *storage {
 	s.AccessURLPrefix = field.NewString(table, "access_url_prefix")
 	s.User = field.NewString(table, "user")
 	s.Password = field.NewString(table, "password")
+	s.IsEnabled = field.NewInt64(table, "is_enabled")
 	s.IsDeleted = field.NewInt64(table, "is_deleted")
 	s.CreatedAt = field.NewField(table, "created_at")
 	s.UpdatedAt = field.NewField(table, "updated_at")
@@ -129,7 +132,7 @@ func (s *storage) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *storage) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 17)
+	s.fieldMap = make(map[string]field.Expr, 18)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["uid"] = s.UID
 	s.fieldMap["type"] = s.Type
@@ -143,6 +146,7 @@ func (s *storage) fillFieldMap() {
 	s.fieldMap["access_url_prefix"] = s.AccessURLPrefix
 	s.fieldMap["user"] = s.User
 	s.fieldMap["password"] = s.Password
+	s.fieldMap["is_enabled"] = s.IsEnabled
 	s.fieldMap["is_deleted"] = s.IsDeleted
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt

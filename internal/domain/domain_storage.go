@@ -17,6 +17,7 @@ type Storage struct {
 	AccessURLPrefix string
 	User            string
 	Password        string
+	IsEnabled       bool
 	IsDeleted       bool
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
