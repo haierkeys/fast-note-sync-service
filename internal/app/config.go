@@ -160,9 +160,6 @@ type AppSettings struct {
 	// TempPath upload temporary path
 	// TempPath 上传临时路径
 	TempPath string `yaml:"temp-path" default:"storage/temp"`
-	// UploadSavePath upload save path
-	// UploadSavePath 上传保存路径
-	UploadSavePath string `yaml:"upload-save-path" default:"storage/uploads"`
 	// IsReturnSussess whether to return success info
 	// IsReturnSussess 是否返回成功信息
 	IsReturnSussess bool `yaml:"is-return-sussess" default:"false"`
