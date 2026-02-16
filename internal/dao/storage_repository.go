@@ -52,6 +52,7 @@ func (r *storageRepository) toDomain(m *model.Storage) *domain.Storage {
 		AccessURLPrefix: m.AccessURLPrefix,
 		User:            m.User,
 		Password:        m.Password,
+		IsEnabled:       m.IsEnabled == 1,
 		IsDeleted:       m.IsDeleted == 1,
 		CreatedAt:       time.Time(m.CreatedAt),
 		UpdatedAt:       time.Time(m.UpdatedAt),
@@ -67,7 +68,7 @@ func (r *storageRepository) toModel(s *domain.Storage) *model.Storage {
 	if s.IsDeleted {
 		isDeleted = 1
 	}
-	return &model.Storage{
+	modelStorage := &model.Storage{
 		ID:              s.ID,
 		UID:             s.UID,
 		Type:            s.Type,
@@ -81,10 +82,16 @@ func (r *storageRepository) toModel(s *domain.Storage) *model.Storage {
 		AccessURLPrefix: s.AccessURLPrefix,
 		User:            s.User,
 		Password:        s.Password,
+		IsEnabled:       int64(0),
 		IsDeleted:       isDeleted,
 		CreatedAt:       timex.Time(s.CreatedAt),
 		UpdatedAt:       timex.Time(s.UpdatedAt),
 	}
+
+	if s.IsEnabled {
+		modelStorage.IsEnabled = 1
+	}
+	return modelStorage
 }
 
 // GetByID 根据ID获取存储配置
