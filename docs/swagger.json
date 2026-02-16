@@ -4017,7 +4017,7 @@
                 "id": {
                     "type": "integer"
                 },
-                "isDeleted": {
+                "isEnabled": {
                     "type": "boolean"
                 },
                 "password": {
@@ -4028,9 +4028,6 @@
                 },
                 "type": {
                     "type": "string"
-                },
-                "uid": {
-                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -4043,14 +4040,64 @@
         "dto.StoragePostRequest": {
             "type": "object",
             "required": [
-                "storage"
+                "accessUrlPrefix",
+                "type"
             ],
             "properties": {
+                "accessKeyId": {
+                    "description": "访问密钥ID",
+                    "type": "string"
+                },
+                "accessKeySecret": {
+                    "description": "访问密钥秘密",
+                    "type": "string"
+                },
+                "accessUrlPrefix": {
+                    "description": "访问地址前缀",
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
+                },
+                "accountId": {
+                    "description": "账户ID r2",
+                    "type": "string"
+                },
+                "bucketName": {
+                    "description": "存储桶名称",
+                    "type": "string"
+                },
+                "customPath": {
+                    "description": "自定义路径",
+                    "type": "string"
+                },
+                "endpoint": {
+                    "description": "端点 oss",
+                    "type": "string"
+                },
                 "id": {
+                    "description": "ID",
                     "type": "integer"
                 },
-                "storage": {
-                    "$ref": "#/definitions/dto.StorageDTO"
+                "isEnabled": {
+                    "description": "是否启用",
+                    "type": "integer"
+                },
+                "password": {
+                    "description": "密码",
+                    "type": "string"
+                },
+                "region": {
+                    "description": "区域 s3",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "类型",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "user": {
+                    "description": "访问用户名",
+                    "type": "string"
                 }
             }
         },

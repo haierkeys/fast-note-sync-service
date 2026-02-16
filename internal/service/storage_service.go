@@ -18,7 +18,7 @@ import (
 type StorageService interface {
 	// CreateOrUpdate creates or updates a storage configuration
 	// CreateOrUpdate 创建或更新存储配置
-	CreateOrUpdate(ctx context.Context, uid int64, id int64, storageDTO *dto.StorageDTO) (*dto.StorageDTO, error)
+	CreateOrUpdate(ctx context.Context, uid int64, id int64, storageDTO *dto.StoragePostRequest) (*dto.StorageDTO, error)
 
 	// Get retrieves storage configuration by ID
 	// Get 获取存储配置
@@ -66,6 +66,7 @@ func (s *storageService) domainToDTO(m *domain.Storage) *dto.StorageDTO {
 		AccessURLPrefix: m.AccessURLPrefix,
 		User:            m.User,
 		Password:        m.Password,
+		IsEnabled:       m.IsEnabled,
 		IsDeleted:       m.IsDeleted,
 		CreatedAt:       timex.Time(m.CreatedAt),
 		UpdatedAt:       timex.Time(m.UpdatedAt),
@@ -90,19 +91,41 @@ func (s *storageService) dtoToDomain(d *dto.StorageDTO) *domain.Storage {
 		AccessURLPrefix: d.AccessURLPrefix,
 		User:            d.User,
 		Password:        d.Password,
+		IsEnabled:       d.IsEnabled,
 		IsDeleted:       d.IsDeleted,
 	}
 }
 
-func (s *storageService) CreateOrUpdate(ctx context.Context, uid int64, id int64, storageDTO *dto.StorageDTO) (*dto.StorageDTO, error) {
+func (s *storageService) postRequestToDomain(req *dto.StoragePostRequest) *domain.Storage {
+	if req == nil {
+		return nil
+	}
+	return &domain.Storage{
+		ID:              req.ID,
+		Type:            req.Type,
+		Endpoint:        req.Endpoint,
+		Region:          req.Region,
+		AccountID:       req.AccountID,
+		BucketName:      req.BucketName,
+		AccessKeyID:     req.AccessKeyID,
+		AccessKeySecret: req.AccessKeySecret,
+		CustomPath:      req.CustomPath,
+		AccessURLPrefix: req.AccessURLPrefix,
+		User:            req.User,
+		Password:        req.Password,
+		IsEnabled:       req.IsEnabled == 1,
+	}
+}
+
+func (s *storageService) CreateOrUpdate(ctx context.Context, uid int64, id int64, req *dto.StoragePostRequest) (*dto.StorageDTO, error) {
 	// Validate storage type availability
 	// 验证存储类型可用性
-	typeName := storageDTO.Type
+	typeName := req.Type
 	if !s.isStorageTypeEnabled(typeName) {
 		return nil, code.ErrorStorageTypeDisabled
 	}
 
-	storage := s.dtoToDomain(storageDTO)
+	storage := s.postRequestToDomain(req)
 	storage.UID = uid
 
 	var result *domain.Storage
