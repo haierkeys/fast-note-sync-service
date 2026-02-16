@@ -385,7 +385,7 @@ func initStorageWithConfig(cfg *internalApp.AppConfig) error {
 	dirs := []string{
 		filepath.Dir(cfg.Log.File),
 		cfg.App.TempPath,
-		cfg.App.UploadSavePath,
+		cfg.Storage.LocalFS.SavePath,
 		filepath.Dir(cfg.Database.Path),
 	}
 
