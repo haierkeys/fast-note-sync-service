@@ -142,21 +142,56 @@ tracer:
   # Trace ID header name
   header: "X-Trace-ID"
 
-# local-fs
-# 本地文件系统存储配置
-# Local file system storage configuration
-local-fs:
-  # 是否启用本地文件系统存储
-  # Whether to enable local file system storage
-  is-enable: true
-  # 是否启用 HTTP 文件服务
-  # Whether to enable HTTP file service
-  httpfs-is-enable: true
-  # 文件保存路径
-  # File save path
-  save-path: "storage/uploads"
-  # 自定义路径（可选）
-  # Custom path (optional)
-  custom-path: ""
+# storage
+# 存储配置
+# Storage configuration
+storage:
+  # local-fs
+  # 本地文件系统存储
+  # Local file system storage
+  local-fs:
+    # 是否全局启用本地文件系统存储
+    # Whether to globally enable local file system storage
+    is-enable: false
+    # 是否启用 HTTP 文件服务（用于提供直接下载链接）
+    # Whether to enable HTTP file service
+    httpfs-is-enable: true
+    # 文件保存路径
+    # File save path
+    save-path: "storage/uploads"
+  # aliyun-oss
+  # 阿里云 OSS 存储
+  # Aliyun OSS storage
+  aliyun-oss:
+    # is-enable
+    is-enable: true
+
+  # aws-s3
+  # AWS S3 存储
+  # AWS S3 storage
+  aws-s3:
+    # is-enable
+    is-enable: true
+
+  # cloudflare-r2
+  # Cloudflare R2 存储
+  # Cloudflare R2 storage
+  cloudflare-r2:
+    # is-enable
+    is-enable: true
+
+  # minio
+  # MinIO 存储
+  # MinIO storage
+  minio:
+    # is-enable
+    is-enable: true
+
+  # webdav
+  # WebDAV 存储
+  # WebDAV storage
+  webdav:
+    # is-enable
+    is-enable: true
 
 
