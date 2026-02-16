@@ -107,5 +107,6 @@ var (
 	ErrorHistoryRestoreFailed = NewError(492)
 
 	// --- Storage Related (500-509) ---
-	ErrorStorageNotFound = NewError(500)
+	ErrorStorageNotFound     = NewError(500)
+	ErrorStorageTypeDisabled = NewError(501)
 )

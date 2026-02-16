@@ -126,6 +126,26 @@ func (h *StorageHandler) Delete(c *gin.Context) {
 	response.ToResponse(code.SuccessDelete)
 }
 
+// EnabledTypes gets enabled storage types
+// @Summary Get enabled storage types
+// @Description Get list of enabled storage types. Possible values: localfs, oss, s3, r2, minio, webdav
+// @Tags Storage
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=[]string} "Success. Data contains: localfs, oss, s3, r2, minio, webdav"
+// @Router /api/storage/enabled_types [get]
+func (h *StorageHandler) EnabledTypes(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+
+	types, err := h.App.StorageService.GetEnabledTypes()
+	if err != nil {
+		h.logError(c.Request.Context(), "StorageHandler.EnabledTypes", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(types))
+}
+
 func (h *StorageHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
 	h.App.Logger().Error(method,

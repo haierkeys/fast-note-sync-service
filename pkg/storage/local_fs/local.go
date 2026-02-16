@@ -12,50 +12,7 @@ type LocalFS struct {
 	Config      *Config
 }
 
-func NewClient(cf map[string]any) (*LocalFS, error) {
-
-	var IsEnabled bool
-	switch t := cf["IsEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsEnabled = false
-		} else {
-			IsEnabled = true
-		}
-	case bool:
-		IsEnabled = t
-	}
-
-	var IsUserEnabled bool
-	switch t := cf["IsUserEnabled"].(type) {
-	case int64:
-		if t == 0 {
-			IsUserEnabled = false
-		} else {
-			IsUserEnabled = true
-		}
-	case bool:
-		IsUserEnabled = t
-	}
-
-	var HttpfsIsEnable bool
-	switch t := cf["HttpfsIsEnable"].(type) {
-	case int64:
-		if t == 0 {
-			HttpfsIsEnable = false
-		} else {
-			HttpfsIsEnable = true
-		}
-	case bool:
-		HttpfsIsEnable = t
-	}
-
-	conf := &Config{
-		IsEnabled:      IsEnabled,
-		IsUserEnabled:  IsUserEnabled,
-		HttpfsIsEnable: HttpfsIsEnable,
-		SavePath:       cf["SavePath"].(string),
-	}
+func NewClient(conf *Config) (*LocalFS, error) {
 	return &LocalFS{
 		Config: conf,
 	}, nil

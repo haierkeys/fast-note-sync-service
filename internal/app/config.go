@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/pkg/storage/local_fs"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
 
 	"github.com/creasty/defaults"
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -21,16 +21,18 @@ import (
 // AppConfig 应用配置
 type AppConfig struct {
 	File string `yaml:"-"` // config file path, not serialized
-	// 配置文件路径，不序列化
-	Server   ServerConfig    `yaml:"server"`
-	Log      LogConfig       `yaml:"log"`
-	Database DatabaseConfig  `yaml:"database"`
-	App      AppSettings     `yaml:"app"`
-	User     UserConfig      `yaml:"user"`
-	Security SecurityConfig  `yaml:"security"`
-	LocalFS  local_fs.Config `yaml:"local-fs"`
-	WebGUI   WebGUIConfig    `yaml:"webgui"`
-	Tracer   TracerConfig    `yaml:"tracer"`
+	// 配置文件路径, 不序列化
+
+	Server   ServerConfig   `yaml:"server"`
+	App      AppSettings    `yaml:"app"`
+	Security SecurityConfig `yaml:"security"`
+	Database DatabaseConfig `yaml:"database"`
+	Log      LogConfig      `yaml:"log"`
+	User     UserConfig     `yaml:"user"`
+	Tracer   TracerConfig   `yaml:"tracer"`
+
+	Storage config.StorageConfig `yaml:"storage"`
+	WebGUI  WebGUIConfig         `yaml:"webgui"`
 }
 
 // LogConfig log configuration

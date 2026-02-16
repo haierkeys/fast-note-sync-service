@@ -106,4 +106,5 @@ var en_messages = map[int]string{
 	492: "History restore failed",
 
 	500: "Storage configuration not found",
+	501: "Storage type disabled",
 }
