@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
@@ -31,7 +32,7 @@ func (p *LocalFS) getSavePath() string {
 }
 
 // SendFile  上传文件
-func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string) (string, error) {
+func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {
 			return "", err
@@ -56,11 +57,14 @@ func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string) (string
 	if err != nil {
 		return "", err
 	} else {
+		if !modTime.IsZero() {
+			_ = os.Chtimes(dstFileKey, modTime, modTime)
+		}
 		return dstFileKey, nil
 	}
 }
 
-func (p *LocalFS) SendContent(fileKey string, content []byte) (string, error) {
+func (p *LocalFS) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
 
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {
@@ -69,6 +73,11 @@ func (p *LocalFS) SendContent(fileKey string, content []byte) (string, error) {
 	}
 
 	dstFileKey := p.getSavePath() + fileKey
+
+	err := os.MkdirAll(path.Dir(dstFileKey), os.ModePerm)
+	if err != nil {
+		return "", err
+	}
 
 	out, err := os.Create(dstFileKey)
 	if err != nil {
@@ -80,6 +89,9 @@ func (p *LocalFS) SendContent(fileKey string, content []byte) (string, error) {
 	if err != nil {
 		return "", err
 	} else {
+		if !modTime.IsZero() {
+			_ = os.Chtimes(dstFileKey, modTime, modTime)
+		}
 		return dstFileKey, nil
 	}
 }
