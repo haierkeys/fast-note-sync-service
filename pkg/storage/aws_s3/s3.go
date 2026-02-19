@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
 )
@@ -21,9 +21,9 @@ type Config struct {
 }
 
 type S3 struct {
-	S3Client  *s3.Client
-	S3Manager *manager.Uploader
-	Config    *Config
+	S3Client        *s3.Client
+	TransferManager *transfermanager.Client
+	Config          *Config
 }
 
 var clients = make(map[string]*S3)
@@ -47,13 +47,10 @@ func NewClient(conf *Config) (*S3, error) {
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {})
 
-	if err != nil {
-		return nil, errors.Wrap(err, "aws_s3")
-	}
-
 	clients[accessKeyId] = &S3{
-		S3Client: client,
-		Config:   conf,
+		S3Client:        client,
+		TransferManager: transfermanager.New(client),
+		Config:          conf,
 	}
 	return clients[accessKeyId], nil
 }

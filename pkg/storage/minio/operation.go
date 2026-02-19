@@ -10,6 +10,8 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	tmtypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/pkg/errors"
@@ -26,7 +28,7 @@ func (p *MinIO) GetBucket(bucketName string) string {
 }
 
 // UploadByFile 上传文件
-func (p *MinIO) SendFile(fileKey string, file io.Reader, itype string) (string, error) {
+func (p *MinIO) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
 	ctx := context.Background()
 	bucket := p.GetBucket("")
@@ -35,12 +37,20 @@ func (p *MinIO) SendFile(fileKey string, file io.Reader, itype string) (string, 
 
 	//  k, _ := h.Open()
 
-	_, err := p.S3Client.PutObject(ctx, &s3.PutObjectInput{
+	input := &transfermanager.UploadObjectInput{
 		Bucket:      aws.String(bucket),
 		Key:         aws.String(fileKey),
 		Body:        file,
 		ContentType: aws.String(itype),
-	})
+	}
+
+	if !modTime.IsZero() {
+		input.Metadata = map[string]string{
+			"modification-time": modTime.Format(time.RFC3339),
+		}
+	}
+
+	_, err := p.TransferManager.UploadObject(ctx, input)
 
 	if err != nil {
 		return "", errors.Wrap(err, "minio")
@@ -49,20 +59,27 @@ func (p *MinIO) SendFile(fileKey string, file io.Reader, itype string) (string, 
 	return fileurl.PathSuffixCheckAdd(p.Config.BucketName, "/") + fileKey, nil
 }
 
-func (p *MinIO) SendContent(fileKey string, content []byte) (string, error) {
+func (p *MinIO) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
 
 	ctx := context.Background()
 	bucket := p.GetBucket("")
 
 	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
 
-	input := &s3.PutObjectInput{
+	input := &transfermanager.UploadObjectInput{
 		Bucket:            aws.String(bucket),
 		Key:               aws.String(fileKey),
 		Body:              bytes.NewReader(content),
-		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
+		ChecksumAlgorithm: tmtypes.ChecksumAlgorithmSha256,
 	}
-	output, err := p.S3Manager.Upload(ctx, input)
+
+	if !modTime.IsZero() {
+		input.Metadata = map[string]string{
+			"modification-time": modTime.Format(time.RFC3339),
+		}
+	}
+
+	output, err := p.TransferManager.UploadObject(ctx, input)
 	if err != nil {
 		var noBucket *types.NoSuchBucket
 		if errors.As(err, &noBucket) {

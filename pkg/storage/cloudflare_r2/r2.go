@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
 )
@@ -23,9 +23,9 @@ type Config struct {
 }
 
 type R2 struct {
-	S3Client  *s3.Client
-	S3Manager *manager.Uploader
-	Config    *Config
+	S3Client        *s3.Client
+	TransferManager *transfermanager.Client
+	Config          *Config
 }
 
 var clients = make(map[string]*R2)
@@ -52,12 +52,10 @@ func NewClient(conf *Config) (*R2, error) {
 		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId))
 	})
 
-	if err != nil {
-		return nil, errors.Wrap(err, "cloudflare_r2")
-	}
 	clients[accessKeyId] = &R2{
-		S3Client: client,
-		Config:   conf,
+		S3Client:        client,
+		TransferManager: transfermanager.New(client),
+		Config:          conf,
 	}
 	return clients[accessKeyId], nil
 }
