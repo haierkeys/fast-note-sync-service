@@ -13,6 +13,12 @@ func AutoMigrate(db *gorm.DB, key string) error {
 	}
 	switch key {
 
+	case "BackupConfig":
+		return db.AutoMigrate(BackupConfig{})
+
+	case "BackupHistory":
+		return db.AutoMigrate(BackupHistory{})
+
 	case "File":
 		return db.AutoMigrate(File{})
 

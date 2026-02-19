@@ -249,20 +249,63 @@ CREATE TABLE "storage" (
 
 CREATE INDEX "idx_storage_uid" ON "storage" ("uid" DESC);
 
-DROP TABLE IF EXISTS "storage";
+-- ----------------------------
+-- Table structure for backup_config
+-- ----------------------------
+DROP TABLE IF EXISTS "backup_config";
 
-CREATE TABLE "storage" (
-    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE "backup_config" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
     "uid" integer NOT NULL DEFAULT 0,
-    -- 0: 备份 1: 同步
-    "type" integer NOT NULL DEFAULT 0,
-    "sync" text DEFAULT '',
-    "sync_delay" integer NOT NULL DEFAULT 0,
-    -- 延迟
-    "backup" text DEFAULT '',
-    "backup" text DEFAULT '',
-    "is_deleted" integer NOT NULL DEFAULT 0,
+    "type" text DEFAULT '',
+    -- full, incremental, sync
+    "storage_ids" text DEFAULT '',
+    -- JSON array of storage ids: [1, 2]
+    "is_enabled" integer DEFAULT 0,
+    "cron_strategy" text DEFAULT '',
+    -- daily, weekly, custom
+    "cron_expression" text DEFAULT '',
+    "retention_count" integer DEFAULT 10,
+    -- Retention policy
+    "last_run_time" datetime DEFAULT NULL,
+    "next_run_time" datetime DEFAULT NULL,
+    "last_status" integer DEFAULT 0,
+    -- 0: running, 1: success, 2: failed
+    "last_message" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
-    "updated_at" datetime DEFAULT NULL,
-    "deleted_at" datetime DEFAULT NULL
+    "updated_at" datetime DEFAULT NULL
 );
+
+CREATE INDEX "idx_backup_config_uid" ON "backup_config" ("uid");
+
+CREATE INDEX "idx_backup_config_next_run_time" ON "backup_config" ("next_run_time");
+
+-- ----------------------------
+-- Table structure for backup_history
+-- ----------------------------
+DROP TABLE IF EXISTS "backup_history";
+
+CREATE TABLE "backup_history" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "config_id" integer NOT NULL DEFAULT 0,
+    "storage_id" integer NOT NULL DEFAULT 0,
+    "type" text DEFAULT '',
+    -- full, incremental, sync
+    "start_time" datetime DEFAULT NULL,
+    "end_time" datetime DEFAULT NULL,
+    "status" integer DEFAULT 0,
+    -- 0: running, 1: success, 2: failed
+    "file_size" integer DEFAULT 0,
+    -- bytes
+    "file_count" integer DEFAULT 0,
+    "message" text DEFAULT '',
+    "file_path" text DEFAULT '',
+    -- remote path/key
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_backup_history_uid" ON "backup_history" ("uid", "created_at" DESC);
+
+CREATE INDEX "idx_backup_history_config_id" ON "backup_history" ("config_id");
