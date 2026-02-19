@@ -69,6 +69,7 @@ type Config struct {
 type Storager interface {
 	SendFile(pathKey string, file io.Reader, cType string, modTime time.Time) (string, error)
 	SendContent(pathKey string, content []byte, modTime time.Time) (string, error)
+	Delete(pathKey string) error
 }
 
 func NewClient(config *Config) (Storager, error) {

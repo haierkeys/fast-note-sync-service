@@ -2,7 +2,11 @@
 // Package util 提供通用工具函数
 package util
 
-import "strings"
+import (
+	"io"
+	"os"
+	"strings"
+)
 
 // ApplyDefaultFolder applies default folder prefix
 // ApplyDefaultFolder 应用默认文件夹前缀
@@ -59,4 +63,22 @@ func GeneratePathVariations(path string) []string {
 // 如果路径有效则返回 true，如果包含 ".." 则返回 false。
 func ValidatePath(path string) bool {
 	return !strings.Contains(path, "..")
+}
+
+// CopyFile copies a file from src to dst.
+func CopyFile(src, dst string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }
