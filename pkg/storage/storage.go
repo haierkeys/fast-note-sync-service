@@ -44,9 +44,7 @@ type Config struct {
 	Type Type `yaml:"type"`
 
 	// Common settings
-	IsEnabled     bool   `yaml:"is-enable"`
-	IsUserEnabled bool   `yaml:"is-user-enable"`
-	CustomPath    string `yaml:"custom-path"`
+	CustomPath string `yaml:"custom-path"`
 
 	// Cloud Storage (S3/OSS/MinIO/R2)
 	Endpoint        string `yaml:"endpoint"`
@@ -59,11 +57,9 @@ type Config struct {
 	// WebDAV
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
-	Path     string `yaml:"path"` // WebDAV specific path if needed
 
 	// Local FS
-	SavePath       string `yaml:"save-path"`
-	HttpfsIsEnable bool   `yaml:"httpfs-is-enable"`
+	SavePath string `yaml:"save-path"`
 }
 
 type Storager interface {
@@ -80,16 +76,12 @@ func NewClient(config *Config) (Storager, error) {
 	cType := config.Type
 	if cType == LOCAL {
 		cfg := &local_fs.Config{
-			IsEnabled:      config.IsEnabled,
-			IsUserEnabled:  config.IsUserEnabled,
-			HttpfsIsEnable: config.HttpfsIsEnable,
-			SavePath:       config.SavePath,
+			CustomPath: config.CustomPath,
+			SavePath:   config.SavePath,
 		}
 		return local_fs.NewClient(cfg)
 	} else if cType == OSS {
 		cfg := &aliyun_oss.Config{
-			IsEnabled:       config.IsEnabled,
-			IsUserEnabled:   config.IsUserEnabled,
 			Endpoint:        config.Endpoint,
 			BucketName:      config.BucketName,
 			AccessKeyID:     config.AccessKeyID,
@@ -99,8 +91,6 @@ func NewClient(config *Config) (Storager, error) {
 		return aliyun_oss.NewClient(cfg)
 	} else if cType == R2 {
 		cfg := &cloudflare_r2.Config{
-			IsEnabled:       config.IsEnabled,
-			IsUserEnabled:   config.IsUserEnabled,
 			AccountID:       config.AccountID,
 			BucketName:      config.BucketName,
 			AccessKeyID:     config.AccessKeyID,
@@ -110,8 +100,6 @@ func NewClient(config *Config) (Storager, error) {
 		return cloudflare_r2.NewClient(cfg)
 	} else if cType == S3 {
 		cfg := &aws_s3.Config{
-			IsEnabled:       config.IsEnabled,
-			IsUserEnabled:   config.IsUserEnabled,
 			Region:          config.Region,
 			BucketName:      config.BucketName,
 			AccessKeyID:     config.AccessKeyID,
@@ -121,8 +109,6 @@ func NewClient(config *Config) (Storager, error) {
 		return aws_s3.NewClient(cfg)
 	} else if cType == MinIO {
 		cfg := &minio.Config{
-			IsEnabled:       config.IsEnabled,
-			IsUserEnabled:   config.IsUserEnabled,
 			Endpoint:        config.Endpoint,
 			Region:          config.Region,
 			BucketName:      config.BucketName,
@@ -133,13 +119,10 @@ func NewClient(config *Config) (Storager, error) {
 		return minio.NewClient(cfg)
 	} else if cType == WebDAV {
 		cfg := &webdav.Config{
-			IsEnabled:     config.IsEnabled,
-			IsUserEnabled: config.IsUserEnabled,
-			Endpoint:      config.Endpoint,
-			Path:          config.Path,
-			User:          config.User,
-			Password:      config.Password,
-			CustomPath:    config.CustomPath,
+			Endpoint:   config.Endpoint,
+			User:       config.User,
+			Password:   config.Password,
+			CustomPath: config.CustomPath,
 		}
 		return webdav.NewClient(cfg)
 	}

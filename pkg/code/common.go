@@ -102,9 +102,15 @@ var (
 	ErrorShareRevoked  = NewError(482)
 
 	// --- Sync & History (490-499) ---
-	ErrorSyncConflict         = NewError(490)
-	ErrorHistoryNotFound      = NewError(491)
-	ErrorHistoryRestoreFailed = NewError(492)
+	ErrorHistoryNotFound        = NewError(491)
+	ErrorHistoryRestoreFailed   = NewError(492)
+	ErrorBackupConfigNotFound   = NewError(493)
+	ErrorBackupTaskFailed       = NewError(494)
+	ErrorBackupTypeUnknown      = NewError(495)
+	ErrorBackupExecuteIDReq     = NewError(496)
+	ErrorBackupVaultRequired    = NewError(497)
+	ErrorBackupStorageIDInvalid = NewError(498)
+	ErrorBackupConfigDisabled   = NewError(499)
 
 	// --- Storage Related (500-509) ---
 	ErrorStorageNotFound     = NewError(500)

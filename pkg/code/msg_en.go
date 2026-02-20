@@ -103,8 +103,14 @@ var en_messages = map[int]string{
 	// --- Sync & History (490-499) ---
 	490: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
 	491: "History not found",
-	492: "History restore failed",
-
+	492: "Failed to restore history",
+	493: "Sync & backup task does not exist",
+	494: "Failed to execute sync & backup task",
+	495: "Unknown sync & backup type",
+	496: "Sync & backup task ID is required",
+	497: "Note repository ID is required",
+	498: "Invalid storage ID list in sync & backup task settings",
+	499: "Sync & backup task is disabled",
 	500: "Storage configuration not found",
 	501: "Storage type disabled",
 }

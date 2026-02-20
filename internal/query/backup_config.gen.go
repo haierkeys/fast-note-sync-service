@@ -30,12 +30,13 @@ func newBackupConfig(db *gorm.DB, opts ...gen.DOOption) backupConfig {
 	_backupConfig.ALL = field.NewAsterisk(tableName)
 	_backupConfig.ID = field.NewInt64(tableName, "id")
 	_backupConfig.UID = field.NewInt64(tableName, "uid")
+	_backupConfig.VaultID = field.NewInt64(tableName, "vault_id")
 	_backupConfig.Type = field.NewString(tableName, "type")
 	_backupConfig.StorageIds = field.NewString(tableName, "storage_ids")
 	_backupConfig.IsEnabled = field.NewInt64(tableName, "is_enabled")
 	_backupConfig.CronStrategy = field.NewString(tableName, "cron_strategy")
 	_backupConfig.CronExpression = field.NewString(tableName, "cron_expression")
-	_backupConfig.RetentionCount = field.NewInt64(tableName, "retention_count")
+	_backupConfig.RetentionDays = field.NewInt64(tableName, "retention_days")
 	_backupConfig.LastRunTime = field.NewTime(tableName, "last_run_time")
 	_backupConfig.NextRunTime = field.NewTime(tableName, "next_run_time")
 	_backupConfig.LastStatus = field.NewInt64(tableName, "last_status")
@@ -54,12 +55,13 @@ type backupConfig struct {
 	ALL            field.Asterisk
 	ID             field.Int64
 	UID            field.Int64
+	VaultID        field.Int64
 	Type           field.String
 	StorageIds     field.String
 	IsEnabled      field.Int64
 	CronStrategy   field.String
 	CronExpression field.String
-	RetentionCount field.Int64
+	RetentionDays  field.Int64
 	LastRunTime    field.Time
 	NextRunTime    field.Time
 	LastStatus     field.Int64
@@ -84,12 +86,13 @@ func (b *backupConfig) updateTableName(table string) *backupConfig {
 	b.ALL = field.NewAsterisk(table)
 	b.ID = field.NewInt64(table, "id")
 	b.UID = field.NewInt64(table, "uid")
+	b.VaultID = field.NewInt64(table, "vault_id")
 	b.Type = field.NewString(table, "type")
 	b.StorageIds = field.NewString(table, "storage_ids")
 	b.IsEnabled = field.NewInt64(table, "is_enabled")
 	b.CronStrategy = field.NewString(table, "cron_strategy")
 	b.CronExpression = field.NewString(table, "cron_expression")
-	b.RetentionCount = field.NewInt64(table, "retention_count")
+	b.RetentionDays = field.NewInt64(table, "retention_days")
 	b.LastRunTime = field.NewTime(table, "last_run_time")
 	b.NextRunTime = field.NewTime(table, "next_run_time")
 	b.LastStatus = field.NewInt64(table, "last_status")
@@ -124,15 +127,16 @@ func (b *backupConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (b *backupConfig) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 14)
+	b.fieldMap = make(map[string]field.Expr, 15)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["uid"] = b.UID
+	b.fieldMap["vault_id"] = b.VaultID
 	b.fieldMap["type"] = b.Type
 	b.fieldMap["storage_ids"] = b.StorageIds
 	b.fieldMap["is_enabled"] = b.IsEnabled
 	b.fieldMap["cron_strategy"] = b.CronStrategy
 	b.fieldMap["cron_expression"] = b.CronExpression
-	b.fieldMap["retention_count"] = b.RetentionCount
+	b.fieldMap["retention_days"] = b.RetentionDays
 	b.fieldMap["last_run_time"] = b.LastRunTime
 	b.fieldMap["next_run_time"] = b.NextRunTime
 	b.fieldMap["last_status"] = b.LastStatus

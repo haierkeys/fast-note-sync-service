@@ -11,8 +11,6 @@ import (
 )
 
 type Config struct {
-	IsEnabled       bool   `yaml:"is-enable"`
-	IsUserEnabled   bool   `yaml:"is-user-enable"`
 	Region          string `yaml:"region"`
 	BucketName      string `yaml:"bucket-name"`
 	AccessKeyID     string `yaml:"access-key-id"`
