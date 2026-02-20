@@ -9,11 +9,8 @@ import (
 
 func TestNewClient_Local(t *testing.T) {
 	cfg := &storage.Config{
-		Type:           storage.LOCAL,
-		IsEnabled:      true,
-		IsUserEnabled:  true,
-		HttpfsIsEnable: true,
-		SavePath:       "./uploads",
+		Type:     storage.LOCAL,
+		SavePath: "./uploads",
 	}
 
 	client, err := storage.NewClient(cfg)

@@ -275,6 +275,146 @@ definitions:
     - DiffDelete
     - DiffInsert
     - DiffEqual
+  dto.BackupConfigDTO:
+    properties:
+      createdAt:
+        description: 创建时间
+        type: string
+      cronExpression:
+        description: Cron表达式
+        type: string
+      cronStrategy:
+        description: 定时策略
+        type: string
+      id:
+        description: 配置ID
+        type: integer
+      isEnabled:
+        description: 是否启用
+        type: boolean
+      lastMessage:
+        description: 上次运行结果消息
+        type: string
+      lastRunTime:
+        description: 上次运行时间
+        type: string
+      lastStatus:
+        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+        type: integer
+      nextRunTime:
+        description: 下次运行时间
+        type: string
+      retentionDays:
+        description: 保留天数
+        type: integer
+      storageIds:
+        description: 存储ID列表
+        type: string
+      type:
+        description: 备份类型 (full, incremental, sync)
+        type: string
+      uid:
+        description: 用户ID
+        type: integer
+      updatedAt:
+        description: 更新时间
+        type: string
+      vault:
+        description: 关联库名称
+        type: string
+    type: object
+  dto.BackupConfigRequest:
+    properties:
+      cronExpression:
+        example: 0 0 * * *
+        type: string
+      cronStrategy:
+        enum:
+        - daily
+        - weekly
+        - monthly
+        - custom
+        example: daily
+        type: string
+      id:
+        example: 1
+        type: integer
+      isEnabled:
+        example: true
+        type: boolean
+      retentionDays:
+        example: 7
+        minimum: 1
+        type: integer
+      storageIds:
+        example: '[1, 2]'
+        type: string
+      type:
+        enum:
+        - full
+        - incremental
+        - sync
+        example: sync
+        type: string
+      vault:
+        example: test
+        type: string
+    required:
+    - cronStrategy
+    - storageIds
+    - type
+    type: object
+  dto.BackupExecuteRequest:
+    properties:
+      id:
+        example: 1
+        type: integer
+    type: object
+  dto.BackupHistoryDTO:
+    properties:
+      configId:
+        description: 配置ID
+        type: integer
+      createdAt:
+        description: 创建时间
+        type: string
+      endTime:
+        description: 结束时间
+        type: string
+      fileCount:
+        description: 文件数量
+        type: integer
+      filePath:
+        description: 文件路径
+        type: string
+      fileSize:
+        description: 文件大小
+        type: integer
+      id:
+        description: 历史记录ID
+        type: integer
+      message:
+        description: 结果消息
+        type: string
+      startTime:
+        description: 开始时间
+        type: string
+      status:
+        description: 状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+        type: integer
+      storageId:
+        description: 存储ID
+        type: integer
+      type:
+        description: 备份类型
+        type: string
+      uid:
+        description: 用户ID
+        type: integer
+      updatedAt:
+        description: 更新时间
+        type: string
+    type: object
   dto.FileDTO:
     properties:
       contentHash:
@@ -309,12 +449,15 @@ definitions:
     properties:
       path:
         description: File path // 文件路径
+        example: Image.png
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: fhash123
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - path
@@ -324,12 +467,15 @@ definitions:
     properties:
       path:
         description: Folder path // 文件夹路径
+        example: NewFolder
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: fhash456
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - path
@@ -363,12 +509,15 @@ definitions:
     properties:
       path:
         description: Folder path // 文件夹路径
+        example: OldFolder
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: fhash789
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - path
@@ -412,15 +561,19 @@ definitions:
     properties:
       content:
         description: Content to append // 追加内容
+        example: Appended content
         type: string
       path:
         description: Note path // 笔记路径
+        example: ReadMe.md
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: hash123
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - content
@@ -502,9 +655,11 @@ definitions:
     properties:
       historyId:
         description: History version ID // 历史版本 ID
+        example: 1
         type: integer
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - historyId
@@ -529,45 +684,59 @@ definitions:
     properties:
       baseHash:
         description: Base hash for sync // 同步基准哈希
+        example: bhash789
         type: string
       baseHashMissing:
         description: Marks if baseHash is unavailable // 标记基准哈希是否缺失
+        example: false
         type: boolean
       content:
         description: Note content // 笔记内容
+        example: '# Hello World'
         type: string
       contentHash:
         description: Content hash // 内容哈希
+        example: chash012
         type: string
       createOnly:
         description: If true, fail if note already exists // 如果为 true，笔记已存在则失败
+        example: false
         type: boolean
       ctime:
         description: Creation timestamp // 创建时间戳
+        example: 1700000000
         type: integer
       mtime:
         description: Modification timestamp // 修改时间戳
+        example: 1700000000
         type: integer
       oldPath:
         description: Old path // 旧路径
+        example: OldPath.md
         type: string
       oldPathHash:
         description: Old path hash // 旧路径哈希
+        example: oldhash789
         type: string
       path:
         description: Note path // 笔记路径
+        example: ReadMe.md
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: hash123
         type: string
       srcPath:
         description: Source path (for rename) // 源路径（用于重命名）
+        example: OldName.md
         type: string
       srcPathHash:
         description: Source path hash // 源路径哈希
+        example: oldhash456
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - path
@@ -577,18 +746,23 @@ definitions:
     properties:
       destination:
         description: Destination path // 目标路径
+        example: Folder/Source.md
         type: string
       overwrite:
         description: Overwrite existing // 覆盖现有
+        example: false
         type: boolean
       path:
         description: Current path // 当前路径
+        example: Source.md
         type: string
       pathHash:
         description: Current path hash // 当前路径哈希
+        example: src_hash123
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - destination
@@ -626,42 +800,25 @@ definitions:
         type: integer
     type: object
   dto.NotePatchFrontmatterRequest:
-    properties:
-      path:
-        description: Note path // 笔记路径
-        type: string
-      pathHash:
-        description: Path hash // 路径哈希
-        type: string
-      remove:
-        description: Fields to remove // 待移除字段
-        items:
-          type: string
-        type: array
-      updates:
-        additionalProperties: true
-        description: Fields to update // 待更新字段
-        type: object
-      vault:
-        description: Vault name // 保险库名称
-        type: string
-    required:
-    - path
-    - vault
     type: object
   dto.NotePrependRequest:
     properties:
       content:
         description: Content to prepend // 头部添加内容
+        example: |
+          Prepended content
         type: string
       path:
         description: Note path // 笔记路径
+        example: ReadMe.md
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: hash123
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - content
@@ -672,27 +829,35 @@ definitions:
     properties:
       all:
         description: Replace all matches // 替换所有
+        example: true
         type: boolean
       failIfNoMatch:
         description: Fail if no match found // 若无匹配则失败
+        example: true
         type: boolean
       find:
         description: String to find // 查找内容
+        example: old text
         type: string
       path:
         description: Note path // 笔记路径
+        example: ReadMe.md
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: hash123
         type: string
       regex:
         description: Use regex // 使用正则
+        example: false
         type: boolean
       replace:
         description: String to replace with // 替换内容
+        example: new text
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - find
@@ -713,12 +878,15 @@ definitions:
     properties:
       path:
         description: Note path // 笔记路径
+        example: ReadMe.md
         type: string
       pathHash:
         description: Path hash // 路径哈希
+        example: hash123
         type: string
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - path
@@ -764,9 +932,11 @@ definitions:
     properties:
       path:
         description: Resource path // 资源路径
+        example: ReadMe.md
         type: string
       path_hash:
         description: Resource path Hash // 资源路径哈希
+        example: hash123
         type: string
       vault:
         description: Vault name // 保险库名称
@@ -830,45 +1000,58 @@ definitions:
     properties:
       accessKeyId:
         description: 访问密钥ID
+        example: AKIAIOSFODNN7EXAMPLE
         type: string
       accessKeySecret:
         description: 访问密钥秘密
+        example: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
         type: string
       accessUrlPrefix:
         description: 访问地址前缀
+        example: https://cdn.com
         maxLength: 100
         minLength: 2
         type: string
       accountId:
         description: 账户ID r2
+        example: "123456789"
         type: string
       bucketName:
         description: 存储桶名称
+        example: my-bucket
         type: string
       customPath:
         description: 自定义路径
+        example: /backups
         type: string
       endpoint:
         description: 端点 oss
+        example: oss-cn-hangzhou.aliyuncs.com
         type: string
       id:
         description: ID
+        example: 1
         type: integer
       isEnabled:
         description: 是否启用
+        example: 1
         type: integer
       password:
         description: 密码
+        example: secret_password
         type: string
       region:
         description: 区域 s3
+        example: us-east-1
         type: string
       type:
         description: 类型
+        example: local-fs
         minLength: 1
         type: string
       user:
         description: 访问用户名
+        example: admin
         type: string
     required:
     - accessUrlPrefix
@@ -878,12 +1061,15 @@ definitions:
     properties:
       confirmPassword:
         description: Confirm password // 校验密码
+        example: new_password123
         type: string
       oldPassword:
         description: Old password // 旧密码
+        example: old_password123
         type: string
       password:
         description: New password // 新密码
+        example: new_password123
         type: string
     required:
     - confirmPassword
@@ -894,15 +1080,19 @@ definitions:
     properties:
       confirmPassword:
         description: Confirm password // 校验密码
+        example: password123
         type: string
       email:
         description: User email // 用户邮件
+        example: user@example.com
         type: string
       password:
         description: User password // 用户密码
+        example: password123
         type: string
       username:
         description: User name // 用户名
+        example: username123
         type: string
     required:
     - confirmPassword
@@ -938,9 +1128,11 @@ definitions:
     properties:
       credentials:
         description: Username or Email // 登录凭证（用户名或邮件）
+        example: user@example.com
         type: string
       password:
         description: Password // 密码
+        example: password123
         type: string
     required:
     - credentials
@@ -980,9 +1172,11 @@ definitions:
     properties:
       id:
         description: Vault ID (optional for update) // 保险库 ID（可选，用于更新）
+        example: 1
         type: integer
       vault:
         description: Vault name // 保险库名称
+        example: MyVault
         type: string
     required:
     - vault
@@ -1118,6 +1312,190 @@ paths:
       summary: Get system and runtime info
       tags:
       - System
+  /api/backup/config:
+    delete:
+      parameters:
+      - example: 1
+        in: query
+        name: id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Delete backup configuration
+      tags:
+      - Backup
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Backup Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BackupConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.BackupConfigDTO'
+              type: object
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update backup configuration
+      tags:
+      - Backup
+  /api/backup/configs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.BackupConfigDTO'
+                  type: array
+              type: object
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get backup configurations
+      tags:
+      - Backup
+  /api/backup/execute:
+    post:
+      parameters:
+      - description: Backup Execute Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BackupExecuteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Trigger a backup manually
+      tags:
+      - Backup
+  /api/backup/historys:
+    get:
+      parameters:
+      - example: 1
+        in: query
+        name: configId
+        required: true
+        type: integer
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.BackupHistoryDTO'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get backup history list
+      tags:
+      - Backup
   /api/file:
     delete:
       description: Permanently delete a specific attachment record and its physical
@@ -1129,16 +1507,19 @@ paths:
         required: true
         type: string
       - description: File path // 文件路径
+        example: Image.png
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         required: true
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1170,19 +1551,23 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: File path // 文件路径
+        example: Image.png
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1209,19 +1594,23 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: File path // 文件路径
+        example: Image.png
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1286,22 +1675,27 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: Search keyword // 搜索关键词
+        example: vacation
         in: query
         name: keyword
         type: string
       - description: Sort by field // 排序字段
+        example: mtime
         in: query
         name: sortBy
         type: string
       - description: Sort order // 排序顺序
+        example: desc
         in: query
         name: sortOrder
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1376,14 +1770,17 @@ paths:
         required: true
         type: string
       - description: Folder path // 文件夹路径
+        example: Projects/Work
         in: query
         name: path
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1449,22 +1846,27 @@ paths:
         required: true
         type: string
       - description: Folder path // 文件夹路径
+        example: Projects
         in: query
         name: path
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Sort by field // 排序字段
+        example: mtime
         in: query
         name: sortBy
         type: string
       - description: Sort order // 排序顺序
+        example: desc
         in: query
         name: sortOrder
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1512,22 +1914,27 @@ paths:
         required: true
         type: string
       - description: Folder path // 文件夹路径
+        example: Projects
         in: query
         name: path
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Sort by field // 排序字段
+        example: mtime
         in: query
         name: sortBy
         type: string
       - description: Sort order // 排序顺序
+        example: desc
         in: query
         name: sortOrder
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1574,10 +1981,12 @@ paths:
         required: true
         type: string
       - description: Tree depth // 树深度
+        example: 3
         in: query
         name: depth
         type: integer
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1609,14 +2018,17 @@ paths:
         required: true
         type: string
       - description: Folder path // 文件夹路径
+        example: Projects
         in: query
         name: path
         type: string
       - description: Path hash // 路径哈希
+        example: fhash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1663,15 +2075,18 @@ paths:
         required: true
         type: string
       - description: Note path // 笔记路径
+        example: ReadMe.md
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: hash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1702,19 +2117,23 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: Note path // 笔记路径
+        example: ReadMe.md
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: hash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1814,15 +2233,18 @@ paths:
         required: true
         type: string
       - description: Note path // 笔记路径
+        example: ReadMe.md
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: hash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -1890,19 +2312,23 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: Note path // 笔记路径
+        example: ReadMe.md
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: hash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -2049,15 +2475,18 @@ paths:
         required: true
         type: string
       - description: Note path // 笔记路径
+        example: ReadMe.md
         in: query
         name: path
         required: true
         type: string
       - description: Path hash // 路径哈希
+        example: hash123
         in: query
         name: pathHash
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -2192,30 +2621,37 @@ paths:
         required: true
         type: string
       - description: Is in recycle bin // 是否在回收站
+        example: false
         in: query
         name: isRecycle
         type: boolean
       - description: Search keyword // 搜索关键词
+        example: todo
         in: query
         name: keyword
         type: string
       - description: Whether to search content // 是否搜索内容
+        example: true
         in: query
         name: searchContent
         type: boolean
       - description: Search mode (path, content, regex) // 搜索模式（路径、内容、正则）
+        example: content
         in: query
         name: searchMode
         type: string
       - description: Sort by field // 排序字段
+        example: mtime
         in: query
         name: sortBy
         type: string
       - description: Sort order // 排序顺序
+        example: desc
         in: query
         name: sortOrder
         type: string
       - description: Vault name // 保险库名称
+        example: MyVault
         in: query
         name: vault
         required: true
@@ -2297,6 +2733,7 @@ paths:
         required: true
         type: string
       - description: Resource ID // 资源 ID
+        example: 1
         in: query
         name: id
         required: true
@@ -2324,6 +2761,7 @@ paths:
         required: true
         type: string
       - description: Resource ID // 资源 ID
+        example: 1
         in: query
         name: id
         required: true
@@ -2600,6 +3038,7 @@ paths:
         required: true
         type: string
       - description: Vault ID // 保险库 ID
+        example: 1
         in: query
         minimum: 1
         name: id

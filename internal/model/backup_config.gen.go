@@ -16,12 +16,13 @@ const TableNameBackupConfig = "backup_config"
 type BackupConfig struct {
 	ID             int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	UID            int64      `gorm:"column:uid;not null;index:idx_backup_config_uid,priority:1;default:0" json:"uid" form:"uid"`
+	VaultID        int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
 	Type           string     `gorm:"column:type;default:''" json:"type" form:"type"`
 	StorageIds     string     `gorm:"column:storage_ids;type:TEXT;default:''" json:"storageIds" form:"storageIds"`
 	IsEnabled      int64      `gorm:"column:is_enabled;type:INTEGER;default:0" json:"isEnabled" form:"isEnabled"`
 	CronStrategy   string     `gorm:"column:cron_strategy;default:''" json:"cronStrategy" form:"cronStrategy"`
 	CronExpression string     `gorm:"column:cron_expression;type:TEXT;default:''" json:"cronExpression" form:"cronExpression"`
-	RetentionCount int64      `gorm:"column:retention_count;default:10" json:"retentionCount" form:"retentionCount"`
+	RetentionDays  int64      `gorm:"column:retention_days;default:10" json:"retentionDays" form:"retentionDays"`
 	LastRunTime    time.Time  `gorm:"column:last_run_time;type:datetime" json:"lastRunTime" form:"lastRunTime"`
 	NextRunTime    time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
 	LastStatus     int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`

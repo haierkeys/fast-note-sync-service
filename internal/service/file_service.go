@@ -106,16 +106,18 @@ type fileService struct {
 	clientName    string                // Client name // 客户端名称
 	clientVer     string                // Client version // 客户端版本
 	config        *ServiceConfig        // Service configuration // 服务配置
+	backupService BackupService         // Backup service // 备份服务
 }
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, config *ServiceConfig) FileService {
+func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, config *ServiceConfig) FileService {
 	return &fileService{
 		fileRepo:      fileRepo,
 		noteRepo:      noteRepo,
 		vaultService:  vaultSvc,
 		folderService: folderSvc,
+		backupService: backupSvc,
 		sf:            &singleflight.Group{},
 		config:        config,
 	}
@@ -236,6 +238,9 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			file.Mtime = params.Mtime
+			if s.backupService != nil {
+				s.backupService.NotifyUpdated(uid)
+			}
 			return isNew, s.domainToDTO(file), nil
 		}
 
@@ -267,6 +272,9 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
+		if s.backupService != nil {
+			s.backupService.NotifyUpdated(uid)
+		}
 		return isNew, s.domainToDTO(updated), nil
 	}
 
@@ -292,6 +300,9 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 	return isNew, s.domainToDTO(created), nil
 }
 
@@ -320,6 +331,9 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 	return s.domainToDTO(updated), nil
 }
 
@@ -359,6 +373,9 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 	return s.domainToDTO(updated), nil
 }
 
@@ -734,6 +751,10 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 	// 修正目录FID
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
 
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
+
 	return s.domainToDTO(oldFile), s.domainToDTO(newFileCreated), nil
 }
 
@@ -749,6 +770,7 @@ func (s *fileService) WithClient(name, version string) FileService {
 		clientName:    name,
 		clientVer:     version,
 		config:        s.config,
+		backupService: s.backupService,
 	}
 }
 

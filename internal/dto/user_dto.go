@@ -7,31 +7,31 @@ import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 // UserCreateRequest User registration request parameters
 // 用户注册请求参数
 type UserCreateRequest struct {
-	Email           string `json:"email" form:"email" binding:"required,email"`               // User email // 用户邮件
-	Username        string `json:"username" form:"username" binding:"required"`               // User name // 用户名
-	Password        string `json:"password" form:"password" binding:"required"`               // User password // 用户密码
-	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required"` // Confirm password // 校验密码
+	Email           string `json:"email" form:"email" binding:"required,email" example:"user@example.com"`          // User email // 用户邮件
+	Username        string `json:"username" form:"username" binding:"required" example:"username123"`               // User name // 用户名
+	Password        string `json:"password" form:"password" binding:"required" example:"password123"`               // User password // 用户密码
+	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required" example:"password123"` // Confirm password // 校验密码
 }
 
 // UserLoginRequest User login request parameters
 // 用户登录请求参数
 type UserLoginRequest struct {
-	Credentials string `form:"credentials" binding:"required"` // Username or Email // 登录凭证（用户名或邮件）
-	Password    string `form:"password" binding:"required"`    // Password // 密码
+	Credentials string `form:"credentials" binding:"required" example:"user@example.com"` // Username or Email // 登录凭证（用户名或邮件）
+	Password    string `form:"password" binding:"required" example:"password123"`         // Password // 密码
 }
 
 // UserRegisterSendEmailRequest Request parameters for sending registration email
 // 发送注册邮件请求参数
 type UserRegisterSendEmailRequest struct {
-	Email string `json:"email" form:"email" binding:"required,email"` // User email // 用户邮件
+	Email string `json:"email" form:"email" binding:"required,email" example:"user@example.com"` // User email // 用户邮件
 }
 
 // UserChangePasswordRequest Request parameters for changing password
 // 修改密码请求参数
 type UserChangePasswordRequest struct {
-	OldPassword     string `json:"oldPassword" form:"oldPassword" binding:"required"`         // Old password // 旧密码
-	Password        string `json:"password" form:"password" binding:"required"`               // New password // 新密码
-	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required"` // Confirm password // 校验密码
+	OldPassword     string `json:"oldPassword" form:"oldPassword" binding:"required" example:"old_password123"`         // Old password // 旧密码
+	Password        string `json:"password" form:"password" binding:"required" example:"new_password123"`               // New password // 新密码
+	ConfirmPassword string `json:"confirmPassword" form:"confirmPassword" binding:"required" example:"new_password123"` // Confirm password // 校验密码
 }
 
 // ---------------- DTO / Response ----------------

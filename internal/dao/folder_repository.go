@@ -194,3 +194,31 @@ func (r *folderRepository) domainToModel(d *domain.Folder) *model.Folder {
 		UpdatedAt:        timex.Time(d.UpdatedAt),
 	}
 }
+func (r *folderRepository) List(ctx context.Context, vaultID int64, uid int64) ([]*domain.Folder, error) {
+	u := r.folder(uid).Folder
+	ms, err := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Folder
+	for _, m := range ms {
+		res = append(res, r.modelToDomain(m))
+	}
+	return res, nil
+}
+
+func (r *folderRepository) ListAll(ctx context.Context, uid int64) ([]*domain.Folder, error) {
+	u := r.folder(uid).Folder
+	ms, err := u.WithContext(ctx).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Folder
+	for _, m := range ms {
+		res = append(res, r.modelToDomain(m))
+	}
+	return res, nil
+}
+
+// 确保 folderRepository 实现了 domain.FolderRepository 接口
+var _ domain.FolderRepository = (*folderRepository)(nil)

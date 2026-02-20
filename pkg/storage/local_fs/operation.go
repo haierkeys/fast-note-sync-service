@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
@@ -28,7 +29,11 @@ func (p *LocalFS) CheckSave() error {
 }
 
 func (p *LocalFS) getSavePath() string {
-	return fileurl.PathSuffixCheckAdd(p.Config.SavePath, "/")
+	fullPath := p.Config.SavePath
+	if p.Config.CustomPath != "" {
+		fullPath = filepath.Join(fullPath, p.Config.CustomPath)
+	}
+	return fileurl.PathSuffixCheckAdd(fullPath, string(os.PathSeparator))
 }
 
 // SendFile  上传文件

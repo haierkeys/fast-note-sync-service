@@ -14,8 +14,7 @@ func TestLocalFS_SendFile(t *testing.T) {
 
 	// Create LocalFS client
 	client, err := NewClient(&Config{
-		IsEnabled: true,
-		SavePath:  tempDir,
+		SavePath: tempDir,
 	})
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
@@ -69,8 +68,7 @@ func TestLocalFS_SendContent(t *testing.T) {
 
 	// Create LocalFS client
 	client, err := NewClient(&Config{
-		IsEnabled: true,
-		SavePath:  tempDir,
+		SavePath: tempDir,
 	})
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
