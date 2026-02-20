@@ -5,8 +5,6 @@ import (
 )
 
 type Config struct {
-	IsEnabled       bool   `yaml:"is-enable"`
-	IsUserEnabled   bool   `yaml:"is-user-enable"`
 	Endpoint        string `yaml:"endpoint"`
 	BucketName      string `yaml:"bucket-name"`
 	AccessKeyID     string `yaml:"access-key-id"`

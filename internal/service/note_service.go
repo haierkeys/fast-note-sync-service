@@ -126,17 +126,19 @@ type noteService struct {
 	clientName    string                    // Client name // 客户端名称
 	clientVer     string                    // Client version // 客户端版本
 	config        *ServiceConfig            // Service configuration // 服务配置
+	backupService BackupService             // Backup service // 备份服务
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, config *ServiceConfig) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, config *ServiceConfig) NoteService {
 	return &noteService{
 		noteRepo:      noteRepo,
 		noteLinkRepo:  noteLinkRepo,
 		fileRepo:      fileRepo,
 		vaultService:  vaultSvc,
 		folderService: folderSvc,
+		backupService: backupSvc,
 		sf:            &singleflight.Group{},
 		config:        config,
 	}
@@ -155,6 +157,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		clientName:    name,
 		clientVer:     version,
 		config:        s.config,
+		backupService: s.backupService,
 	}
 }
 
@@ -301,6 +304,9 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			note.Mtime = params.Mtime
+			if s.backupService != nil {
+				s.backupService.NotifyUpdated(uid)
+			}
 			return isNew, s.domainToDTO(note), nil
 		}
 
@@ -338,6 +344,10 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		go s.UpdateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
 		NoteHistoryDelayPush(updated.ID, uid)
 
+		if s.backupService != nil {
+			s.backupService.NotifyUpdated(uid)
+		}
+
 		return isNew, s.domainToDTO(updated), nil
 	}
 
@@ -365,6 +375,9 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 
 	return isNew, s.domainToDTO(created), nil
 }
@@ -404,8 +417,10 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	go s.CountSizeSum(context.Background(), vaultID, uid)
 	NoteHistoryDelayPush(updated.ID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 
 	return s.domainToDTO(updated), nil
 }
@@ -459,6 +474,9 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	go s.UpdateNoteLinks(context.Background(), updated.ID, updated.Content, vaultID, uid)
 
 	NoteHistoryDelayPush(updated.ID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 
 	return s.domainToDTO(updated), nil
 }
@@ -554,6 +572,9 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
 	go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
 
 	return s.domainToDTO(oldNote), s.domainToDTO(newNoteCreated), nil
 }

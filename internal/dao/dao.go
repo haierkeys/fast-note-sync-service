@@ -506,6 +506,8 @@ func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
 		return NewVaultRepository(d).(daoDBCustomKey).GetKey(uid)
 	case "Folder":
 		return NewFolderRepository(d).(daoDBCustomKey).GetKey(uid)
+	case "BackupConfig", "BackupHistory":
+		return NewBackupRepository(d).(daoDBCustomKey).GetKey(uid)
 	case "Storage":
 		return "" // Storage is in main DB
 	default:
@@ -516,7 +518,7 @@ func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
 func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	// 1. 如果 modelKey 为空，说明是“全量迁移”，按模型分别路由迁移
 	if modelKey == "" {
-		models := []string{"User", "Note", "File", "Setting", "NoteHistory", "Vault", "Folder", "Storage"}
+		models := []string{"User", "Note", "File", "Setting", "NoteHistory", "Vault", "Folder", "Storage", "BackupConfig", "BackupHistory"}
 		for _, m := range models {
 			if err := d.AutoMigrate(uid, m); err != nil {
 				return err

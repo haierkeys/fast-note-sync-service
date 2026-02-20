@@ -12,8 +12,6 @@ import (
 )
 
 type Config struct {
-	IsEnabled       bool   `yaml:"is-enable"`
-	IsUserEnabled   bool   `yaml:"is-user-enable"`
 	BucketName      string `yaml:"bucket-name"`
 	Endpoint        string `yaml:"endpoint"`
 	Region          string `yaml:"region"`
@@ -53,10 +51,6 @@ func NewClient(conf *Config) (*MinIO, error) {
 		o.UsePathStyle = true
 		o.BaseEndpoint = aws.String(endpoint)
 	})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "minio")
-	}
 
 	clients[accessKeyId] = &MinIO{
 		S3Client:        client,

@@ -120,76 +120,70 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				return
 			}
 
-			// Skip merge and use client to override server directly if no offline sync strategy is set
-			// 没有设置离线同步策略时，跳过合并，直接使用客户端覆盖服务端
-			if c.OfflineSyncStrategy == "" {
-				h.App.Logger().Debug("no offline sync strategy, skipping merge, using client to override server",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, params.Path))
+			c.DiffMergePathsMu.RLock()
+			_, mergeIsNeed := c.DiffMergePaths[params.Path]
+			c.DiffMergePathsMu.RUnlock()
 
-				// Skip merge and use client to override server directly when server version is found to be an ancestor of client version
-				// 当发现服务器版本是客户端版本的前身时，跳过合并，直接使用客户端覆盖服务端
-			} else if serverHash == baseHash {
-				h.App.Logger().Debug("server version is client version's ancestor, skipping merge, using client to override server",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, params.Path),
-					zap.String("baseHash", baseHash))
+			if mergeIsNeed {
+				c.DiffMergePathsMu.Lock()
+				delete(c.DiffMergePaths, params.Path)
+				c.DiffMergePathsMu.Unlock()
 
-				// Perform merge operation
-				// 执行合并操作
-				// case 1: baseHash is empty, client side creates new note, note with same name exists on server
-				// case 1: baseHash 为空时，插件端 新创建笔记, 服务端存在同名笔记
-				// case 2: baseHash is not empty, client side note and server side note have same base source, server side modification time is later than client side
-				// case 2: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间大于插件端
-				// case 3: baseHash is not empty, client side note and server side note have same base source, server side modification time is earlier than client side
-				// case 3: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间小于插件端
-				// case 4: baseHash is not empty, client side note and server side note from different base source, server side modification time is later than client side
-				// case 4: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间大于插件端
-				// case 5: baseHash is not empty, client side note and server side note from different base source, server side modification time is earlier than client side
-				// case 5: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间小于插件端
-				// Question 1: Some edited content matches server note snapshot but time dimension differs, they should not be identified as the same version
-				// 问题1. 某编辑内容和服务器笔记快照一致 但是时间维度不一致 不应该将他们识别为同一版本
-				// Question 2: Because historical snapshots are only generated every 30s... client side basehash has a high probability of not finding basehash, and we can't generate a snapshot for every change... too wasteful.
-				// 问题2. 因为历史快照是 30s 才生成一份.. 导致插件端的basehash 有很大概率找不到 basehash, 又不能每次变更都生成一个快照.. 太浪费了
-			} else {
+				// Skip merge and use client to override server directly if no offline sync strategy is set
+				// 没有设置离线同步策略时，跳过合并，直接使用客户端覆盖服务端
+				if c.OfflineSyncStrategy == "" {
+					h.App.Logger().Debug("no offline sync strategy, skipping merge, using client to override server",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, params.Path))
 
-				h.App.Logger().Info("potential merge conflict detected",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.Int64(logger.FieldUID, c.User.UID),
-					zap.String(logger.FieldPath, params.Path),
-					zap.String("serverHash", serverHash),
-					zap.String("baseHash", baseHash),
-					zap.String("contentHash", contentHash),
-					zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
-
-				// Consider read-heavy scenarios, use read lock
-				// 考虑读多写少的场景，使用读锁
-				c.DiffMergePathsMu.RLock()
-				_, ok := c.DiffMergePaths[params.Path]
-				c.DiffMergePathsMu.RUnlock()
-
-				// If current path found in DiffMergePaths, clear path first, then perform merge operation
-				//如果发现当前路径在DiffMergePaths中，先清除Path，再进行合并操作
-				if ok {
 					c.DiffMergePathsMu.Lock()
 					delete(c.DiffMergePaths, params.Path)
 					c.DiffMergePathsMu.Unlock()
-				}
 
-				h.App.Logger().Info("DiffMergePaths check result",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.String(logger.FieldPath, params.Path),
-					zap.Bool("pathInDiffMergePaths", ok))
+					// Skip merge and use client to override server directly when server version is found to be an ancestor of client version
+					// 当发现服务器版本是客户端版本的前身时，跳过合并，直接使用客户端覆盖服务端
+				} else if serverHash == baseHash {
+					h.App.Logger().Debug("server version is client version's ancestor, skipping merge, using client to override server",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, params.Path),
+						zap.String("baseHash", baseHash))
 
-				// If it's a diff merge, perform merge logic
-				// Note: Logic to skip merge based on contentHash matching historical snapshot has been removed
-				// Reason: This logic caused valid user modifications to be silently discarded (when content happened to be same as some historical snapshot)
-				// 如果是 diff 合并，需要执行合并逻辑
-				// 注意：已移除基于 contentHash 匹配历史快照跳过合并的逻辑
-				// 原因：该逻辑会导致用户有效修改被静默丢弃（当内容恰好与某个历史快照相同时）
-				if ok {
+					// Perform merge operation
+					// 执行合并操作
+					// case 1: baseHash is empty, client side creates new note, note with same name exists on server
+					// case 1: baseHash 为空时，插件端 新创建笔记, 服务端存在同名笔记
+					// case 2: baseHash is not empty, client side note and server side note have same base source, server side modification time is later than client side
+					// case 2: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间大于插件端
+					// case 3: baseHash is not empty, client side note and server side note have same base source, server side modification time is earlier than client side
+					// case 3: baseHash 不为空时，插件端 笔记 和 服务端笔记 同一base源 , 服务端笔记版修改时间小于插件端
+					// case 4: baseHash is not empty, client side note and server side note from different base source, server side modification time is later than client side
+					// case 4: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间大于插件端
+					// case 5: baseHash is not empty, client side note and server side note from different base source, server side modification time is earlier than client side
+					// case 5: baseHash 不为空时，插件端 笔记 和 服务端笔记 不同base源, 服务端笔记版修改时间小于插件端
+					// Question 1: Some edited content matches server note snapshot but time dimension differs, they should not be identified as the same version
+					// 问题1. 某编辑内容和服务器笔记快照一致 但是时间维度不一致 不应该将他们识别为同一版本
+					// Question 2: Because historical snapshots are only generated every 30s... client side basehash has a high probability of not finding basehash, and we can't generate a snapshot for every change... too wasteful.
+					// 问题2. 因为历史快照是 30s 才生成一份.. 导致插件端的basehash 有很大概率找不到 basehash, 又不能每次变更都生成一个快照.. 太浪费了
+				} else {
+
+					h.App.Logger().Info("potential merge conflict detected",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, params.Path),
+						zap.String("serverHash", serverHash),
+						zap.String("baseHash", baseHash),
+						zap.String("contentHash", contentHash),
+						zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
+
+					// If it's a diff merge, perform merge logic
+					// Note: Logic to skip merge based on contentHash matching historical snapshot has been removed
+					// Reason: This logic caused valid user modifications to be silently discarded (when content happened to be same as some historical snapshot)
+					// 如果是 diff 合并，需要执行合并逻辑
+					// 注意：已移除基于 contentHash 匹配历史快照跳过合并的逻辑
+					// 原因：该逻辑会导致用户有效修改被静默丢弃（当内容恰好与某个历史快照相同时）
+
 					var baseContent string
 					var baseHashNotFound bool
 
@@ -345,8 +339,10 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					params.Mtime = timex.Now().UnixMilli()
 
 					isExcludeSelf = false
+
 				}
 			}
+
 		}
 
 		_, note, err := noteSvc.ModifyOrCreate(ctx, c.User.UID, params, true)

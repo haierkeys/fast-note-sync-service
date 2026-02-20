@@ -34,20 +34,22 @@ type FolderService interface {
 }
 
 type folderService struct {
-	folderRepo   domain.FolderRepository
-	noteRepo     domain.NoteRepository
-	fileRepo     domain.FileRepository
-	vaultService VaultService
-	sf           singleflight.Group
+	folderRepo    domain.FolderRepository
+	noteRepo      domain.NoteRepository
+	fileRepo      domain.FileRepository
+	vaultService  VaultService
+	sf            singleflight.Group
+	backupService BackupService
 }
 
-func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService) FolderService {
+func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, backupSvc BackupService) FolderService {
 	return &folderService{
-		folderRepo:   folderRepo,
-		noteRepo:     noteRepo,
-		fileRepo:     fileRepo,
-		vaultService: vaultSvc,
-		sf:           singleflight.Group{},
+		folderRepo:    folderRepo,
+		noteRepo:      noteRepo,
+		fileRepo:      fileRepo,
+		vaultService:  vaultSvc,
+		backupService: backupSvc,
+		sf:            singleflight.Group{},
 	}
 }
 
@@ -128,6 +130,10 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
+
 	return s.domainToDTO(f), nil
 }
 
@@ -159,6 +165,10 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 	_, err = s.folderRepo.Update(ctx, f, uid)
 	if err != nil {
 		return nil, code.ErrorFolderDeleteFailed.WithDetails(err.Error())
+	}
+
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
 	}
 
 	return s.domainToDTO(f), nil
@@ -258,6 +268,10 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 	newFolderCreated, err := s.folderRepo.GetByID(ctx, fid, uid)
 	if err != nil {
 		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
 	}
 
 	return s.domainToDTO(oldFolder), s.domainToDTO(newFolderCreated), nil

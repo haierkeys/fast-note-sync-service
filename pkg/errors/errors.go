@@ -110,6 +110,9 @@ func ErrorResponse(c *gin.Context, err error) {
 		// Already AppError, set TraceID
 		// 已经是 AppError，设置 TraceID
 		appErr.TraceID = traceID
+		if appErr.Cause != nil {
+			appErr.Details = append(appErr.Details, appErr.Cause.Error())
+		}
 		c.JSON(http.StatusOK, appErr)
 		return
 	}
@@ -132,8 +135,9 @@ func ErrorResponse(c *gin.Context, err error) {
 	// Unknown error, return internal error
 	// 未知错误，返回内部错误
 	c.JSON(http.StatusOK, &AppError{
-		Code:      500,
-		Message:   "Internal Server Error",
+		Code:      code.ErrorServerInternal.Code(),
+		Message:   code.ErrorServerInternal.Msg(),
+		Details:   code.ErrorServerInternal.WithDetails(err.Error()).Details(),
 		TraceID:   traceID,
 		Timestamp: time.Now(),
 	})

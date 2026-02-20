@@ -6,14 +6,14 @@ import "time"
 // 创建分享请求
 type ShareCreateRequest struct {
 	Vault    string `json:"vault" binding:"required" example:"defaultVault"` // Vault name // 保险库名称
-	Path     string `json:"path" binding:"required"`                         // Resource path // 资源路径
-	PathHash string `json:"path_hash" binding:"required"`                    // Resource path Hash // 资源路径哈希
+	Path     string `json:"path" binding:"required" example:"ReadMe.md"`     // Resource path // 资源路径
+	PathHash string `json:"path_hash" binding:"required" example:"hash123"`  // Resource path Hash // 资源路径哈希
 }
 
 // ShareResourceRequest Request parameters for retrieving a shared resource
 // 分享资源获取请求
 type ShareResourceRequest struct {
-	ID int64 `json:"id" form:"id" binding:"required"` // Resource ID // 资源 ID
+	ID int64 `json:"id" form:"id" binding:"required" example:"1"` // Resource ID // 资源 ID
 }
 
 // ---------------- DTO / Response ----------------

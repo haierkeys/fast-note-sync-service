@@ -257,20 +257,21 @@ DROP TABLE IF EXISTS "backup_config";
 CREATE TABLE "backup_config" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "uid" integer NOT NULL DEFAULT 0,
+    "vault_id" integer NOT NULL DEFAULT 0,
     "type" text DEFAULT '',
     -- full, incremental, sync
     "storage_ids" text DEFAULT '',
     -- JSON array of storage ids: [1, 2]
     "is_enabled" integer DEFAULT 0,
     "cron_strategy" text DEFAULT '',
-    -- daily, weekly, custom
+    -- daily, weekly, monthly, custom
     "cron_expression" text DEFAULT '',
-    "retention_count" integer DEFAULT 10,
-    -- Retention policy
+    "retention_days" integer DEFAULT 10,
+    -- Retention policy (days)
     "last_run_time" datetime DEFAULT NULL,
     "next_run_time" datetime DEFAULT NULL,
     "last_status" integer DEFAULT 0,
-    -- 0: running, 1: success, 2: failed
+    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped
     "last_message" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
@@ -295,7 +296,7 @@ CREATE TABLE "backup_history" (
     "start_time" datetime DEFAULT NULL,
     "end_time" datetime DEFAULT NULL,
     "status" integer DEFAULT 0,
-    -- 0: running, 1: success, 2: failed
+    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped
     "file_size" integer DEFAULT 0,
     -- bytes
     "file_count" integer DEFAULT 0,
