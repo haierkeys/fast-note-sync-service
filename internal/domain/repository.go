@@ -360,6 +360,9 @@ type BackupRepository interface {
 	CreateHistory(ctx context.Context, history *BackupHistory, uid int64) (*BackupHistory, error)
 	// ListHistory 分页获取备份历史记录
 	ListHistory(ctx context.Context, uid int64, configID int64, page, pageSize int) ([]*BackupHistory, int64, error)
+	// ListOldHistory List old history records created before cutoffTime
+	// 获取早于 cutoffTime 的历史记录
+	ListOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) ([]*BackupHistory, error)
 	// DeleteOldHistory Delete old history records created before cutoffTime
 	// 删除早于 cutoffTime 的历史记录
 	DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error
