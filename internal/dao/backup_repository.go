@@ -149,7 +149,7 @@ func (r *backupRepository) DeleteConfig(ctx context.Context, id, uid int64) erro
 
 func (r *backupRepository) ListConfigs(ctx context.Context, uid int64) ([]*domain.BackupConfig, error) {
 	q := r.backup(uid).BackupConfig
-	configs, err := q.WithContext(ctx).Where(q.UID.Eq(uid)).Find()
+	configs, err := q.WithContext(ctx).Where(q.UID.Eq(uid)).Order(q.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (r *backupRepository) CreateHistory(ctx context.Context, history *domain.Ba
 func (r *backupRepository) ListHistory(ctx context.Context, uid int64, configID int64, page, pageSize int) ([]*domain.BackupHistory, int64, error) {
 	q := r.backup(uid).BackupHistory
 	offset := (page - 1) * pageSize
-	modelList, count, err := q.WithContext(ctx).Where(q.UID.Eq(uid), q.ConfigID.Eq(configID)).Order(q.CreatedAt.Desc()).FindByPage(offset, pageSize)
+	modelList, count, err := q.WithContext(ctx).Where(q.UID.Eq(uid), q.ConfigID.Eq(configID)).Order(q.ID.Desc()).FindByPage(offset, pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -257,6 +257,20 @@ func (r *backupRepository) ListHistory(ctx context.Context, uid int64, configID 
 		list = append(list, r.historyToDomain(m))
 	}
 	return list, count, nil
+}
+
+func (r *backupRepository) ListOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) ([]*domain.BackupHistory, error) {
+	q := r.backup(uid).BackupHistory
+	modelList, err := q.WithContext(ctx).Where(q.ConfigID.Eq(configID), q.UID.Eq(uid), q.CreatedAt.Lt(timex.Time(cutoffTime))).Find()
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*domain.BackupHistory
+	for _, m := range modelList {
+		list = append(list, r.historyToDomain(m))
+	}
+	return list, nil
 }
 
 func (r *backupRepository) DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error {

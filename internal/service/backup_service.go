@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,8 @@ import (
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
+
+var errNoUpdates = errors.New("no updates found")
 
 // BackupService defines the business service interface for Backup
 // 定义备份业务服务接口
@@ -263,11 +266,11 @@ func (s *backupService) ExecuteUserBackup(ctx context.Context, uid int64, config
 	}
 	// Manual execution always triggers backup regardless of pending status?
 	// User didn't specify, but usually manual execution implies "force run" or at least "check now".
-	// The performBackup checks pending status for sync/incremental.
+	// The handleBackupSync checks pending status for sync/incremental.
 	// We should probably allow manual run to bypass pending check?
 	// The user request was just "Remove execute all".
-	// Let's keep existing logic: calls performBackup(..., true) which sets pending=true
-	return s.performBackup(ctx, config, true)
+	// Let's keep existing logic: calls handleBackupSync(..., true) which sets pending=true
+	return s.handleBackupSync(ctx, config, true)
 }
 
 // ExecuteTaskBackups Poll and process all scheduled backup tasks
@@ -297,8 +300,8 @@ func (s *backupService) ExecuteTaskBackups(ctx context.Context) error {
 		if !config.IsEnabled {
 			continue
 		}
-		// Check both scheduled time and pending sync flag to trigger performBackup
-		// The actual "should run" logic is inside performBackup
+		// Check both scheduled time and pending sync flag to trigger handleBackupSync
+		// The actual "should run" logic is inside handleBackupSync
 		// Use the pre-calculated pending status
 		pending := userIsPendingMap[config.UID]
 
@@ -306,7 +309,7 @@ func (s *backupService) ExecuteTaskBackups(ctx context.Context) error {
 			s.logger.Info("Triggering backup task check", zap.Int64("uid", config.UID), zap.String("type", config.Type), zap.Bool("pending", pending))
 			go func(cfg *domain.BackupConfig) {
 				// Use service context to support graceful shutdown
-				if err := s.performBackup(s.ctx, cfg, pending); err != nil {
+				if err := s.handleBackupSync(s.ctx, cfg, pending); err != nil {
 					s.logger.Error("Backup execution failed", zap.Int64("uid", cfg.UID), zap.Error(err))
 				}
 			}(config)
@@ -350,9 +353,9 @@ func (s *backupService) calculateNextRunTime(config *domain.BackupConfig) {
 	config.NextRunTime = schedule.Next(time.Now())
 }
 
-// performBackup Core entry point for performing backup/sync
+// handleBackupSync Core entry point for performing backup/sync
 // 执行备份/同步的核心入口
-func (s *backupService) performBackup(ctx context.Context, config *domain.BackupConfig, isPending bool) error {
+func (s *backupService) handleBackupSync(ctx context.Context, config *domain.BackupConfig, isPending bool) error {
 	uid := config.UID
 	s.wg.Add(1)
 	defer s.wg.Done()
@@ -382,10 +385,11 @@ func (s *backupService) performBackup(ctx context.Context, config *domain.Backup
 
 	if !shouldRun {
 		s.logger.Info("Skipping backup: no pending changes", zap.Int64("uid", uid), zap.String("type", config.Type))
-		return nil
+		s.recordNoUpdateHistory(ctx, config, startTime)
+		return s.finishTask(ctx, config, errNoUpdates, 0, 0, startTime)
 	}
 
-	s.logger.Info("performBackup start", zap.Int64("uid", uid), zap.String("type", config.Type))
+	s.logger.Info("handleBackupSync start", zap.Int64("uid", uid), zap.String("type", config.Type))
 
 	// 2. 设置运行状态 (Running)
 	config.LastStatus = domain.BackupStatusRunning // 1: Running
@@ -441,12 +445,18 @@ func (s *backupService) runArchive(ctx context.Context, config *domain.BackupCon
 	vaultName := s.getVaultName(ctx, config.VaultID, uid)
 	zipName := fmt.Sprintf("backup_%s_%d_%s_%s.zip", config.Type, uid, vaultName, startTime.Format("20060102_150405"))
 	zipPath := filepath.Join(os.TempDir(), zipName)
+
 	defer os.Remove(zipPath)
 
 	// 1. 收集资源 (包含笔记和附件)
 	count, size, err := s.exportArchiveFiles(ctx, uid, config.VaultID, tempDir, config.Type == "incremental", lastRun)
 	if err != nil {
 		return 0, 0, err
+	}
+
+	if count == 0 {
+		s.recordNoUpdateHistory(ctx, config, startTime)
+		return 0, 0, errNoUpdates
 	}
 
 	// 2. 压缩打包
@@ -486,6 +496,17 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 		return code.ErrorBackupStorageIDInvalid
 	}
 
+	// First, check if there are any updates across all storages
+	// Note: syncFiles will check all resources and return true if any changes found
+	hasUpdates, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, nil, startTime, lastRun)
+	if err != nil {
+		return err
+	}
+	if !hasUpdates {
+		s.recordNoUpdateHistory(ctx, config, startTime)
+		return errNoUpdates
+	}
+
 	for _, sid := range storageIds {
 		st, err := s.storageService.Get(ctx, config.UID, sid)
 		if err != nil {
@@ -499,7 +520,7 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 		if st.Type == storage.LOCAL {
 			st.CustomPath = filepath.Join(strconv.FormatInt(config.UID, 10), strconv.FormatInt(config.VaultID, 10), st.CustomPath)
 		}
-		s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun)
+		_, _ = s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun)
 	}
 	return nil
 }
@@ -521,23 +542,67 @@ func (s *backupService) finishTask(ctx context.Context, config *domain.BackupCon
 	} else if err == nil {
 		config.LastStatus = domain.BackupStatusSuccess // 2: Success
 		config.LastMessage = "Backup completed successfully"
+	} else if errors.Is(err, errNoUpdates) {
+		config.LastStatus = domain.BackupStatusNoUpdate // 5: No update
+		config.LastMessage = "Backup success, no updates found"
+		err = nil // Clear error for return
 	} else {
 		config.LastStatus = domain.BackupStatusFailed // 3: Failed
 		config.LastMessage = fmt.Sprintf("Backup failed: %v", err)
 	}
 
 	// Use a new context for status update to ensure it persists even if the task context is cancelled
-	saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // Increased timeout for file deletion
 	defer cancel()
 
 	s.calculateNextRunTime(config)
 	s.backupRepo.SaveConfig(saveCtx, config, config.UID)
 
-	// 清理旧版本 (按天数保留)
-	if config.RetentionDays > 0 {
-		// Calculate cutoff time: Now - RetentionDays
-		cutoffTime := time.Now().AddDate(0, 0, -config.RetentionDays)
-		s.backupRepo.DeleteOldHistory(saveCtx, config.UID, config.ID, cutoffTime)
+	if config.RetentionDays != 0 {
+		var cutoffTime time.Time
+		if config.RetentionDays == -1 {
+			// -1 means clean up all history except the current one
+			cutoffTime = startTime
+		} else if config.RetentionDays > 0 {
+			// > 0 means clean up history older than RetentionDays
+			cutoffTime = time.Now().AddDate(0, 0, -config.RetentionDays)
+		}
+
+		if !cutoffTime.IsZero() {
+			// 1. Fetch old history before deleting from DB
+			oldHistories, err := s.backupRepo.ListOldHistory(saveCtx, config.UID, config.ID, cutoffTime)
+			if err != nil {
+				s.logger.Error("Failed to list old backup history for cleanup", zap.Error(err))
+			} else {
+				// 2. Delete corresponding files in storage for non-sync backups
+				for _, history := range oldHistories {
+					if history.Type != "sync" && history.FilePath != "" {
+						st, err := s.storageService.Get(saveCtx, history.UID, history.StorageID)
+						if err != nil || st == nil || !st.IsEnabled {
+							s.logger.Warn("Could not get storage client for cleanup or storage disabled", zap.Int64("sid", history.StorageID), zap.Error(err))
+							continue
+						}
+
+						client, err := s.getStorageClient(saveCtx, history.UID, st)
+						if err != nil {
+							s.logger.Warn("Failed to initialize storage client for cleanup", zap.Error(err))
+							continue
+						}
+
+						if err := client.Delete(history.FilePath); err != nil {
+							s.logger.Warn("Failed to delete old backup file", zap.String("file", history.FilePath), zap.Error(err))
+						} else {
+							s.logger.Info("Successfully deleted old backup file", zap.String("file", history.FilePath))
+						}
+					}
+				}
+			}
+
+			// 3. Delete records from database
+			if err := s.backupRepo.DeleteOldHistory(saveCtx, config.UID, config.ID, cutoffTime); err != nil {
+				s.logger.Error("Failed to delete old backup history records from database", zap.Error(err))
+			}
+		}
 	}
 
 	return err
@@ -565,7 +630,8 @@ func (s *backupService) exportArchiveFiles(ctx context.Context, uid, vaultID int
 		if isDeleted {
 			return nil
 		}
-		destPath := filepath.Join(targetDir, v.Name, path)
+
+		destPath := filepath.Join(targetDir, path)
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 			return err
 		}
@@ -631,46 +697,65 @@ func (s *backupService) uploadArchive(ctx context.Context, uid, configId int64, 
 }
 
 // syncFiles Sync file changes to specified storage target (supports add, modify, delete)
+// returns (hasChanges, error)
 // 将文件变更同步到指定的存储目标 (支持新增、修改和删除)
-func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId int64, stDTO *dto.StorageDTO, startTime time.Time, lastRun time.Time) {
-	h := &domain.BackupHistory{
-		UID:       uid,
-		ConfigID:  configId,
-		StorageID: stDTO.ID,
-		Type:      "sync",
-		StartTime: startTime,
-		Status:    domain.BackupStatusRunning,
-	}
+func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId int64, stDTO *dto.StorageDTO, startTime time.Time, lastRun time.Time) (bool, error) {
+	var h *domain.BackupHistory
+	var client pkgstorage.Storager
 
-	h, err := s.backupRepo.CreateHistory(ctx, h, uid)
-	if err != nil {
-		s.logger.Error("Failed to create sync history", zap.Error(err))
-		return
-	}
+	if stDTO != nil {
+		h = &domain.BackupHistory{
+			UID:       uid,
+			ConfigID:  configId,
+			StorageID: stDTO.ID,
+			Type:      "sync",
+			StartTime: startTime,
+			Status:    domain.BackupStatusRunning,
+		}
 
-	client, err := s.getStorageClient(ctx, uid, stDTO)
-	if err != nil {
-		s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
-		return
+		var err error
+		h, err = s.backupRepo.CreateHistory(ctx, h, uid)
+		if err != nil {
+			s.logger.Error("Failed to create sync history", zap.Error(err))
+			return false, err
+		}
+
+		client, err = s.getStorageClient(ctx, uid, stDTO)
+		if err != nil {
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
+			return false, err
+		}
 	}
 
 	if vaultID <= 0 {
-		s.updateHistory(ctx, h, domain.BackupStatusFailed, code.ErrorBackupVaultRequired.Msg())
-		return
+		if h != nil {
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, code.ErrorBackupVaultRequired.Msg())
+		}
+		return false, code.ErrorBackupVaultRequired
 	}
 
 	vault, err := s.vaultRepo.GetByID(ctx, vaultID, uid)
 	if err != nil {
-		s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
-		return
+		if h != nil {
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
+		}
+		return false, err
 	}
 	if vault == nil {
-		s.updateHistory(ctx, h, domain.BackupStatusFailed, code.ErrorVaultNotFound.Msg())
-		return
+		if h != nil {
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, code.ErrorVaultNotFound.Msg())
+		}
+		return false, code.ErrorVaultNotFound
 	}
 
 	totalCount, totalSize := int64(0), int64(0)
+	hasChanges := false
 	err = s.forEachResource(ctx, uid, vault, !lastRun.IsZero(), lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, updatedAt time.Time, isDeleted bool) error {
+		hasChanges = true
+		if client == nil {
+			return nil // Just checking for changes
+		}
+
 		// Remove VaultName from path as per user request
 		// 根据用户要求移除 VaultName
 		objName := path
@@ -699,12 +784,22 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 	})
 
 	if err != nil {
-		s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
-	} else {
+		if h != nil {
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, err.Error())
+		}
+		return hasChanges, err
+	}
+
+	if h != nil {
 		h.FileCount = totalCount
 		h.FileSize = totalSize
-		s.updateHistory(ctx, h, domain.BackupStatusSuccess, "Success")
+		if hasChanges {
+			s.updateHistory(ctx, h, domain.BackupStatusSuccess, "Success")
+		} else {
+			s.updateHistory(ctx, h, domain.BackupStatusNoUpdate, "No updates")
+		}
 	}
+	return hasChanges, nil
 }
 
 type resourceAction func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, updatedAt time.Time, isDeleted bool) error
@@ -721,15 +816,7 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 	var notes []*domain.Note
 	var err error
 	if incremental && !lastRun.IsZero() {
-		// Use ListByUpdatedTimestamp or similar logic if available, otherwise fallback or implement
-		// Assuming ListByUpdatedTimestamp exists and logic is correct
-		// But wait, the previous code block used s.noteRepo.ListByUpdatedTimestamp...
-		// Let's check if that method exists or if I need to use List with filters.
-		// For now, I'll stick to the logic that was there, just fixing the function structure.
-		// Actually, I don't see ListByUpdatedTimestamp in the previous snippet, I see it in `exportArchiveFiles` call?
-		// No, it was inside forEachResource loop.
-		// Wait, the snippet I viewed had `s.noteRepo.ListByUpdatedTimestamp`.
-		notes, err = s.noteRepo.ListByUpdatedTimestamp(ctx, lastRun.Unix(), v.ID, uid)
+		notes, err = s.noteRepo.ListByUpdatedTimestamp(ctx, lastRun.UnixMilli(), v.ID, uid)
 	} else {
 		// List(ctx, vaultID, page, pageSize, uid, keyword, isDeleted, sort, isAsc, tag, folder)
 		notes, err = s.noteRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", false, "", "")
@@ -761,7 +848,7 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 	// 2. 处理附件
 	var files []*domain.File
 	if incremental && !lastRun.IsZero() {
-		files, err = s.fileRepo.ListByUpdatedTimestamp(ctx, lastRun.Unix(), v.ID, uid)
+		files, err = s.fileRepo.ListByUpdatedTimestamp(ctx, lastRun.UnixMilli(), v.ID, uid)
 	} else {
 		files, err = s.fileRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", "")
 	}
@@ -817,6 +904,30 @@ func (s *backupService) updateHistory(ctx context.Context, h *domain.BackupHisto
 	defer cancel()
 
 	s.backupRepo.CreateHistory(saveCtx, h, h.UID)
+}
+
+func (s *backupService) recordNoUpdateHistory(ctx context.Context, config *domain.BackupConfig, startTime time.Time) {
+	var storageIds []int64
+	if err := json.Unmarshal([]byte(config.StorageIds), &storageIds); err != nil {
+		return
+	}
+
+	for _, sid := range storageIds {
+		h := &domain.BackupHistory{
+			UID:       config.UID,
+			ConfigID:  config.ID,
+			StorageID: sid,
+			Type:      config.Type,
+			StartTime: startTime,
+			Status:    domain.BackupStatusNoUpdate,
+			Message:   "No updates",
+			EndTime:   time.Now(),
+		}
+		// Use a new context for history update
+		saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		s.backupRepo.CreateHistory(saveCtx, h, config.UID)
+		cancel()
+	}
 }
 
 const syncDebounceDelay = 30 * time.Second
