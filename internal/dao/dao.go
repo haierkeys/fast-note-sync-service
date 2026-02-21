@@ -510,6 +510,8 @@ func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
 		return NewBackupRepository(d).(daoDBCustomKey).GetKey(uid)
 	case "Storage":
 		return "" // Storage is in main DB
+	case "GitSyncConfig":
+		return NewGitSyncRepository(d).(daoDBCustomKey).GetKey(uid)
 	default:
 		return ""
 	}

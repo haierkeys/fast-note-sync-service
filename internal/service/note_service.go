@@ -117,30 +117,32 @@ type NoteService interface {
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
-	noteRepo      domain.NoteRepository     // Note repository // 笔记仓库
-	noteLinkRepo  domain.NoteLinkRepository // Note link repository // 笔记链接仓库
-	fileRepo      domain.FileRepository     // File repository // 文件仓库
-	vaultService  VaultService              // Vault service // 仓库服务
-	folderService FolderService             // Folder service // 文件夹服务
-	sf            *singleflight.Group       // Singleflight group // 并发请求合并组
-	clientName    string                    // Client name // 客户端名称
-	clientVer     string                    // Client version // 客户端版本
-	config        *ServiceConfig            // Service configuration // 服务配置
-	backupService BackupService             // Backup service // 备份服务
+	noteRepo       domain.NoteRepository     // Note repository // 笔记仓库
+	noteLinkRepo   domain.NoteLinkRepository // Note link repository // 笔记链接仓库
+	fileRepo       domain.FileRepository     // File repository // 文件仓库
+	vaultService   VaultService              // Vault service // 仓库服务
+	folderService  FolderService             // Folder service // 文件夹服务
+	sf             *singleflight.Group       // Singleflight group // 并发请求合并组
+	clientName     string                    // Client name // 客户端名称
+	clientVer      string                    // Client version // 客户端版本
+	config         *ServiceConfig            // Service configuration // 服务配置
+	backupService  BackupService             // Backup service // 备份服务
+	gitSyncService GitSyncService            // Git sync service // Git 同步服务
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, config *ServiceConfig) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) NoteService {
 	return &noteService{
-		noteRepo:      noteRepo,
-		noteLinkRepo:  noteLinkRepo,
-		fileRepo:      fileRepo,
-		vaultService:  vaultSvc,
-		folderService: folderSvc,
-		backupService: backupSvc,
-		sf:            &singleflight.Group{},
-		config:        config,
+		noteRepo:       noteRepo,
+		noteLinkRepo:   noteLinkRepo,
+		fileRepo:       fileRepo,
+		vaultService:   vaultSvc,
+		folderService:  folderSvc,
+		backupService:  backupSvc,
+		gitSyncService: gitSyncSvc,
+		sf:             &singleflight.Group{},
+		config:         config,
 	}
 }
 
@@ -148,16 +150,17 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 // WithClient 设置客户端信息，返回新 NoteService 实例
 func (s *noteService) WithClient(name, version string) NoteService {
 	return &noteService{
-		noteRepo:      s.noteRepo,
-		noteLinkRepo:  s.noteLinkRepo,
-		fileRepo:      s.fileRepo,
-		vaultService:  s.vaultService,
-		folderService: s.folderService,
-		sf:            s.sf,
-		clientName:    name,
-		clientVer:     version,
-		config:        s.config,
-		backupService: s.backupService,
+		noteRepo:       s.noteRepo,
+		noteLinkRepo:   s.noteLinkRepo,
+		fileRepo:       s.fileRepo,
+		vaultService:   s.vaultService,
+		folderService:  s.folderService,
+		sf:             s.sf,
+		clientName:     name,
+		clientVer:      version,
+		config:         s.config,
+		backupService:  s.backupService,
+		gitSyncService: s.gitSyncService,
 	}
 }
 
@@ -306,6 +309,9 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			note.Mtime = params.Mtime
 			if s.backupService != nil {
 				s.backupService.NotifyUpdated(uid)
+			}
+			if s.gitSyncService != nil {
+				s.gitSyncService.NotifyUpdated(uid)
 			}
 			return isNew, s.domainToDTO(note), nil
 		}
