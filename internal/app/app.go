@@ -58,6 +58,7 @@ type App struct {
 	FolderRepo      domain.FolderRepository
 	StorageRepo     domain.StorageRepository
 	BackupRepo      domain.BackupRepository
+	GitSyncRepo     domain.GitSyncRepository
 
 	// Service layer
 	// Service 层
@@ -73,6 +74,7 @@ type App struct {
 	FolderService      service.FolderService
 	StorageService     service.StorageService
 	BackupService      service.BackupService
+	GitSyncService     service.GitSyncService
 
 	// Infrastructure components
 	// 基础设施组件
@@ -184,6 +186,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.FolderRepo = dao.NewFolderRepository(a.Dao)
 	a.StorageRepo = dao.NewStorageRepository(a.Dao)
 	a.BackupRepo = dao.NewBackupRepository(a.Dao)
+	a.GitSyncRepo = dao.NewGitSyncRepository(a.Dao)
 
 	// Create ServiceConfig (extract config needed by Service layer from AppConfig)
 	// 创建 ServiceConfig（从 AppConfig 提取 Service 层需要的配置）
@@ -203,11 +206,12 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.VaultService = service.NewVaultService(a.VaultRepo)
 	a.StorageService = service.NewStorageService(a.StorageRepo, &a.config.Storage)
 	a.BackupService = service.NewBackupService(a.BackupRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, a.StorageService, &a.config.Storage, logger)
+	a.GitSyncService = service.NewGitSyncService(a.GitSyncRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, a.logger)
 
 	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService, a.BackupService)
-	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, a.FolderService, a.BackupService, svcConfig)
+	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
-	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, a.BackupService, svcConfig)
+	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
 	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, a.FolderService, a.NoteService, logger, &svcConfig.App)
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)

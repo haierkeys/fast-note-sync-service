@@ -208,6 +208,13 @@ const docTemplate = `{
                 "summary": "Update backup configuration",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Backup Parameters",
                         "name": "params",
                         "in": "body",
@@ -271,6 +278,13 @@ const docTemplate = `{
                 "summary": "Delete backup configuration",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
                         "name": "id",
@@ -319,6 +333,15 @@ const docTemplate = `{
                     "Backup"
                 ],
                 "summary": "Get backup configurations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -372,6 +395,13 @@ const docTemplate = `{
                 "summary": "Trigger a backup manually",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Backup Execute Parameters",
                         "name": "params",
                         "in": "body",
@@ -424,6 +454,13 @@ const docTemplate = `{
                 ],
                 "summary": "Get backup history list",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "example": 1,
@@ -1384,6 +1421,388 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/git-sync/config": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Update git sync configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Git Sync Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GitSyncConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.GitSyncConfigDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Delete git sync configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Git Sync ID",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GitSyncDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/git-sync/config/clean": {
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Clean local git workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Clean Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GitSyncCleanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/git-sync/config/execute": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Trigger a manual git sync",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Execute Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GitSyncExecuteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/git-sync/configs": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Get git sync configurations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.GitSyncConfigDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/git-sync/validate": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Validate git sync parameters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Validation Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GitSyncValidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
                         }
                     }
                 }
@@ -3746,7 +4165,7 @@ const docTemplate = `{
                 },
                 "retentionDays": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": -1,
                     "example": 7
                 },
                 "storageIds": {
@@ -4029,6 +4448,150 @@ const docTemplate = `{
                 "rootNoteCount": {
                     "description": "Note count in root // 根目录中的笔记数量",
                     "type": "integer"
+                }
+            }
+        },
+        "dto.GitSyncCleanRequest": {
+            "type": "object",
+            "required": [
+                "configId"
+            ],
+            "properties": {
+                "configId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.GitSyncConfigDTO": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "分支",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "delay": {
+                    "description": "延迟时间（秒）",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "任务ID",
+                    "type": "integer"
+                },
+                "isEnabled": {
+                    "description": "是否启用",
+                    "type": "boolean"
+                },
+                "lastMessage": {
+                    "description": "上次运行结果消息",
+                    "type": "string"
+                },
+                "lastStatus": {
+                    "description": "上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed)",
+                    "type": "integer"
+                },
+                "lastSyncTime": {
+                    "description": "上次同步时间",
+                    "type": "string"
+                },
+                "repoUrl": {
+                    "description": "仓库地址",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "用户ID",
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "description": "更新时间",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string"
+                },
+                "vault": {
+                    "description": "关联库名称",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GitSyncConfigRequest": {
+            "type": "object",
+            "required": [
+                "repoUrl"
+            ],
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "delay": {
+                    "description": "延迟时间（秒）",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isEnabled": {
+                    "type": "boolean"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "repoUrl": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "vault": {
+                    "description": "关联笔记本名称",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GitSyncDeleteRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.GitSyncExecuteRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.GitSyncValidateRequest": {
+            "type": "object",
+            "required": [
+                "repoUrl"
+            ],
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "repoUrl": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },

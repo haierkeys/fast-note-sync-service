@@ -115,4 +115,9 @@ var (
 	// --- Storage Related (500-509) ---
 	ErrorStorageNotFound     = NewError(500)
 	ErrorStorageTypeDisabled = NewError(501)
+
+	// --- Git Sync Related (510-519) ---
+	ErrorGitSyncNotFound       = NewError(510)
+	ErrorGitSyncTaskRunning    = NewError(511)
+	ErrorGitSyncValidateFailed = NewError(512)
 )

@@ -111,6 +111,11 @@ var en_messages = map[int]string{
 	497: "Note repository ID is required",
 	498: "Invalid storage ID list in sync & backup task settings",
 	499: "Sync & backup task is disabled",
-	500: "Storage configuration not found",
-	501: "Storage type disabled",
+	500: "Storage configuration does not exist",
+	501: "This storage type has been disabled",
+
+	// Git Sync
+	510: "Git sync configuration does not exist",
+	511: "Git sync task is already running",
+	512: "Git validation failed",
 }

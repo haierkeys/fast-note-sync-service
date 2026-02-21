@@ -98,28 +98,30 @@ type FileService interface {
 // fileService implementation of FileService interface
 // fileService 实现 FileService 接口
 type fileService struct {
-	fileRepo      domain.FileRepository // File repository // 文件仓库
-	noteRepo      domain.NoteRepository // Note repository // 笔记仓库
-	vaultService  VaultService          // Vault service // 仓库服务
-	folderService FolderService         // Folder service // 文件夹服务
-	sf            *singleflight.Group   // Singleflight group // 并发请求合并组
-	clientName    string                // Client name // 客户端名称
-	clientVer     string                // Client version // 客户端版本
-	config        *ServiceConfig        // Service configuration // 服务配置
-	backupService BackupService         // Backup service // 备份服务
+	fileRepo       domain.FileRepository // File repository // 文件仓库
+	noteRepo       domain.NoteRepository // Note repository // 笔记仓库
+	vaultService   VaultService          // Vault service // 仓库服务
+	folderService  FolderService         // Folder service // 文件夹服务
+	sf             *singleflight.Group   // Singleflight group // 并发请求合并组
+	clientName     string                // Client name // 客户端名称
+	clientVer      string                // Client version // 客户端版本
+	config         *ServiceConfig        // Service configuration // 服务配置
+	backupService  BackupService         // Backup service // 备份服务
+	gitSyncService GitSyncService        // Git sync service // Git 同步服务
 }
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, config *ServiceConfig) FileService {
+func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) FileService {
 	return &fileService{
-		fileRepo:      fileRepo,
-		noteRepo:      noteRepo,
-		vaultService:  vaultSvc,
-		folderService: folderSvc,
-		backupService: backupSvc,
-		sf:            &singleflight.Group{},
-		config:        config,
+		fileRepo:       fileRepo,
+		noteRepo:       noteRepo,
+		vaultService:   vaultSvc,
+		folderService:  folderSvc,
+		backupService:  backupSvc,
+		gitSyncService: gitSyncSvc,
+		sf:             &singleflight.Group{},
+		config:         config,
 	}
 }
 
@@ -240,6 +242,9 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			file.Mtime = params.Mtime
 			if s.backupService != nil {
 				s.backupService.NotifyUpdated(uid)
+			}
+			if s.gitSyncService != nil {
+				s.gitSyncService.NotifyUpdated(uid)
 			}
 			return isNew, s.domainToDTO(file), nil
 		}
@@ -762,15 +767,16 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 // WithClient 设置客户端信息，返回新的 FileService 实例
 func (s *fileService) WithClient(name, version string) FileService {
 	return &fileService{
-		fileRepo:      s.fileRepo,
-		noteRepo:      s.noteRepo,
-		vaultService:  s.vaultService,
-		folderService: s.folderService,
-		sf:            s.sf,
-		clientName:    name,
-		clientVer:     version,
-		config:        s.config,
-		backupService: s.backupService,
+		fileRepo:       s.fileRepo,
+		noteRepo:       s.noteRepo,
+		vaultService:   s.vaultService,
+		folderService:  s.folderService,
+		sf:             s.sf,
+		clientName:     name,
+		clientVer:      version,
+		config:         s.config,
+		backupService:  s.backupService,
+		gitSyncService: s.gitSyncService,
 	}
 }
 

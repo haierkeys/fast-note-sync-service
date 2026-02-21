@@ -310,3 +310,26 @@ CREATE TABLE "backup_history" (
 CREATE INDEX "idx_backup_history_uid" ON "backup_history" ("uid", "created_at" DESC);
 
 CREATE INDEX "idx_backup_history_config_id" ON "backup_history" ("config_id");
+
+-- ----------------------------
+-- Table structure for git_sync_config
+-- ----------------------------
+DROP TABLE IF EXISTS "git_sync_config";
+CREATE TABLE "git_sync_config" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "vault_id" integer NOT NULL DEFAULT 0,
+    "repo_url" text DEFAULT '',          -- Git 仓库地址, 例如 https://github.com/user/repo.git
+    "username" text DEFAULT '',          -- 认证用户名
+    "password" text DEFAULT '',          -- 认证密码或 Personal Access Token
+    "branch" text DEFAULT 'main',        -- 分支名
+    "is_enabled" integer DEFAULT 0,      -- 是否启用自动同步
+    "delay" integer DEFAULT 0,           -- 延迟时间（例如同步前等待的时间，单位可以是秒或分钟）
+    "last_sync_time" datetime DEFAULT NULL, -- 上次同步时间
+    "last_status" integer DEFAULT 0,     -- 0: 闲置, 1: 运行中, 2: 成功, 3: 失败
+    "last_message" text DEFAULT '',      -- 同步结果或错误信息
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_git_sync_config_uid" ON "git_sync_config" ("uid");
