@@ -167,7 +167,7 @@ func (r *storageRepository) Update(ctx context.Context, storage *domain.Storage,
 // List 获取用户的存储配置列表
 func (r *storageRepository) List(ctx context.Context, uid int64) ([]*domain.Storage, error) {
 	u := r.storage(uid).Storage
-	modelList, err := u.WithContext(ctx).Where(u.UID.Eq(uid), u.IsDeleted.Eq(0)).Order(u.CreatedAt.Desc()).Find()
+	modelList, err := u.WithContext(ctx).Where(u.UID.Eq(uid), u.IsDeleted.Eq(0)).Order(u.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}

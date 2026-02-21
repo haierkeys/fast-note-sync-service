@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // Zip compresses files or directories into a zip file
@@ -21,14 +20,8 @@ func Zip(source, target string) error {
 	archive := zip.NewWriter(zipFile)
 	defer archive.Close()
 
-	info, err := os.Stat(source)
-	if err != nil {
+	if _, err := os.Stat(source); err != nil {
 		return err
-	}
-
-	var baseDir string
-	if info.IsDir() {
-		baseDir = filepath.Base(source)
 	}
 
 	filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
@@ -36,15 +29,24 @@ func Zip(source, target string) error {
 			return err
 		}
 
+		// 获取相对于 source 的路径
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+
+		// 跳过根目录本身
+		if relPath == "." {
+			return nil
+		}
+
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			return err
 		}
 
-		if baseDir != "" {
-			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
-		}
-
+		// 使用相对路径作为压缩包内的文件名
+		header.Name = relPath
 		if info.IsDir() {
 			header.Name += "/"
 		} else {

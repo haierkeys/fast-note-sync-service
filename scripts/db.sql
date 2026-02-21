@@ -271,7 +271,7 @@ CREATE TABLE "backup_config" (
     "last_run_time" datetime DEFAULT NULL,
     "next_run_time" datetime DEFAULT NULL,
     "last_status" integer DEFAULT 0,
-    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped
+    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: Success but no update
     "last_message" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
@@ -296,7 +296,7 @@ CREATE TABLE "backup_history" (
     "start_time" datetime DEFAULT NULL,
     "end_time" datetime DEFAULT NULL,
     "status" integer DEFAULT 0,
-    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped
+    -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: Success but no update
     "file_size" integer DEFAULT 0,
     -- bytes
     "file_count" integer DEFAULT 0,

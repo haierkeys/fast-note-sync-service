@@ -3,11 +3,12 @@ package domain
 import "time"
 
 const (
-	BackupStatusIdle    = 0
-	BackupStatusRunning = 1
-	BackupStatusSuccess = 2
-	BackupStatusFailed  = 3
-	BackupStatusStopped = 4
+	BackupStatusIdle     = 0
+	BackupStatusRunning  = 1
+	BackupStatusSuccess  = 2
+	BackupStatusFailed   = 3
+	BackupStatusStopped  = 4
+	BackupStatusNoUpdate = 5
 )
 
 // BackupConfig 备份配置领域模型
@@ -23,7 +24,7 @@ type BackupConfig struct {
 	RetentionDays  int       // 保留天数
 	LastRunTime    time.Time // 上次运行时间
 	NextRunTime    time.Time // 下次运行时间
-	LastStatus     int       // 上次状态 (0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped)
+	LastStatus     int       // 上次状态 (0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: SuccessNoUpdate)
 	LastMessage    string    // 上次运行结果消息
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -38,7 +39,7 @@ type BackupHistory struct {
 	Type      string // full, incremental, sync
 	StartTime time.Time
 	EndTime   time.Time
-	Status    int // 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped
+	Status    int // 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: SuccessNoUpdate
 	FileSize  int64
 	FileCount int64
 	Message   string

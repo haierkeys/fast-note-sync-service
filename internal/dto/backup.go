@@ -11,7 +11,7 @@ type BackupConfigRequest struct {
 	IsEnabled      bool   `json:"isEnabled" form:"isEnabled" example:"true"`
 	CronStrategy   string `json:"cronStrategy" form:"cronStrategy" binding:"required,oneof=daily weekly monthly custom" example:"daily"`
 	CronExpression string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`
-	RetentionDays  int    `json:"retentionDays" form:"retentionDays" binding:"min=1" example:"7"`
+	RetentionDays  int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`
 }
 
 // BackupExecuteRequest 备份执行请求

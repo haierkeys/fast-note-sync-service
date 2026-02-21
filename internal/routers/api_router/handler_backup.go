@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
@@ -110,8 +109,6 @@ func (h *BackupHandler) DeleteConfig(c *gin.Context) {
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
-
-	dump.P(params)
 
 	uid := pkgapp.GetUID(c)
 	if uid == 0 {
