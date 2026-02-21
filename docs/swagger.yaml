@@ -344,7 +344,7 @@ definitions:
         type: boolean
       retentionDays:
         example: 7
-        minimum: 1
+        minimum: -1
         type: integer
       storageIds:
         example: '[1, 2]'
@@ -556,6 +556,105 @@ definitions:
       rootNoteCount:
         description: Note count in root // 根目录中的笔记数量
         type: integer
+    type: object
+  dto.GitSyncCleanRequest:
+    properties:
+      configId:
+        type: integer
+    required:
+    - configId
+    type: object
+  dto.GitSyncConfigDTO:
+    properties:
+      branch:
+        description: 分支
+        type: string
+      createdAt:
+        description: 创建时间
+        type: string
+      delay:
+        description: 延迟时间（秒）
+        type: integer
+      id:
+        description: 任务ID
+        type: integer
+      isEnabled:
+        description: 是否启用
+        type: boolean
+      lastMessage:
+        description: 上次运行结果消息
+        type: string
+      lastStatus:
+        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed)
+        type: integer
+      lastSyncTime:
+        description: 上次同步时间
+        type: string
+      repoUrl:
+        description: 仓库地址
+        type: string
+      uid:
+        description: 用户ID
+        type: integer
+      updatedAt:
+        description: 更新时间
+        type: string
+      username:
+        description: 用户名
+        type: string
+      vault:
+        description: 关联库名称
+        type: string
+    type: object
+  dto.GitSyncConfigRequest:
+    properties:
+      branch:
+        type: string
+      delay:
+        description: 延迟时间（秒）
+        type: integer
+      id:
+        type: integer
+      isEnabled:
+        type: boolean
+      password:
+        type: string
+      repoUrl:
+        type: string
+      username:
+        type: string
+      vault:
+        description: 关联笔记本名称
+        type: string
+    required:
+    - repoUrl
+    type: object
+  dto.GitSyncDeleteRequest:
+    properties:
+      id:
+        type: integer
+    required:
+    - id
+    type: object
+  dto.GitSyncExecuteRequest:
+    properties:
+      id:
+        type: integer
+    required:
+    - id
+    type: object
+  dto.GitSyncValidateRequest:
+    properties:
+      branch:
+        type: string
+      password:
+        type: string
+      repoUrl:
+        type: string
+      username:
+        type: string
+    required:
+    - repoUrl
     type: object
   dto.NoteAppendRequest:
     properties:
@@ -1315,6 +1414,11 @@ paths:
   /api/backup/config:
     delete:
       parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
       - example: 1
         in: query
         name: id
@@ -1347,6 +1451,11 @@ paths:
       consumes:
       - application/json
       parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
       - description: Backup Parameters
         in: body
         name: params
@@ -1384,6 +1493,12 @@ paths:
       - Backup
   /api/backup/configs:
     get:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1414,6 +1529,11 @@ paths:
   /api/backup/execute:
     post:
       parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
       - description: Backup Execute Parameters
         in: body
         name: params
@@ -1447,6 +1567,11 @@ paths:
   /api/backup/historys:
     get:
       parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
       - example: 1
         in: query
         name: configId
@@ -2052,6 +2177,243 @@ paths:
       summary: Get folder list
       tags:
       - Folder
+  /api/git-sync/config:
+    delete:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Git Sync ID
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GitSyncDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Delete git sync configuration
+      tags:
+      - GitSync
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Git Sync Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GitSyncConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.GitSyncConfigDTO'
+              type: object
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update git sync configuration
+      tags:
+      - GitSync
+  /api/git-sync/config/clean:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Clean Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GitSyncCleanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Clean local git workspace
+      tags:
+      - GitSync
+  /api/git-sync/config/execute:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Execute Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GitSyncExecuteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Trigger a manual git sync
+      tags:
+      - GitSync
+  /api/git-sync/configs:
+    get:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.GitSyncConfigDTO'
+                  type: array
+              type: object
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get git sync configurations
+      tags:
+      - GitSync
+  /api/git-sync/validate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Validation Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GitSyncValidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Validate git sync parameters
+      tags:
+      - GitSync
   /api/health:
     get:
       description: Check service health status, including database connection

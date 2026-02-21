@@ -29,6 +29,7 @@ func NewBackupHandler(a *app.App) *BackupHandler {
 // @Summary Get backup configurations
 // @Tags Backup
 // @Security UserAuthToken
+// @Param token header string true "Auth Token"
 // @Produce json
 // @Success 200 {object} pkgapp.Res{data=[]dto.BackupConfigDTO} "Success"
 // @Failure 401 {object} pkgapp.Res "Token Required"
@@ -57,6 +58,7 @@ func (h *BackupHandler) GetConfigs(c *gin.Context) {
 // @Summary Update backup configuration
 // @Tags Backup
 // @Security UserAuthToken
+// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.BackupConfigRequest true "Backup Parameters"
@@ -94,6 +96,7 @@ func (h *BackupHandler) UpdateConfig(c *gin.Context) {
 // @Summary Delete backup configuration
 // @Tags Backup
 // @Security UserAuthToken
+// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.BackupExecuteRequest true "Config ID"
 // @Success 200 {object} pkgapp.Res "Success"
@@ -130,6 +133,7 @@ func (h *BackupHandler) DeleteConfig(c *gin.Context) {
 // @Summary Get backup history list
 // @Tags Backup
 // @Security UserAuthToken
+// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.BackupHistoryListRequest true "Backup History List Parameters"
 // @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.BackupHistoryDTO}} "Success"
@@ -175,6 +179,7 @@ func (h *BackupHandler) ListHistory(c *gin.Context) {
 // @Summary Trigger a backup manually
 // @Tags Backup
 // @Security UserAuthToken
+// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params body dto.BackupExecuteRequest true "Backup Execute Parameters"
 // @Success 200 {object} pkgapp.Res "Success"

@@ -367,3 +367,19 @@ type BackupRepository interface {
 	// 删除早于 cutoffTime 的历史记录
 	DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error
 }
+
+// GitSyncRepository Git 同步任务仓储接口
+type GitSyncRepository interface {
+	// GetByID 根据ID获取 Git 同步任务
+	GetByID(ctx context.Context, id, uid int64) (*GitSyncConfig, error)
+	// GetByVaultID 根据 VaultID 获取 Git 同步任务
+	GetByVaultID(ctx context.Context, vaultID, uid int64) (*GitSyncConfig, error)
+	// Save 保存 (创建或更新) Git 同步任务
+	Save(ctx context.Context, config *GitSyncConfig, uid int64) (*GitSyncConfig, error)
+	// Delete 删除 Git 同步任务
+	Delete(ctx context.Context, id, uid int64) error
+	// List 获取用户的 Git 同步任务列表
+	List(ctx context.Context, uid int64) ([]*GitSyncConfig, error)
+	// ListEnabled 获取所有已启用的 Git 同步任务 (跨用户)
+	ListEnabled(ctx context.Context) ([]*GitSyncConfig, error)
+}

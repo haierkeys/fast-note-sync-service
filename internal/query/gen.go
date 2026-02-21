@@ -22,6 +22,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		BackupHistory: newBackupHistory(db, opts...),
 		File:          newFile(db, opts...),
 		Folder:        newFolder(db, opts...),
+		GitSyncConfig: newGitSyncConfig(db, opts...),
 		Note:          newNote(db, opts...),
 		NoteHistory:   newNoteHistory(db, opts...),
 		NoteLink:      newNoteLink(db, opts...),
@@ -40,6 +41,7 @@ type Query struct {
 	BackupHistory backupHistory
 	File          file
 	Folder        folder
+	GitSyncConfig gitSyncConfig
 	Note          note
 	NoteHistory   noteHistory
 	NoteLink      noteLink
@@ -59,6 +61,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		BackupHistory: q.BackupHistory.clone(db),
 		File:          q.File.clone(db),
 		Folder:        q.Folder.clone(db),
+		GitSyncConfig: q.GitSyncConfig.clone(db),
 		Note:          q.Note.clone(db),
 		NoteHistory:   q.NoteHistory.clone(db),
 		NoteLink:      q.NoteLink.clone(db),
@@ -85,6 +88,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		BackupHistory: q.BackupHistory.replaceDB(db),
 		File:          q.File.replaceDB(db),
 		Folder:        q.Folder.replaceDB(db),
+		GitSyncConfig: q.GitSyncConfig.replaceDB(db),
 		Note:          q.Note.replaceDB(db),
 		NoteHistory:   q.NoteHistory.replaceDB(db),
 		NoteLink:      q.NoteLink.replaceDB(db),
@@ -101,6 +105,7 @@ type queryCtx struct {
 	BackupHistory IBackupHistoryDo
 	File          IFileDo
 	Folder        IFolderDo
+	GitSyncConfig IGitSyncConfigDo
 	Note          INoteDo
 	NoteHistory   INoteHistoryDo
 	NoteLink      INoteLinkDo
@@ -117,6 +122,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		BackupHistory: q.BackupHistory.WithContext(ctx),
 		File:          q.File.WithContext(ctx),
 		Folder:        q.Folder.WithContext(ctx),
+		GitSyncConfig: q.GitSyncConfig.WithContext(ctx),
 		Note:          q.Note.WithContext(ctx),
 		NoteHistory:   q.NoteHistory.WithContext(ctx),
 		NoteLink:      q.NoteLink.WithContext(ctx),
