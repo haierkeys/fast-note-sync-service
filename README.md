@@ -1,18 +1,21 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
-If you have any questions, please create an [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new), or join our Telegram group for help: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+If you have any questions, please create a new [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new), or join the Telegram group for help: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+
+In Mainland China, it is recommended to use the Tencent `cnb.cool` mirror: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
 
 
 <h1 align="center">Fast Note Sync Service</h1>
 
 <p align="center">
     <a href="https://github.com/haierkeys/fast-note-sync-service/releases"><img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service?style=flat-square" alt="release"></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/releases"><img src="https://img.shields.io/github/v/tag/haierkeys/fast-note-sync-service?label=release-alpha&style=flat-square" alt="alpha-release"></a>
     <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/LICENSE"><img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service?style=flat-square" alt="license"></a>
     <img src="https://img.shields.io/badge/Language-Go-00ADD8?style=flat-square" alt="Go">
 </p>
 
 <p align="center">
-  <strong>High-performance, low-latency note synchronization, online management, and remote REST API service platform.</strong>
+  <strong>High-performance, low-latency note synchronization, online management, remote REST API service platform</strong>
   <br>
   <em>Built with Golang + Websocket + Sqlite + React</em>
 </p>
@@ -23,12 +26,12 @@ If you have any questions, please create an [issue](https://github.com/haierkeys
 
 <div align="center">
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/vault.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/attach.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/vault.png"><img src="/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/attach.png"><img src="/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
     </div>
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/note.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/setting.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/note.png"><img src="/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/setting.png"><img src="/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
   </div>
 </div>
 
@@ -37,62 +40,63 @@ If you have any questions, please create an [issue](https://github.com/haierkeys
 ## ✨ Core Features
 
 * **🚀 REST API Support**:
-    * Provides standard REST API interfaces, supporting programmatic operations (e.g., automation scripts, AI assistant integration) for creating, reading, updating, and deleting Obsidian notes.
+    * Provides standard REST API interfaces, supporting programmatic operations (such as automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
     * For details, please refer to the [REST API Documentation](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/REST_API.md).
 * **💻 Web Management Panel**:
-  * Built-in modern management interface for easily creating users, generating plugin configurations, and managing vaults and note content.
+  * Built-in modern management interface, easily create users, generate plugin configurations, manage repositories and note content.
 * **🔄 Multi-device Note Sync**:
-    * Supports automatic creation of **Vaults**.
-    * Supports note management (Add, Delete, Edit, Query), with millisecond-level real-time distribution to all online devices.
+    * Supports automatic **Vault (Repository)** creation.
+    * Supports note management (Add, Delete, Modify, Search), with millisecond-level real-time distribution of changes to all online devices.
 * **🖼️ Attachment Sync Support**:
-    * Perfect support for syncing non-note files such as images.
-    * Supports chunked upload and download for large attachments, with configurable chunk sizes to improve synchronization efficiency.
+    * Perfectly supports synchronization of non-note files such as images.
+    * Supports chunked upload and download for large attachments, with configurable chunk size to improve synchronization efficiency.
 * **⚙️ Configuration Sync**:
     * Supports synchronization of `.obsidian` configuration files.
-    * Supports synchronization of `PDF` progress status.
+    * Supports `PDF` progress status synchronization.
 * **📝 Note History**:
-    * View the historical modification versions of each note via the Web page or the plugin client.
+    * View the historical modification versions of each note on the Web page and plugin side.
     * (Requires server v1.2+)
-* **🗑️ Recycle Bin**:
-    * Automatically moves deleted notes to the recycle bin.
-    * Supports restoring notes from the recycle bin. (Attachment restoration will be added in future updates)
+* **🗑️ Trash**:
+    * Supports automatic movement of deleted notes to the trash.
+    * Supports restoring notes from the trash. (Attachment recovery features will be added progressively)
 
 * **🚫 Offline Sync Strategy**:
     * Supports automatic merging of offline note edits. (Requires plugin settings)
-    * Handles offline deletions, with automatic synchronization or deletion upon reconnection. (Requires plugin settings)
+    * Supports offline deletion, with automatic synchronization or deletion upon reconnection. (Requires plugin settings)
 
 ## ☕ Sponsorship and Support
 
-- If you find this plugin useful and want to support its continued development, please consider the following options:
+- If you find this plugin useful and want to support its continued development, please consider the following ways:
 
-  | Ko-fi *Outside China*                                                                                                |    | WeChat Pay *China Only*                                            |
-  |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
-  | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | or | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+  | Ko-fi *International*                                                                            |    | WeChat Pay *China*                             |
+  |--------------------------------------------------------------------------------------------------|----|------------------------------------------------|
+  | [<img src="/docs/images/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | or | <img src="/docs/images/wxds.png" height="150"> |
 
   - Supported List:
-    - https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-CN.md
+    - <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.en.md">Support.en.md</a>
+    - <a href="https://cnb.cool/haierkeys/fast-note-sync-service/-/blob/master/docs/Support.en.md">Support.en.md (cnb.cool mirror)</a>
 
 ## ⏱️ Changelog
 
-- ♨️ [View Changelog](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.en.md)
+- ♨️ [View Changelog](/docs/CHANGELOG.en.md)
 
 ## 🗺️ Roadmap
 
-We are continuously improving; here are our future development plans:
+We are continuously improving, here are the future development plans:
 
 - [ ] **Sharing Feature**: Support for sharing notes.
-- [ ] **MCP Support**: Add support for AI MCP-related features.
-- [ ] **Directory Sync**: Support for adding, deleting, modifying, and querying directories.
-- [ ] **Git Version Control Integration**: Provide a more secure version history for notes.
+- [ ] **MCP Support**: Add support for AI MCP related features.
+- [ ] **Directory Sync**: Support for CRUD operations on directories.
+- [ ] **Git Version Control Integration**: Provide safer version backtracking for notes.
 - [ ] **Cloud Storage and Backup Strategy**:
-    - [ ] Configuration for custom backup strategies.
-    - [ ] Multi-protocol adaptation: S3 / Minio / Cloudflare R2 / Alibaba Cloud OSS / WebDAV.
+    - [ ] Custom backup strategy configuration.
+    - [ ] Multi-protocol adaptation: S3 / Minio / Cloudflare R2 / Aliyun OSS / WebDAV.
 
-> **If you have suggestions for improvement or new ideas, feel free to share them with us by submitting an issue—we will carefully evaluate and adopt suitable suggestions.**
+> **If you have suggestions for improvement or new ideas, welcome to share with us by submitting an issue — we will seriously evaluate and adopt suitable suggestions.**
 
 ## 🚀 Quick Deployment
 
-We offer multiple installation methods; **One-click script** or **Docker** is recommended.
+We provide multiple installation methods, with **One-click script** or **Docker** being recommended.
 
 ### Method 1: One-click Script (Recommended)
 
@@ -102,10 +106,16 @@ Automatically detects the system environment and completes installation and serv
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
-**Main Script Actions:**
+In China, you can use the Tencent `cnb.cool` mirror source:
+```bash
+bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh)
+```
 
-  * Automatically downloads the Release binary suited for the current system.
-  * Default installation to `/opt/fast-note`, with a shortcut command created at `/usr/local/bin/fast-note`.
+
+**Main behaviors of the script:**
+
+  * Automatically downloads the Release binary file adapted to the current system.
+  * Installed to `/opt/fast-note` by default, and creates a shortcut command at `/usr/local/bin/fast-note`.
   * Configures and starts the Systemd service (`fast-note.service`), enabling auto-start on boot.
   * **Management Commands**: `fast-note [install|uninstall|start|stop|status|update|menu]`
 
@@ -167,23 +177,24 @@ Download the latest version for your system from [Releases](https://github.com/h
 1.  **Access Management Panel**:
     Open `http://{Server_IP}:9000` in your browser.
 2.  **Initial Setup**:
-    Register an account on your first visit. *(To disable registration, set `user.register-is-enable: false` in the configuration file.)*
+    Register an account on the first visit. *(To disable registration, set `user.register-is-enable: false` in the configuration file)*
 3.  **Configure Client**:
     Log in to the management panel and click **"Copy API Config"**.
 4.  **Connect Obsidian**:
     Open the Obsidian plugin settings page and paste the configuration information you just copied.
 
 
-## ⚙️ Configuration Notes
+## ⚙️ Configuration
 
-The default configuration file is `config.yaml`. The program will automatically search for it in the **root directory** or the **config/** directory.
+The default configuration file is `config.yaml`, and the program will automatically search for it in the **root directory** or **config/** directory.
 
-View the full configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+View full configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
 
 ## 🌐 Nginx Reverse Proxy Example
 
-View the full configuration example: [https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
+View full configuration example: [https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
 ## 🔗 Related Resources
 
   * [Obsidian Fast Note Sync Plugin (Client Plugin)](https://github.com/haierkeys/obsidian-fast-note-sync)
+  * [Obsidian Fast Note Sync Plugin (cnb.cool mirror)](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
