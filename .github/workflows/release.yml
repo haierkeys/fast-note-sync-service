@@ -133,7 +133,7 @@ jobs:
           overwrite_files: true
 
   build-binaries:
-    needs: check-version
+    needs: [check-version, prepare-message]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -160,6 +160,27 @@ jobs:
       - name: Go Build Multi-platform
         run: make gox-all
 
+      - name: Create Changelog
+        env:
+          COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
+        run: |
+          echo "${COMMIT_MSG}" > ./Changelog.txt
+
+      - name: Create GZip Archives for All Platforms
+        env:
+          RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
+        run: |
+          # 为所有平台创建 tar.gz 包
+          # Create tar.gz packages for all platforms
+          declare -a PLATFORMS=("darwin_amd64" "darwin_arm64" "linux_amd64" "linux_arm64" "windows_amd64")
+          for PLATFORM in "${PLATFORMS[@]}"; do
+            GOOS=$(echo "$PLATFORM" | cut -d'_' -f1)
+            GOARCH=$(echo "$PLATFORM" | cut -d'_' -f2)
+            ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${GOARCH}.tar.gz"
+            echo "Creating archive: ${ARCHIVE_NAME}"
+            tar -czvf "./build/${ARCHIVE_NAME}" ./config ./Changelog.txt -C "./build/${PLATFORM}/" .
+          done
+
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -172,8 +193,14 @@ jobs:
           name: config
           path: ./config
 
+      - name: Upload Release Archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: release_archives
+          path: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+
   push-docker:
-    needs: [check-version, build-binaries]
+    needs: [check-version, build-binaries,create-release]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -241,63 +268,47 @@ jobs:
             GIT_COMMIT=${{ env.GIT_COMMIT }}
 
   push-release-files:
-    needs: [create-release, build-binaries, push-docker, check-version, prepare-message]
+    needs: [create-release, build-binaries, check-version]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Download Build Artifacts
+      - name: Download Release Archives
         uses: actions/download-artifact@v4
         with:
-          name: build_file
-          path: ./build/
-
-      - name: Download Config Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: config
-          path: ./config
-
-      - name: Create Changelog
-        env:
-          COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
-        run: |
-          echo "${COMMIT_MSG}" > ./Changelog.txt
-
-      - name: Create GZip Archives for All Platforms
-        env:
-          RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
-        run: |
-          # 为所有平台创建 tar.gz 包
-          # Create tar.gz packages for all platforms
-          declare -a PLATFORMS=("darwin_amd64" "darwin_arm64" "linux_amd64" "linux_arm64" "windows_amd64")
-          for PLATFORM in "${PLATFORMS[@]}"; do
-            GOOS=$(echo "$PLATFORM" | cut -d'_' -f1)
-            GOARCH=$(echo "$PLATFORM" | cut -d'_' -f2)
-            ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${GOARCH}.tar.gz"
-            echo "Creating archive: ${ARCHIVE_NAME}"
-            tar -czvf "./build/${ARCHIVE_NAME}" ./config ./Changelog.txt -C "./build/${PLATFORM}/" .
-          done
+          name: release_archives
+          path: ./archives/
 
       - name: Upload Archives to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.check-version.outputs.release_tag }}
-          files: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
-
-      - name: Upload Release Archives as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release_archives
-          path: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+          files: ./archives/*.tar.gz
 
   push-cnb-release:
-    needs: [check-version, prepare-message, push-release-files]
+    needs: [check-version, prepare-message, build-binaries, create-release]
     if: needs.check-version.outputs.should_release == 'true'
     name: Push CNB Release
     runs-on: ubuntu-latest
     env:
       CNB_REPO: haierkeys/fast-note-sync-service
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Push Tag to CNB
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          RELEASE_TAG: ${{ needs.check-version.outputs.release_tag }}
+        run: |
+          # 在本地创建 tag 并推送到 CNB
+          # Create tag locally and push to CNB
+          git tag "${RELEASE_TAG}" || true
+          git remote add cnb "https://cnb:${CNB_TOKEN}@cnb.cool/${CNB_REPO}.git"
+          git push cnb "${RELEASE_TAG}" --force
+
       - name: Download Release Archives
         uses: actions/download-artifact@v4
         with:
