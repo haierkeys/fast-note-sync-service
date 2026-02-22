@@ -164,7 +164,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
         run: |
-          echo "${COMMIT_MSG}" > ./build/Changelog.txt
+          echo "${COMMIT_MSG}" > ./build/changelog.txt
 
       - name: Create GZip Archives for All Platforms
         env:
@@ -199,7 +199,7 @@ jobs:
           name: release_archives
           path: |
             ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
-            ./build/Changelog.txt
+            ./build/changelog.txt
 
   push-docker:
     needs: [check-version, build-binaries,create-release]
