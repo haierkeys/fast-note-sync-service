@@ -251,16 +251,31 @@ load_lang() {
 # Initial load // 初始加载
 load_lang "init"
 
-# Check network connectivity // 检查网络连通性
-check_connectivity() {
-    if ! curl -Is --connect-timeout 2 https://api.github.com >/dev/null 2>&1 || \
-       ! curl -Is --connect-timeout 2 https://raw.githubusercontent.com >/dev/null 2>&1; then
-        USE_CNB=true
-        warn "GitHub access failed. Switching to cnb.cool mirror..."
-        warn "GitHub 访问失败，正在切换到 cnb.cool 镜像源..."
+# Detect source based on how the script was invoked // 根据脚本调用方式探测来源
+detect_source() {
+    # 1. 优先检查环境变量 (用户覆盖)
+    if [ "${FORCE_USE_CNB:-}" = "true" ]; then
+        USE_CNB=true; return
     fi
+
+    # 2. 识别通过管道执行时的下载源 (bash <(curl ...))
+    # 通过查找进程树中包含 cnb.cool 的 curl 命令来识别
+    if command -v ps >/dev/null 2>&1; then
+        # 查找当前进程或父进程关联的命令行中是否包含 cnb.cool
+        if ps -o command= -p "$$" "$PPID" 2>/dev/null | grep -q "cnb.cool"; then
+            USE_CNB=true; return
+        fi
+    fi
+
+    # 3. 检查脚本文件名 (如果是下载到本地运行)
+    if [[ "$0" == *"cnb.cool"* ]]; then
+        USE_CNB=true; return
+    fi
+
+    # 默认使用 GitHub
+    USE_CNB=false
 }
-check_connectivity
+detect_source
 
 # --- Version Tracking // 版本追踪 ---
 load_version() {
