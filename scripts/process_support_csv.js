@@ -1,17 +1,21 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-const docsDir = path.join(__dirname, '..', 'docs');
+const downloadsDir = path.join(os.homedir(), 'Downloads');
 const outputFile = path.join(__dirname, '..', 'docs', 'Support.csv');
 
 function findLatestSourceFile() {
-    const files = fs.readdirSync(docsDir);
+    if (!fs.existsSync(downloadsDir)) {
+        return null;
+    }
+    const files = fs.readdirSync(downloadsDir);
     const pattern = /打赏.*链接小票单记录.*\.csv$/;
 
     const matchedFiles = files
         .filter(f => pattern.test(f))
         .map(f => {
-            const filePath = path.join(docsDir, f);
+            const filePath = path.join(downloadsDir, f);
             return {
                 path: filePath,
                 mtime: fs.statSync(filePath).mtime
@@ -26,7 +30,7 @@ function processCsv() {
     const inputFile = findLatestSourceFile();
 
     if (!inputFile) {
-        console.error(`No matching source file found in ${docsDir} (Keyword: "打赏" & "链接小票单记录")`);
+        console.error(`No matching source file found in ${downloadsDir} (Keyword: "打赏" & "链接小票单记录")`);
         process.exit(1);
     }
 
@@ -48,7 +52,6 @@ function processCsv() {
             const amountStr = fields[4].trim();
             const message = fields[6].trim();
             const name = fields[7].trim();
-            const note = fields[8].trim();
 
             // 处理金额：去掉 ¥，转为数字用于排序
             const amountValue = parseFloat(amountStr.replace(/[^\d.-]/g, '')) || 0;
@@ -60,8 +63,7 @@ function processCsv() {
                 amountStr: amountValue.toFixed(2), // 用于显示
                 unit: '¥',
                 message,
-                name,
-                note
+                name
             });
         }
     });
@@ -76,7 +78,7 @@ function processCsv() {
 
     // 构建输出内容
     const result = [];
-    result.push('收款时间,收款项,金额,单位,留言,昵称,备注');
+    result.push('收款时间,收款项,金额,单位,留言,昵称');
 
     dataRows.forEach(row => {
         const rowStr = [
@@ -85,8 +87,7 @@ function processCsv() {
             formatCsvField(row.amountStr),
             formatCsvField(row.unit),
             formatCsvField(row.message),
-            formatCsvField(row.name),
-            formatCsvField(row.note)
+            formatCsvField(row.name)
         ].join(',');
         result.push(rowStr);
     });
