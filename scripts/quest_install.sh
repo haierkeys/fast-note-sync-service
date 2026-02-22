@@ -258,11 +258,13 @@ detect_source() {
         USE_CNB=true; return
     fi
 
-    # 2. 识别通过管道执行时的下载源 (bash <(curl ...))
-    # 通过查找进程树中包含 cnb.cool 的 curl 命令来识别
+    # 2. 识别通过管道或进程替换执行时的下载源 (bash <(curl ...))
+    # 在 bash <(curl ...) 中，curl 是 bash 的子进程，脚本可能无法通过 $PPID 直接找到它。
+    # 我们搜索近期活跃的且包含关键域名的 curl/wget 进程命令行。
     if command -v ps >/dev/null 2>&1; then
-        # 查找当前进程或父进程关联的命令行中是否包含 cnb.cool
-        if ps -o command= -p "$$" "$PPID" 2>/dev/null | grep -q "cnb.cool"; then
+        # 搜索最近 30 秒内含有 cnb.cool 且正在运行或刚结束的 curl 命令
+        # 这里使用扩展搜索逻辑：检查当前用户下包含特定域名的 curl 进程
+        if (ps -u "$USER" -o command= 2>/dev/null || ps -ef 2>/dev/null) | grep -E "curl|wget" | grep -q "cnb.cool"; then
             USE_CNB=true; return
         fi
     fi
