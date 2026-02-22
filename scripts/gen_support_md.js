@@ -11,7 +11,7 @@ const i18n = {
         title: '支持者名单 (Thanks to Supporters)',
         quote: '非常感谢大家对本项目的支持！每一份打赏都是我持续维护和迭代的动力。 ❤️',
         listTitle: '致谢列表',
-        headers: ['收款时间', '收款项', '金额', '昵称', '留言', '备注'],
+        headers: ['收款时间', '收款项', '金额', '昵称', '留言'],
         footer: '本数据最后更新于：',
         langName: '简体中文',
         target: 'zh-CN'
@@ -31,7 +31,7 @@ const i18n = {
         title: 'Supporters List',
         quote: 'Thank you very much for supporting this project! Every donation is the driving force for my continuous maintenance and iteration. ❤️',
         listTitle: 'Acknowledgement List',
-        headers: ['Time', 'Item', 'Amount', 'Name', 'Message', 'Note'],
+        headers: ['Time', 'Item', 'Amount', 'Name', 'Message'],
         footer: 'Last updated on: ',
         langName: 'English',
         target: 'en'
@@ -41,7 +41,7 @@ const i18n = {
         title: 'サポーターリスト',
         quote: 'このプロジェクトを応援していただき、誠にありがとうございます！皆様からのご支援は、継続的なメンテナンスと開発の原動力となっています。 ❤️',
         listTitle: '謝辞リスト',
-        headers: ['受領時間', '項目', '金額', 'ニックネーム', 'メッセージ', '備考'],
+        headers: ['受領时间', '项目', '金额', '昵称', 'メッセージ'],
         footer: '最終更新日：',
         langName: '日本語',
         target: 'ja'
@@ -51,7 +51,7 @@ const i18n = {
         title: '후원자 명단',
         quote: '이 프로젝트를 지원해 주셔서 정말 감사합니다! 여러분의 모든 후원은 지속적인 유지보수와 개발의 원동력이 됩니다. ❤️',
         listTitle: '감사 명단',
-        headers: ['수령 시간', '항목', '금액', '닉네임', '메시지', '비고'],
+        headers: ['수령 시간', '항목', '금액', '닉네임', '메시지'],
         footer: '마지막 업데이트:',
         langName: '한국어',
         target: 'ko'
@@ -76,10 +76,11 @@ function translateBatch(texts, targetLang) {
         fs.writeFileSync(tmpIn, JSON.stringify(texts), 'utf8');
 
         // 2. 调用 Python 脚本
-        const target = targetLang === 'zh-TW' ? 'zh-TW' : targetLang;
+        // targetLang 已经是 i18n 配置中的 target 值，无需额外转换
+        const target = targetLang;
 
         // 使用 spawnSync 避免 shell 转义和路径空格问题
-        const result = spawnSync('python', [helperScript, tmpIn, target], {
+        const result = spawnSync('python3', [helperScript, tmpIn, target], {
             encoding: 'utf8',
             maxBuffer: 10 * 1024 * 1024 // 增加缓冲区到 10MB
         });
@@ -136,8 +137,8 @@ async function genMarkdown() {
     const uniqueTexts = new Set();
     dataRows.forEach(row => {
         if (row['收款项']) uniqueTexts.add(row['收款项']);
-        if (row['留言'] && row['留言'] !== '-') uniqueTexts.add(row['留言']);
-        if (row['备注'] && row['备注'] !== '-') uniqueTexts.add(row['备注']);
+        // 只有当留言不为空且不为'-'时才收集
+        if (row['留言'] && row['留言'].trim() !== '-') uniqueTexts.add(row['留言']);
     });
     const textsToTranslate = Array.from(uniqueTexts);
 
@@ -147,7 +148,7 @@ async function genMarkdown() {
         const outputFilePath = path.join(__dirname, '..', 'docs', config.filename);
 
         console.log(`[${config.langName}] Translating...`);
-        const translationMap = translateBatch(textsToTranslate, lang);
+        const translationMap = translateBatch(textsToTranslate, config.target); // 使用 config.target
         console.log(`[${config.langName}] Translation complete. Sample: "${textsToTranslate[0]}" -> "${translationMap[textsToTranslate[0]] || 'N/A'}"`);
 
         let md = `# ${config.title}\n\n`;
@@ -168,10 +169,47 @@ async function genMarkdown() {
             const rawMessage = (row['留言'] || '').trim();
             const displayMessage = (rawMessage === '-' || !rawMessage) ? '-' : (translationMap[rawMessage] || rawMessage);
 
-            const rawNote = (row['备注'] || '').trim();
-            const displayNote = (rawNote === '-' || !rawNote) ? '-' : (translationMap[rawNote] || rawNote);
-
-            md += `| ${displayTime} | ${displayItem} | ${displayAmount} | ${displayName} | ${displayMessage} | ${displayNote} |\n`;
+            // 根据当前语言的 headers 动态生成行
+            const rowValues = [];
+            config.headers.forEach(header => {
+                switch (header) {
+                    case '收款时间':
+                    case '受領時間':
+                    case '受領时间':
+                    case 'Time':
+                    case '수령 시간':
+                        rowValues.push(displayTime);
+                        break;
+                    case '收款项':
+                    case '項目':
+                    case '项目':
+                    case 'Item':
+                    case '항목':
+                        rowValues.push(displayItem);
+                        break;
+                    case '金额':
+                    case '金額':
+                    case 'Amount':
+                    case '금액':
+                        rowValues.push(displayAmount);
+                        break;
+                    case '昵称':
+                    case 'ニックネーム':
+                    case 'Name':
+                    case '닉네임':
+                        rowValues.push(displayName);
+                        break;
+                    case '留言':
+                    case 'メッセージ':
+                    case 'Message':
+                    case '메시지':
+                        rowValues.push(displayMessage);
+                        break;
+                    default:
+                        rowValues.push(''); // Fallback for unknown headers
+                }
+            });
+            md += `| ${rowValues.join(' | ')} |\n`;
         });
 
         const now = new Date();

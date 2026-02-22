@@ -16,17 +16,16 @@ KEY_MAP = {
     '金额': 'amount',
     '单位': 'unit',
     '留言': 'message',
-    '昵称': 'name',
-    '备注': 'note'
+    '昵称': 'name'
 }
 
 # 语言配置
 LANG_CONFIG = {
-    'en': {'name': 'English', 'md_title': 'Supporters List', 'md_headers': ['Time', 'Item', 'Amount', 'Name', 'Message', 'Note'], 'md_footer': 'Last updated: '},
-    'zh-CN': {'name': '简体中文', 'md_title': '支持者名单', 'md_headers': ['收款时间', '收款项', '金额', '昵称', '留言', '备注'], 'md_footer': '最后更新于：'},
-    'zh-TW': {'name': '繁體中文', 'md_title': '支持者名單', 'md_headers': ['收款時間', '收款項', '金額', '昵稱', '留言', '備註'], 'md_footer': '最後更新於：'},
-    'ja': {'name': '日本語', 'md_title': 'サポーターリスト', 'md_headers': ['受領時間', '項目', '金額', '名前', 'メッセージ', '備考'], 'md_footer': '最終更新：'},
-    'ko': {'name': '한국어', 'md_title': '후원자 명단', 'md_headers': ['시간', '항목', '금액', '이름', '메시지', '비고'], 'md_footer': '마지막 업데이트：'}
+    'en': {'name': 'English', 'md_title': 'Supporters List', 'md_headers': ['Time', 'Item', 'Amount', 'Name', 'Message'], 'md_footer': 'Last updated: '},
+    'zh-CN': {'name': '简体中文', 'md_title': '支持者名单', 'md_headers': ['收款时间', '收款项', '金额', '昵称', '留言'], 'md_footer': '最后更新于：'},
+    'zh-TW': {'name': '繁體中文', 'md_title': '支持者名單', 'md_headers': ['收款时间', '收款项', '金额', '昵称', '留言'], 'md_footer': '最後更新於：'},
+    'ja': {'name': '日本語', 'md_title': 'サポーターリスト', 'md_headers': ['受領時間', '項目', '金額', '名前', 'メッセージ'], 'md_footer': '最終更新：'},
+    'ko': {'name': '한국어', 'md_title': '후원자 명단', 'md_headers': ['時間', '項目', '金額', '이름', '메시지'], 'md_footer': '마지막 업데이트：'}
 }
 
 def translate_texts(texts, target_lang):
@@ -55,9 +54,9 @@ def generate_json(data, translation_map, lang_code):
         for cn_key, en_key in KEY_MAP.items():
             val = row.get(cn_key, '')
             # 翻译内容字段
-            if cn_key in ['收款项', '留言', '备注'] and val and val != '-':
+            if cn_key in ['收款项', '留言'] and val and val != '-':
                 val = translation_map.get(val, val)
-            new_row[en_key] = val if val else ('-' if cn_key in ['留言', '备注'] else val)
+            new_row[en_key] = val if val else ('-' if cn_key in ['留言'] else val)
         output_data.append(new_row)
 
     file_path = os.path.join(base_dir, 'docs', f'Support.{lang_code}.json')
@@ -79,10 +78,8 @@ def generate_md(data, lang_code, translation_map):
         name = row.get('昵称', '')
         msg = row.get('留言', '')
         msg = translation_map.get(msg, msg) if msg and msg != '-' else '-'
-        note = row.get('备注', '')
-        note = translation_map.get(note, note) if note and note != '-' else '-'
 
-        md += f"| {time} | {item} | {amount} | {name} | {msg} | {note} |\n"
+        md += f"| {time} | {item} | {amount} | {name} | {msg} |\n"
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     md += f"\n\n--- \n*{conf['md_footer']}{timestamp}*"
@@ -104,7 +101,7 @@ def main():
             reader = csv.DictReader(f)
             for row in reader:
                 data.append(row)
-                for k in ['收款项', '留言', '备注']:
+                for k in ['收款项', '留言']:
                     if row.get(k) and row[k] != '-':
                         unique_texts.add(row[k])
     except Exception as e:

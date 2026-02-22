@@ -57,7 +57,7 @@ all: test build-all
 # -------------------------
 sup:
 	node scripts/process_support_csv.js
-	python scripts/process_support.py
+	python3 scripts/process_support.py
 	node scripts/gen_support_md.js
 
 sup-md:
