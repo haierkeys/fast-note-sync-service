@@ -241,10 +241,10 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			}
 			file.Mtime = params.Mtime
 			if s.backupService != nil {
-				s.backupService.NotifyUpdated(uid)
+				go s.backupService.NotifyUpdated(uid)
 			}
 			if s.gitSyncService != nil {
-				s.gitSyncService.NotifyUpdated(uid)
+				go s.gitSyncService.NotifyUpdated(uid, vaultID)
 			}
 			return isNew, s.domainToDTO(file), nil
 		}
@@ -278,7 +278,10 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		go s.CountSizeSum(context.Background(), vaultID, uid)
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
 		if s.backupService != nil {
-			s.backupService.NotifyUpdated(uid)
+			go s.backupService.NotifyUpdated(uid)
+		}
+		if s.gitSyncService != nil {
+			go s.gitSyncService.NotifyUpdated(uid, vaultID)
 		}
 		return isNew, s.domainToDTO(updated), nil
 	}
@@ -306,7 +309,10 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 	return isNew, s.domainToDTO(created), nil
 }
@@ -337,7 +343,10 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 	return s.domainToDTO(updated), nil
 }
@@ -379,7 +388,10 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 	return s.domainToDTO(updated), nil
 }
@@ -757,7 +769,10 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
 
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
 	return s.domainToDTO(oldFile), s.domainToDTO(newFileCreated), nil

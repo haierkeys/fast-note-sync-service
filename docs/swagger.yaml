@@ -561,8 +561,6 @@ definitions:
     properties:
       configId:
         type: integer
-    required:
-    - configId
     type: object
   dto.GitSyncConfigDTO:
     properties:
@@ -585,14 +583,20 @@ definitions:
         description: 上次运行结果消息
         type: string
       lastStatus:
-        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed)
+        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)
         type: integer
       lastSyncTime:
         description: 上次同步时间
         type: string
+      password:
+        description: 密码
+        type: string
       repoUrl:
         description: 仓库地址
         type: string
+      retentionDays:
+        description: 历史记录保留天数
+        type: integer
       uid:
         description: 用户ID
         type: integer
@@ -621,6 +625,8 @@ definitions:
         type: string
       repoUrl:
         type: string
+      retentionDays:
+        type: integer
       username:
         type: string
       vault:
@@ -642,6 +648,24 @@ definitions:
         type: integer
     required:
     - id
+    type: object
+  dto.GitSyncHistoryDTO:
+    properties:
+      configId:
+        type: integer
+      createdAt:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      startTime:
+        type: string
+      status:
+        description: 0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown
+        type: integer
     type: object
   dto.GitSyncValidateRequest:
     properties:
@@ -2372,6 +2396,55 @@ paths:
       security:
       - UserAuthToken: []
       summary: Get git sync configurations
+      tags:
+      - GitSync
+  /api/git-sync/histories:
+    get:
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - in: query
+        name: configId
+        type: integer
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.GitSyncHistoryDTO'
+                        type: array
+                    type: object
+              type: object
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get git sync histories
       tags:
       - GitSync
   /api/git-sync/validate:

@@ -213,7 +213,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
 	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
 	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
-	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, a.FolderService, a.NoteService, logger, &svcConfig.App)
+	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, a.FolderService, a.NoteService, a.BackupService, a.GitSyncService, logger, &svcConfig.App)
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)

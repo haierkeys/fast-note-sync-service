@@ -307,12 +307,6 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 			note.Mtime = params.Mtime
-			if s.backupService != nil {
-				s.backupService.NotifyUpdated(uid)
-			}
-			if s.gitSyncService != nil {
-				s.gitSyncService.NotifyUpdated(uid)
-			}
 			return isNew, s.domainToDTO(note), nil
 		}
 
@@ -351,7 +345,10 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		NoteHistoryDelayPush(updated.ID, uid)
 
 		if s.backupService != nil {
-			s.backupService.NotifyUpdated(uid)
+			go s.backupService.NotifyUpdated(uid)
+		}
+		if s.gitSyncService != nil {
+			go s.gitSyncService.NotifyUpdated(uid, vaultID)
 		}
 
 		return isNew, s.domainToDTO(updated), nil
@@ -382,7 +379,11 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
 	NoteHistoryDelayPush(created.ID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
 	return isNew, s.domainToDTO(created), nil
@@ -425,7 +426,10 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 
 	NoteHistoryDelayPush(updated.ID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
 	return s.domainToDTO(updated), nil
@@ -481,7 +485,10 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 
 	NoteHistoryDelayPush(updated.ID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
 	return s.domainToDTO(updated), nil
@@ -579,7 +586,10 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
 	go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
 	if s.backupService != nil {
-		s.backupService.NotifyUpdated(uid)
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
 	return s.domainToDTO(oldNote), s.domainToDTO(newNoteCreated), nil

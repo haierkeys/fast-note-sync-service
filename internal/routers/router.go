@@ -255,6 +255,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/git-sync/validate", gitSyncHandler.Validate)
 			auth.DELETE("/git-sync/config/clean", gitSyncHandler.CleanWorkspace)
 			auth.POST("/git-sync/config/execute", gitSyncHandler.Execute)
+			auth.GET("/git-sync/histories", gitSyncHandler.GetHistories)
 		}
 
 	}

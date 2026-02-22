@@ -56,33 +56,37 @@ type NoteHistoryService interface {
 // noteHistoryService implementation of NoteHistoryService interface
 // noteHistoryService 实现 NoteHistoryService 接口
 type noteHistoryService struct {
-	historyRepo   domain.NoteHistoryRepository // History repository // 历史记录仓库
-	noteRepo      domain.NoteRepository        // Note repository // 笔记仓库
-	userRepo      domain.UserRepository        // User repository // 用户仓库
-	vaultService  VaultService                 // Vault service // 仓库服务
-	folderService FolderService                // Folder service // 文件夹服务
-	noteService   NoteService                  // Note service // 笔记服务
-	sf            *singleflight.Group          // Singleflight group // 并发请求合并组
-	logger        *zap.Logger                  // Logger // 日志对象
-	config        *AppServiceConfig            // Service configuration // 服务配置
+	historyRepo    domain.NoteHistoryRepository // History repository // 历史记录仓库
+	noteRepo       domain.NoteRepository        // Note repository // 笔记仓库
+	userRepo       domain.UserRepository        // User repository // 用户仓库
+	vaultService   VaultService                 // Vault service // 仓库服务
+	folderService  FolderService                // Folder service // 文件夹服务
+	noteService    NoteService                  // Note service // 笔记服务
+	backupService  BackupService                // Backup service // 备份服务
+	gitSyncService GitSyncService               // Git sync service // Git 同步服务
+	sf             *singleflight.Group          // Singleflight group // 并发请求合并组
+	logger         *zap.Logger                  // Logger // 日志对象
+	config         *AppServiceConfig            // Service configuration // 服务配置
 }
 
 // NewNoteHistoryService creates NoteHistoryService instance
 // NewNoteHistoryService 创建 NoteHistoryService 实例
-func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, folderSvc FolderService, noteSvc NoteService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
+func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, folderSvc FolderService, noteSvc NoteService, backupSvc BackupService, gitSyncSvc GitSyncService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
 	if config == nil {
 		config = &AppServiceConfig{HistoryKeepVersions: 100}
 	}
 	return &noteHistoryService{
-		historyRepo:   historyRepo,
-		noteRepo:      noteRepo,
-		userRepo:      userRepo,
-		vaultService:  vaultSvc,
-		folderService: folderSvc,
-		noteService:   noteSvc,
-		sf:            &singleflight.Group{},
-		logger:        logger,
-		config:        config,
+		historyRepo:    historyRepo,
+		noteRepo:       noteRepo,
+		userRepo:       userRepo,
+		vaultService:   vaultSvc,
+		folderService:  folderSvc,
+		noteService:    noteSvc,
+		backupService:  backupSvc,
+		gitSyncService: gitSyncSvc,
+		sf:             &singleflight.Group{},
+		logger:         logger,
+		config:         config,
 	}
 }
 
@@ -383,8 +387,14 @@ func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, 
 
 	NoteHistoryDelayPush(updated.ID, uid)
 
-	// 7. Save history record immediately (restore operation does not use delay queue, direct history version creation)
-	// 7. 立即保存历史记录（恢复操作不走延迟队列，直接创建历史版本）
+	// Notify backup and git sync services
+	// 通知备份和 Git 同步服务
+	if s.backupService != nil {
+		go s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil {
+		go s.gitSyncService.NotifyUpdated(uid, vaultID)
+	}
 	if err := s.ProcessDelay(ctx, updated.ID, uid); err != nil {
 		s.logger.Warn("RestoreFromHistory: failed to create history",
 			zap.Int64("noteID", updated.ID),

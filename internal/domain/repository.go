@@ -380,6 +380,17 @@ type GitSyncRepository interface {
 	Delete(ctx context.Context, id, uid int64) error
 	// List 获取用户的 Git 同步任务列表
 	List(ctx context.Context, uid int64) ([]*GitSyncConfig, error)
+	// ListByVaultID 根据笔记仓库ID获取关联的 Git 同步任务列表
+	ListByVaultID(ctx context.Context, vaultID, uid int64) ([]*GitSyncConfig, error)
 	// ListEnabled 获取所有已启用的 Git 同步任务 (跨用户)
 	ListEnabled(ctx context.Context) ([]*GitSyncConfig, error)
+
+	// CreateHistory 创建 Git 同步历史记录
+	CreateHistory(ctx context.Context, history *GitSyncHistory, uid int64) (*GitSyncHistory, error)
+	// ListHistory 分页获取 Git 同步历史记录
+	ListHistory(ctx context.Context, uid int64, configID int64, page, pageSize int) ([]*GitSyncHistory, int64, error)
+	// DeleteHistory 删除 Git 同步历史记录
+	DeleteHistory(ctx context.Context, uid int64, configID int64) error
+	// DeleteOldHistory 删除指定时间之前的同步历史记录
+	DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error
 }

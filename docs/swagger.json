@@ -1739,6 +1739,93 @@
                 }
             }
         },
+        "/api/git-sync/histories": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GitSync"
+                ],
+                "summary": "Get git sync histories",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "configId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.GitSyncHistoryDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/git-sync/validate": {
             "post": {
                 "security": [
@@ -4447,9 +4534,6 @@
         },
         "dto.GitSyncCleanRequest": {
             "type": "object",
-            "required": [
-                "configId"
-            ],
             "properties": {
                 "configId": {
                     "type": "integer"
@@ -4484,16 +4568,24 @@
                     "type": "string"
                 },
                 "lastStatus": {
-                    "description": "上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed)",
+                    "description": "上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)",
                     "type": "integer"
                 },
                 "lastSyncTime": {
                     "description": "上次同步时间",
                     "type": "string"
                 },
+                "password": {
+                    "description": "密码",
+                    "type": "string"
+                },
                 "repoUrl": {
                     "description": "仓库地址",
                     "type": "string"
+                },
+                "retentionDays": {
+                    "description": "历史记录保留天数",
+                    "type": "integer"
                 },
                 "uid": {
                     "description": "用户ID",
@@ -4538,6 +4630,9 @@
                 "repoUrl": {
                     "type": "string"
                 },
+                "retentionDays": {
+                    "type": "integer"
+                },
                 "username": {
                     "type": "string"
                 },
@@ -4565,6 +4660,33 @@
             ],
             "properties": {
                 "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.GitSyncHistoryDTO": {
+            "type": "object",
+            "properties": {
+                "configId": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown",
                     "type": "integer"
                 }
             }

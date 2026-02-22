@@ -231,6 +231,43 @@ func (h *GitSyncHandler) CleanWorkspace(c *gin.Context) {
 	response.ToResponse(code.Success.WithDetails("Workspace cleaned"))
 }
 
+// GetHistories gets git sync histories
+// @Summary Get git sync histories
+// @Tags GitSync
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Param params query dto.GitSyncHistoryRequest true "Parameters"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.GitSyncHistoryDTO}} "Success"
+// @Failure 401 {object} pkgapp.Res "Token Required"
+// @Failure 500 {object} pkgapp.Res "Internal Server Error"
+// @Router /api/git-sync/histories [get]
+func (h *GitSyncHandler) GetHistories(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.GitSyncHistoryRequest{}
+	pager := pkgapp.NewPager(c)
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		response.ToResponse(code.ErrorNotUserAuthToken)
+		return
+	}
+
+	list, total, err := h.App.GitSyncService.ListHistory(c.Request.Context(), uid, params.ConfigID, pager)
+	if err != nil {
+		h.logError(c.Request.Context(), "GitSyncHandler.GetHistories", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponseList(code.Success, list, int(total))
+}
+
 func (h *GitSyncHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
 	h.App.Logger().Error(method,
