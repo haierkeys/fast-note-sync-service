@@ -241,17 +241,9 @@ jobs:
             GIT_COMMIT=${{ env.GIT_COMMIT }}
 
   push-release-files:
-    needs: [create-release, build-binaries, push-docker, check-version]
+    needs: [create-release, build-binaries, push-docker, check-version, prepare-message]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        jobs:
-          - { goos: darwin, goarch: amd64, cc: "" }
-          - { goos: darwin, goarch: arm64, cc: "" }
-          - { goos: linux, goarch: amd64, cc: "" }
-          - { goos: linux, goarch: arm64, cc: "" }
-          - { goos: windows, goarch: amd64, cc: "", ext: ".exe" }
     steps:
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
@@ -265,20 +257,151 @@ jobs:
           name: config
           path: ./config
 
-      - name: Create GZip Archive
+      - name: Create Changelog
         env:
-            # Construct the full release name: Repo-Version
-            RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
+          COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
         run: |
-          tar -czvf ./build/${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz ./config  -C ./build/${{ matrix.jobs.goos }}_${{ matrix.jobs.goarch }}/ .
+          echo "${COMMIT_MSG}" > ./Changelog.txt
 
-      - name: Upload GZip to Release
-        uses: actions/upload-release-asset@v1
+      - name: Create GZip Archives for All Platforms
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_BASENAME: ${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}
+        run: |
+          # 为所有平台创建 tar.gz 包
+          # Create tar.gz packages for all platforms
+          declare -a PLATFORMS=("darwin_amd64" "darwin_arm64" "linux_amd64" "linux_arm64" "windows_amd64")
+          for PLATFORM in "${PLATFORMS[@]}"; do
+            GOOS=$(echo "$PLATFORM" | cut -d'_' -f1)
+            GOARCH=$(echo "$PLATFORM" | cut -d'_' -f2)
+            ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${GOARCH}.tar.gz"
+            echo "Creating archive: ${ARCHIVE_NAME}"
+            tar -czvf "./build/${ARCHIVE_NAME}" ./config ./Changelog.txt -C "./build/${PLATFORM}/" .
+          done
+
+      - name: Upload Archives to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./build/${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
-          asset_name: ${{ env.RELEASE_BASENAME }}-${{ matrix.jobs.goos }}-${{ matrix.jobs.goarch }}.tar.gz
-          asset_content_type: application/gzip
+          tag_name: ${{ needs.check-version.outputs.release_tag }}
+          files: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+
+      - name: Upload Release Archives as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release_archives
+          path: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+
+  push-cnb-release:
+    needs: [check-version, prepare-message, push-release-files]
+    if: needs.check-version.outputs.should_release == 'true'
+    name: Push CNB Release
+    runs-on: ubuntu-latest
+    env:
+      CNB_REPO: haierkeys/fast-note-sync-service
+    steps:
+      - name: Download Release Archives
+        uses: actions/download-artifact@v4
+        with:
+          name: release_archives
+          path: ./archives/
+
+      - name: Create CNB Release and Upload Assets
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          RELEASE_TAG: ${{ needs.check-version.outputs.release_tag }}
+          RELEASE_BODY: ${{ needs.prepare-message.outputs.commit_msg }}
+        run: |
+          set -e
+
+          # ============================================================
+          # 第一步: 创建 CNB Release
+          # Step 1: Create CNB Release
+          # ============================================================
+          echo "::group::Creating CNB Release: ${RELEASE_TAG}"
+          RELEASE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Accept: application/vnd.cnb.api+json" \
+            -H "Authorization: Bearer ${CNB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg tag "${RELEASE_TAG}" \
+              --arg name "${RELEASE_TAG}" \
+              --arg body "${RELEASE_BODY}" \
+              '{tag_name: $tag, name: $name, body: $body, prerelease: false, draft: false}')" \
+            "https://api.cnb.cool/${CNB_REPO}/-/releases")
+
+          HTTP_CODE=$(echo "$RELEASE_RESPONSE" | tail -1)
+          RESPONSE_BODY=$(echo "$RELEASE_RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            RELEASE_ID=$(echo "$RESPONSE_BODY" | jq -r '.id')
+            echo "CNB Release created successfully, ID: ${RELEASE_ID}"
+          else
+            echo "::warning::Failed to create CNB Release (HTTP ${HTTP_CODE}), attempting to fetch existing release..."
+            # 尝试获取已存在的 Release / Try to get existing release
+            LIST_RESPONSE=$(curl -s \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -H "Authorization: Bearer ${CNB_TOKEN}" \
+              "https://api.cnb.cool/${CNB_REPO}/-/releases")
+            RELEASE_ID=$(echo "$LIST_RESPONSE" | jq -r ".[] | select(.tag_name==\"${RELEASE_TAG}\") | .id")
+            if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+              echo "::error::Cannot create or find CNB Release for tag ${RELEASE_TAG}"
+              exit 1
+            fi
+            echo "Found existing CNB Release, ID: ${RELEASE_ID}"
+          fi
+          echo "::endgroup::"
+
+          # ============================================================
+          # 第二步: 上传所有已打包的构建产物
+          # Step 2: Upload all pre-built release archives
+          # ============================================================
+          for FILE_PATH in ./archives/*.tar.gz; do
+            FILE_NAME=$(basename "$FILE_PATH")
+
+            echo "::group::Uploading ${FILE_NAME}"
+            FILE_SIZE=$(stat -c%s "$FILE_PATH")
+            echo "File size: ${FILE_SIZE} bytes"
+
+            # 2a. 获取上传 URL / Get upload URL
+            UPLOAD_RESPONSE=$(curl -s -X POST \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -H "Authorization: Bearer ${CNB_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n \
+                --arg name "${FILE_NAME}" \
+                --argjson size ${FILE_SIZE} \
+                '{asset_name: $name, size: $size, overwrite: true}')" \
+              "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}/asset-upload-url")
+
+            UPLOAD_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.upload_url')
+            VERIFY_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.verify_url')
+
+            if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" = "null" ]; then
+              echo "::error::Failed to get upload URL for ${FILE_NAME}"
+              echo "Response: ${UPLOAD_RESPONSE}"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # 2b. 上传文件内容 / Upload file content
+            echo "Uploading file to: ${UPLOAD_URL}"
+            UPLOAD_RESULT=$(curl -s -w "\n%{http_code}" -X PUT \
+              -H "Content-Type: application/gzip" \
+              --data-binary @"$FILE_PATH" \
+              "$UPLOAD_URL")
+            UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESULT" | tail -1)
+            echo "Upload HTTP status: ${UPLOAD_HTTP_CODE}"
+
+            # 2c. 确认上传完成 / Confirm upload
+            echo "Confirming upload..."
+            CONFIRM_RESULT=$(curl -s -w "\n%{http_code}" -X POST \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -H "Authorization: Bearer ${CNB_TOKEN}" \
+              "${VERIFY_URL}")
+            CONFIRM_HTTP_CODE=$(echo "$CONFIRM_RESULT" | tail -1)
+            echo "Confirm HTTP status: ${CONFIRM_HTTP_CODE}"
+
+            echo "✅ ${FILE_NAME} uploaded successfully"
+            echo "::endgroup::"
+          done
+
+          echo "🎉 All assets uploaded to CNB Release!"
