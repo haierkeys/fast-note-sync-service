@@ -166,7 +166,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
         run: |
-          echo "${COMMIT_MSG}" > ./Changelog.txt
+          echo "${COMMIT_MSG}" > ./build/Changelog.txt
 
       - name: Create GZip Archives for All Platforms
         env:
@@ -180,7 +180,7 @@ jobs:
             GOARCH=$(echo "$PLATFORM" | cut -d'_' -f2)
             ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${GOARCH}.tar.gz"
             echo "Creating archive: ${ARCHIVE_NAME}"
-            tar -czvf "./build/${ARCHIVE_NAME}" ./config ./Changelog.txt -C "./build/${PLATFORM}/" .
+            tar -czvf "./build/${ARCHIVE_NAME}" ./config -C "./build/${PLATFORM}/" .
           done
 
       - name: Upload Build Artifacts
@@ -199,7 +199,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release_archives
-          path: ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+          path: |
+            ./build/${{ env.NAME }}-${{ needs.check-version.outputs.release_tag }}-*.tar.gz
+            ./build/Changelog.txt
 
   push-docker:
     needs: [check-version, build-binaries, create-release]
@@ -282,7 +284,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.check-version.outputs.release_tag }}-alpha
-          files: ./archives/*.tar.gz
+          files: ./archives/*
 
   push-cnb-release:
     needs: [check-version, prepare-message, build-binaries, create-release]
@@ -362,57 +364,72 @@ jobs:
           echo "::endgroup::"
 
           # ============================================================
-          # 第二步: 上传所有已打包的构建产物
-          # Step 2: Upload all pre-built release archives
+          # 第二步: 并行上传所有已打包的构建产物
+          # Step 2: Parallel upload all pre-built release archives
           # ============================================================
-          for FILE_PATH in ./archives/*.tar.gz; do
-            FILE_NAME=$(basename "$FILE_PATH")
+          for FILE_PATH in ./archives/*; do
+            (
+              FILE_NAME=$(basename "$FILE_PATH")
 
-            echo "::group::Uploading ${FILE_NAME}"
-            FILE_SIZE=$(stat -c%s "$FILE_PATH")
-            echo "File size: ${FILE_SIZE} bytes"
+              echo "Uploading ${FILE_NAME}..."
+              FILE_SIZE=$(stat -c%s "$FILE_PATH")
 
-            # 2a. 获取上传 URL / Get upload URL
-            UPLOAD_RESPONSE=$(curl -s -X POST \
-              -H "Accept: application/vnd.cnb.api+json" \
-              -H "Authorization: Bearer ${CNB_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "$(jq -n \
-                --arg name "${FILE_NAME}" \
-                --argjson size ${FILE_SIZE} \
-                '{asset_name: $name, size: $size, overwrite: true}')" \
-              "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}/asset-upload-url")
+              # 2a. 获取上传 URL / Get upload URL
+              UPLOAD_RESPONSE=$(curl -s -X POST \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -H "Authorization: Bearer ${CNB_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "$(jq -n \
+                  --arg name "${FILE_NAME}" \
+                  --argjson size ${FILE_SIZE} \
+                  '{asset_name: $name, size: $size, overwrite: true}')" \
+                "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}/asset-upload-url")
 
-            UPLOAD_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.upload_url')
-            VERIFY_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.verify_url')
+              UPLOAD_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.upload_url')
+              VERIFY_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.verify_url')
 
-            if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" = "null" ]; then
-              echo "::error::Failed to get upload URL for ${FILE_NAME}"
-              echo "Response: ${UPLOAD_RESPONSE}"
-              echo "::endgroup::"
-              continue
-            fi
+              if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" = "null" ]; then
+                echo "::error::Failed to get upload URL for ${FILE_NAME}"
+                echo "Response: ${UPLOAD_RESPONSE}"
+                exit 1
+              fi
 
-            # 2b. 上传文件内容 / Upload file content
-            echo "Uploading file to: ${UPLOAD_URL}"
-            UPLOAD_RESULT=$(curl -s -w "\n%{http_code}" -X PUT \
-              -H "Content-Type: application/gzip" \
-              --data-binary @"$FILE_PATH" \
-              "$UPLOAD_URL")
-            UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESULT" | tail -1)
-            echo "Upload HTTP status: ${UPLOAD_HTTP_CODE}"
+              # 2b. 上传文件内容 / Upload file content
+              echo "Uploading ${FILE_NAME} to: ${UPLOAD_URL}"
+              CONTENT_TYPE="application/gzip"
+              if [[ "${FILE_NAME}" == *.txt ]]; then
+                CONTENT_TYPE="text/plain"
+              fi
 
-            # 2c. 确认上传完成 / Confirm upload
-            echo "Confirming upload..."
-            CONFIRM_RESULT=$(curl -s -w "\n%{http_code}" -X POST \
-              -H "Accept: application/vnd.cnb.api+json" \
-              -H "Authorization: Bearer ${CNB_TOKEN}" \
-              "${VERIFY_URL}")
-            CONFIRM_HTTP_CODE=$(echo "$CONFIRM_RESULT" | tail -1)
-            echo "Confirm HTTP status: ${CONFIRM_HTTP_CODE}"
+              UPLOAD_RESULT=$(curl -s -w "\n%{http_code}" -X PUT \
+                -H "Content-Type: ${CONTENT_TYPE}" \
+                --data-binary @"$FILE_PATH" \
+                "$UPLOAD_URL")
+              UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESULT" | tail -1)
 
-            echo "✅ ${FILE_NAME} uploaded successfully"
-            echo "::endgroup::"
+              if [ "$UPLOAD_HTTP_CODE" -ne 200 ] && [ "$UPLOAD_HTTP_CODE" -ne 201 ]; then
+                echo "::error::Failed to upload ${FILE_NAME} (HTTP ${UPLOAD_HTTP_CODE})"
+                exit 1
+              fi
+
+              # 2c. 确认上传完成 / Confirm upload
+              echo "Confirming upload for ${FILE_NAME}..."
+              CONFIRM_RESULT=$(curl -s -w "\n%{http_code}" -X POST \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -H "Authorization: Bearer ${CNB_TOKEN}" \
+                "${VERIFY_URL}")
+              CONFIRM_HTTP_CODE=$(echo "$CONFIRM_RESULT" | tail -1)
+
+              if [ "$CONFIRM_HTTP_CODE" -ne 200 ] && [ "$CONFIRM_HTTP_CODE" -ne 201 ]; then
+                echo "::error::Failed to confirm upload for ${FILE_NAME} (HTTP ${CONFIRM_HTTP_CODE})"
+                exit 1
+              fi
+
+              echo "✅ ${FILE_NAME} uploaded successfully"
+            ) &
           done
+
+          # 等待所有后台任务完成
+          wait
 
           echo "🎉 All assets uploaded to CNB Release!"
