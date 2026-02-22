@@ -17,7 +17,10 @@ SERVICE_NAME="fast-note.service"
 LOG_FILE="/var/log/fast-note.log"
 TMPDIR="${TMPDIR:-/tmp}"
 GITHUB_RAW="https://github.com/$REPO/releases/download"
-GITHUB_API="https://api.github.com/repos/$REPO/releases"
+GITHUB_API="https://api.github.com/repos/$REPO"
+CNB_API_BASE="https://api.cnb.cool/$REPO/-/releases"
+CNB_TOKEN="58tjez3744HL9Z10cRaCHdeEPhK"
+USE_CNB=false
 SUDO=""
 
 # --- Color system // 颜色系统 ---
@@ -240,6 +243,17 @@ load_lang() {
 # Initial load // 初始加载
 load_lang "init"
 
+# Check network connectivity // 检查网络连通性
+check_connectivity() {
+    if ! curl -Is --connect-timeout 2 https://api.github.com >/dev/null 2>&1 || \
+       ! curl -Is --connect-timeout 2 https://raw.githubusercontent.com >/dev/null 2>&1; then
+        USE_CNB=true
+        warn "GitHub access failed. Switching to cnb.cool mirror..."
+        warn "GitHub 访问失败，正在切换到 cnb.cool 镜像源..."
+    fi
+}
+check_connectivity
+
 # --- Version Tracking // 版本追踪 ---
 load_version() {
     if [ -f "$VERSION_CONF" ]; then
@@ -292,9 +306,16 @@ _arch_map() {
 # try get latest tag from GitHub API; fallback to "latest" string
 # 尝试从 GitHub API 获取最新 tag；失败则回退到 "latest" 字符串
 get_latest_tag() {
+    if [ "$USE_CNB" = "true" ]; then
+        local latest
+        latest=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" | \
+                sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
+        if [ -n "$latest" ]; then echo "$latest"; return 0; fi
+    fi
+
     if command -v curl >/dev/null 2>&1; then
         local latest
-        latest="$(curl -fsSL "$GITHUB_API/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' || true)"
+        latest="$(curl -fsSL "$GITHUB_API/releases/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' || true)"
         if [ -n "$latest" ]; then
             echo "$latest"
             return 0
@@ -320,6 +341,41 @@ download_release_asset() {
     local asset_name
     asset_name="$(asset_name_for "$ver" "$os" "$arch")"
     local out="$TMPDIR/$asset_name"
+
+    if [ "$USE_CNB" = "true" ]; then
+        local release_json
+        release_json=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" || true)
+        if [ -n "$release_json" ]; then
+            local asset_url
+            if command -v jq >/dev/null 2>&1; then
+                asset_url=$(echo "$release_json" | jq -r --arg tag "$ver" --arg name "$asset_name" '.[] | select((.tag_name==$tag or $tag=="latest")) | .assets[] | select(.name==$name) | .browser_download_url' | head -n1 || true)
+            else
+                # Simple extraction: find the block for the tag/latest, then find the asset name in that block
+                asset_url=$(echo "$release_json" | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"|"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+"|"name"[[:space:]]*:[[:space:]]*"[^"]+"' | \
+                    awk -v tag="$ver" -v name="$asset_name" '
+                        BEGIN { RS="\"tag_name\""; FS=":"; OFS=":" }
+                        $2 ~ "\""tag"\"" || tag == "latest" {
+                            found_tag=1
+                        }
+                        found_tag && $0 ~ "\"name\"" && $2 ~ "\""name"\"" {
+                            found_name=1
+                        }
+                        found_tag && found_name && $0 ~ "\"browser_download_url\"" {
+                            print $2; exit
+                        }
+                    ' | tr -d '" ' || true)
+            fi
+
+            if [ -n "$asset_url" ]; then
+                info "$L_TRY_DL (CNB): ${_BOLD}$asset_url${_RESET}" >&2
+                if curl -L --fail -H "Authorization: $CNB_TOKEN" -o "$out" "$asset_url"; then
+                    echo "$out"
+                    return 0
+                fi
+            fi
+        fi
+    fi
+
     local url="$GITHUB_RAW/${clean_ver}/${asset_name}"
 
     info "$L_TRY_DL: ${_BOLD}$url${_RESET}" >&2
@@ -333,12 +389,12 @@ download_release_asset() {
     # try API: find release by tag or latest
     local release_json
     if [ "$ver" = "latest" ] || [ -z "$ver" ]; then
-        release_json="$(curl -fsSL "$GITHUB_API/latest" 2>/dev/null || true)"
+        release_json="$(curl -fsSL "$GITHUB_API/releases/latest" 2>/dev/null || true)"
     else
         # find release by tag
-        release_json="$(curl -fsSL "$GITHUB_API/tags/$ver" 2>/dev/null || true)"
+        release_json="$(curl -fsSL "$GITHUB_API/releases/tags/$ver" 2>/dev/null || true)"
         if [ -z "$release_json" ]; then
-            release_json="$(curl -fsSL "$GITHUB_API" 2>/dev/null | grep -A20 "\"tag_name\": \"$ver\"" -n || true)"
+            release_json="$(curl -fsSL "$GITHUB_API/releases" 2>/dev/null | grep -A20 "\"tag_name\": \"$ver\"" -n || true)"
         fi
     fi
 
