@@ -314,15 +314,8 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 	// 返回给客户端的版本号不带 v 前缀
 	cv.VersionNewName = strings.TrimPrefix(cv.VersionNewName, "v")
 	cv.PluginVersionNewName = strings.TrimPrefix(cv.PluginVersionNewName, "v")
-	// Supplying link information
-	// 补充链接信息
-	if cv.VersionNewLink == "" && cv.VersionNewName != "" {
-		cv.VersionNewLink = "https://github.com/haierkeys/fast-note-sync-service/releases/tag/" + cv.VersionNewName
-	}
-	if cv.PluginVersionNewLink == "" && cv.PluginVersionNewName != "" {
-		cv.PluginVersionNewLink = "https://github.com/haierkeys/obsidian-fast-note-sync/releases/tag/" + cv.PluginVersionNewName
-	}
-
+	// Returns the link information as-is from setting (already set by task)
+	// 直接返回设置中的链接信息（已由任务设置）
 	return cv
 }
 

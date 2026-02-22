@@ -36,11 +36,12 @@ func (h *VersionHandler) ServerVersion(c *gin.Context) {
 	versionInfo := h.App.Version()
 	checkInfo := h.App.CheckVersion("")
 	response.ToResponse(code.Success.WithData(dto.VersionDTO{
-		Version:        versionInfo.Version,
-		GitTag:         versionInfo.GitTag,
-		BuildTime:      versionInfo.BuildTime,
-		VersionIsNew:   checkInfo.VersionIsNew,
-		VersionNewName: checkInfo.VersionNewName,
-		VersionNewLink: checkInfo.VersionNewLink,
+		Version:             versionInfo.Version,
+		GitTag:              versionInfo.GitTag,
+		BuildTime:           versionInfo.BuildTime,
+		VersionIsNew:        checkInfo.VersionIsNew,
+		VersionNewName:      checkInfo.VersionNewName,
+		VersionNewLink:      checkInfo.VersionNewLink,
+		VersionNewChangelog: checkInfo.VersionNewChangelog,
 	}))
 }
