@@ -6,6 +6,163 @@ The project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/) 
 
 ---
 
+## v1.16.2
+> *2026/02/14*
+
+### 🚀 Optimized
+
+- **WebGui**: Adjusted WebGui interface position.
+- **Features**: Added display of server information.
+- **Performance**: Optimized list height for zero-copy access to fix issues with low display height in various lists.
+- **Sync**: Optimized note/attachment sync logic.
+
+---
+
+## v1.16.1
+> *2026/02/14*
+
+### 🚀 Optimized
+
+- **WebGui**: Adjusted WebGui interface position.
+- **Features**: Added display of server information.
+
+---
+
+## v1.15.11
+> *2026/02/14*
+
+### 🚀 Optimized
+
+- **WebGui**: Optimized WebGui interface and added URL support.
+
+---
+
+## v1.15.10
+> *2026/02/14*
+
+### 🚀 Optimized
+
+- **Architecture**: Adjusted service toolkit.
+- **API**: Adjusted API response structure.
+
+---
+
+## v1.15.9
+> *2026/02/14*
+
+### ✨ Added
+
+- **Tools**: Added access entry for fns docs and ws debug tools.
+
+---
+
+## v1.15.8
+> *2026/02/13*
+
+### 🛠️ Fixed
+
+- **Stability**: Fixed minor BUG in time processing.
+
+---
+
+## v1.15.7
+> *2026/02/13*
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed issue with offline deletion not clearing local hash table.
+
+---
+
+## v1.15.6
+> *2026/02/13*
+
+### 🛠️ Fixed
+
+- **Scripts**: Fixed fns shortcut script running issue on macOS.
+- **Logging**: Fixed log printing content.
+
+---
+
+## v1.15.5
+> *2026/02/12*
+
+### 🚀 Optimized
+
+- **CI/CD**: Adjusted GitHub Action to use go mod version for building and publishing.
+
+---
+
+## v1.15.4
+> *2026/02/12*
+
+### ✨ Added
+
+- **Sync**: Added feature to clear note configuration related messages.
+
+---
+
+## v1.15.3
+> *2026/02/10*
+
+### 🛠️ Fixed
+
+- **Folder**: Added fallback solution for duplicate folders and startup task to clear duplicates.
+
+---
+
+## v1.15.2
+> *2026/02/09*
+
+### 🚀 Optimized
+
+- **Database**: Optimized DB performance and structure, performed batch formatting.
+
+---
+
+## v1.15.1
+> *2026/02/07*
+
+### ✨ Added
+
+- **Folder**: Added folder management features, including models and related logic.
+- **Sync**: Fixed potential data race issues and optimized note/attachment renaming.
+
+---
+
+## v1.14.1
+> *2026/01/31*
+
+### ✨ Added
+
+- **Trash**: Added trash and batch recovery for attachment management.
+
+### 🛠️ Fixed
+
+- **Stability**: Fixed issue where resources were not created correctly due to identical modified time and content in attachments/config files.
+
+### 🚀 Optimized
+
+- **API**: Optimized attachment view/download interfaces with zero-copy access.
+- **WebGui**: Fixed low display height issues in various lists.
+
+---
+
+## v1.14.0
+> *2026/01/31*
+
+### ✨ Added
+
+- **Trash**: Added trash for attachment management.
+- **WebGui**: Added display of server information.
+- **Sync**: Added note and attachment renaming features.
+
+### 🛠️ Fixed
+
+- **Stability**: Fixed potential data race issues.
+
+---
+
 ## v1.13.0
 > *2026/01/30*
 
