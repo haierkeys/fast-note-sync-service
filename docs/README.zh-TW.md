@@ -2,11 +2,14 @@
 
 有問題請新建 [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new) , 或加入電報交流群尋求幫助: [https://t.me/obsidian_users](https://t.me/obsidian_users)
 
+中國大陸地區，推薦使用騰訊 `cnb.cool` 鏡像庫: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
+
 
 <h1 align="center">Fast Note Sync Service</h1>
 
 <p align="center">
     <a href="https://github.com/haierkeys/fast-note-sync-service/releases"><img src="https://img.shields.io/github/release/haierkeys/fast-note-sync-service?style=flat-square" alt="release"></a>
+    <a href="https://github.com/haierkeys/fast-note-sync-service/releases"><img src="https://img.shields.io/github/v/tag/haierkeys/fast-note-sync-service?label=release-alpha&style=flat-square" alt="alpha-release"></a>
     <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/LICENSE"><img src="https://img.shields.io/github/license/haierkeys/fast-note-sync-service?style=flat-square" alt="license"></a>
     <img src="https://img.shields.io/badge/Language-Go-00ADD8?style=flat-square" alt="Go">
 </p>
@@ -23,12 +26,12 @@
 
 <div align="center">
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/vault.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/attach.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/vault.png"><img src="/docs/images/vault.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/attach.png"><img src="/docs/images/attach.png" alt="fast-note-sync-service-preview" width="400" /></a>
     </div>
   <div align="center">
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/note.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
-    <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/images/setting.png"><img src="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/master/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/note.png"><img src="/docs/images/note.png" alt="fast-note-sync-service-preview" width="400" /></a>
+    <a href="/docs/images/setting.png"><img src="/docs/images/setting.png" alt="fast-note-sync-service-preview" width="400" /></a>
   </div>
 </div>
 
@@ -43,7 +46,7 @@
   * 內置現代化管理界面，輕鬆創建用戶、生成插件配置、管理倉庫及筆記內容。
 * **🔄 多端筆記同步**：
     * 支持 **Vault (倉庫)** 自動創建。
-    * 支持筆記管理（增、刪、改、查），變更毫秒級實時分發至所有在線設備。
+    * 支持筆記管理（增、刪、改、查），變更毫秒級實時分佈至所有在線設備。
 * **🖼️ 附件同步支持**：
     * 完美支持圖片等非筆記文件同步。
     * 支持大附件 分片上傳下載，分片大小可配置，提升同步效率。
@@ -65,23 +68,24 @@
 
 - 如果覺得這個插件很有用，並且想要它繼續開發，請在以下方式支持我:
 
-  | Ko-fi *非中國地區*                                                                                                   |    | 微信掃碼打賞 *中國地區*                                            |
-  |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
-  | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+  | Ko-fi *非中國地區*                                                                               |    | 微信掃碼打賞 *中國地區*                        |
+  |--------------------------------------------------------------------------------------------------|----|------------------------------------------------|
+  | [<img src="/docs/images/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="/docs/images/wxds.png" height="150"> |
 
   - 已支持名單：
-    - https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-CN.md
+    - <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-TW.md">Support.zh-TW.md</a>
+    - <a href="https://cnb.cool/haierkeys/fast-note-sync-service/-/blob/master/docs/Support.zh-TW.md">Support.zh-TW.md (cnb.cool 鏡像庫)</a>
 
 ## ⏱️ 更新日誌
 
-- ♨️ [訪問查看更新日誌](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/CHANGELOG.zh-TW.md)
+- ♨️ [訪問查看更新日誌](/docs/CHANGELOG.zh-TW.md)
 
 ## 🗺️ 路線圖 (Roadmap)
 
 我們正在持續改進，以下是未來的開發計劃：
 
 - [ ] **分享功能**：支持筆記的分享。
-- [ ] **MCP 支持**：增加 AI MCP 相關功能支持。
+- [ ] **MCP支持**：增加 AI MCP 相關功能支持。
 - [ ] **目錄同步**：支持目錄的增刪改查。
 - [ ] **Git 版本控制集成**：為筆記提供更安全的版本回溯。
 - [ ] **雲存儲與備份策略**：
@@ -102,9 +106,15 @@
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
+中國地區可以使用騰訊 `cnb.cool` 鏡像源
+```bash
+bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh)
+```
+
+
 **腳本主要行為：**
 
-  * 自動下載適配當前系統的 Release 二進制文件。
+  * 自動下載適配當前系統的 Release 二進位文件。
   * 默認安裝至 `/opt/fast-note`，並在 `/usr/local/bin/fast-note` 創建快捷指令。
   * 配置並啟動 Systemd 服務 (`fast-note.service`)，實現開機自啟。
   * **管理命令**：`fast-note [install|uninstall|start|stop|status|update|menu]`
@@ -154,7 +164,7 @@ docker compose up -d
 
 -----
 
-### 方式三：手動二進制安裝
+### 方式三：手動二進位安裝
 
 從 [Releases](https://github.com/haierkeys/fast-note-sync-service/releases) 下載對應系統的最新版本，解壓後運行：
 
@@ -167,9 +177,9 @@ docker compose up -d
 1.  **訪問管理面板**：
     在瀏覽器打開 `http://{服務器IP}:9000`。
 2.  **初始化設置**：
-    首次訪問需註冊賬號。*(如需關閉註冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
+    首次訪問需註冊帳號。*(如需關閉註冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
 3.  **配置客戶端**：
-    登錄管理面板，點擊 **“複製 API 配置”**。
+    登錄管理面板，點擊 **「複製 API 配置」**。
 4.  **連接 Obsidian**：
     打開 Obsidian 插件設置頁面，粘貼剛才複製的配置信息即可。
 
@@ -187,3 +197,4 @@ docker compose up -d
 ## 🔗 相關資源
 
   * [Obsidian Fast Note Sync Plugin (客戶端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
+  * [Obsidian Fast Note Sync Plugin (cnb.cool 鏡像庫)](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
