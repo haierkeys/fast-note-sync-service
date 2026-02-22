@@ -17,12 +17,15 @@ type VersionInfo struct {
 }
 
 type CheckVersionInfo struct {
-	VersionIsNew         bool   `json:"versionIsNew"`
-	VersionNewName       string `json:"versionNewName"`
-	VersionNewLink       string `json:"versionNewLink"`
-	PluginVersionIsNew   bool   `json:"pluginVersionIsNew"`
-	PluginVersionNewName string `json:"pluginVersionNewName"`
-	PluginVersionNewLink string `json:"pluginVersionNewLink"`
+	GithubAvailable           bool   `json:"githubAvailable"`
+	VersionIsNew              bool   `json:"versionIsNew"`
+	VersionNewName            string `json:"versionNewName"`
+	VersionNewLink            string `json:"versionNewLink"`
+	VersionNewChangelog       string `json:"versionNewChangelog"`
+	PluginVersionIsNew        bool   `json:"pluginVersionIsNew"`
+	PluginVersionNewName      string `json:"pluginVersionNewName"`
+	PluginVersionNewLink      string `json:"pluginVersionNewLink"`
+	PluginVersionNewChangelog string `json:"pluginVersionNewChangelog"`
 }
 
 type Response struct {
