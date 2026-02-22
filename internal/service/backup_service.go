@@ -626,7 +626,7 @@ func (s *backupService) exportArchiveFiles(ctx context.Context, uid, vaultID int
 	totalCount := int64(0)
 	totalSize := int64(0)
 
-	err = s.forEachResource(ctx, uid, vault, incremental, lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, updatedAt time.Time, isDeleted bool) error {
+	err = s.forEachResource(ctx, uid, vault, incremental, lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, mtime time.Time, isDeleted bool) error {
 		if isDeleted {
 			return nil
 		}
@@ -750,7 +750,7 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 
 	totalCount, totalSize := int64(0), int64(0)
 	hasChanges := false
-	err = s.forEachResource(ctx, uid, vault, !lastRun.IsZero(), lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, updatedAt time.Time, isDeleted bool) error {
+	err = s.forEachResource(ctx, uid, vault, !lastRun.IsZero(), lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, mtime time.Time, isDeleted bool) error {
 		hasChanges = true
 		if client == nil {
 			return nil // Just checking for changes
@@ -766,10 +766,10 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 
 		var sendErr error
 		if isNote {
-			_, sendErr = client.SendContent(objName, content, updatedAt)
+			_, sendErr = client.SendContent(objName, content, mtime)
 		} else {
 			if f, err := os.Open(localPath); err == nil {
-				_, sendErr = client.SendFile(objName, f, "application/octet-stream", updatedAt)
+				_, sendErr = client.SendFile(objName, f, "application/octet-stream", mtime)
 				f.Close()
 			} else {
 				sendErr = err
@@ -802,7 +802,7 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 	return hasChanges, nil
 }
 
-type resourceAction func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, updatedAt time.Time, isDeleted bool) error
+type resourceAction func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, mtime time.Time, isDeleted bool) error
 
 // forEachResource Iterate through all resources (notes and attachments) in the specified vault
 // 遍历指定 Vault 中的所有资源 (笔记和附件)
@@ -839,7 +839,7 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 			}
 			// wait, the original code had: if !filepath.HasPrefix(filepath.Ext(path), ".md")
 			// I'll assume standard behavior.
-			if err := action(v, path, true, []byte(n.Content), int64(len(n.Content)), "", n.UpdatedAt, n.IsDeleted()); err != nil {
+			if err := action(v, path, true, []byte(n.Content), int64(len(n.Content)), "", time.UnixMilli(n.Mtime), n.IsDeleted()); err != nil {
 				return err
 			}
 		}
@@ -865,7 +865,7 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 					size = info.Size()
 				}
 			}
-			if err := action(v, f.Path, false, nil, size, f.SavePath, f.UpdatedAt, f.IsDeleted()); err != nil {
+			if err := action(v, f.Path, false, nil, size, f.SavePath, time.UnixMilli(f.Mtime), f.IsDeleted()); err != nil {
 				return err
 			}
 		}
