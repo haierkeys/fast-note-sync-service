@@ -68,12 +68,13 @@
 
 - 如果觉得这个插件很有用，并且想要它继续开发，请在以下方式支持我:
 
-  | Ko-fi *非中国地区*                                                                                                   |    | 微信扫码打赏 *中国地区*                                            |
-  |----------------------------------------------------------------------------------------------------------------------|----|--------------------------------------------------------------------|
-  | [<img src="https://ik.imagekit.io/haierkeys/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="https://ik.imagekit.io/haierkeys/wxds.png" height="150"> |
+  | Ko-fi *非中国地区*                                                                               |    | 微信扫码打赏 *中国地区*                        |
+  |--------------------------------------------------------------------------------------------------|----|------------------------------------------------|
+  | [<img src="/docs/images/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | 或 | <img src="/docs/images/wxds.png" height="150"> |
 
   - 已支持名单：
-    - [docs/Support.zh-CN.md](/docs/Support.zh-CN.md)
+    - <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.zh-CN.md">Support.zh-CN.md</a>
+    - <a href="https://cnb.cool/haierkeys/fast-note-sync-service/-/blob/master/docs/Support.zh-CN.md">Support.zh-CN.md (cnb.cool 镜像库)</a>
 
 ## ⏱️ 更新日志
 
@@ -105,7 +106,7 @@
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
-中国地区可以使用腾讯 `cnb.cool` 源
+中国地区可以使用腾讯 `cnb.cool` 镜像源
 ```bash
 bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh)
 ```
@@ -196,5 +197,6 @@ docker compose up -d
 ## 🔗 相关资源
 
   * [Obsidian Fast Note Sync Plugin (客户端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
+  * [Obsidian Fast Note Sync Plugin (cnb.cool 镜像库)](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
 
 

@@ -1,10 +1,10 @@
-# 支持者名单 (Thanks to Supporters)
+# Supporters List
 
-> 非常感谢大家对本项目的支持！每一份打赏都是我持续维护和迭代的动力。 ❤️
+> Thank you very much for supporting this project! Every donation is the driving force for my continuous maintenance and iteration. ❤️
 
-### 📜 致谢列表
+### 📜 Acknowledgement List
 
-| 收款时间 | 收款项 | 金额 | 昵称 | 留言 | 备注 |
+| Time | Item | Amount | Name | Message | Note |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 2026/01/14 15:58:04 | 任意打赏 | **¥88.00** | wutay | 能力有限，不成敬意 | - |
 | 2026/02/16 21:34:33 | 任意打赏 | **¥66.00** | Jack | 新年快乐 | - |
@@ -39,4 +39,4 @@
 
 
 --- 
-*本数据最后更新于：2026/2/22 21:49:08*
+*Last updated on: Sun, 22 Feb 2026 13:49:09 GMT*
