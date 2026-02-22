@@ -6,37 +6,37 @@
 
 | Time | Item | Amount | Name | Message | Note |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 2026/01/14 15:58:04 | 任意打赏 | **¥88.00** | wutay | 能力有限，不成敬意 | - |
-| 2026/02/16 21:34:33 | 任意打赏 | **¥66.00** | Jack | 新年快乐 | - |
-| 2026/02/16 12:14:32 | 两杯咖啡☕ | **¥50.00** | 红殇 | 感谢作者，新年快乐！ | - |
-| 2026/02/14 18:01:55 | 两杯咖啡☕ | **¥50.00** | Jacky龙 | 感谢开发这么棒的插件，解决了同步问题 | - |
-| 2026/02/04 10:41:49 | 两杯咖啡☕ | **¥50.00** | 咕咕咕 | 同步功能很好用，希望继续迭代完善，以笔记安全为主 | - |
-| 2026/01/31 16:59:55 | 两杯咖啡☕ | **¥50.00** | vulnnull | 好好开发，确实解决了 Obsidian 最大的一个痛点！ | - |
-| 2026/01/21 09:37:19 | 两杯咖啡☕ | **¥50.00** | Mojo抖音 | 谢谢你的Obsidian同步很好用👍🏻 | - |
-| 2026/01/09 16:34:10 | 两杯咖啡☕ | **¥50.00** | 喆 | 谢谢男菩萨的 OB 插件造福世人(^🙏^)，小小心意不成敬意。 | - |
-| 2026/02/15 09:25:17 | 一杯咖啡☕ | **¥20.00** | sfsun67 | 支持，加油~，很实用，强需求的功能。在AI时代大有用处 | - |
-| 2026/02/10 23:21:38 | 一杯咖啡☕ | **¥20.00** | toby | 感谢大佬做的同步插件，非常好用，请大佬先喝一杯咖啡，后续还会再继续打赏的 | - |
-| 2026/02/10 11:41:36 | 一杯咖啡☕ | **¥20.00** | WONG | 大佬的同步插件非常棒，我会一直持续支持的 | - |
-| 2026/02/08 22:02:32 | 一杯咖啡☕ | **¥20.00** | 小迪 | 非常好用，感谢 | - |
-| 2026/02/06 08:42:49 | 一杯咖啡☕ | **¥20.00** | Max | 加油💪web端的图片编辑功能整一下呗 | - |
-| 2026/01/28 10:48:02 | 一杯咖啡☕ | **¥20.00** | 通 | 加油 | - |
-| 2026/01/26 17:21:27 | 一杯咖啡☕ | **¥20.00** | CloseCV | 😘 | - |
-| 2026/01/16 11:47:13 | 一杯咖啡☕ | **¥20.00** | 苏 | 很好用，期待后续的开发与优化。感谢。 | - |
-| 2026/01/15 14:51:11 | 一杯咖啡☕ | **¥20.00** | 灰风 | 非常好用感谢！ | - |
-| 2026/01/09 18:12:17 | 一杯咖啡☕ | **¥20.00** | xix | 插件思路太对了 | - |
-| 2026/01/03 22:44:43 | 一杯咖啡☕ | **¥20.00** | 姚朝伟 | 希望越来越好👌🏻 | 加油 |
-| 2026/01/03 14:58:43 | 一杯咖啡☕ | **¥20.00** | roao | 很棒的同步方案，未来可期！非常感谢开源！加油！ | - |
-| 2026/02/20 10:37:02 | 任意打赏 | **¥10.00** | 羽山猫四叶 | 感谢做了这么便捷的同步软件 | - |
-| 2026/01/28 12:03:03 | 任意打赏 | **¥9.90** | 华星 | 牛🐮 | - |
-| 2026/01/28 02:52:15 | 任意打赏 | **¥8.88** | obsidian | 感谢分享 | - |
-| 2026/02/01 23:44:27 | 任意打赏 | **¥6.66** | 爱你 | 爱你 | - |
-| 2026/01/09 22:22:25 | 任意打赏 | **¥6.66** | kane | 老哥写的插件很棒，继续努力吧！ | - |
-| 2026/02/14 02:32:50 | 任意打赏 | **¥5.00** | 支持开源精神 | 感谢开发这么好用的插件 | - |
-| 2026/02/13 02:13:10 | 任意打赏 | **¥5.00** | xxx | 打赏 | - |
-| 2026/02/11 17:07:02 | 任意打赏 | **¥5.00** | Acckion | 加油 | - |
-| 2026/01/11 14:20:34 | 任意打赏 | **¥5.00** | 安宁 | 很好用，希望能把 git 做出来 | - |
-| 2026/01/08 15:18:06 | 任意打赏 | **¥1.00** | 用户 | 从发现部署到使用，好多年了，从未有过的流畅丝滑的感觉，真的太好了！[强][强][强] | - |
+| 2026/01/14 15:58:04 | Tip as you like | **¥88.00** | wutay | Limited ability, no respect | - |
+| 2026/02/16 21:34:33 | Tip as you like | **¥66.00** | Jack | Happy New Year | - |
+| 2026/02/16 12:14:32 | Two cups of coffee☕ | **¥50.00** | 红殇 | Thanks to the author and Happy New Year! | - |
+| 2026/02/14 18:01:55 | Two cups of coffee☕ | **¥50.00** | Jacky龙 | Thanks for developing such a great plug-in, which solves the synchronization problem | - |
+| 2026/02/04 10:41:49 | Two cups of coffee☕ | **¥50.00** | 咕咕咕 | The synchronization function is very useful. I hope to continue to iterate and improve it, focusing on note safety. | - |
+| 2026/01/31 16:59:55 | Two cups of coffee☕ | **¥50.00** | vulnnull | Well developed, it has indeed solved one of Obsidian’s biggest pain points! | - |
+| 2026/01/21 09:37:19 | Two cups of coffee☕ | **¥50.00** | Mojo抖音 | Thank you for the Obsidian synchronization which is very useful👍🏻 | - |
+| 2026/01/09 16:34:10 | Two cups of coffee☕ | **¥50.00** | 喆 | Thank you Male Bodhisattva for your OB plug-in for benefiting the world (^🙏^), being petty is disrespectful. | - |
+| 2026/02/15 09:25:17 | A cup of coffee☕ | **¥20.00** | sfsun67 | Support, come on~, it is very practical and a highly demanded function. Very useful in the AI ​​era | - |
+| 2026/02/10 23:21:38 | A cup of coffee☕ | **¥20.00** | toby | Thanks for the synchronization plug-in made by the boss. It is very easy to use. Please drink a cup of coffee first and I will continue to reward you later. | - |
+| 2026/02/10 11:41:36 | A cup of coffee☕ | **¥20.00** | WONG | The synchronization plug-in of the boss is very good. I will continue to support it. | - |
+| 2026/02/08 22:02:32 | A cup of coffee☕ | **¥20.00** | 小迪 | Very useful, thank you | - |
+| 2026/02/06 08:42:49 | A cup of coffee☕ | **¥20.00** | Max | Come on💪 improve the image editing function on the web | - |
+| 2026/01/28 10:48:02 | A cup of coffee☕ | **¥20.00** | 通 | come on | - |
+| 2026/01/26 17:21:27 | A cup of coffee☕ | **¥20.00** | CloseCV | 😘 | - |
+| 2026/01/16 11:47:13 | A cup of coffee☕ | **¥20.00** | 苏 | Very useful, looking forward to subsequent development and optimization. grateful. | - |
+| 2026/01/15 14:51:11 | A cup of coffee☕ | **¥20.00** | 灰风 | Very useful. Thanks! | - |
+| 2026/01/09 18:12:17 | A cup of coffee☕ | **¥20.00** | xix | The plug-in idea is so right | - |
+| 2026/01/03 22:44:43 | A cup of coffee☕ | **¥20.00** | 姚朝伟 | Hope it gets better and better👌🏻 | come on |
+| 2026/01/03 14:58:43 | A cup of coffee☕ | **¥20.00** | roao | Great synchronization solution, look forward to the future! Thank you very much for the open source! come on! | - |
+| 2026/02/20 10:37:02 | Tip as you like | **¥10.00** | 羽山猫四叶 | Thanks for making such a convenient synchronization software | - |
+| 2026/01/28 12:03:03 | Tip as you like | **¥9.90** | 华星 | Cow🐮 | - |
+| 2026/01/28 02:52:15 | Tip as you like | **¥8.88** | obsidian | thanks for sharing | - |
+| 2026/02/01 23:44:27 | Tip as you like | **¥6.66** | 爱你 | Love you | - |
+| 2026/01/09 22:22:25 | Tip as you like | **¥6.66** | kane | The plug-in I wrote is great, keep up the good work! | - |
+| 2026/02/14 02:32:50 | Tip as you like | **¥5.00** | 支持开源精神 | Thanks for developing such a useful plug-in | - |
+| 2026/02/13 02:13:10 | Tip as you like | **¥5.00** | xxx | reward | - |
+| 2026/02/11 17:07:02 | Tip as you like | **¥5.00** | Acckion | come on | - |
+| 2026/01/11 14:20:34 | Tip as you like | **¥5.00** | 安宁 | It’s very useful. I hope I can use git to build it. | - |
+| 2026/01/08 15:18:06 | Tip as you like | **¥1.00** | 用户 | From discovery and deployment to use, it has been many years, and it feels smooth and silky like never before. It is really great! [strong][strong][strong] | - |
 
 
 --- 
-*Last updated on: Sun, 22 Feb 2026 13:49:09 GMT*
+*Last updated on: Sun, 22 Feb 2026 16:53:18 GMT*
