@@ -47,7 +47,7 @@ buildDir = $(rootDir)/build
         push-online push-dev \
         build-macos-amd64 build-macos-arm64 build-linux-amd64 \
         build-linux-arm64 build-windows-amd64 gox-linux gox-all \
-		docs fmt update air dev ver gen
+		docs fmt update air dev ver gen sup
 
 # 默认目标
 all: test build-all
@@ -55,6 +55,12 @@ all: test build-all
 # -------------------------
 # 简单目标
 # -------------------------
+sup:
+	node scripts/process_support_csv.js
+	node scripts/gen_support_md.js
+
+sup-md:
+	node scripts/gen_support_md.js
 test:
 	@echo ${REPO}
 
