@@ -51,6 +51,11 @@ draw_banner() {
         ver_display="${_GREEN}$BIN_BASE v${clean_v}${_RESET}"
     fi
 
+    local source_display="${_BLUE}GitHub${_RESET}"
+    if [ "$USE_CNB" = "true" ]; then
+        source_display="${_MAGENTA}CNB.cool${_RESET}"
+    fi
+
     cat <<EOF
 ${_CYAN}${_BOLD}
     ______           __     _   __      __          _____
@@ -63,6 +68,7 @@ ${_CYAN}${_BOLD}
        Fast Note Sync Service Manager Script
    ================================================
    $L_CUR_VER: $ver_display
+   $L_SOURCE: $source_display
 ${_RESET}
 EOF
   echo -e "\n"
@@ -115,6 +121,7 @@ load_lang() {
         L_ENTER_URL="输入脚本 URL [默认:"
         L_PATH_WARN="警告: 安装目录 %s 不在您的 PATH 环境变量中。"
         L_PATH_FIX="请手动添加以在任何地方使用快捷命令: export PATH=\$PATH:%s"
+        L_SOURCE="下载源"
 
         L_ERR_ROOT="需要 root 权限或安装 sudo 后重试"
         L_TRY_DL="尝试下载"
@@ -188,6 +195,7 @@ load_lang() {
         L_ENTER_URL="Enter script URL [Default:"
         L_PATH_WARN="WARNING: Install directory %s is not in your PATH."
         L_PATH_FIX="Add it manually to use commands everywhere: export PATH=\$PATH:%s"
+        L_SOURCE="Download Source"
 
         L_ERR_ROOT="Root privileges or sudo required"
         L_TRY_DL="Trying to download"
