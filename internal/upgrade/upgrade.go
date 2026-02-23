@@ -69,7 +69,6 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version, dbPath, dbTyp
 			// 在这里注册所有的升级脚本
 			&VaultMigrate{},
 			&NoteHistoryRenameMigrate{},
-			&GitSyncConfigMigrate{},
 		},
 	}
 }
