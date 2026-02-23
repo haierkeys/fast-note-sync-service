@@ -172,8 +172,6 @@ CREATE TABLE "user_share" (
 
 CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
 
-CREATE INDEX "idx_user_share_rid" ON "user_share" ("rid");
-
 -- ----------------------------
 -- Table structure for note_link
 -- ----------------------------
