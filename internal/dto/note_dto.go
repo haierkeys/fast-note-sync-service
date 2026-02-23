@@ -131,6 +131,7 @@ type NoteSyncCheckRequest struct {
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"hash123"` // Path hash // 路径哈希
 	ContentHash string `json:"contentHash" form:"contentHash" binding:"" example:"chash456"`  // Content hash // 内容哈希
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required" example:"1700000000"`    // Modification timestamp // 修改时间戳
+	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                       // Creation timestamp // 创建时间戳
 }
 
 // NoteSyncDelNote parameters for deleting a note during sync
