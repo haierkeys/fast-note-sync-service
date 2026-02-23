@@ -52,6 +52,7 @@ type FileSyncCheckRequest struct {
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"fhash123"` // Path hash // 路径哈希
 	ContentHash string `json:"contentHash" form:"contentHash" binding:"" example:"chash456"`   // Content hash // 内容哈希
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required" example:"1700000000"`     // Modification timestamp // 修改时间戳
+	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                        // Creation timestamp // 创建时间戳
 	Size        int64  `json:"size" form:"size" example:"1024"`                                // File size // 文件大小
 }
 
