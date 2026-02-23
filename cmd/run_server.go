@@ -139,7 +139,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 
 	// Initialize App Container (using AppConfig directly)
 	// 初始化 App Container（直接使用 AppConfig）
-	app, err := internalApp.NewApp(appConfig, s.logger, db)
+	app, err := internalApp.NewApp(appConfig, s.logger, db, frontendFiles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create app container: %w", err)
 	}

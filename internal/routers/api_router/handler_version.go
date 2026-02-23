@@ -1,6 +1,8 @@
 package api_router
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -44,4 +46,34 @@ func (h *VersionHandler) ServerVersion(c *gin.Context) {
 		VersionNewLink:      checkInfo.VersionNewLink,
 		VersionNewChangelog: checkInfo.VersionNewChangelog,
 	}))
+}
+
+// Support retrieves support records by language
+// @Summary Get support records
+// @Description Get support records for the specified language
+// @Tags System
+// @Produce json
+// @Param lang query string false "Language code (default: en)"
+// @Success 200 {object} pkgapp.Res{data=[]pkgapp.SupportRecord} "Success"
+// @Router /api/support [get]
+func (h *VersionHandler) Support(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	lang := strings.ToLower(c.Query("lang"))
+	if lang == "" {
+		lang = "en"
+	}
+
+	records := h.App.GetSupportRecords()
+	data, ok := records[lang]
+	if !ok {
+		// Fallback to en if requested language is not found
+		// 如果找不到请求的语言，回退到 en
+		data = records["en"]
+	}
+
+	if data == nil {
+		data = []pkgapp.SupportRecord{}
+	}
+
+	response.ToResponse(code.Success.WithData(data))
 }

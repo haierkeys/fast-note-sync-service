@@ -4,7 +4,10 @@ package app
 
 import (
 	"context"
+	"embed"
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"strings"
 	"sync"
 	"time"
@@ -90,6 +93,11 @@ type App struct {
 	checkVersionMu sync.RWMutex
 	checkVersion   pkgapp.CheckVersionInfo
 
+	// Support records
+	// 打赏记录
+	supportRecordsMu sync.RWMutex
+	supportRecords   map[string][]pkgapp.SupportRecord
+
 	// Startup time (for uptime calculation)
 	// 启动时间（用于计算 uptime）
 	StartTime time.Time
@@ -105,7 +113,9 @@ type App struct {
 // logger: zap 日志器（必须）
 // db: database connection (required)
 // db: 数据库连接（必须）
-func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
+// efs: frontend files embedded file system
+// efs: 前端文件嵌入文件系统
+func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("configuration is required")
 	}
@@ -123,6 +133,10 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*App, error) {
 		shutdownCh: make(chan struct{}),
 		StartTime:  time.Now(),
 	}
+
+	// Load support records
+	// 加载打赏记录
+	a.loadSupportRecords(efs)
 
 	// Initialize Worker Pool
 	// 初始化 Worker Pool
@@ -397,6 +411,73 @@ func (a *App) GetFileService(clientName, clientVersion string) service.FileServi
 		return a.FileService.WithClient(clientName, clientVersion)
 	}
 	return a.FileService
+}
+
+// loadSupportRecords loads support records from embedded file system
+// loadSupportRecords 从嵌入文件系统加载打赏记录
+func (a *App) loadSupportRecords(efs embed.FS) {
+	a.supportRecordsMu.Lock()
+	defer a.supportRecordsMu.Unlock()
+	a.supportRecords = make(map[string][]pkgapp.SupportRecord)
+
+	docsPath := "docs"
+	entries, err := fs.ReadDir(efs, docsPath)
+	if err != nil {
+		a.logger.Warn("Failed to read docs directory from embedded FS", zap.Error(err))
+		return
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if !entry.IsDir() && strings.HasPrefix(name, "Support.") && strings.HasSuffix(name, ".json") {
+			// Extract language from Support.{lang}.json
+			// 从 Support.{lang}.json 提取语言
+			parts := strings.Split(name, ".")
+			if len(parts) < 3 {
+				continue
+			}
+			lang := strings.ToLower(parts[1])
+
+			data, err := efs.ReadFile(docsPath + "/" + name)
+			if err != nil {
+				a.logger.Warn("Failed to read support record file", zap.String("file", name), zap.Error(err))
+				continue
+			}
+
+			var records []pkgapp.SupportRecord
+			if err := json.Unmarshal(data, &records); err != nil {
+				a.logger.Warn("Failed to unmarshal support records", zap.String("file", name), zap.Error(err))
+				continue
+			}
+
+			a.supportRecords[lang] = records
+			a.logger.Debug("Loaded support records", zap.String("lang", lang), zap.Int("count", len(records)))
+		}
+	}
+}
+
+// GetSupportRecords gets support records
+// GetSupportRecords 获取打赏记录
+func (a *App) GetSupportRecords() map[string][]pkgapp.SupportRecord {
+	a.supportRecordsMu.RLock()
+	defer a.supportRecordsMu.RUnlock()
+	return a.supportRecords
+}
+
+// UpdateSupportRecords updates support records for a specific language
+// UpdateSupportRecords 更新特定语言的打赏记录
+func (a *App) UpdateSupportRecords(lang string, records []pkgapp.SupportRecord) {
+	if lang == "" {
+		return
+	}
+	lang = strings.ToLower(lang)
+	a.supportRecordsMu.Lock()
+	defer a.supportRecordsMu.Unlock()
+	if a.supportRecords == nil {
+		a.supportRecords = make(map[string][]pkgapp.SupportRecord)
+	}
+	a.supportRecords[lang] = records
+	a.logger.Debug("Updated support records via background task", zap.String("lang", lang), zap.Int("count", len(records)))
 }
 
 // DefaultShutdownTimeout default shutdown timeout duration

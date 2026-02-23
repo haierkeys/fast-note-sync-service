@@ -3266,6 +3266,49 @@
                 }
             }
         },
+        "/api/support": {
+            "get": {
+                "description": "Get support records for the specified language",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get support records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Language code (default: en)",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/app.SupportRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/user/change_password": {
             "post": {
                 "security": [
@@ -4122,6 +4165,29 @@
                     "type": "boolean"
                 },
                 "vault": {}
+            }
+        },
+        "app.SupportRecord": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "item": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                }
             }
         },
         "diffmatchpatch.Diff": {
@@ -5565,6 +5631,10 @@
                 "versionIsNew": {
                     "description": "Is there a new version // 是否有新版本",
                     "type": "boolean"
+                },
+                "versionNewChangelog": {
+                    "description": "New version changelog // 新版本更新日志",
+                    "type": "string"
                 },
                 "versionNewLink": {
                     "description": "New version download link // 新版本下载链接",

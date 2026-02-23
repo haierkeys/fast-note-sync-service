@@ -257,6 +257,21 @@ definitions:
         type: boolean
       vault: {}
     type: object
+  app.SupportRecord:
+    properties:
+      amount:
+        type: string
+      item:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      time:
+        type: string
+      unit:
+        type: string
+    type: object
   diffmatchpatch.Diff:
     properties:
       text:
@@ -1318,6 +1333,9 @@ definitions:
       versionIsNew:
         description: Is there a new version // 是否有新版本
         type: boolean
+      versionNewChangelog:
+        description: New version changelog // 新版本更新日志
+        type: string
       versionNewLink:
         description: New version download link // 新版本下载链接
         type: string
@@ -3323,6 +3341,31 @@ paths:
       summary: Get enabled storage types
       tags:
       - Storage
+  /api/support:
+    get:
+      description: Get support records for the specified language
+      parameters:
+      - description: 'Language code (default: en)'
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/app.SupportRecord'
+                  type: array
+              type: object
+      summary: Get support records
+      tags:
+      - System
   /api/user/change_password:
     post:
       consumes:

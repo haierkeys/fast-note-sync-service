@@ -161,6 +161,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		// Add server version interface (no auth required)
 		// 添加服务端版本号接口（无需认证）
 		api.GET("/version", versionHandler.ServerVersion)
+		api.GET("/support", versionHandler.Support)
 		api.GET("/webgui/config", webGUIHandler.Config)
 
 		// Health check interface (no auth required)
