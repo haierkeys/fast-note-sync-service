@@ -9,6 +9,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -28,8 +29,12 @@ func (r *gitSyncRepository) GetKey(uid int64) string {
 
 func (r *gitSyncRepository) gitSync(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
-		_ = model.AutoMigrate(g, "GitSyncConfig")
-		_ = model.AutoMigrate(g, "GitSyncHistory")
+		if err := model.AutoMigrate(g, "GitSyncConfig"); err != nil {
+			r.dao.Logger().Error("AutoMigrate GitSyncConfig failed", zap.Int64("uid", uid), zap.Error(err))
+		}
+		if err := model.AutoMigrate(g, "GitSyncHistory"); err != nil {
+			r.dao.Logger().Error("AutoMigrate GitSyncHistory failed", zap.Int64("uid", uid), zap.Error(err))
+		}
 	}, r.GetKey(uid)+"#git_sync", r.GetKey(uid))
 }
 
