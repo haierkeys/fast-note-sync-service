@@ -28,6 +28,17 @@ type CheckVersionInfo struct {
 	PluginVersionNewChangelog string `json:"pluginVersionNewChangelog"`
 }
 
+
+
+type SupportRecord struct {
+	Time    string `json:"time"`
+	Item    string `json:"item"`
+	Amount  string `json:"amount"`
+	Unit    string `json:"unit"`
+	Message string `json:"message"`
+	Name    string `json:"name"`
+}
+
 type Response struct {
 	Ctx *gin.Context
 }
