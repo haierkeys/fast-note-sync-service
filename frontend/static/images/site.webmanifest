@@ -1,17 +1,7 @@
 {
-  "name": "Obsidian Fast Note Sync",
+  "name": "Fast Note Sync",
   "short_name": "FastNoteSync",
   "icons": [
-    {
-      "src": "/static/images/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/images/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    },
     {
       "src": "/static/images/icon.svg",
       "sizes": "any",

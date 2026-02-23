@@ -1,4 +1,4 @@
-import{g as e}from"./vendor-CXOLE99F.js";var t,n={exports:{}};
+import{m as e}from"./vendor-CePkgVYi.js";var t,n={exports:{}};
 /*!
  * Vditor v3.11.2 - A markdown editor written in TypeScript.
  *
