@@ -773,7 +773,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			file := cFiles[pathHash]
 			// Create upload session and return FileUpload message
 			// 创建上传会话并返回 FileUpload 消息
-			session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, 0, file.Mtime)
+			session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, file.Ctime, file.Mtime)
 			if ferr != nil {
 				h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
 				continue
