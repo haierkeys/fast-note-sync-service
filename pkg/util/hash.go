@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"strconv"
+	"unicode/utf16"
 )
 
 // EncodeMD5 performs MD5 encoding on a string
@@ -21,15 +22,14 @@ func EncodeMD5(str string) string {
 // EncodeHash32 performs 32-bit hash encoding on a string
 // EncodeHash32 对字符串进行 32 位哈希编码
 func EncodeHash32(content string) string {
-	var hash int32 = 0
-	// Convert string to UTF-16 rune array to match JS handling
-	// 将 string 转为 UTF-16 rune 数组以匹配 JS 的处理方式
+	// 首先将字符串转为 rune 切片，再转为 UTF-16 code units（与 JS 的内部表示一致）
 	runes := []rune(content)
-	for i := 0; i < len(runes); i++ {
-		char := int32(runes[i])
+	utf16Units := utf16.Encode(runes) // []uint16
+	var hash int32 = 0
+	for _, u := range utf16Units {
+		char := int32(u) // 与 JS charCodeAt 返回的 16-bit 值一致
 		hash = (hash << 5) - hash + char
-		// Go's int32 handles overflow automatically, no additional operation needed
-		// Go 的 int32 会自动溢出处理，无需额外操作
+		// int32 会自动溢出，等价于 JS 的 32-bit 位运算结果
 	}
 	return strconv.Itoa(int(hash))
 }
