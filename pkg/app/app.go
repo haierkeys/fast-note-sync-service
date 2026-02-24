@@ -17,18 +17,18 @@ type VersionInfo struct {
 }
 
 type CheckVersionInfo struct {
-	GithubAvailable           bool   `json:"githubAvailable"`
-	VersionIsNew              bool   `json:"versionIsNew"`
-	VersionNewName            string `json:"versionNewName"`
-	VersionNewLink            string `json:"versionNewLink"`
-	VersionNewChangelog       string `json:"versionNewChangelog"`
-	PluginVersionIsNew        bool   `json:"pluginVersionIsNew"`
-	PluginVersionNewName      string `json:"pluginVersionNewName"`
-	PluginVersionNewLink      string `json:"pluginVersionNewLink"`
-	PluginVersionNewChangelog string `json:"pluginVersionNewChangelog"`
+	GithubAvailable                  bool   `json:"githubAvailable"`
+	VersionIsNew                     bool   `json:"versionIsNew"`
+	VersionNewName                   string `json:"versionNewName"`
+	VersionNewLink                   string `json:"versionNewLink"`
+	VersionNewChangelog              string `json:"versionNewChangelog"`
+	VersionNewChangelogContent       string `json:"versionNewChangelogContent"`
+	PluginVersionIsNew               bool   `json:"pluginVersionIsNew"`
+	PluginVersionNewName             string `json:"pluginVersionNewName"`
+	PluginVersionNewLink             string `json:"pluginVersionNewLink"`
+	PluginVersionNewChangelog        string `json:"pluginVersionNewChangelog"`
+	PluginVersionNewChangelogContent string `json:"pluginVersionNewChangelogContent"`
 }
-
-
 
 type SupportRecord struct {
 	Time    string `json:"time"`

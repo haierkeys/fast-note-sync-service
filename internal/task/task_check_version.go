@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -14,13 +15,13 @@ import (
 )
 
 const (
-	GitHubCheckURL    = "https://api.github.com"
-	ServiceRepoPath   = "haierkeys/fast-note-sync-service"
-	ServiceRepoURL    = "https://github.com/" + ServiceRepoPath
-	PluginRepoPath    = "haierkeys/obsidian-fast-note-sync"
-	PluginRepoURL     = "https://github.com/" + PluginRepoPath
-	ServiceVersionURL = "https://img.shields.io/github/v/release/" + ServiceRepoPath + ".json"
-	PluginVersionURL  = "https://img.shields.io/github/v/tag/" + PluginRepoPath + ".json"
+	GitHubCheckURL          = "https://api.github.com"
+	GitHubServiceReleaseURL = "https://api.github.com/repos/haierkeys/fast-note-sync-service/releases"
+	GitHubPluginReleaseURL  = "https://api.github.com/repos/haierkeys/obsidian-fast-note-sync/releases"
+	ServiceRepoPath         = "haierkeys/fast-note-sync-service"
+	ServiceRepoURL          = "https://github.com/" + ServiceRepoPath
+	PluginRepoPath          = "haierkeys/obsidian-fast-note-sync"
+	PluginRepoURL           = "https://github.com/" + PluginRepoPath
 
 	CNBServiceReleaseURL = "https://api.cnb.cool/" + ServiceRepoPath + "/-/releases"
 	CNBPluginReleaseURL  = "https://api.cnb.cool/" + PluginRepoPath + "/-/releases"
@@ -34,8 +35,12 @@ type CNBRelease struct {
 	TagName string `json:"tag_name"`
 }
 
-type ShieldsJSON struct {
-	Message string `json:"message"`
+type GitHubRelease struct {
+	TagName string `json:"tag_name"`
+}
+
+type GitHubTag struct {
+	Name string `json:"name"`
 }
 
 type CheckVersionTask struct {
@@ -64,11 +69,12 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	var err error
 
 	if t.isGitHub {
-		serviceLatest, err = t.fetchVersion(ServiceVersionURL)
+		serviceLatest, err = t.fetchGitHubReleases(GitHubServiceReleaseURL)
 		if err != nil {
 			return err
 		}
-		pluginLatest, err = t.fetchVersion(PluginVersionURL)
+
+		pluginLatest, err = t.fetchGitHubReleases(GitHubPluginReleaseURL)
 		if err != nil {
 			return err
 		}
@@ -106,16 +112,16 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	}
 
 	info := pkgapp.CheckVersionInfo{
-		GithubAvailable:           t.isGitHub,
-		VersionNewName:            serviceLatest,
-		VersionIsNew:              semver.Compare(serviceLatest, currentServiceVersion) > 0,
-		VersionNewLink:            serviceLink,
-		VersionNewChangelog:       serviceChangelog,
-		PluginVersionNewName:      pluginLatest,
-		PluginVersionNewLink:      pluginLink,
-		PluginVersionNewChangelog: pluginChangelog,
-		// 这里无法判断 PluginVersionIsNew，因为没有具体的客户端版本，
-		// 但我们还是更新最新的版本名，具体的比较逻辑可以在 App.CheckVersion 中根据传入的参数进行。
+		GithubAvailable:                  t.isGitHub,
+		VersionNewName:                   serviceLatest,
+		VersionIsNew:                     semver.Compare(serviceLatest, currentServiceVersion) > 0,
+		VersionNewLink:                   serviceLink,
+		VersionNewChangelog:              serviceChangelog,
+		VersionNewChangelogContent:       t.fetchTextContent(serviceChangelog),
+		PluginVersionNewName:             pluginLatest,
+		PluginVersionNewLink:             pluginLink,
+		PluginVersionNewChangelog:        pluginChangelog,
+		PluginVersionNewChangelogContent: t.fetchTextContent(pluginChangelog),
 	}
 
 	// 更新 App 中的版本信息
@@ -124,24 +130,32 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	return nil
 }
 
-func (t *CheckVersionTask) fetchVersion(url string) (string, error) {
+func (t *CheckVersionTask) fetchGitHubReleases(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status: %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	var sj ShieldsJSON
-	if err := json.Unmarshal(body, &sj); err != nil {
+	var releases []GitHubRelease
+	if err := json.Unmarshal(body, &releases); err != nil {
 		return "", err
 	}
 
-	return strings.TrimPrefix(sj.Message, "v"), nil
+	if len(releases) == 0 {
+		return "", nil
+	}
+
+	return strings.TrimPrefix(releases[0].TagName, "v"), nil
 }
 
 func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, error) {
@@ -175,6 +189,31 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, er
 	}
 
 	return strings.TrimPrefix(releases[0].TagName, "v"), nil
+}
+
+func (t *CheckVersionTask) fetchTextContent(url string) string {
+	if url == "" {
+		return ""
+	}
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Get(url)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	return string(body)
 }
 
 func (t *CheckVersionTask) checkGitHub() bool {

@@ -82,3 +82,30 @@ func CopyFile(src, dst string) error {
 	_, err = io.Copy(destination, source)
 	return err
 }
+
+// MoveFile moves a file from src to dst, supporting cross-device move.
+// MoveFile 将文件从 src 移动到 dst，支持跨设备移动。
+func MoveFile(src, dst string) error {
+	// Try rename first
+	// 先尝试重命名
+	err := os.Rename(src, dst)
+	if err == nil {
+		return nil
+	}
+
+	// Check if the error is "invalid cross-device link" (EXDEV)
+	// On Windows, this might also show up differently or Rename might fail cross-vol
+	// We fallback to Copy + Remove for any error to be safe, or we can check error string
+	// On Linux, EXDEV error message contains "invalid cross-device link"
+	if strings.Contains(err.Error(), "invalid cross-device link") ||
+		strings.Contains(strings.ToLower(err.Error()), "cross-device") {
+		// Copy file content
+		if copyErr := CopyFile(src, dst); copyErr != nil {
+			return copyErr
+		}
+		// Remove source file
+		return os.Remove(src)
+	}
+
+	return err
+}
