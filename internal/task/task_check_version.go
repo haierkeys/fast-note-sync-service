@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"golang.org/x/mod/semver"
@@ -73,9 +72,6 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
-		dump.P(serviceLatest)
-		dump.P(pluginLatest)
 		serviceLink = ServiceRepoURL + "/releases/tag/" + serviceLatest
 		pluginLink = PluginRepoURL + "/releases/tag/" + pluginLatest
 		serviceChangelog = ServiceRepoURL + "/releases/download/" + serviceLatest + "/changelog.txt"
