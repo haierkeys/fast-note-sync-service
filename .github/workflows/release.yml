@@ -133,7 +133,7 @@ jobs:
           overwrite_files: true
 
   build-binaries:
-    needs: [check-version, prepare-message]
+    needs: [check-version, prepare-message, create-release]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
