@@ -164,7 +164,7 @@ func (h *BackupHandler) ListHistory(c *gin.Context) {
 		response.ToResponse(code.ErrorNotUserAuthToken)
 		return
 	}
- 
+
 	list, total, err := h.App.BackupService.ListHistory(c.Request.Context(), uid, params.ConfigID, pager)
 	if err != nil {
 		h.logError(c.Request.Context(), "BackupHandler.ListHistory", err)

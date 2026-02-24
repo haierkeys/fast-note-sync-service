@@ -194,6 +194,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/admin/config", webGUIHandler.GetConfig)
 			auth.POST("/admin/config", webGUIHandler.UpdateConfig)
 			auth.GET("/admin/systeminfo", webGUIHandler.GetSystemInfo)
+			auth.GET("/admin/upgrade", versionHandler.Upgrade)
 
 			auth.POST("/user/change_password", userHandler.UserChangePassword)
 			auth.GET("/user/info", userHandler.UserInfo)
