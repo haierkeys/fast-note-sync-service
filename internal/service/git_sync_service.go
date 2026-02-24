@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -217,6 +218,10 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 		Auth: auth,
 	})
 	if err != nil {
+		if errors.Is(err, transport.ErrEmptyRemoteRepository) {
+			// Remote is empty, validation success
+			return nil
+		}
 		return code.ErrorGitSyncValidateFailed.WithDetails(err.Error())
 	}
 
@@ -231,6 +236,8 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 	}
 
 	if !found {
+		// Even if branch not found, if it's an empty repo (though List usually returns ErrEmptyRemoteRepository),
+		// we should have caught it above. If we are here, it means refs is not empty but branch not found.
 		return code.ErrorGitSyncValidateFailed.WithDetails("Branch not found in remote")
 	}
 
@@ -480,7 +487,22 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			SingleBranch:  true,
 		})
 		if err != nil {
-			return fmt.Errorf("git clone failed: %w", err)
+			if errors.Is(err, transport.ErrEmptyRemoteRepository) {
+				s.logger.Info("Remote repository is empty, initializing locally", zap.String("path", wsPath))
+				r, err = git.PlainInit(wsPath, false)
+				if err != nil {
+					return fmt.Errorf("git init failed: %w", err)
+				}
+				_, err = r.CreateRemote(&config.RemoteConfig{
+					Name: "origin",
+					URLs: []string{conf.RepoURL},
+				})
+				if err != nil {
+					return fmt.Errorf("create remote failed: %w", err)
+				}
+			} else {
+				return fmt.Errorf("git clone failed: %w", err)
+			}
 		}
 	} else {
 		r, err = git.PlainOpen(wsPath)
@@ -505,7 +527,11 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		Force:         true,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return fmt.Errorf("git pull failed: %w", err)
+		if errors.Is(err, transport.ErrEmptyRemoteRepository) || errors.Is(err, git.ErrRemoteNotFound) || errors.Is(err, plumbing.ErrReferenceNotFound) {
+			s.logger.Info("Remote is empty or branch not found, skipping pull", zap.Int64("configId", conf.ID))
+		} else {
+			return fmt.Errorf("git pull failed: %w", err)
+		}
 	}
 
 	// 3. Extract DB content to Workspace
