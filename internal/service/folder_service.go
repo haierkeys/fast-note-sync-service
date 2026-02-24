@@ -287,7 +287,7 @@ func (s *folderService) Get(ctx context.Context, uid int64, params *dto.FolderGe
 		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
 	}
 
-	if params.Path != "" {
+	if params.Path != "" && params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
