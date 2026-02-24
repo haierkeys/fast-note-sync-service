@@ -178,7 +178,6 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, er
 }
 
 func (t *CheckVersionTask) checkGitHub() bool {
-	return false
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
