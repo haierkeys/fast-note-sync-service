@@ -189,6 +189,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/admin/upgrade": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Download latest version and restart server",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Trigger server upgrade",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Version to upgrade (e.g. 2.0.10 or latest)",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/backup/config": {
             "post": {
                 "security": [
@@ -5630,6 +5664,22 @@ const docTemplate = `{
                     "description": "Git tag // Git 标签",
                     "type": "string"
                 },
+                "pluginVersionNewChangelog": {
+                    "description": "New plugin version changelog link // 插件新版本更新日志链接",
+                    "type": "string"
+                },
+                "pluginVersionNewChangelogContent": {
+                    "description": "New plugin version changelog content // 插件新版本更新日志内容",
+                    "type": "string"
+                },
+                "pluginVersionNewLink": {
+                    "description": "New plugin version link // 插件新版本链接",
+                    "type": "string"
+                },
+                "pluginVersionNewName": {
+                    "description": "New plugin version name // 插件新版本名称",
+                    "type": "string"
+                },
                 "version": {
                     "description": "Current version // 当前版本",
                     "type": "string"
@@ -5639,7 +5689,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "versionNewChangelog": {
-                    "description": "New version changelog // 新版本更新日志",
+                    "description": "New version changelog link // 新版本更新日志链接",
+                    "type": "string"
+                },
+                "versionNewChangelogContent": {
+                    "description": "New version changelog content // 新版本更新日志内容",
                     "type": "string"
                 },
                 "versionNewLink": {

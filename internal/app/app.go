@@ -101,6 +101,10 @@ type App struct {
 	// Startup time (for uptime calculation)
 	// 启动时间（用于计算 uptime）
 	StartTime time.Time
+
+	// Upgrade control
+	// 升级控制
+	UpgradeSignal chan string
 }
 
 // NewApp creates application container instance
@@ -127,11 +131,12 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 	}
 
 	a := &App{
-		config:     cfg,
-		logger:     logger,
-		DB:         db,
-		shutdownCh: make(chan struct{}),
-		StartTime:  time.Now(),
+		config:        cfg,
+		logger:        logger,
+		DB:            db,
+		shutdownCh:    make(chan struct{}),
+		UpgradeSignal: make(chan string, 1),
+		StartTime:     time.Now(),
 	}
 
 	// Load support records
@@ -315,15 +320,6 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 		cv.PluginVersionIsNew = semver.Compare(v2, v1) > 0
 	}
 
-	// If there is no update, set version name to empty
-	// 如果没有更新，把版本名称设置为空
-	if !cv.VersionIsNew {
-		cv.VersionNewName = ""
-	}
-	if !cv.PluginVersionIsNew {
-		cv.PluginVersionNewName = ""
-	}
-
 	// Version number returned to client does not have v prefix
 	// 返回给客户端的版本号不带 v 前缀
 	cv.VersionNewName = strings.TrimPrefix(cv.VersionNewName, "v")
@@ -478,6 +474,17 @@ func (a *App) UpdateSupportRecords(lang string, records []pkgapp.SupportRecord) 
 	}
 	a.supportRecords[lang] = records
 	a.logger.Debug("Updated support records via background task", zap.String("lang", lang), zap.Int("count", len(records)))
+}
+
+// TriggerUpgrade triggers the upgrade process
+// TriggerUpgrade 触发升级流程
+func (a *App) TriggerUpgrade(newBinaryPath string) {
+	a.logger.Info("Triggering upgrade", zap.String("path", newBinaryPath))
+	select {
+	case a.UpgradeSignal <- newBinaryPath:
+	default:
+		a.logger.Warn("Upgrade signal already sent")
+	}
 }
 
 // DefaultShutdownTimeout default shutdown timeout duration
