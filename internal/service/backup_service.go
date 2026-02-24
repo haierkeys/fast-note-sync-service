@@ -281,38 +281,38 @@ func (s *backupService) ExecuteTaskBackups(ctx context.Context) error {
 		return err
 	}
 
-	userIsPendingMap := make(map[int64]bool)
-	for _, config := range configs {
-		if _, ok := userIsPendingMap[config.UID]; !ok {
-			_, pending := s.pendingSyncs.LoadAndDelete(config.UID)
-			if pending {
-				userIsPendingMap[config.UID] = true
-			}
-		}
-	}
-
 	now := time.Now()
 	for _, config := range configs {
-		// if config.Type == "localfs" {
-		// 	config.CustomPath = filepath.Join(s.storageConfig.LocalFS.SavePath, config.CustomPath)
-		// }
-
 		if !config.IsEnabled {
 			continue
 		}
-		// Check both scheduled time and pending sync flag to trigger handleBackupSync
-		// The actual "should run" logic is inside handleBackupSync
-		// Use the pre-calculated pending status
-		pending := userIsPendingMap[config.UID]
 
-		if config.NextRunTime.Before(now) || pending {
-			s.logger.Info("Triggering backup task check", zap.Int64("uid", config.UID), zap.String("type", config.Type), zap.Bool("pending", pending))
-			go func(cfg *domain.BackupConfig) {
+		// Check if user has pending changes
+		_, pending := s.pendingSyncs.LoadAndDelete(config.UID)
+
+		isScheduled := config.NextRunTime.Before(now)
+		shouldTrigger := false
+
+		if isScheduled {
+			shouldTrigger = true
+		} else if pending && config.Type == "sync" {
+			// Only "sync" type tasks are allowed to be triggered directly by changes (debounced)
+			shouldTrigger = true
+		}
+
+		if shouldTrigger {
+			s.logger.Info("Triggering backup task",
+				zap.Int64("uid", config.UID),
+				zap.String("type", config.Type),
+				zap.Bool("isScheduled", isScheduled),
+				zap.Bool("isPending", pending),
+			)
+			go func(cfg *domain.BackupConfig, p bool) {
 				// Use service context to support graceful shutdown
-				if err := s.handleBackupSync(s.ctx, cfg, pending); err != nil {
+				if err := s.handleBackupSync(s.ctx, cfg, p); err != nil {
 					s.logger.Error("Backup execution failed", zap.Int64("uid", cfg.UID), zap.Error(err))
 				}
-			}(config)
+			}(config, pending)
 		}
 	}
 
