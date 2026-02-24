@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"golang.org/x/mod/semver"
@@ -26,6 +27,8 @@ const (
 	CNBPluginReleaseURL  = "https://api.cnb.cool/" + PluginRepoPath + "/-/releases"
 	CNBServiceURL        = "https://cnb.cool/" + ServiceRepoPath
 	CNBPluginURL         = "https://cnb.cool/" + PluginRepoPath
+	CNBServiceToken      = "58tjez3744HL9Z10cRaCHdeEPhK"
+	CNBPluginToken       = "9pFNKcjlej36e0w6MHKT6YMn53G"
 )
 
 type CNBRelease struct {
@@ -70,16 +73,20 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		dump.P(serviceLatest)
+		dump.P(pluginLatest)
 		serviceLink = ServiceRepoURL + "/releases/tag/" + serviceLatest
 		pluginLink = PluginRepoURL + "/releases/tag/" + pluginLatest
 		serviceChangelog = ServiceRepoURL + "/releases/download/" + serviceLatest + "/changelog.txt"
 		pluginChangelog = PluginRepoURL + "/releases/download/" + pluginLatest + "/changelog.txt"
+
 	} else {
-		serviceLatest, err = t.fetchCNBVersion(CNBServiceReleaseURL)
+		serviceLatest, err = t.fetchCNBVersion(CNBServiceReleaseURL, CNBServiceToken)
 		if err != nil {
 			return err
 		}
-		pluginLatest, err = t.fetchCNBVersion(CNBPluginReleaseURL)
+		pluginLatest, err = t.fetchCNBVersion(CNBPluginReleaseURL, CNBPluginToken)
 		if err != nil {
 			return err
 		}
@@ -138,11 +145,20 @@ func (t *CheckVersionTask) fetchVersion(url string) (string, error) {
 		return "", err
 	}
 
-	return sj.Message, nil
+	return strings.TrimPrefix(sj.Message, "v"), nil
 }
 
-func (t *CheckVersionTask) fetchCNBVersion(url string) (string, error) {
-	resp, err := http.Get(url)
+func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Accept", "application/vnd.cnb.api+json")
+	req.Header.Set("Authorization", token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -162,10 +178,11 @@ func (t *CheckVersionTask) fetchCNBVersion(url string) (string, error) {
 		return "", nil
 	}
 
-	return releases[0].TagName, nil
+	return strings.TrimPrefix(releases[0].TagName, "v"), nil
 }
 
 func (t *CheckVersionTask) checkGitHub() bool {
+	return false
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
