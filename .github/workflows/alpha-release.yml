@@ -135,7 +135,7 @@ jobs:
           overwrite_files: true
 
   build-binaries:
-    needs: [check-version, prepare-message]
+    needs: [check-version, prepare-message, create-release]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -144,7 +144,6 @@ jobs:
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
-
 
       - uses: actions/setup-go@v6
         with:
