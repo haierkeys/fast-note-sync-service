@@ -3,10 +3,12 @@ package cmd
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"github.com/radovskyb/watcher"
 	"github.com/spf13/cobra"
@@ -46,6 +48,8 @@ func init() {
 
 					bootstrapLogger.Warn("config file not found, creating default config")
 					runEnv.config = "config/config.yaml"
+
+					configDefault = strings.Replace(configDefault, "fast-note-sync-Auth-Token", util.GetRandomString(32), 1)
 
 					if err := fileurl.CreatePath(runEnv.config, os.ModePerm); err != nil {
 						bootstrapLogger.Error("config file auto create error", zap.Error(err))
