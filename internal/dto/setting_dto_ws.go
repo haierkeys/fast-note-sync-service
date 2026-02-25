@@ -16,12 +16,11 @@ type SettingSyncModifyMessage struct {
 // SettingSyncEndMessage defines the setting sync end message structure
 // SettingSyncEndMessage 定义配置同步结束的消息结构
 type SettingSyncEndMessage struct {
-	LastTime           int64             `json:"lastTime" form:"lastTime" example:"1700000000"`            // Last sync time // 最后同步时间
-	NeedUploadCount    int64             `json:"needUploadCount" form:"needUploadCount" example:"3"`       // Number of settings needing upload // 需要上传的数量
-	NeedModifyCount    int64             `json:"needModifyCount" form:"needModifyCount" example:"1"`       // Number of settings needing modification // 需要修改的数量
-	NeedSyncMtimeCount int64             `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"1"` // Number of settings needing mtime sync // 需要同步修改时间的数量
-	NeedDeleteCount    int64             `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of settings needing deletion // 需要删除的数量
-	Messages           []WSQueuedMessage `json:"messages"`                                                 // Merged message queue // 合并的消息队列
+	LastTime           int64 `json:"lastTime" form:"lastTime" example:"1700000000"`            // Last sync time // 最后同步时间
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount" example:"3"`       // Number of settings needing upload // 需要上传的数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount" example:"1"`       // Number of settings needing modification // 需要修改的数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"1"` // Number of settings needing mtime sync // 需要同步修改时间的数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of settings needing deletion // 需要删除的数量
 }
 
 // SettingSyncNeedUploadMessage defines the message structure informing client that setting upload is needed during sync

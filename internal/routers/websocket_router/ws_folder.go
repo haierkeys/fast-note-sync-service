@@ -83,7 +83,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 						Ctime:    folder.Ctime,
 						Mtime:    folder.Mtime,
 					},
-				).WithVault(params.Vault), true, dto.FolderSyncDelete)
+				).WithVault(params.Vault).WithContext(params.Context), true, dto.FolderSyncDelete)
 			} else {
 				h.App.Logger().Debug("websocket_router.folder.FolderSync.FolderService.Get check failed (not found or already deleted), broadcasting delete anyway",
 					zap.String(logpkg.FieldTraceID, c.TraceID),
@@ -98,7 +98,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 						Ctime:    0,
 						Mtime:    0,
 					},
-				).WithVault(params.Vault), true, dto.FolderSyncDelete)
+				).WithVault(params.Vault).WithContext(params.Context), true, dto.FolderSyncDelete)
 			}
 
 		}
@@ -201,16 +201,23 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 					Mtime:            newFolder.Mtime,
 					UpdatedTimestamp: newFolder.UpdatedTimestamp,
 				},
-			).WithVault(params.Vault), true, dto.FolderSyncModify)
+			).WithVault(params.Vault).WithContext(params.Context), true, dto.FolderSyncModify)
 		}
 	}
 
+	// Send FolderSyncEnd message
+	// 发送 FolderSyncEnd 消息
 	c.ToResponse(code.Success.WithData(&dto.FolderSyncEndMessage{
 		LastTime:        timex.Now().UnixMilli(),
 		NeedModifyCount: needModifyCount,
 		NeedDeleteCount: needDeleteCount,
-		Messages:        messageQueue,
-	}).WithVault(params.Vault), dto.FolderSyncEnd)
+	}).WithVault(params.Vault).WithContext(params.Context), dto.FolderSyncEnd)
+
+	// Send queued messages individually
+	// 逐条发送队列中的消息
+	for _, item := range messageQueue {
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	}
 }
 
 // FolderModify handles folder modification/creation
