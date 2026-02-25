@@ -52,6 +52,7 @@ type FolderSyncDelFolder struct {
 // FolderSyncRequest Synchronization request body
 // 同步请求主体
 type FolderSyncRequest struct {
+	Context        string                   `json:"context" form:"context" example:"task123"`                // Context // 上下文
 	Vault          string                   `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	LastTime       int64                    `json:"lastTime" form:"lastTime" example:"1700000000"`           // Last sync time // 最后同步时间
 	Folders        []FolderSyncCheckRequest `json:"folders" form:"folders"`                                  // Folders to check // 待检查文件夹列表

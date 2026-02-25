@@ -68,6 +68,7 @@ type SettingSyncDelSetting struct {
 // SettingSyncRequest Synchronization request parameters
 // 同步请求参数
 type SettingSyncRequest struct {
+	Context         string                    `json:"context" form:"context" example:"task123"`                // Context // 上下文
 	Vault           string                    `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	LastTime        int64                     `json:"lastTime" form:"lastTime" example:"1700000000"`           // Last sync time // 最后同步时间
 	Cover           bool                      `json:"cover" form:"cover" example:"false"`                      // Whether to cover existing // 是否覆盖现有配置

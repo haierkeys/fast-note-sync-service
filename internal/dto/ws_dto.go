@@ -182,6 +182,7 @@ const (
 // WSQueuedMessage 表示待发送的消息项
 // 用于在同步过程中收集消息,在 SyncEnd 消息中统一合并发送
 type WSQueuedMessage struct {
-	Action string `json:"action"` // Message action/type // 消息动作/类型
-	Data   any    `json:"data"`   // Message data payload // 消息数据负载
+	Action  string `json:"action"`  // Message action/type // 消息动作/类型
+	Data    any    `json:"data"`    // Message data payload // 消息数据负载
+	Context string `json:"context"` // Context // 上下文
 }
