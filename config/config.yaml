@@ -68,6 +68,14 @@ app:
   # 空闲队列清理时间，默认 10m
   # Idle queue cleanup time, default 10m
   write-queue-idle-time: "10m"
+  # WebSocket 最大读取负载大小 (如: 128MB / 64MB / 1024KB, 默认 128MB)
+  # WebSocket maximum read payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
+  ws-read-max-payload-size: "128MB"
+  # WebSocket 最大写入负载大小 (如: 128MB / 64MB / 1024KB, default 128MB)
+  # WebSocket maximum write payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
+  ws-write-max-payload-size: "128MB"
+
+
 
 
 # webgui

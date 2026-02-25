@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/limiter"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
@@ -48,10 +49,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // Enable compression
 			// 开启压缩
 			ParallelGolimit:    8,
-			ReadMaxPayloadSize: 1024 * 1024 * 64, // Set maximum read buffer size to 64MB
-			// 设置最大读取缓冲区大小 64MB
-			WriteMaxPayloadSize: 1024 * 1024 * 64, // Set maximum write buffer size to 64MB
-			// 设置最大写入缓冲区大小 64MB
+			ReadMaxPayloadSize: int(util.ParseSize(cfg.App.WebSocketReadMaxPayloadSize, 1024*1024*64)), // Load from config, default 64MB
+			// 从配置读取，默认 64MB
+			WriteMaxPayloadSize: int(util.ParseSize(cfg.App.WebSocketWriteMaxPayloadSize, 1024*1024*64)), // Load from config, default 64MB
+			// 从配置读取，默认 64MB
 		},
 	}, appContainer)
 

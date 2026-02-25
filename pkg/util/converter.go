@@ -63,6 +63,35 @@ func StringToInt64(s string) int64 {
 	return result
 }
 
+// ParseSize parses size string like "128MB", "512KB", "1024B" to bytes
+// ParseSize 将大小字符串（如 "128MB", "512KB", "1024B"）解析为字节数
+func ParseSize(sizeStr string, defaultSize int64) int64 {
+	if sizeStr == "" {
+		return defaultSize
+	}
+
+	sizeStr = strings.ToUpper(strings.TrimSpace(sizeStr))
+	var multiplier int64 = 1
+
+	if strings.HasSuffix(sizeStr, "MB") {
+		multiplier = 1024 * 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "MB")
+	} else if strings.HasSuffix(sizeStr, "KB") {
+		multiplier = 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "KB")
+	} else if strings.HasSuffix(sizeStr, "B") {
+		multiplier = 1
+		sizeStr = strings.TrimSuffix(sizeStr, "B")
+	}
+
+	size, err := strconv.ParseInt(strings.TrimSpace(sizeStr), 10, 64)
+	if err != nil || size <= 0 {
+		return defaultSize
+	}
+
+	return size * multiplier
+}
+
 // IntSliceToStrSlice converts integer slice to string slice (another implementation)
 // IntSliceToStrSlice 将整数切片转换为字符串切片（另一种实现）
 // list: integer slice // 整数切片

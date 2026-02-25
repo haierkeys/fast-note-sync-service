@@ -195,6 +195,11 @@ type AppSettings struct {
 	WriteQueueCapacity int    `yaml:"write-queue-capacity" default:"100"`
 	WriteQueueTimeout  string `yaml:"write-queue-timeout" default:"30s"`
 	WriteQueueIdleTime string `yaml:"write-queue-idle-time" default:"10m"`
+
+	// WebSocket configurations
+	// WebSocket 配置
+	WebSocketReadMaxPayloadSize  string `yaml:"ws-read-max-payload-size" default:"128MB"`
+	WebSocketWriteMaxPayloadSize string `yaml:"ws-write-max-payload-size" default:"128MB"`
 }
 
 // WebGUIConfig Web GUI configuration
