@@ -398,7 +398,7 @@ download_release_asset() {
         # 直接构造 CNB 下载 URL，无需解析 API JSON
         local cnb_url="https://cnb.cool/$REPO/-/releases/download/${cnb_tag}/${asset_name}"
         info "$L_TRY_DL (CNB): ${_BOLD}$cnb_url${_RESET}" >&2
-        if curl -fSL -H "Authorization: Bearer $CNB_TOKEN" -o "$out" "$cnb_url"; then
+        if curl -fSL -o "$out" "$cnb_url"; then
             echo "$out"
             return 0
         fi
