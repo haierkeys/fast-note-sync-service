@@ -3,6 +3,8 @@ package dao
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -52,7 +54,11 @@ func (r *noteRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) 
 	}
 	var res []*domain.Note
 	for _, m := range ms {
-		res = append(res, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, note)
 	}
 	return res, nil
 }
@@ -93,7 +99,13 @@ func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
 
 		for _, note := range notes {
 			folder := r.dao.GetNoteFolderPath(uid, note.ID)
-			content, _, _ := r.dao.LoadContentFromFile(folder, "content.txt")
+			content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+			if err != nil {
+				return err
+			}
+			if !exists {
+				content = ""
+			}
 			r.upsertFTS(db, note.ID, note.Path, content)
 		}
 
@@ -102,9 +114,9 @@ func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
 }
 
 // toDomain 将 DAO Note 转换为领域模型
-func (r *noteRepository) toDomain(m *model.Note, uid int64) *domain.Note {
+func (r *noteRepository) toDomain(m *model.Note, uid int64) (*domain.Note, error) {
 	if m == nil {
-		return nil
+		return nil, nil
 	}
 	note := &domain.Note{
 		ID:                      m.ID,
@@ -127,8 +139,10 @@ func (r *noteRepository) toDomain(m *model.Note, uid int64) *domain.Note {
 		CreatedAt:               time.Time(m.CreatedAt),
 		UpdatedAt:               time.Time(m.UpdatedAt),
 	}
-	r.fillNoteContent(uid, note)
-	return note
+	if err := r.fillNoteContent(uid, note); err != nil {
+		return nil, err
+	}
+	return note, nil
 }
 
 // toModel 将领域模型转换为数据库模型
@@ -160,14 +174,18 @@ func (r *noteRepository) toModel(note *domain.Note) *model.Note {
 }
 
 // fillNoteContent 填充笔记内容
-func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
+func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) error {
 	if n == nil {
-		return
+		return nil
 	}
 	folder := r.dao.GetNoteFolderPath(uid, n.ID)
 
 	// 加载内容
-	if content, exists, _ := r.dao.LoadContentFromFile(folder, "content.txt"); exists {
+	content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+	if err != nil {
+		return err
+	}
+	if exists {
 		n.Content = content
 	} else if n.Content != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
@@ -179,10 +197,17 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
 				zap.Error(err),
 			)
 		}
+	} else {
+		// 文件不存在且没有可迁移的内容，返回错误以防止数据丢失（视为读取失败）
+		return fmt.Errorf("note content file not found: %w", os.ErrNotExist)
 	}
 
 	// 加载快照
-	if snapshot, exists, _ := r.dao.LoadContentFromFile(folder, "snapshot.txt"); exists {
+	snapshot, exists, err := r.dao.LoadContentFromFile(folder, "snapshot.txt")
+	if err != nil {
+		return err
+	}
+	if exists {
 		n.ContentLastSnapshot = snapshot
 	} else if n.ContentLastSnapshot != "" {
 		// 懒迁移失败记录警告日志但不阻断流程
@@ -195,6 +220,8 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) {
 			)
 		}
 	}
+
+	return nil
 }
 
 // GetByID 根据ID获取笔记
@@ -204,7 +231,7 @@ func (r *noteRepository) GetByID(ctx context.Context, id, uid int64) (*domain.No
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return r.toDomain(m, uid)
 }
 
 // GetByPathHash 根据路径哈希获取笔记（排除已删除）
@@ -218,7 +245,7 @@ func (r *noteRepository) GetByPathHash(ctx context.Context, pathHash string, vau
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return r.toDomain(m, uid)
 }
 
 // GetByPathHashIncludeRecycle 根据路径哈希获取笔记（可选包含回收站）
@@ -239,7 +266,7 @@ func (r *noteRepository) GetByPathHashIncludeRecycle(ctx context.Context, pathHa
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return r.toDomain(m, uid)
 }
 
 // GetAllByPathHash 根据路径哈希获取笔记（包含所有状态）
@@ -252,7 +279,7 @@ func (r *noteRepository) GetAllByPathHash(ctx context.Context, pathHash string, 
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return r.toDomain(m, uid)
 }
 
 // GetByPath 根据路径获取笔记
@@ -265,7 +292,7 @@ func (r *noteRepository) GetByPath(ctx context.Context, path string, vaultID, ui
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomain(m, uid), nil
+	return r.toDomain(m, uid)
 }
 
 // Create 创建笔记
@@ -299,7 +326,12 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 		// 更新 FTS 索引
 		r.upsertFTS(db, m.ID, m.Path, content)
 
-		result = r.toDomain(m, uid)
+		noteRes, err := r.toDomain(m, uid)
+		if err != nil {
+			return err
+		}
+		result = noteRes
+
 		result.Content = content
 		return nil
 	})
@@ -359,7 +391,12 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 		// 更新 FTS 索引
 		r.upsertFTS(db, m.ID, m.Path, content)
 
-		result = r.toDomain(m, uid)
+		noteRes, err := r.toDomain(m, uid)
+		if err != nil {
+			return err
+		}
+		result = noteRes
+
 		result.Content = content
 		return nil
 	})
@@ -575,7 +612,12 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 
 	var list []*domain.Note
 	for _, m := range modelList {
-		list = append(list, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, note)
+
 	}
 	return list, nil
 }
@@ -594,7 +636,11 @@ func (r *noteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string
 	}
 	var res []*domain.Note
 	for _, m := range ms {
-		res = append(res, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, note)
 	}
 	return res, nil
 }
@@ -694,7 +740,12 @@ func (r *noteRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, 
 
 	var list []*domain.Note
 	for _, m := range mList {
-		list = append(list, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, note)
+
 	}
 	return list, nil
 }
@@ -715,7 +766,12 @@ func (r *noteRepository) ListContentUnchanged(ctx context.Context, uid int64) ([
 
 	var list []*domain.Note
 	for _, m := range mList {
-		list = append(list, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, note)
+
 	}
 	return list, nil
 }
@@ -769,7 +825,12 @@ func (r *noteRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 
 	var list []*domain.Note
 	for _, m := range modelList {
-		list = append(list, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, note)
+
 	}
 	return list, nil
 }
@@ -809,7 +870,12 @@ func (r *noteRepository) ListByFIDs(ctx context.Context, fids []int64, vaultID, 
 
 	var list []*domain.Note
 	for _, m := range modelList {
-		list = append(list, r.toDomain(m, uid))
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, note)
+
 	}
 	return list, nil
 }
