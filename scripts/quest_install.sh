@@ -349,7 +349,7 @@ _arch_map() {
 get_latest_tag() {
     if [ "$USE_CNB" = "true" ]; then
         local latest
-        latest=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" | \
+        latest=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: Bearer $CNB_TOKEN" "$CNB_API_BASE" | \
                 sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
         if [ -n "$latest" ]; then echo "$latest"; return 0; fi
     fi
@@ -389,7 +389,7 @@ download_release_asset() {
         local cnb_tag="$ver"
         if [ "$cnb_tag" = "latest" ]; then
             local api_tag
-            api_tag=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" | \
+            api_tag=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: Bearer $CNB_TOKEN" "$CNB_API_BASE" | \
                 sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
             [ -n "$api_tag" ] && cnb_tag="$api_tag"
         fi
@@ -398,7 +398,7 @@ download_release_asset() {
         # 直接构造 CNB 下载 URL，无需解析 API JSON
         local cnb_url="https://cnb.cool/$REPO/-/releases/download/${cnb_tag}/${asset_name}"
         info "$L_TRY_DL (CNB): ${_BOLD}$cnb_url${_RESET}" >&2
-        if curl -fSL -H "Authorization: $CNB_TOKEN" -o "$out" "$cnb_url"; then
+        if curl -fSL -H "Authorization: Bearer $CNB_TOKEN" -o "$out" "$cnb_url"; then
             echo "$out"
             return 0
         fi
