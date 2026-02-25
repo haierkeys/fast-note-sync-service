@@ -5,8 +5,9 @@ import (
 	"io"
 	"time"
 
+	"path"
+
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
 func (p *OSS) GetBucket(bucketName string) error {
@@ -26,7 +27,7 @@ func (p *OSS) SendFile(fileKey string, file io.Reader, itype string, modTime tim
 			return "", err
 		}
 	}
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
 	var options []oss.Option
 	if !modTime.IsZero() {
@@ -48,7 +49,7 @@ func (p *OSS) SendContent(fileKey string, content []byte, modTime time.Time) (st
 			return "", err
 		}
 	}
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
 	var options []oss.Option
 	if !modTime.IsZero() {

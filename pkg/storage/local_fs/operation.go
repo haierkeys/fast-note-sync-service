@@ -29,10 +29,7 @@ func (p *LocalFS) CheckSave() error {
 }
 
 func (p *LocalFS) getSavePath() string {
-	fullPath := p.Config.SavePath
-	if p.Config.CustomPath != "" {
-		fullPath = filepath.Join(fullPath, p.Config.CustomPath)
-	}
+	fullPath := filepath.Join(p.Config.SavePath, p.Config.CustomPath)
 	return fileurl.PathSuffixCheckAdd(fullPath, string(os.PathSeparator))
 }
 

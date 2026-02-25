@@ -2,6 +2,7 @@ package storage
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -74,6 +75,8 @@ func NewClient(config *Config) (Storager, error) {
 	}
 
 	cType := config.Type
+	config.CustomPath = strings.Trim(config.CustomPath, "/")
+
 	if cType == LOCAL {
 		cfg := &local_fs.Config{
 			CustomPath: config.CustomPath,
