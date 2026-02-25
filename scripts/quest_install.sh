@@ -20,6 +20,9 @@ GITHUB_RAW="https://github.com/$REPO/releases/download"
 GITHUB_API="https://api.github.com/repos/$REPO"
 CNB_API_BASE="https://api.cnb.cool/$REPO/-/releases"
 CNB_TOKEN="58tjez3744HL9Z10cRaCHdeEPhK"
+GITHUB_SCRIPT_URL="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh"
+CNB_SCRIPT_URL="https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh?cnb"
+CNB_MIRROR_CONF="$HOME/.fast-note-mirror"
 USE_CNB=false
 SUDO=""
 
@@ -113,8 +116,12 @@ load_lang() {
         L_MENU_6_D="将管理工具添加到全局快捷命令 fns"
         L_MENU_7="设置开机启动"
         L_MENU_7_D="配置 Systemd (Linux) 或 Launchd (macOS) 开机自启"
+        L_MENU_8="切换下载镜像"
+        L_MENU_8_D="在 GitHub 与 CNB 镜像之间切换"
         L_MENU_0="退出"
         L_MENU_L="Switch to English (切换至英文)"
+        L_SWITCH_TO_CNB="已切换至 CNB 镜像"
+        L_SWITCH_TO_GITHUB="已切换至 GitHub 镜像"
         L_SELECT="请选择"
         L_INPUT_VER="输入版本 (留空使用 latest)"
         L_INPUT_URL="输入脚本 URL (留空复制本地"
@@ -156,7 +163,7 @@ load_lang() {
         L_DL_SCRIPT="从指定 URL 下载安装脚本..."
         L_ERR_DL_SCRIPT="下载安装脚本失败"
         L_CP_SCRIPT="复制当前脚本到系统目录..."
-        L_ST_DL_SCRIPT="脚本通过 stdin 执行，正在尝试从 GitHub 自动获取..."
+        L_ST_DL_SCRIPT="脚本通过 stdin 执行，正在尝试自动获取..."
         L_INST_DONE="安装脚本已就绪"
 
         L_PRE_DL="准备下载 fast-note"
@@ -187,8 +194,12 @@ load_lang() {
         L_MENU_6_D="Add this tool to global commands (fns)"
         L_MENU_7="Set Auto-Start"
         L_MENU_7_D="Configure Systemd (Linux) or Launchd (macOS) auto-start"
+        L_MENU_8="Switch Download Mirror"
+        L_MENU_8_D="Switch between GitHub and CNB mirror"
         L_MENU_0="Quit"
         L_MENU_L="切换至中文 (Switch to Chinese)"
+        L_SWITCH_TO_CNB="Switched to CNB mirror"
+        L_SWITCH_TO_GITHUB="Switched to GitHub mirror"
         L_SELECT="Please select"
         L_INPUT_VER="Enter version (leave blank for latest)"
         L_INPUT_URL="Enter script URL (leave blank to copy local"
@@ -230,7 +241,7 @@ load_lang() {
         L_DL_SCRIPT="Downloading script from URL..."
         L_ERR_DL_SCRIPT="Failed to download script"
         L_CP_SCRIPT="Copying current script to system..."
-        L_ST_DL_SCRIPT="Running via stdin, trying to fetch from GitHub..."
+        L_ST_DL_SCRIPT="Running via stdin, trying to fetch automatically..."
         L_INST_DONE="Installer is ready"
 
         L_PRE_DL="Preparing to download fast-note"
@@ -251,33 +262,38 @@ load_lang() {
 # Initial load // 初始加载
 load_lang "init"
 
-# Detect source based on how the script was invoked // 根据脚本调用方式探测来源
-detect_source() {
-    # 1. 优先检查环境变量 (用户覆盖)
-    if [ "${FORCE_USE_CNB:-}" = "true" ]; then
-        USE_CNB=true; return
-    fi
+# Detect mirror source from script arguments or saved config
+# 从脚本参数或已保存配置中检测镜像来源
+save_mirror() {
+    echo "$USE_CNB" > "$CNB_MIRROR_CONF" 2>/dev/null || true
+}
 
-    # 2. 识别通过管道或进程替换执行时的下载源 (bash <(curl ...))
-    # 在 bash <(curl ...) 中，curl 是 bash 的子进程，脚本可能无法通过 $PPID 直接找到它。
-    # 我们搜索近期活跃的且包含关键域名的 curl/wget 进程命令行。
-    if command -v ps >/dev/null 2>&1; then
-        # 搜索最近 30 秒内含有 cnb.cool 且正在运行或刚结束的 curl 命令
-        # 这里使用扩展搜索逻辑：检查当前用户下包含特定域名的 curl 进程
-        if (ps -u "$USER" -o command= 2>/dev/null || ps -ef 2>/dev/null) | grep -E "curl|wget" | grep -q "cnb.cool"; then
-            USE_CNB=true; return
+load_mirror() {
+    if [ -f "$CNB_MIRROR_CONF" ]; then
+        local saved
+        saved=$(cat "$CNB_MIRROR_CONF" 2>/dev/null | tr -d '[:space:]' || echo "false")
+        if [ "$saved" = "true" ]; then
+            USE_CNB=true
+        else
+            USE_CNB=false
         fi
     fi
-
-    # 3. 检查脚本文件名 (如果是下载到本地运行)
-    if [[ "$0" == *"cnb.cool"* ]]; then
-        USE_CNB=true; return
-    fi
-
-    # 默认使用 GitHub
-    USE_CNB=false
 }
-detect_source
+
+parse_mirror_from_args() {
+    # Check if any argument contains '?cnb' or '--cnb' flag
+    # 检查是否含有 ?cnb 或 --cnb 参数
+    for arg in "$@"; do
+        if [[ "$arg" == *"?cnb"* ]] || [[ "$arg" == "--cnb" ]]; then
+            USE_CNB=true
+            return
+        fi
+    done
+    # No cnb flag found; load from saved config
+    # 未找到 cnb 标志，从已保存配置加载
+    load_mirror
+}
+parse_mirror_from_args "$@"
 
 # --- Version Tracking // 版本追踪 ---
 load_version() {
@@ -701,10 +717,20 @@ install_self() {
     ensure_root
     local src_url="${1:-}"
 
+    # Auto-select script URL based on current mirror setting
+    # 根据当前镜像设置自动选择脚本 URL
+    if [ -z "$src_url" ]; then
+        if [ "$USE_CNB" = "true" ]; then
+            src_url="$CNB_SCRIPT_URL"
+        else
+            src_url="$GITHUB_SCRIPT_URL"
+        fi
+    fi
+
     # 如果没有指定 URL 且当前不是通过本地文件运行（如 curl|bash 或 stdin）
     if [ -z "$src_url" ] && [ ! -f "$0" ]; then
         warn "$L_ST_DL_SCRIPT"
-        src_url="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh"
+        src_url="$GITHUB_SCRIPT_URL"
     fi
 
     if [ -n "$src_url" ]; then
@@ -722,7 +748,21 @@ install_self() {
 
     $SUDO chmod +x "$INSTALLER_SELF_PATH"
     $SUDO mkdir -p "$(dirname "$INSTALLER_LINK")"
-    $SUDO ln -sf "$INSTALLER_SELF_PATH" "$INSTALLER_LINK"
+
+    # Create fns wrapper that passes mirror flag when USE_CNB=true
+    # 创建 fns 包装脚本，在 USE_CNB=true 时传递镜像参数
+    if [ "$USE_CNB" = "true" ]; then
+        cat <<'WRAPPER' | $SUDO tee "$INSTALLER_LINK" >/dev/null
+#!/usr/bin/env bash
+exec /opt/fast-note/fast-note-installer.sh --cnb "$@"
+WRAPPER
+    else
+        cat <<'WRAPPER' | $SUDO tee "$INSTALLER_LINK" >/dev/null
+#!/usr/bin/env bash
+exec /opt/fast-note/fast-note-installer.sh "$@"
+WRAPPER
+    fi
+    $SUDO chmod +x "$INSTALLER_LINK"
     success "$L_INST_DONE: ${_BOLD}$INSTALLER_LINK${_RESET}"
 }
 
@@ -734,6 +774,21 @@ check_path() {
         warn "$(printf "$L_PATH_WARN" "$target_dir")"
         info "$(printf "$L_PATH_FIX" "$target_dir")"
     fi
+}
+
+switch_mirror() {
+    if [ "$USE_CNB" = "true" ]; then
+        USE_CNB=false
+        save_mirror
+        success "$L_SWITCH_TO_GITHUB"
+    else
+        USE_CNB=true
+        save_mirror
+        success "$L_SWITCH_TO_CNB"
+    fi
+    # Re-install fns wrapper to reflect new mirror setting
+    # 重新安装 fns 包装脚本以反映新的镜像设置
+    install_self >/dev/null 2>&1 || true
 }
 
 show_menu() {
@@ -752,29 +807,23 @@ show_menu() {
     echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_6_D${_RESET}"
     echo -e "  [7] ${_BOLD}$L_MENU_7${_RESET}"
     echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_7_D${_RESET}"
+    echo -e "  [8] ${_BOLD}$L_MENU_8${_RESET}"
+    echo -e "      ${_CYAN}${_ITALIC}${_DIM}$L_MENU_8_D${_RESET}"
     echo -e "  [L] ${_BOLD}$L_MENU_L${_RESET}"
     echo -e "  [0] ${_BOLD}$L_MENU_0${_RESET}"
     echo -e "\n${_BLUE} ================================================ ${_RESET}"
 
     while true; do
-        read -rp "  $(echo -e "${_BOLD}$L_SELECT [0-7, L]: ${_RESET}")" opt
+        read -rp "  $(echo -e "${_BOLD}$L_SELECT [0-8, L]: ${_RESET}")" opt
         case "$opt" in
             1) read -rp "  $(echo -e "${_BOLD}$L_INPUT_VER: ${_RESET}")" v; v="${v:-latest}"; install_cmd "$v";;
             2) start_service;;
             3) stop_service;;
             4) status_service;;
             5) full_uninstall;;
-            6)
-                if [ -f "$0" ]; then
-                    read -rp "  $(echo -e "${_BOLD}$L_INPUT_URL $0): ${_RESET}")" raw
-                else
-                    default_raw="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh"
-                    read -rp "  $(echo -e "${_BOLD}$L_ENTER_URL $default_raw]: ${_RESET}")" raw
-                    raw="${raw:-$default_raw}"
-                fi
-                install_self "$raw"
-                ;;
+            6) install_self "";;
             7) enable_autostart;;
+            8) switch_mirror; load_lang; show_menu; return;;
             L|l)
                 if [ "$CURRENT_LANG" = "en" ]; then CURRENT_LANG="zh"; else CURRENT_LANG="en"; fi
                 save_lang
