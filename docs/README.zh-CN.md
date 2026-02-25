@@ -108,7 +108,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 
 中国地区可以使用腾讯 `cnb.cool` 镜像源
 ```bash
-bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh?cnb) --cnb
+bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh) --cnb
 ```
 
 

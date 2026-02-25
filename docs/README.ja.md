@@ -108,7 +108,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-ser
 
 中国地区では Tencent `cnb.cool` ミラーソースを使用できます：
 ```bash
-bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh?cnb) --cnb
+bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh) --cnb
 ```
 
 
