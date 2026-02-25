@@ -59,6 +59,15 @@ draw_banner() {
         source_display="${_MAGENTA}CNB.cool${_RESET}"
     fi
 
+    local svc_file="N/A"
+    local os_type
+    os_type=$(detect_os)
+    if [ "$os_type" = "linux" ]; then
+        svc_file="/etc/systemd/system/fast-note.service"
+    elif [ "$os_type" = "darwin" ]; then
+        svc_file="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
+    fi
+
     cat <<EOF
 ${_CYAN}${_BOLD}
     ______           __     _   __      __          _____
@@ -71,8 +80,15 @@ ${_CYAN}${_BOLD}
        Fast Note Sync Service Manager Script
    ================================================
    $L_CUR_VER: $ver_display
-   $L_SOURCE: $source_display
-${_RESET}
+   $L_SOURCE  : $source_display
+   ------------------------------------------------
+   ${_DIM}Path Info:${_RESET}
+   ${_BLUE}Main Dir :${_RESET} ${_BOLD}$INSTALL_DIR${_RESET}
+   ${_BLUE}Data Dir :${_RESET} ${_BOLD}$INSTALL_DIR/storage${_RESET}
+   ${_BLUE}Conf Dir :${_RESET} ${_BOLD}$INSTALL_DIR/config${_RESET}
+   ${_BLUE}Log File :${_RESET} ${_BOLD}$LOG_FILE${_RESET}
+   ${_BLUE}Svc File :${_RESET} ${_BOLD}$svc_file${_RESET}
+   ================================================
 EOF
   echo -e "\n"
 }
@@ -519,6 +535,7 @@ After=network.target
 
 [Service]
 Type=simple
+WorkingDirectory=$INSTALL_DIR
 ExecStart=$BIN_PATH run
 Restart=on-failure
 User=root
@@ -580,8 +597,27 @@ EOF
 }
 
 
+# Data Migration // 数据迁移
+# Check if /storage exists (caused by WorkingDir bug) and migrate it
+auto_migrate_data() {
+    if [ -d "/storage" ]; then
+        ensure_root
+        warn "Found potential data in root directory /storage, migrating to $INSTALL_DIR/storage ..."
+        $SUDO mkdir -p "$INSTALL_DIR"
+        # Combine directories
+        $SUDO cp -an /storage/* "$INSTALL_DIR/storage/" 2>/dev/null || true
+        # Backup then remove
+        local backup_tag
+        backup_tag=$(date +%Y%m%d%H%M%S)
+        $SUDO mv /storage "/storage.bak.$backup_tag"
+        success "Data migrated to $INSTALL_DIR/storage. Original moved to /storage.bak.$backup_tag"
+    fi
+}
+
+
 # Service control functions // 服务控制函数
 start_service() {
+    auto_migrate_data
     ensure_root
     local os="$(detect_os)"
 
