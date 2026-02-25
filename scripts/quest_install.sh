@@ -384,37 +384,25 @@ download_release_asset() {
     local out="$TMPDIR/$asset_name"
 
     if [ "$USE_CNB" = "true" ]; then
-        local release_json
-        release_json=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" || true)
-        if [ -n "$release_json" ]; then
-            local asset_url
-            if command -v jq >/dev/null 2>&1; then
-                asset_url=$(echo "$release_json" | jq -r --arg tag "$ver" --arg name "$asset_name" '.[] | select((.tag_name==$tag or $tag=="latest")) | .assets[] | select(.name==$name) | .browser_download_url' | head -n1 || true)
-            else
-                # Simple extraction: find the block for the tag/latest, then find the asset name in that block
-                asset_url=$(echo "$release_json" | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"|"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+"|"name"[[:space:]]*:[[:space:]]*"[^"]+"' | \
-                    awk -v tag="$ver" -v name="$asset_name" '
-                        BEGIN { RS="\"tag_name\""; FS=":"; OFS=":" }
-                        $2 ~ "\""tag"\"" || tag == "latest" {
-                            found_tag=1
-                        }
-                        found_tag && $0 ~ "\"name\"" && $2 ~ "\""name"\"" {
-                            found_name=1
-                        }
-                        found_tag && found_name && $0 ~ "\"browser_download_url\"" {
-                            print $2; exit
-                        }
-                    ' | tr -d '" ' || true)
-            fi
-
-            if [ -n "$asset_url" ]; then
-                info "$L_TRY_DL (CNB): ${_BOLD}$asset_url${_RESET}" >&2
-                if curl -L --fail -H "Authorization: $CNB_TOKEN" -o "$out" "$asset_url"; then
-                    echo "$out"
-                    return 0
-                fi
-            fi
+        # Resolve "latest" tag via CNB API if needed
+        # 如需要，通过 CNB API 解析 "latest" tag
+        local cnb_tag="$ver"
+        if [ "$cnb_tag" = "latest" ]; then
+            local api_tag
+            api_tag=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: $CNB_TOKEN" "$CNB_API_BASE" | \
+                sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
+            [ -n "$api_tag" ] && cnb_tag="$api_tag"
         fi
+
+        # Construct CNB download URL directly: https://cnb.cool/{repo}/-/releases/download/{tag}/{filename}
+        # 直接构造 CNB 下载 URL，无需解析 API JSON
+        local cnb_url="https://cnb.cool/$REPO/-/releases/download/${cnb_tag}/${asset_name}"
+        info "$L_TRY_DL (CNB): ${_BOLD}$cnb_url${_RESET}" >&2
+        if curl -fSL -H "Authorization: $CNB_TOKEN" -o "$out" "$cnb_url"; then
+            echo "$out"
+            return 0
+        fi
+        warn "$L_DL_FAIL_API" >&2
     fi
 
     local url="$GITHUB_RAW/${clean_ver}/${asset_name}"
