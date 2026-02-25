@@ -605,7 +605,7 @@ auto_migrate_data() {
         warn "Found potential data in root directory /storage, migrating to $INSTALL_DIR/storage ..."
         $SUDO mkdir -p "$INSTALL_DIR"
         # Combine directories
-        $SUDO cp -an /storage/* "$INSTALL_DIR/storage/" 2>/dev/null || true
+        $SUDO cp -af /storage/* "$INSTALL_DIR/storage/" 2>/dev/null || true
         # Backup then remove
         local backup_tag
         backup_tag=$(date +%Y%m%d%H%M%S)
