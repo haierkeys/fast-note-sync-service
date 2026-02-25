@@ -858,11 +858,19 @@ install_cmd() {
 }
 
 # main dispatcher // 主调度器
-cmd="${1:-menu}"
+# Filter out mirror flags before dispatching // 过滤镜像标志后再调度
+_dispatch_args=()
+for _arg in "$@"; do
+    case "$_arg" in
+        --cnb|--github) ;;  # already handled by parse_mirror_from_args
+        *) _dispatch_args+=("$_arg") ;;
+    esac
+done
+cmd="${_dispatch_args[0]:-menu}"
 case "$cmd" in
     install)
         ensure_root
-        install_cmd "${2:-latest}"
+        install_cmd "${_dispatch_args[1]:-latest}"
     ;;
     uninstall|full-uninstall|full_uninstall)
         full_uninstall
@@ -881,7 +889,7 @@ case "$cmd" in
         install_cmd "latest"
     ;;
     install-self)
-        install_self "${2:-}"
+        install_self "${_dispatch_args[1]:-}"
     ;;
     enable-autostart)
         enable_autostart
