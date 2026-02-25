@@ -115,9 +115,10 @@ bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/ma
 **Main behaviors of the script:**
 
   * Automatically downloads the Release binary file adapted to the current system.
-  * Installed to `/opt/fast-note` by default, and creates a shortcut command at `/usr/local/bin/fast-note`.
-  * Configures and starts the Systemd service (`fast-note.service`), enabling auto-start on boot.
-  * **Management Commands**: `fast-note [install|uninstall|start|stop|status|update|menu]`
+  * Installed to `/opt/fast-note` by default, and creates a global shortcut command `fns` at `/usr/local/bin/fns`.
+  * Configures and starts the Systemd (Linux) or Launchd (macOS) service, enabling auto-start on boot.
+  * **Management Commands**: `fns [install|uninstall|start|stop|status|update|menu]`
+  * **Interactive Menu**: Run `fns` to open the interactive menu, which supports installing/upgrading, service control, auto-start configuration, and switching download mirror (GitHub / CNB).
 
 -----
 
