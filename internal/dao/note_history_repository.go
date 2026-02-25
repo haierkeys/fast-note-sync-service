@@ -3,6 +3,8 @@ package dao
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -39,11 +41,11 @@ func (r *noteHistoryRepository) noteHistory(uid int64) *query.Query {
 }
 
 // toDomain 将数据库模型转换为领域模型
-func (r *noteHistoryRepository) toDomain(m *model.NoteHistory) *domain.NoteHistory {
+func (r *noteHistoryRepository) toDomain(m *model.NoteHistory, uid int64) (*domain.NoteHistory, error) {
 	if m == nil {
-		return nil
+		return nil, nil
 	}
-	return &domain.NoteHistory{
+	h := &domain.NoteHistory{
 		ID:          m.ID,
 		NoteID:      m.NoteID,
 		VaultID:     m.VaultID,
@@ -56,17 +58,25 @@ func (r *noteHistoryRepository) toDomain(m *model.NoteHistory) *domain.NoteHisto
 		CreatedAt:   time.Time(m.CreatedAt),
 		UpdatedAt:   time.Time(m.UpdatedAt),
 	}
+	if err := r.fillHistoryContent(uid, h); err != nil {
+		return nil, err
+	}
+	return h, nil
 }
 
 // fillHistoryContent 填充历史记录内容及补丁
-func (r *noteHistoryRepository) fillHistoryContent(uid int64, h *domain.NoteHistory) {
+func (r *noteHistoryRepository) fillHistoryContent(uid int64, h *domain.NoteHistory) error {
 	if h == nil {
-		return
+		return nil
 	}
 	folder := r.dao.GetNoteHistoryFolderPath(uid, h.ID)
 
 	// 加载补丁
-	if patch, exists, _ := r.dao.LoadContentFromFile(folder, "diff.patch"); exists {
+	patch, exists, err := r.dao.LoadContentFromFile(folder, "diff.patch")
+	if err != nil {
+		return err
+	}
+	if exists {
 		h.DiffPatch = patch
 	} else if h.DiffPatch != "" {
 		if err := r.dao.SaveContentToFile(folder, "diff.patch", h.DiffPatch); err != nil {
@@ -77,10 +87,16 @@ func (r *noteHistoryRepository) fillHistoryContent(uid int64, h *domain.NoteHist
 				zap.Error(err),
 			)
 		}
+	} else {
+		return fmt.Errorf("history diff patch file not found: %w", os.ErrNotExist)
 	}
 
 	// 加载内容
-	if content, exists, _ := r.dao.LoadContentFromFile(folder, "content.txt"); exists {
+	content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+	if err != nil {
+		return err
+	}
+	if exists {
 		h.Content = content
 	} else if h.Content != "" {
 		if err := r.dao.SaveContentToFile(folder, "content.txt", h.Content); err != nil {
@@ -91,7 +107,10 @@ func (r *noteHistoryRepository) fillHistoryContent(uid int64, h *domain.NoteHist
 				zap.Error(err),
 			)
 		}
+	} else {
+		return fmt.Errorf("history content file not found: %w", os.ErrNotExist)
 	}
+	return nil
 }
 
 // GetByID 根据ID获取历史记录
@@ -101,9 +120,7 @@ func (r *noteHistoryRepository) GetByID(ctx context.Context, id, uid int64) (*do
 	if err != nil {
 		return nil, err
 	}
-	result := r.toDomain(m)
-	r.fillHistoryContent(uid, result)
-	return result, nil
+	return r.toDomain(m, uid)
 }
 
 // GetByNoteIDAndHash 根据笔记ID和内容哈希获取历史记录
@@ -113,9 +130,7 @@ func (r *noteHistoryRepository) GetByNoteIDAndHash(ctx context.Context, noteID i
 	if err != nil {
 		return nil, err
 	}
-	result := r.toDomain(m)
-	r.fillHistoryContent(uid, result)
-	return result, nil
+	return r.toDomain(m, uid)
 }
 
 // Create 创建历史记录
@@ -158,7 +173,11 @@ func (r *noteHistoryRepository) Create(ctx context.Context, history *domain.Note
 			return err
 		}
 
-		result = r.toDomain(m)
+		hRes, err := r.toDomain(m, uid)
+		if err != nil {
+			return err
+		}
+		result = hRes
 		result.DiffPatch = diffPatch
 		result.Content = content
 		return nil
@@ -190,8 +209,10 @@ func (r *noteHistoryRepository) ListByNoteID(ctx context.Context, noteID int64, 
 
 	var results []*domain.NoteHistory
 	for _, m := range modelList {
-		h := r.toDomain(m)
-		r.fillHistoryContent(uid, h)
+		h, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, 0, err
+		}
 		results = append(results, h)
 	}
 	return results, count, nil

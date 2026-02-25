@@ -822,26 +822,19 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 		notes, err = s.noteRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", false, "", "")
 	}
 
-	if err == nil {
-		for _, n := range notes {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			path := n.Path
-			// Ensure .md extension? The original code had this check.
-			if filepath.Ext(path) == "" { // Or check against .md
-				// Original: if !filepath.HasPrefix(filepath.Ext(path), ".md")
-				// Wait, standard logic.
-				// Let's just use what was there.
-				if filepath.Ext(path) != ".md" {
-					path += ".md"
-				}
-			}
-			// wait, the original code had: if !filepath.HasPrefix(filepath.Ext(path), ".md")
-			// I'll assume standard behavior.
-			if err := action(v, path, true, []byte(n.Content), int64(len(n.Content)), "", time.UnixMilli(n.Mtime), n.IsDeleted()); err != nil {
-				return err
-			}
+	if err != nil {
+		return err
+	}
+	for _, n := range notes {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		path := n.Path
+		if filepath.Ext(path) != ".md" {
+			path += ".md"
+		}
+		if err := action(v, path, true, []byte(n.Content), int64(len(n.Content)), "", time.UnixMilli(n.Mtime), n.IsDeleted()); err != nil {
+			return err
 		}
 	}
 
@@ -853,21 +846,22 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 		files, err = s.fileRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", "")
 	}
 
-	if err == nil {
-		for _, f := range files {
-			if ctx.Err() != nil {
-				return ctx.Err()
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		var size int64
+		// Check file existence/size if not deleted
+		if !f.IsDeleted() {
+			if info, _ := os.Stat(f.SavePath); info != nil {
+				size = info.Size()
 			}
-			var size int64
-			// Check file existence/size if not deleted
-			if !f.IsDeleted() {
-				if info, _ := os.Stat(f.SavePath); info != nil {
-					size = info.Size()
-				}
-			}
-			if err := action(v, f.Path, false, nil, size, f.SavePath, time.UnixMilli(f.Mtime), f.IsDeleted()); err != nil {
-				return err
-			}
+		}
+		if err := action(v, f.Path, false, nil, size, f.SavePath, time.UnixMilli(f.Mtime), f.IsDeleted()); err != nil {
+			return err
 		}
 	}
 

@@ -642,7 +642,7 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 		}
 
 		if err := os.WriteFile(fullPath, []byte(n.Content), 0644); err != nil {
-			s.logger.Warn("Failed to write note to workspace", zap.String("path", n.Path), zap.Error(err))
+			return false, fmt.Errorf("failed to write note to workspace: %w", err)
 		} else {
 			actuallyChanged = true
 			if n.Mtime > 0 {
@@ -668,7 +668,7 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 
 		copyChanged, err := s.copyFileIfDifferent(f.SavePath, fullPath)
 		if err != nil {
-			s.logger.Warn("Failed to copy attachment to workspace", zap.String("path", f.Path), zap.Error(err))
+			return false, fmt.Errorf("failed to copy attachment to workspace: %w", err)
 		} else if copyChanged {
 			actuallyChanged = true
 			if f.Mtime > 0 {

@@ -161,7 +161,13 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 		for _, note := range notes {
 			// 从文件系统读取内容
 			folder := r.dao.GetNoteFolderPath(uid, note.ID)
-			content, _, _ := r.dao.LoadContentFromFile(folder, "content.txt")
+			content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+			if err != nil {
+				return err
+			}
+			if !exists {
+				content = ""
+			}
 
 			if err := db.Exec("INSERT INTO note_fts (note_id, path, content) VALUES (?, ?, ?)",
 				note.ID, note.Path, content).Error; err != nil {
