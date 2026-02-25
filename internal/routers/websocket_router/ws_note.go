@@ -957,8 +957,8 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	c.IsFirstSync = true
 
-	// Send NoteSyncEnd message, containing all merged messages
-	// 发送 NoteSyncEnd 消息，包含所有合并的消息
+	// Send NoteSyncEnd message, containing all counts
+	// 发送 NoteSyncEnd 消息，包含所有统计计数
 	c.ToResponse(code.Success.WithData(
 		dto.NoteSyncEndMessage{
 			LastTime:           lastTime,
@@ -966,9 +966,14 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			NeedModifyCount:    needModifyCount,
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
-			Messages:           messageQueue,
 		},
-	).WithVault(params.Vault), dto.NoteSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), dto.NoteSyncEnd)
+
+	// After End message, send all queued messages individually
+	// 在 End 消息后，逐条发送队列中的消息
+	for _, item := range messageQueue {
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	}
 }
 
 // UserInfo verifies and retrieves user info

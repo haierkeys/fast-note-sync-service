@@ -15,12 +15,11 @@ type FileSyncModifyMessage struct {
 // FileSyncEndMessage defines the message structure when file sync ends
 // FileSyncEndMessage 定义文件同步结束时的消息结构
 type FileSyncEndMessage struct {
-	LastTime           int64             `json:"lastTime" form:"lastTime" example:"1700000000"`            // Last sync time // 最后同步时间
-	NeedUploadCount    int64             `json:"needUploadCount" form:"needUploadCount" example:"5"`       // Number of items needing upload // 需要上传的数量
-	NeedModifyCount    int64             `json:"needModifyCount" form:"needModifyCount" example:"2"`       // Number of items needing modification // 需要修改的数量
-	NeedSyncMtimeCount int64             `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"1"` // Number of items needing mtime sync // 需要同步修改时间的数量
-	NeedDeleteCount    int64             `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of items needing deletion // 需要删除的数量
-	Messages           []WSQueuedMessage `json:"messages"`                                                 // Merged message queue // 合并的消息队列
+	LastTime           int64 `json:"lastTime" form:"lastTime" example:"1700000000"`            // Last sync time // 最后同步时间
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount" example:"5"`       // Number of items needing upload // 需要上传的数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount" example:"2"`       // Number of items needing modification // 需要修改的数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"1"` // Number of items needing mtime sync // 需要同步修改时间的数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of items needing deletion // 需要删除的数量
 }
 
 // FileSyncUploadMessage defines the message structure informing client that file upload is needed

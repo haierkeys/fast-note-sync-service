@@ -3,10 +3,9 @@ package dto
 // FolderSyncEndMessage defines the folder sync end message structure
 // FolderSyncEndMessage 定义文件夹同步结束的消息结构
 type FolderSyncEndMessage struct {
-	LastTime        int64             `json:"lastTime" example:"1700000000"` // Current sync update time // 本次同步更新时间
-	NeedModifyCount int64             `json:"needModifyCount" example:"3"`   // Number of folders needing modification // 需要修改的文件夹数量
-	NeedDeleteCount int64             `json:"needDeleteCount" example:"0"`   // Number of folders needing deletion // 需要删除的文件夹数量
-	Messages        []WSQueuedMessage `json:"messages"`                      // Merged message queue // 合并的消息队列
+	LastTime        int64 `json:"lastTime" example:"1700000000"` // Current sync update time // 本次同步更新时间
+	NeedModifyCount int64 `json:"needModifyCount" example:"3"`   // Number of folders needing modification // 需要修改的文件夹数量
+	NeedDeleteCount int64 `json:"needDeleteCount" example:"0"`   // Number of folders needing deletion // 需要删除的文件夹数量
 }
 
 // FolderSyncRenameMessage message structure for folder rename during sync
