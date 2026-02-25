@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -900,10 +901,18 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		case c.done <- struct{}{}:
 		default:
 		}
-		log(LogInfo, "WS User Leave", zap.String("uid", c.User.ID), zap.String("traceID", c.TraceID), zap.Error(err))
+		logLevel := LogInfo
+		if err != nil && err != io.EOF {
+			logLevel = LogError
+		}
+		log(logLevel, "WS User Leave", zap.String("uid", c.User.ID), zap.String("traceID", c.TraceID), zap.Error(err))
 		w.RemoveUserClient(c)
 	} else {
-		log(LogInfo, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
+		logLevel := LogInfo
+		if err != nil && err != io.EOF {
+			logLevel = LogError
+		}
+		log(logLevel, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
 	}
 
 	// No longer clean up BinaryChunkSessions in OnClose, rely on the timeout mechanism for automatic cleanup instead
