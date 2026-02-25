@@ -431,8 +431,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		needUploadCount++
 	}
 
-	// Send SettingSyncEnd message, containing all merged messages
-	// 发送 SettingSyncEnd 消息，包含所有合并的消息
+	// Send SettingSyncEnd message
+	// 发送 SettingSyncEnd 消息
 	c.ToResponse(code.Success.WithData(
 		dto.SettingSyncEndMessage{
 			LastTime:           lastTime,
@@ -440,9 +440,14 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			NeedModifyCount:    needModifyCount,
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
-			Messages:           messageQueue,
 		},
-	).WithVault(params.Vault), dto.SettingSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), dto.SettingSyncEnd)
+
+	// Send queued messages individually
+	// 逐条发送队列中的消息
+	for _, item := range messageQueue {
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	}
 }
 
 // SettingClear handles clear all settings messages

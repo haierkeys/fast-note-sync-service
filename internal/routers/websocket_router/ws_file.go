@@ -790,8 +790,8 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
-	// Send FileSyncEnd message, containing all merged messages
-	// 发送 FileSyncEnd 消息，包含所有合并的消息
+	// Send FileSyncEnd message
+	// 发送 FileSyncEnd 消息
 	c.ToResponse(code.Success.WithData(
 		dto.FileSyncEndMessage{
 			LastTime:           lastTime,
@@ -799,9 +799,14 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			NeedModifyCount:    needModifyCount,
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
-			Messages:           messageQueue,
 		},
-	).WithVault(params.Vault), dto.FileSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), dto.FileSyncEnd)
+
+	// Send queued messages individually
+	// 逐条发送队列中的消息
+	for _, item := range messageQueue {
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	}
 }
 
 // cleanupSession cleans up discarded upload sessions due to completion or timeout.

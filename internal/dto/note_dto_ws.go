@@ -28,12 +28,11 @@ type NoteSyncModifyMessage struct {
 // NoteSyncEndMessage message structure returned when sync ends
 // NoteSyncEndMessage 同步结束时返回的信息结构
 type NoteSyncEndMessage struct {
-	LastTime           int64             `json:"lastTime" form:"lastTime" example:"1700000000"`            // Current sync update time // 本次同步更新时间
-	NeedUploadCount    int64             `json:"needUploadCount" form:"needUploadCount" example:"10"`      // Number of notes needing upload // 需要上传的笔记数量
-	NeedModifyCount    int64             `json:"needModifyCount" form:"needModifyCount" example:"5"`       // Number of notes needing modification // 需要修改的数量
-	NeedSyncMtimeCount int64             `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"2"` // Number of notes needing mtime sync // 需要同步修改时间的数量
-	NeedDeleteCount    int64             `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of notes needing deletion // 需要删除的数量
-	Messages           []WSQueuedMessage `json:"messages"`                                                 // Merged message queue // 合并的消息队列
+	LastTime           int64 `json:"lastTime" form:"lastTime" example:"1700000000"`            // Current sync update time // 本次同步更新时间
+	NeedUploadCount    int64 `json:"needUploadCount" form:"needUploadCount" example:"10"`      // Number of notes needing upload // 需要上传的笔记数量
+	NeedModifyCount    int64 `json:"needModifyCount" form:"needModifyCount" example:"5"`       // Number of notes needing modification // 需要修改的数量
+	NeedSyncMtimeCount int64 `json:"needSyncMtimeCount" form:"needSyncMtimeCount" example:"2"` // Number of notes needing mtime sync // 需要同步修改时间的数量
+	NeedDeleteCount    int64 `json:"needDeleteCount" form:"needDeleteCount" example:"0"`       // Number of notes needing deletion // 需要删除的数量
 }
 
 // NoteSyncNeedPushMessage server informs client of file info needing push
