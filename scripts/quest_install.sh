@@ -697,6 +697,9 @@ full_uninstall() {
     $SUDO rm -f "/usr/local/bin/fast-note" || true
     $SUDO rm -f "/usr/local/bin/fast-note-installer" || true
     $SUDO rm -f "$LOG_FILE" || true
+    # 清理用户级配置文件 / Clean up per-user config files
+    rm -f "$LANG_CONF" || true
+    rm -f "$CNB_MIRROR_CONF" || true
 
     success "$L_UN_DONE"
 }
