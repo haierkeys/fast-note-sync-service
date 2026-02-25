@@ -7,11 +7,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/pkg/errors"
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
 func (w *WebDAV) setModifiedTime(path string, modTime time.Time) error {
@@ -58,11 +59,14 @@ func (w *WebDAV) setModifiedTime(path string, modTime time.Time) error {
 // SendFile 将本地文件上传到 WebDAV 服务器。
 func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
-	fileKey = fileurl.PathSuffixCheckAdd(w.Config.CustomPath, "/") + fileKey
-
-	err := w.Client.MkdirAll(w.Config.CustomPath, 0644)
-	if err != nil {
-		return "", errors.Wrap(err, "webdav")
+	fileKey = path.Join("/", w.Config.CustomPath, fileKey)
+	dump.P(fileKey)
+	dir := path.Dir(fileKey)
+	if dir != "/" && dir != "." && dir != "" {
+		err := w.Client.MkdirAll(dir, 0644)
+		if err != nil {
+			return "", errors.Wrap(err, "webdav")
+		}
 	}
 
 	content, err := io.ReadAll(file)
@@ -86,14 +90,16 @@ func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime 
 // SendContent 将二进制内容上传到 WebDAV 服务器。
 func (w *WebDAV) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
 
-	fileKey = fileurl.PathSuffixCheckAdd(w.Config.CustomPath, "/") + fileKey
-
-	err := w.Client.MkdirAll(w.Config.CustomPath, 0644)
-	if err != nil {
-		return "", errors.Wrap(err, "webdav")
+	fileKey = path.Join("/", w.Config.CustomPath, fileKey)
+	dir := path.Dir(fileKey)
+	if dir != "/" && dir != "." && dir != "" {
+		err := w.Client.MkdirAll(dir, 0644)
+		if err != nil {
+			return "", errors.Wrap(err, "webdav")
+		}
 	}
 
-	err = w.Client.Write(fileKey, content, os.ModePerm)
+	err := w.Client.Write(fileKey, content, os.ModePerm)
 
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")

@@ -5,15 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path"
 	"time"
-
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	tmtypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +33,7 @@ func (p *MinIO) SendFile(fileKey string, file io.Reader, itype string, modTime t
 	ctx := context.Background()
 	bucket := p.GetBucket("")
 
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
 	//  k, _ := h.Open()
 
@@ -64,7 +64,7 @@ func (p *MinIO) SendContent(fileKey string, content []byte, modTime time.Time) (
 	ctx := context.Background()
 	bucket := p.GetBucket("")
 
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
 	input := &transfermanager.UploadObjectInput{
 		Bucket:            aws.String(bucket),

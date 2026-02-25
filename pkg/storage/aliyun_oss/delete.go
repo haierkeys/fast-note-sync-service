@@ -1,7 +1,7 @@
 package aliyun_oss
 
 import (
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
+	"path"
 )
 
 func (p *OSS) Delete(fileKey string) error {
@@ -11,6 +11,6 @@ func (p *OSS) Delete(fileKey string) error {
 			return err
 		}
 	}
-	fileKey = fileurl.PathSuffixCheckAdd(p.Config.CustomPath, "/") + fileKey
+	fileKey = path.Join(p.Config.CustomPath, fileKey)
 	return p.Bucket.DeleteObject(fileKey)
 }
