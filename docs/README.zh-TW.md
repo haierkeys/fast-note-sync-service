@@ -115,9 +115,10 @@ bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/ma
 **腳本主要行為：**
 
   * 自動下載適配當前系統的 Release 二進位文件。
-  * 默認安裝至 `/opt/fast-note`，並在 `/usr/local/bin/fast-note` 創建快捷指令。
-  * 配置並啟動 Systemd 服務 (`fast-note.service`)，實現開機自啟。
-  * **管理命令**：`fast-note [install|uninstall|start|stop|status|update|menu]`
+  * 默認安裝至 `/opt/fast-note`，並在 `/usr/local/bin/fns` 創建全局快捷命令 `fns`。
+  * 配置並啟動 Systemd（Linux）或 Launchd（macOS）服務，實現開機自啟。
+  * **管理命令**：`fns [install|uninstall|start|stop|status|update|menu]`
+  * **交互菜單**：直接運行 `fns` 可進入交互菜單，支持安裝/升級、服務控制、開機自啟配置，以及在 GitHub / CNB 鏡像之間切換。
 
 -----
 

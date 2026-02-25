@@ -115,9 +115,11 @@ bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/ma
 **スクリプトの主な動作：**
 
   * 現在のシステムに適した Release バイナリファイルを自動的にダウンロードします。
-  * デフォルトで `/opt/fast-note` にインストールされ、`/usr/local/bin/fast-note` にショートカットコマンドが作成されます。
-  * Systemd サービス (`fast-note.service`) を設定・起動し、OS 起動時の自動実行を実現します。
-  * **管理コマンド**: `fast-note [install|uninstall|start|stop|status|update|menu]`
+
+  * デフォルトで `/opt/fast-note` にインストールされ、`/usr/local/bin/fns` にグローバルショートカットコマンド `fns` が作成されます。
+  * Systemd（Linux）または Launchd（macOS）サービスを設定・起動し、OS 起動時の自動実行を実現します。
+  * **管理コマンド**: `fns [install|uninstall|start|stop|status|update|menu]`
+  * **対話型メニュー**: `fns` を直接実行すると対話型メニューが表示され、インストール/アップグレード、サービス制御、自動起動設定、ダウンロードミラー（GitHub / CNB）の切り替えが可能です。
 
 -----
 
