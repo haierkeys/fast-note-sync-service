@@ -41,12 +41,12 @@ func (d *Dao) SaveContentToFile(folderPath string, fileName string, content stri
 // 返回值: 内容, 是否存在, 错误
 func (d *Dao) LoadContentFromFile(folderPath string, fileName string) (string, bool, error) {
 	filePath := filepath.Join(folderPath, fileName)
-	if !fileurl.IsExist(filePath) {
-		return "", false, nil
-	}
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", true, err
+		if os.IsNotExist(err) {
+			return "", false, nil
+		}
+		return "", false, err
 	}
 	return string(content), true, nil
 }

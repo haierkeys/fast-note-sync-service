@@ -3,6 +3,8 @@ package dao
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -39,11 +41,11 @@ func (r *settingRepository) setting(uid int64) *query.Query {
 }
 
 // toDomain 将数据库模型转换为领域模型
-func (r *settingRepository) toDomain(m *model.Setting) *domain.Setting {
+func (r *settingRepository) toDomain(m *model.Setting, uid int64) (*domain.Setting, error) {
 	if m == nil {
-		return nil
+		return nil, nil
 	}
-	return &domain.Setting{
+	s := &domain.Setting{
 		ID:               m.ID,
 		VaultID:          m.VaultID,
 		Action:           domain.SettingAction(m.Action),
@@ -58,16 +60,25 @@ func (r *settingRepository) toDomain(m *model.Setting) *domain.Setting {
 		CreatedAt:        time.Time(m.CreatedAt),
 		UpdatedAt:        time.Time(m.UpdatedAt),
 	}
+	if err := r.fillSettingContent(uid, s); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // fillSettingContent 填充配置内容
-func (r *settingRepository) fillSettingContent(uid int64, s *domain.Setting) {
+func (r *settingRepository) fillSettingContent(uid int64, s *domain.Setting) error {
 	if s == nil {
-		return
+		return nil
 	}
 	folder := r.dao.GetSettingFolderPath(uid, s.ID)
 
-	if content, exists, _ := r.dao.LoadContentFromFile(folder, "content.txt"); exists {
+	content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+	if err != nil {
+		return err
+	}
+
+	if exists {
 		s.Content = content
 	} else if s.Content != "" {
 		if err := r.dao.SaveContentToFile(folder, "content.txt", s.Content); err != nil {
@@ -78,7 +89,10 @@ func (r *settingRepository) fillSettingContent(uid int64, s *domain.Setting) {
 				zap.Error(err),
 			)
 		}
+	} else {
+		return fmt.Errorf("setting content file not found: %w", os.ErrNotExist)
 	}
+	return nil
 }
 
 // GetByPathHash 根据路径哈希获取配置
@@ -91,9 +105,7 @@ func (r *settingRepository) GetByPathHash(ctx context.Context, pathHash string, 
 	if err != nil {
 		return nil, err
 	}
-	result := r.toDomain(m)
-	r.fillSettingContent(uid, result)
-	return result, nil
+	return r.toDomain(m, uid)
 }
 
 // Create 创建配置
@@ -131,7 +143,12 @@ func (r *settingRepository) Create(ctx context.Context, setting *domain.Setting,
 			return err
 		}
 
-		result = r.toDomain(m)
+		sRes, err := r.toDomain(m, uid)
+		if err != nil {
+			return err
+		}
+		result = sRes
+
 		result.Content = content
 		return nil
 	})
@@ -177,7 +194,12 @@ func (r *settingRepository) Update(ctx context.Context, setting *domain.Setting,
 			return err
 		}
 
-		result = r.toDomain(m)
+		sRes, err := r.toDomain(m, uid)
+		if err != nil {
+			return err
+		}
+		result = sRes
+
 		result.Content = content
 		return nil
 	})
@@ -280,8 +302,10 @@ func (r *settingRepository) ListByUpdatedTimestamp(ctx context.Context, timestam
 
 	var results []*domain.Setting
 	for _, m := range mList {
-		s := r.toDomain(m)
-		r.fillSettingContent(uid, s)
+		s, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
 		results = append(results, s)
 	}
 	return results, nil
