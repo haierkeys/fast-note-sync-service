@@ -144,6 +144,7 @@ type NoteSyncDelNote struct {
 // NoteSyncRequest Synchronization request body
 // 同步请求主体
 type NoteSyncRequest struct {
+	Context      string                 `json:"context" form:"context" example:"task123"`                // Context // 上下文
 	Vault        string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	LastTime     int64                  `json:"lastTime" form:"lastTime" example:"1700000000"`           // Last sync time // 最后同步时间
 	Notes        []NoteSyncCheckRequest `json:"notes" form:"notes"`                                      // Notes to check // 待检查笔记列表
