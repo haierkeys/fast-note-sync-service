@@ -146,6 +146,39 @@ func (h *StorageHandler) EnabledTypes(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(types))
 }
 
+// Validate tests storage connectivity
+// @Summary Validate storage connection
+// @Tags Storage
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.StoragePostRequest true "Storage Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Failure 400 {object} pkgapp.Res "Invalid Params"
+// @Failure 401 {object} pkgapp.Res "Token Required"
+// @Failure 500 {object} pkgapp.Res "Internal Server Error"
+// @Router /api/storage/validate [post]
+func (h *StorageHandler) Validate(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.StoragePostRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.App.Logger().Error("StorageHandler.Validate.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	err := h.App.StorageService.Validate(c.Request.Context(), params)
+	if err != nil {
+		h.logError(c.Request.Context(), "StorageHandler.Validate", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithDetails("Validation successful"))
+}
+
 func (h *StorageHandler) logError(ctx context.Context, method string, err error) {
 	traceID := middleware.GetTraceID(ctx)
 	h.App.Logger().Error(method,

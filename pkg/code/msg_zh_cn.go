@@ -114,6 +114,7 @@ var zh_cn_messages = map[int]string{
 
 	500: "存储配置不存在",
 	501: "该存储类型已被禁用",
+	502: "存储连接测试失败",
 
 	// Git Sync
 	510: "Git 同步配置不存在",
