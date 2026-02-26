@@ -113,6 +113,7 @@ var en_messages = map[int]string{
 	499: "Sync & backup task is disabled",
 	500: "Storage configuration does not exist",
 	501: "This storage type has been disabled",
+	502: "Storage connection test failed",
 
 	// Git Sync
 	510: "Git sync configuration does not exist",
