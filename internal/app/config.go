@@ -66,7 +66,7 @@ type ServerConfig struct {
 	WriteTimeout int `yaml:"write-timeout" default:"60"`
 	// PrivateHttpListen private HTTP listen address
 	// PrivateHttpListen 私有 HTTP 监听地址
-	PrivateHttpListen string `yaml:"private-http-listen" default:":9001"`
+	PrivateHttpListen string `yaml:"private-http-listen"`
 }
 
 // SecurityConfig security configuration
