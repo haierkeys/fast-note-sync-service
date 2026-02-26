@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -264,13 +265,19 @@ func (s *backupService) ExecuteUserBackup(ctx context.Context, uid int64, config
 	if !config.IsEnabled {
 		return code.ErrorBackupConfigDisabled
 	}
-	// Manual execution always triggers backup regardless of pending status?
-	// User didn't specify, but usually manual execution implies "force run" or at least "check now".
-	// The handleBackupSync checks pending status for sync/incremental.
-	// We should probably allow manual run to bypass pending check?
-	// The user request was just "Remove execute all".
-	// Let's keep existing logic: calls handleBackupSync(..., true) which sets pending=true
-	return s.handleBackupSync(ctx, config, true)
+	// 记录错误
+	if err := s.handleBackupSync(ctx, config, true); err != nil {
+		// Service shutdown errors bypass finishTask and are not persisted to history
+		if s.ctx.Err() != nil {
+			return err
+		}
+		s.logger.Warn("Manual backup completed with errors",
+			zap.Int64("uid", uid),
+			zap.Int64("configID", configID),
+			zap.Error(err),
+		)
+	}
+	return nil
 }
 
 // ExecuteTaskBackups Poll and process all scheduled backup tasks
@@ -507,10 +514,12 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 		return errNoUpdates
 	}
 
+	var syncErrors []string
 	for _, sid := range storageIds {
 		st, err := s.storageService.Get(ctx, config.UID, sid)
 		if err != nil {
 			s.logger.Warn("Failed to get storage config, skipping", zap.Int64("sid", sid), zap.Error(err))
+			syncErrors = append(syncErrors, fmt.Sprintf("storage %d: config error: %v", sid, err))
 			continue
 		}
 		if !st.IsEnabled {
@@ -520,7 +529,13 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 		if st.Type == storage.LOCAL {
 			st.CustomPath = filepath.Join(strconv.FormatInt(config.UID, 10), strconv.FormatInt(config.VaultID, 10), st.CustomPath)
 		}
-		_, _ = s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun)
+		if _, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun); err != nil {
+			s.logger.Warn("Sync to storage failed", zap.Int64("sid", sid), zap.String("type", st.Type), zap.Error(err))
+			syncErrors = append(syncErrors, fmt.Sprintf("storage %d (%s): %v", sid, st.Type, err))
+		}
+	}
+	if len(syncErrors) > 0 {
+		return fmt.Errorf("sync errors: %s", strings.Join(syncErrors, "; "))
 	}
 	return nil
 }
@@ -749,6 +764,8 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 	}
 
 	totalCount, totalSize := int64(0), int64(0)
+	failedCount := int64(0)
+	var lastSendErr error
 	hasChanges := false
 	err = s.forEachResource(ctx, uid, vault, !lastRun.IsZero(), lastRun, func(v *domain.Vault, path string, isNote bool, content []byte, localSize int64, localPath string, mtime time.Time, isDeleted bool) error {
 		hasChanges = true
@@ -760,7 +777,11 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 		// 根据用户要求移除 VaultName
 		objName := path
 		if isDeleted {
-			_ = client.Delete(objName)
+			if delErr := client.Delete(objName); delErr != nil {
+				failedCount++
+				lastSendErr = delErr
+				s.logger.Warn("Sync delete failed", zap.String("path", objName), zap.Error(delErr))
+			}
 			return nil
 		}
 
@@ -776,7 +797,11 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 			}
 		}
 
-		if sendErr == nil {
+		if sendErr != nil {
+			failedCount++
+			lastSendErr = sendErr
+			s.logger.Warn("Sync upload failed", zap.String("path", objName), zap.Error(sendErr))
+		} else {
 			totalCount++
 			totalSize += localSize
 		}
@@ -793,11 +818,18 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 	if h != nil {
 		h.FileCount = totalCount
 		h.FileSize = totalSize
-		if hasChanges {
-			s.updateHistory(ctx, h, domain.BackupStatusSuccess, "Success")
-		} else {
+		if !hasChanges {
 			s.updateHistory(ctx, h, domain.BackupStatusNoUpdate, "No updates")
+		} else if failedCount > 0 {
+			msg := fmt.Sprintf("Partial failure: %d files synced, %d files failed. Last error: %v", totalCount, failedCount, lastSendErr)
+			s.updateHistory(ctx, h, domain.BackupStatusFailed, msg)
+		} else {
+			s.updateHistory(ctx, h, domain.BackupStatusSuccess, "Success")
 		}
+	}
+
+	if failedCount > 0 {
+		return hasChanges, fmt.Errorf("sync completed with %d failures, last error: %w", failedCount, lastSendErr)
 	}
 	return hasChanges, nil
 }
