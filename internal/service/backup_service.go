@@ -54,7 +54,9 @@ type backupService struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
-	pendingSyncs   sync.Map // key: uid (int64), value: bool
+	pendingSyncs   sync.Map                     // key: uid (int64), value: bool
+	runningTasks   map[int64]context.CancelFunc // key: configID
+	runningMu      sync.Mutex
 }
 
 // NewBackupService creates BackupService instance
@@ -80,6 +82,7 @@ func NewBackupService(
 		storageConfig:  storageConfig,
 		logger:         logger,
 		syncTimers:     make(map[int64]*time.Timer),
+		runningTasks:   make(map[int64]context.CancelFunc),
 		ctx:            ctx,
 		cancel:         cancel,
 	}
@@ -364,13 +367,47 @@ func (s *backupService) calculateNextRunTime(config *domain.BackupConfig) {
 // 执行备份/同步的核心入口
 func (s *backupService) handleBackupSync(ctx context.Context, config *domain.BackupConfig, isPending bool) error {
 	uid := config.UID
+	configID := config.ID
+
+	// 1. 并发冲突处理策略
+	s.runningMu.Lock()
+	if cancel, running := s.runningTasks[configID]; running {
+		if config.Type == "sync" {
+			// 同步任务策略：取消旧任务，执行新任务
+			s.logger.Info("Cancelling existing sync task to start a newer one", zap.Int64("uid", uid), zap.Int64("configID", configID))
+			cancel()
+			delete(s.runningTasks, configID)
+		} else {
+			// 全量/增量备份策略：保留旧任务，忽略新任务
+			s.runningMu.Unlock()
+			s.logger.Info("Backup task already running, skipping this trigger", zap.Int64("uid", uid), zap.Int64("configID", configID), zap.String("type", config.Type))
+			return nil
+		}
+	}
+
+	// 创建带取消功能的 context
+	taskCtx, taskCancel := context.WithCancel(ctx)
+	s.runningTasks[configID] = taskCancel
+	s.runningMu.Unlock()
+
+	// 任务结束时的清理
+	defer func() {
+		s.runningMu.Lock()
+		if _, ok := s.runningTasks[configID]; ok {
+			// 确保清理当前的 cancel 记录
+			delete(s.runningTasks, configID)
+		}
+		s.runningMu.Unlock()
+		taskCancel() // 释放资源
+	}()
+
 	s.wg.Add(1)
 	defer s.wg.Done()
 
-	// Check if context is already done (e.g. shutdown triggered)
+	// Check if context is already done
 	select {
-	case <-s.ctx.Done():
-		return s.ctx.Err()
+	case <-taskCtx.Done():
+		return taskCtx.Err()
 	default:
 	}
 
@@ -392,22 +429,20 @@ func (s *backupService) handleBackupSync(ctx context.Context, config *domain.Bac
 
 	if !shouldRun {
 		s.logger.Info("Skipping backup: no pending changes", zap.Int64("uid", uid), zap.String("type", config.Type))
-		s.recordNoUpdateHistory(ctx, config, startTime)
-		return s.finishTask(ctx, config, errNoUpdates, 0, 0, startTime)
+		s.recordNoUpdateHistory(taskCtx, config, startTime)
+		return s.finishTask(taskCtx, config, errNoUpdates, 0, 0, startTime)
 	}
 
 	s.logger.Info("handleBackupSync start", zap.Int64("uid", uid), zap.String("type", config.Type))
 
 	// 2. 设置运行状态 (Running)
-	config.LastStatus = domain.BackupStatusRunning // 1: Running
-	// 注意：LastRunTime 在任务完成后更新
-	s.backupRepo.SaveConfig(ctx, config, uid)
+	config.LastStatus = domain.BackupStatusRunning
+	s.backupRepo.SaveConfig(taskCtx, config, uid)
 
 	// 3. 准备临时工作目录
 	tempDir, err := os.MkdirTemp("", fmt.Sprintf("backup_%d_", uid))
 	if err != nil {
-		// 如果无法创建临时目录，视为失败
-		return s.finishTask(ctx, config, err, 0, 0, startTime)
+		return s.finishTask(taskCtx, config, err, 0, 0, startTime)
 	}
 	defer os.RemoveAll(tempDir)
 
@@ -417,15 +452,15 @@ func (s *backupService) handleBackupSync(ctx context.Context, config *domain.Bac
 	// 4. 执行核心逻辑
 	switch config.Type {
 	case "full":
-		fileCount, fileSize, backupErr = s.runArchive(ctx, config, tempDir, startTime, prevRunTime)
+		fileCount, fileSize, backupErr = s.runArchive(taskCtx, config, tempDir, startTime, prevRunTime)
 	case "incremental":
-		fileCount, fileSize, backupErr = s.runArchive(ctx, config, tempDir, startTime, prevRunTime)
+		fileCount, fileSize, backupErr = s.runArchive(taskCtx, config, tempDir, startTime, prevRunTime)
 	case "sync":
-		backupErr = s.runSync(ctx, config, startTime, prevRunTime)
+		backupErr = s.runSync(taskCtx, config, startTime, prevRunTime)
 	}
 
 	// 5. 更新最终状态与清理
-	return s.finishTask(ctx, config, backupErr, fileCount, fileSize, startTime)
+	return s.finishTask(taskCtx, config, backupErr, fileCount, fileSize, startTime)
 }
 
 // getVaultName Get vault name by ID
