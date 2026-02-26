@@ -209,7 +209,7 @@ func (h *BackupHandler) Execute(c *gin.Context) {
 		return
 	}
 
-	response.ToResponse(code.Success.WithDetails("Backup started in background"))
+	response.ToResponse(code.Success.WithDetails("Backup task completed, check history for details"))
 }
 
 func (h *BackupHandler) logError(ctx context.Context, method string, err error) {
