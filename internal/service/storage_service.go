@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -35,6 +38,9 @@ type StorageService interface {
 	// GetEnabledTypes returns list of enabled storage types
 	// GetEnabledTypes 获取启用的存储类型列表
 	GetEnabledTypes() ([]string, error)
+
+	// Validate 通过发送测试文件并删除来验证存储连通性
+	Validate(ctx context.Context, req *dto.StoragePostRequest) error
 }
 
 type storageService struct {
@@ -220,6 +226,42 @@ func (s *storageService) isStorageTypeEnabled(t string) bool {
 	default:
 		return false
 	}
+}
+
+func (s *storageService) Validate(ctx context.Context, req *dto.StoragePostRequest) error {
+	if !s.isStorageTypeEnabled(req.Type) {
+		return code.ErrorStorageTypeDisabled
+	}
+
+	sConfig := &storage.Config{
+		Type:            req.Type,
+		CustomPath:      req.CustomPath,
+		Endpoint:        req.Endpoint,
+		Region:          req.Region,
+		BucketName:      req.BucketName,
+		AccessKeyID:     req.AccessKeyID,
+		AccessKeySecret: req.AccessKeySecret,
+		AccountID:       req.AccountID,
+		User:            req.User,
+		Password:        req.Password,
+		SavePath:        s.config.LocalFS.SavePath,
+	}
+
+	client, err := storage.NewClient(sConfig)
+	if err != nil {
+		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
+	}
+
+	testFile := fmt.Sprintf(".fast-note-test-%s", uuid.New().String()[:8])
+	if _, err := client.SendContent(testFile, []byte("ok"), time.Now()); err != nil {
+		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
+	}
+
+	if err := client.Delete(testFile); err != nil {
+		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
+	}
+
+	return nil
 }
 
 var _ StorageService = (*storageService)(nil)
