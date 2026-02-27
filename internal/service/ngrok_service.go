@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 
 	"go.uber.org/zap"
-	"golang.ngrok.com/ngrok"
-	"golang.ngrok.com/ngrok/config"
+	"golang.ngrok.com/ngrok/v2"
 )
 
 // NgrokService provides ngrok tunnel service
@@ -23,8 +23,9 @@ type ngrokService struct {
 	logger    *zap.Logger
 	authToken string
 	domain    string
-	session   ngrok.Session
-	tunnel    ngrok.Tunnel
+	listener  net.Listener
+	url       string
+	agent     ngrok.Agent
 }
 
 // NewNgrokService creates a new ngrok service
@@ -44,33 +45,40 @@ func (s *ngrokService) Start(ctx context.Context, addr string) error {
 		return fmt.Errorf("ngrok auth token is required")
 	}
 
-	opts := []ngrok.ConnectOption{
-		ngrok.WithAuthtoken(s.authToken),
-	}
-
-	session, err := ngrok.Connect(ctx, opts...)
+	// 1. Create an agent instance to hold AgentOption
+	agent, err := ngrok.NewAgent(ngrok.WithAuthtoken(s.authToken))
 	if err != nil {
-		return fmt.Errorf("failed to connect to ngrok: %w", err)
+		return fmt.Errorf("failed to create ngrok v2 agent: %w", err)
 	}
-	s.session = session
+	s.agent = agent
 
-	var tunnel ngrok.Tunnel
+	// 2. Configure endpoint options
+	var endpointOpts []ngrok.EndpointOption
 	if s.domain != "" {
-		tunnel, err = session.Listen(ctx, config.HTTPEndpoint(config.WithDomain(s.domain)))
-	} else {
-		tunnel, err = session.Listen(ctx, config.HTTPEndpoint())
+		endpointOpts = append(endpointOpts, ngrok.WithURL("https://"+s.domain))
 	}
-	if err != nil {
-		return fmt.Errorf("failed to listen for tunnel: %w", err)
-	}
-	s.tunnel = tunnel
 
-	s.logger.Info("ngrok tunnel established", zap.String("url", tunnel.URL()))
+	// 3. Listen creates the endpoint
+	ln, err := agent.Listen(ctx, endpointOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to start ngrok v2 tunnel: %w", err)
+	}
+	s.listener = ln
+
+	if u, ok := ln.(interface{ URL() *url.URL }); ok {
+		s.url = u.URL().String()
+	} else if u, ok := ln.(interface{ URL() string }); ok {
+		s.url = u.URL()
+	} else {
+		s.url = ln.Addr().String()
+	}
+
+	s.logger.Info("ngrok v2 tunnel established", zap.String("url", s.url))
 
 	// Start forwarding
 	go func() {
 		for {
-			conn, err := tunnel.Accept()
+			conn, err := ln.Accept()
 			if err != nil {
 				s.logger.Debug("ngrok tunnel accept error (likely closed)", zap.Error(err))
 				return
@@ -93,27 +101,27 @@ func (s *ngrokService) handleConn(conn net.Conn, addr string) {
 
 	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(localConn, conn)
+		_, _ = io.Copy(localConn, conn)
 		done <- struct{}{}
 	}()
 	go func() {
-		io.Copy(conn, localConn)
+		_, _ = io.Copy(conn, localConn)
 		done <- struct{}{}
 	}()
 	<-done
 }
 
-// Stop stops the ngrok tunnel and session
-// Stop 停止 ngrok 隧道和会话
+// Stop stops the ngrok tunnel
+// Stop 停止 ngrok 隧道
 func (s *ngrokService) Stop(ctx context.Context) error {
-	if s.tunnel != nil {
-		if err := s.tunnel.CloseWithContext(ctx); err != nil {
+	if s.listener != nil {
+		if err := s.listener.Close(); err != nil {
 			s.logger.Warn("failed to close ngrok tunnel", zap.Error(err))
 		}
 	}
-	if s.session != nil {
-		if err := s.session.Close(); err != nil {
-			s.logger.Warn("failed to close ngrok session", zap.Error(err))
+	if s.agent != nil {
+		if err := s.agent.Disconnect(); err != nil {
+			s.logger.Warn("failed to disconnect ngrok agent", zap.Error(err))
 		}
 	}
 	return nil
@@ -122,8 +130,5 @@ func (s *ngrokService) Stop(ctx context.Context) error {
 // TunnelURL returns the current tunnel URL
 // TunnelURL 返回当前隧道 URL
 func (s *ngrokService) TunnelURL() string {
-	if s.tunnel != nil {
-		return s.tunnel.URL()
-	}
-	return ""
+	return s.url
 }
