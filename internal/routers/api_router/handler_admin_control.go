@@ -1,12 +1,20 @@
 package api_router
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -18,18 +26,18 @@ import (
 	"go.uber.org/zap"
 )
 
-// WebGUIHandler WebGUI configuration API router handler
-// WebGUIHandler WebGUI 配置 API 路由处理器
+// AdminControlHandler Admin control configuration API router handler
+// AdminControlHandler 管理控制配置 API 路由处理器
 // Uses App Container to inject dependencies
 // 使用 App Container 注入依赖
-type WebGUIHandler struct {
+type AdminControlHandler struct {
 	*Handler
 }
 
-// NewWebGUIHandler creates WebGUIHandler instance
-// NewWebGUIHandler 创建 WebGUIHandler 实例
-func NewWebGUIHandler(a *app.App) *WebGUIHandler {
-	return &WebGUIHandler{
+// NewAdminControlHandler creates AdminControlHandler instance
+// NewAdminControlHandler 创建 AdminControlHandler 实例
+func NewAdminControlHandler(a *app.App) *AdminControlHandler {
+	return &AdminControlHandler{
 		Handler: NewHandler(a),
 	}
 }
@@ -42,9 +50,9 @@ type webGUIConfig struct {
 	AdminUID         int    `json:"adminUid"`         // Admin UID // 管理员 UID
 }
 
-// webGUIAdminConfig WebGUI administrator configuration structure (admin interface)
-// webGUIAdminConfig WebGUI 管理员配置结构（管理员接口）
-type webGUIAdminConfig struct {
+// adminConfig Admin configuration structure (admin interface)
+// adminConfig 管理员配置结构（管理员接口）
+type adminConfig struct {
 	FontSet                 string `json:"fontSet" form:"fontSet"`                                           // Font set // 字体设置
 	RegisterIsEnable        bool   `json:"registerIsEnable" form:"registerIsEnable"`                         // Registration enablement // 是否开启注册
 	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`                     // File chunk size // 文件分块大小
@@ -141,7 +149,7 @@ type RuntimeInfo struct {
 // @Produce json
 // @Success 200 {object} pkgapp.Res{data=webGUIConfig} "Success"
 // @Router /api/webgui/config [get]
-func (h *WebGUIHandler) Config(c *gin.Context) {
+func (h *AdminControlHandler) Config(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	data := webGUIConfig{
@@ -162,7 +170,7 @@ func (h *WebGUIHandler) Config(c *gin.Context) {
 // @Success 200 {object} pkgapp.Res{data=webGUIAdminConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config [get]
-func (h *WebGUIHandler) GetConfig(c *gin.Context) {
+func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -181,7 +189,7 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	data := &webGUIAdminConfig{
+	data := &adminConfig{
 		FontSet:                 cfg.WebGUI.FontSet,
 		RegisterIsEnable:        cfg.User.RegisterIsEnable,
 		FileChunkSize:           cfg.App.FileChunkSize,
@@ -208,12 +216,12 @@ func (h *WebGUIHandler) GetConfig(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body webGUIAdminConfig true "Config Parameters"
-// @Success 200 {object} pkgapp.Res{data=webGUIAdminConfig} "Success"
+// @Param params body adminConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=adminConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config [post]
-func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
-	params := &webGUIAdminConfig{}
+func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
+	params := &adminConfig{}
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -303,7 +311,7 @@ func (h *WebGUIHandler) UpdateConfig(c *gin.Context) {
 // @Success 200 {object} pkgapp.Res{data=SystemInfo} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/systeminfo [get]
-func (h *WebGUIHandler) GetSystemInfo(c *gin.Context) {
+func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -405,4 +413,163 @@ func (h *WebGUIHandler) GetSystemInfo(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(data))
+}
+
+// Upgrade triggers server automatic upgrade
+// @Summary Trigger server upgrade
+// @Description Download latest version and restart server
+// @Tags System
+// @Produce json
+// @Security UserAuthToken
+// @Param version query string true "Version to upgrade (e.g. 2.0.10 or latest)"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/admin/upgrade [get]
+func (h *AdminControlHandler) Upgrade(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	var upgradeReq dto.UpgradeRequest
+	if ok, validErrs := pkgapp.BindAndValid(c, &upgradeReq); !ok {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(validErrs.Errors()...))
+		return
+	}
+
+	checkInfo := h.App.CheckVersion("")
+	version := ""
+
+	if upgradeReq.Version == "latest" {
+		if !checkInfo.VersionIsNew {
+			response.ToResponse(code.Success.WithDetails("Current version is already up to date"))
+			return
+		}
+		version = checkInfo.VersionNewName
+	} else {
+		version = upgradeReq.Version
+	}
+
+	versionRaw := strings.TrimPrefix(version, "v")
+
+	// Determine download URL
+	// 确定下载地址
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+
+	// Example: fast-note-sync-service-2.0.10-linux-amd64.tar.gz
+	fileName := fmt.Sprintf("fast-note-sync-service-%s-%s-%s.tar.gz", versionRaw, goos, goarch)
+	downloadURL := ""
+	if checkInfo.GithubAvailable {
+		// GitHub releases/download/[tag]/[filename]
+		// Based on user feedback: URL should NOT have 'v' in the tag part if the tag itself doesn't have it
+		downloadURL = fmt.Sprintf("https://github.com/haierkeys/fast-note-sync-service/releases/download/%s/%s", versionRaw, fileName)
+	} else {
+		// CNB download URL format
+		downloadURL = fmt.Sprintf("https://cnb.cool/haierkeys/fast-note-sync-service/-/releases/download/%s/%s", versionRaw, fileName)
+	}
+
+	h.App.Logger().Info("Starting upgrade download", zap.String("url", downloadURL), zap.String("version", versionRaw))
+
+	// Prepare temp directory
+	// 使用 storage/temp/upgrade 作为临时目录
+	tempDir := filepath.Join("storage", "temp", "upgrade")
+	_ = os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		response.ToResponse(code.Failed.WithDetails("Failed to create temp directory: " + err.Error()))
+		return
+	}
+
+	// Download
+	tarPath := filepath.Join(tempDir, fileName)
+	if err := h.downloadFile(downloadURL, tarPath); err != nil {
+		response.ToResponse(code.Failed.WithDetails("Download failed: " + err.Error()))
+		return
+	}
+
+	// Extract
+	binaryName := "fast-note-sync-service"
+	if goos == "windows" {
+		binaryName += ".exe"
+	}
+	extractedBinaryPath := filepath.Join(tempDir, binaryName)
+
+	if err := h.extractBinary(tarPath, tempDir, binaryName); err != nil {
+		response.ToResponse(code.Failed.WithDetails("Extract failed: " + err.Error()))
+		return
+	}
+
+	// Trigger upgrade in App
+	h.App.TriggerUpgrade(extractedBinaryPath)
+
+	response.ToResponse(code.Success.WithDetails("Upgrade triggered, server is restarting..."))
+}
+
+func (h *AdminControlHandler) downloadFile(url string, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func (h *AdminControlHandler) extractBinary(tarPath string, destDir string, binaryName string) error {
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// Check if it's the binary we're looking for
+		// Often files in tar.gz are in a subdirectory or have different names
+		// In alpha-release.yml: tar -czvf ... . (contents of build/platform dir)
+		if filepath.Base(header.Name) == binaryName {
+			target := filepath.Join(destDir, binaryName)
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return err
+			}
+			f.Close()
+			return nil
+		}
+	}
+
+	return fmt.Errorf("binary %s not found in archive", binaryName)
 }
