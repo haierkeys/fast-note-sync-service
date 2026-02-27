@@ -126,15 +126,16 @@ func (s *backupService) UpdateConfig(ctx context.Context, uid int64, req *dto.Ba
 	}
 
 	config := &domain.BackupConfig{
-		ID:             req.ID,
-		UID:            uid,
-		VaultID:        vaultID,
-		Type:           req.Type,
-		StorageIds:     req.StorageIds,
-		IsEnabled:      req.IsEnabled,
-		CronStrategy:   req.CronStrategy,
-		CronExpression: req.CronExpression,
-		RetentionDays:  req.RetentionDays,
+		ID:               req.ID,
+		UID:              uid,
+		VaultID:          vaultID,
+		Type:             req.Type,
+		StorageIds:       req.StorageIds,
+		IsEnabled:        req.IsEnabled,
+		CronStrategy:     req.CronStrategy,
+		CronExpression:   req.CronExpression,
+		IncludeVaultName: req.IncludeVaultName,
+		RetentionDays:    req.RetentionDays,
 	}
 
 	// Preserve state fields if updating existing config
@@ -205,21 +206,22 @@ func (s *backupService) configToDTO(ctx context.Context, d *domain.BackupConfig)
 		}
 	}
 	return &dto.BackupConfigDTO{
-		ID:             d.ID,
-		UID:            d.UID,
-		Vault:          vaultName,
-		Type:           d.Type,
-		StorageIds:     d.StorageIds,
-		IsEnabled:      d.IsEnabled,
-		CronStrategy:   d.CronStrategy,
-		CronExpression: d.CronExpression,
-		RetentionDays:  d.RetentionDays,
-		LastRunTime:    timex.Time(d.LastRunTime),
-		NextRunTime:    timex.Time(d.NextRunTime),
-		LastStatus:     d.LastStatus,
-		LastMessage:    d.LastMessage,
-		CreatedAt:      timex.Time(d.CreatedAt),
-		UpdatedAt:      timex.Time(d.UpdatedAt),
+		ID:               d.ID,
+		UID:              d.UID,
+		Vault:            vaultName,
+		Type:             d.Type,
+		StorageIds:       d.StorageIds,
+		IsEnabled:        d.IsEnabled,
+		CronStrategy:     d.CronStrategy,
+		CronExpression:   d.CronExpression,
+		IncludeVaultName: d.IncludeVaultName,
+		RetentionDays:    d.RetentionDays,
+		LastRunTime:      timex.Time(d.LastRunTime),
+		NextRunTime:      timex.Time(d.NextRunTime),
+		LastStatus:       d.LastStatus,
+		LastMessage:      d.LastMessage,
+		CreatedAt:        timex.Time(d.CreatedAt),
+		UpdatedAt:        timex.Time(d.UpdatedAt),
 	}
 }
 
@@ -505,7 +507,7 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 
 	// First, check if there are any updates across all storages
 	// Note: syncFiles will check all resources and return true if any changes found
-	hasUpdates, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, nil, startTime, lastRun)
+	hasUpdates, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, nil, startTime, lastRun, config.IncludeVaultName)
 	if err != nil {
 		return err
 	}
@@ -529,7 +531,7 @@ func (s *backupService) runSync(ctx context.Context, config *domain.BackupConfig
 		if st.Type == storage.LOCAL {
 			st.CustomPath = filepath.Join(strconv.FormatInt(config.UID, 10), strconv.FormatInt(config.VaultID, 10), st.CustomPath)
 		}
-		if _, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun); err != nil {
+		if _, err := s.syncFiles(ctx, config.UID, config.VaultID, config.ID, st, startTime, lastRun, config.IncludeVaultName); err != nil {
 			s.logger.Warn("Sync to storage failed", zap.Int64("sid", sid), zap.String("type", st.Type), zap.Error(err))
 			syncErrors = append(syncErrors, fmt.Sprintf("storage %d (%s): %v", sid, st.Type, err))
 		}
@@ -714,7 +716,7 @@ func (s *backupService) uploadArchive(ctx context.Context, uid, configId int64, 
 // syncFiles Sync file changes to specified storage target (supports add, modify, delete)
 // returns (hasChanges, error)
 // 将文件变更同步到指定的存储目标 (支持新增、修改和删除)
-func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId int64, stDTO *dto.StorageDTO, startTime time.Time, lastRun time.Time) (bool, error) {
+func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId int64, stDTO *dto.StorageDTO, startTime time.Time, lastRun time.Time, includeVaultName bool) (bool, error) {
 	var h *domain.BackupHistory
 	var client pkgstorage.Storager
 
@@ -773,9 +775,10 @@ func (s *backupService) syncFiles(ctx context.Context, uid, vaultID, configId in
 			return nil // Just checking for changes
 		}
 
-		// Remove VaultName from path as per user request
-		// 根据用户要求移除 VaultName
 		objName := path
+		if includeVaultName && v != nil {
+			objName = v.Name + "/" + path
+		}
 		if isDeleted {
 			if delErr := client.Delete(objName); delErr != nil {
 				failedCount++
