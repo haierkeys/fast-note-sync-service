@@ -139,7 +139,17 @@ type RuntimeInfo struct {
 	MemAlloc     uint64 `json:"memAlloc"`     // Allocated memory (bytes) // 已分配内存（字节）
 	MemTotal     uint64 `json:"memTotal"`     // Total memory allocated (bytes) // 累计分配内存（字节）
 	MemSys       uint64 `json:"memSys"`       // Memory obtained from system (bytes) // 从系统获取的内存（字节）
+	HeapSys      uint64 `json:"heapSys"`      // Memory obtained from system for heap (bytes) // 堆占用的系统内存
+	HeapIdle     uint64 `json:"heapIdle"`     // Memory in idle spans (bytes) // 空闲 Span 占用的内存
+	HeapInuse    uint64 `json:"heapInuse"`    // Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存
 	HeapReleased uint64 `json:"heapReleased"` // Memory released to OS (bytes) // 释放回操作系统的内存（字节）
+	StackSys     uint64 `json:"stackSys"`     // Memory obtained from system for stack (bytes) // 栈占用的系统内存
+	MSpanSys     uint64 `json:"mSpanSys"`     // Memory obtained from system for mspan (bytes) // mspan 占用的系统内存
+	MCacheSys    uint64 `json:"mCacheSys"`    // Memory obtained from system for mcache (bytes) // mcache 占用的系统内存
+	BuckHashSys  uint64 `json:"buckHashSys"`  // Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存
+	GCSys        uint64 `json:"gcSys"`        // Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存
+	OtherSys     uint64 `json:"otherSys"`     // Other system memory (bytes) // 其他系统内存
+	NextGC       uint64 `json:"nextGc"`       // Target heap size for the next GC cycle // 下次 GC 的目标堆大小
 	NumGC        uint32 `json:"numGc"`        // Number of completed GC cycles // GC 次数
 }
 
@@ -366,7 +376,17 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 			MemAlloc:     m.Alloc,
 			MemTotal:     m.TotalAlloc,
 			MemSys:       m.Sys,
+			HeapSys:      m.HeapSys,
+			HeapIdle:     m.HeapIdle,
+			HeapInuse:    m.HeapInuse,
 			HeapReleased: m.HeapReleased,
+			StackSys:     m.StackSys,
+			MSpanSys:     m.MSpanSys,
+			MCacheSys:    m.MCacheSys,
+			BuckHashSys:  m.BuckHashSys,
+			GCSys:        m.GCSys,
+			OtherSys:     m.OtherSys,
+			NextGC:       m.NextGC,
 			NumGC:        m.NumGC,
 		},
 		CPU: CPUInfo{
