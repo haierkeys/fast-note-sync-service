@@ -21,6 +21,7 @@ type BackupConfig struct {
 	IsEnabled      bool      // 是否启用
 	CronStrategy   string    // daily, weekly, monthly, custom
 	CronExpression string    // Cron 表达式
+	IncludeVaultName bool    // 同步路径是否包含仓库名前缀
 	RetentionDays  int       // 保留天数
 	LastRunTime    time.Time // 上次运行时间
 	NextRunTime    time.Time // 下次运行时间
