@@ -149,7 +149,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		fileHandler := api_router.NewFileHandler(appContainer, wss)
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
-		webGUIHandler := api_router.NewWebGUIHandler(appContainer)
+		adminControlHandler := api_router.NewAdminControlHandler(appContainer)
 		shareHandler := api_router.NewShareHandler(appContainer)
 		storageHandler := api_router.NewStorageHandler(appContainer)
 		backupHandler := api_router.NewBackupHandler(appContainer)
@@ -163,7 +163,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		// 添加服务端版本号接口（无需认证）
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/support", versionHandler.Support)
-		api.GET("/webgui/config", webGUIHandler.Config)
+		api.GET("/webgui/config", adminControlHandler.Config)
 
 		// Health check interface (no auth required)
 		// 健康检查接口（无需认证）
@@ -192,10 +192,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 			// Admin config interface
 			// 管理员配置接口
-			auth.GET("/admin/config", webGUIHandler.GetConfig)
-			auth.POST("/admin/config", webGUIHandler.UpdateConfig)
-			auth.GET("/admin/systeminfo", webGUIHandler.GetSystemInfo)
-			auth.GET("/admin/upgrade", versionHandler.Upgrade)
+			auth.GET("/admin/config", adminControlHandler.GetConfig)
+			auth.POST("/admin/config", adminControlHandler.UpdateConfig)
+			auth.GET("/admin/systeminfo", adminControlHandler.GetSystemInfo)
+			auth.GET("/admin/upgrade", adminControlHandler.Upgrade)
 
 			auth.POST("/user/change_password", userHandler.UserChangePassword)
 			auth.GET("/user/info", userHandler.UserInfo)
