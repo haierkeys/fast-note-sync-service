@@ -12,9 +12,9 @@ server:
   # 写入超时时间(秒),写入超时前等待的最大时间
   # Write timeout (seconds), maximum time to wait before write timeout
   write-timeout: 60
-  # 性能监控接口(私有 HTTP 服务器)
-  # Performance monitoring interface (private HTTP server)
-  private-http-listen: :9001
+  # 性能监控接口(私有 HTTP 服务器), 格式为 :port, 留空则不开启
+  # Performance monitoring interface (private HTTP server), format: :port, leave blank to disable
+  private-http-listen: ""
 
 app:
   # 默认每页显示的项目数(分页)

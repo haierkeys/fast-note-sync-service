@@ -6,32 +6,31 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/pkg/errors"
 )
 
-func (w *WebDAV) setModifiedTime(path string, modTime time.Time) error {
-	// Construct full URL
-	endpoint := w.Config.Endpoint
-	if !strings.HasSuffix(endpoint, "/") {
-		endpoint += "/"
+func (w *WebDAV) setModifiedTime(pathKey string, modTime time.Time) error {
+	u, err := url.Parse(w.Config.Endpoint)
+	if err != nil {
+		return err
 	}
-	// path usually starts with / from PathSuffixCheckAdd, but let's be safe
-	url := endpoint + strings.TrimPrefix(path, "/")
 
-	// XML body for PROPPATCH
-	// We use a custom namespace to avoid conflicts with system properties
+	u.Path = path.Join(u.Path, strings.TrimPrefix(pathKey, "/"))
+	urlStr := u.String()
+
 	xmlBody := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8" ?>
 <d:propertyupdate xmlns:d="DAV:" xmlns:u="http://haierkeys.github.io/ns/">
 <d:set><d:prop><u:modification-time>%s</u:modification-time></d:prop></d:set>
 </d:propertyupdate>`, modTime.Format(time.RFC3339))
 
-	req, err := http.NewRequest("PROPPATCH", url, strings.NewReader(xmlBody))
+	req, err := http.NewRequest("PROPPATCH", urlStr, strings.NewReader(xmlBody))
 	if err != nil {
 		return err
 	}
@@ -60,7 +59,6 @@ func (w *WebDAV) setModifiedTime(path string, modTime time.Time) error {
 func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
 	fileKey = path.Join("/", w.Config.CustomPath, fileKey)
-	dump.P(fileKey)
 	dir := path.Dir(fileKey)
 	if dir != "/" && dir != "." && dir != "" {
 		err := w.Client.MkdirAll(dir, 0644)
@@ -74,14 +72,15 @@ func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime 
 		return "", errors.Wrap(err, "webdav")
 	}
 
+	if !modTime.IsZero() {
+		w.Client.SetHeader("X-OC-Mtime", strconv.FormatInt(modTime.Unix(), 10))
+		_ = w.setModifiedTime(fileKey, modTime)
+	}
+
 	err = w.Client.Write(fileKey, content, os.ModePerm)
 
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")
-	}
-
-	if !modTime.IsZero() {
-		_ = w.setModifiedTime(fileKey, modTime)
 	}
 
 	return fileKey, nil
@@ -97,6 +96,10 @@ func (w *WebDAV) SendContent(fileKey string, content []byte, modTime time.Time) 
 		if err != nil {
 			return "", errors.Wrap(err, "webdav")
 		}
+	}
+
+	if !modTime.IsZero() {
+		w.Client.SetHeader("X-OC-Mtime", strconv.FormatInt(modTime.Unix(), 10))
 	}
 
 	err := w.Client.Write(fileKey, content, os.ModePerm)
