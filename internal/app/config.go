@@ -31,9 +31,24 @@ type AppConfig struct {
 	User     UserConfig     `yaml:"user"`
 	Tracer   TracerConfig   `yaml:"tracer"`
 
-	Storage config.StorageConfig `yaml:"storage"`
-	WebGUI  WebGUIConfig         `yaml:"webgui"`
-	Ngrok   NgrokConfig          `yaml:"ngrok"`
+	Storage    config.StorageConfig `yaml:"storage"`
+	WebGUI     WebGUIConfig         `yaml:"webgui"`
+	Ngrok      NgrokConfig          `yaml:"ngrok"`
+	Cloudflare CloudflareConfig     `yaml:"cloudflare"`
+}
+
+// CloudflareConfig cloudflare configuration
+// CloudflareConfig cloudflare 配置
+type CloudflareConfig struct {
+	// Enabled whether to enable cloudflare tunnel
+	// Enabled 是否启用 cloudflare 隧道
+	Enabled bool `yaml:"enabled" default:"false"`
+	// Token cloudflare tunnel token
+	// Token cloudflare 隧道令牌
+	Token string `yaml:"token"`
+	// LogEnabled whether to enable cloudflare tunnel logging
+	// LogEnabled 是否启用 cloudflare 隧道日志
+	LogEnabled bool `yaml:"log-enabled" default:"false"`
 }
 
 // NgrokConfig ngrok configuration

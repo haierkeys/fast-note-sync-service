@@ -119,4 +119,5 @@ var en_messages = map[int]string{
 	510: "Git sync configuration does not exist",
 	511: "Git sync task is already running",
 	512: "Git validation failed",
+	520: "Cloudflared download failed",
 }

@@ -79,6 +79,7 @@ type App struct {
 	BackupService      service.BackupService
 	GitSyncService     service.GitSyncService
 	NgrokService       service.NgrokService
+	CloudflareService  service.CloudflareService
 
 	// Infrastructure components
 	// 基础设施组件
@@ -238,6 +239,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
 	a.NgrokService = service.NewNgrokService(logger, cfg.Ngrok.AuthToken, cfg.Ngrok.Domain)
+	a.CloudflareService = service.NewCloudflareService(logger)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),
@@ -537,6 +539,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 		a.logger.Info("Shutting down ngrok service...")
 		if err := a.NgrokService.Stop(ctx); err != nil {
 			a.logger.Warn("Ngrok service shutdown error", zap.Error(err))
+		}
+	}
+
+	// 0.2 Shutdown CloudflareService
+	if a.CloudflareService != nil {
+		a.logger.Info("Shutting down cloudflare service...")
+		if err := a.CloudflareService.Stop(ctx); err != nil {
+			a.logger.Warn("Cloudflare service shutdown error", zap.Error(err))
 		}
 	}
 

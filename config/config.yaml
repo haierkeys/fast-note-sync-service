@@ -211,3 +211,17 @@ ngrok:
   # 自定义域名 (可选, 需要 ngrok 付费账户或静态域名)
   # Custom domain (optional, requires ngrok paid account or static domain)
   domain: ""
+
+# cloudflare
+# cloudflare 隧道配置
+# cloudflare tunnel configuration
+cloudflare:
+  # 是否启用 cloudflare 隧道
+  # Whether to enable cloudflare tunnel
+  enabled: false
+  # cloudflare 隧道令牌 (从 Cloudflare Dashboard 获取)
+  # cloudflare tunnel token (get it from Cloudflare Dashboard)
+  token: ""
+  # 是否开启 cloudflare 隧道日志 (存储于 storage/logs/cloudflared_tunnel.log)
+  # Whether to enable cloudflare tunnel logging
+  log-enabled: false
