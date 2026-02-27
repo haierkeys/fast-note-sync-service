@@ -75,9 +75,6 @@ app:
   # WebSocket maximum write payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
   ws-write-max-payload-size: "128MB"
 
-
-
-
 # webgui
 # WebGUI 设置
 webgui:
@@ -92,7 +89,6 @@ user:
   # 管理员 UID, 0 表示不显示设置访问
   # Admin UID, 0 means not display setting access
   admin-uid: 0
-
 
 log:
   # 日志级别
@@ -202,4 +198,16 @@ storage:
     # is-enable
     is-enable: true
 
-
+# ngrok
+# ngrok 隧道配置
+# ngrok tunnel configuration
+ngrok:
+  # 是否启用 ngrok 隧道
+  # Whether to enable ngrok tunnel
+  enabled: false
+  # ngrok 认证令牌 (从 https://dashboard.ngrok.com/get-started/your-authtoken 获取)
+  # ngrok auth token (get it from https://dashboard.ngrok.com/get-started/your-authtoken)
+  auth-token: ""
+  # 自定义域名 (可选, 需要 ngrok 付费账户或静态域名)
+  # Custom domain (optional, requires ngrok paid account or static domain)
+  domain: ""

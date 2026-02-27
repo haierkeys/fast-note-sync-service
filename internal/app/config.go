@@ -33,6 +33,21 @@ type AppConfig struct {
 
 	Storage config.StorageConfig `yaml:"storage"`
 	WebGUI  WebGUIConfig         `yaml:"webgui"`
+	Ngrok   NgrokConfig          `yaml:"ngrok"`
+}
+
+// NgrokConfig ngrok configuration
+// NgrokConfig ngrok 配置
+type NgrokConfig struct {
+	// Enabled whether to enable ngrok tunnel
+	// Enabled 是否启用 ngrok 隧道
+	Enabled bool `yaml:"enabled" default:"false"`
+	// AuthToken ngrok auth token
+	// AuthToken ngrok 认证令牌
+	AuthToken string `yaml:"auth-token"`
+	// Domain ngrok custom domain (optional)
+	// Domain ngrok 自定义域名（可选）
+	Domain string `yaml:"domain"`
 }
 
 // LogConfig log configuration

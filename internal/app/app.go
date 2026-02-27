@@ -78,6 +78,7 @@ type App struct {
 	StorageService     service.StorageService
 	BackupService      service.BackupService
 	GitSyncService     service.GitSyncService
+	NgrokService       service.NgrokService
 
 	// Infrastructure components
 	// 基础设施组件
@@ -236,6 +237,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
 	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
 	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
+	a.NgrokService = service.NewNgrokService(logger, cfg.Ngrok.AuthToken, cfg.Ngrok.Domain)
 
 	logger.Info("App container initialized successfully",
 		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),
@@ -527,6 +529,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 		a.logger.Info("Shutting down share service...")
 		if err := a.ShareService.Shutdown(ctx); err != nil {
 			a.logger.Warn("Share service shutdown error", zap.Error(err))
+		}
+	}
+
+	// 0.1 Shutdown NgrokService
+	if a.NgrokService != nil {
+		a.logger.Info("Shutting down ngrok service...")
+		if err := a.NgrokService.Stop(ctx); err != nil {
+			a.logger.Warn("Ngrok service shutdown error", zap.Error(err))
 		}
 	}
 
