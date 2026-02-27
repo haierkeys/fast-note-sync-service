@@ -59,7 +59,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.webGUIAdminConfig"
+                                            "$ref": "#/definitions/api_router.adminConfig"
                                         }
                                     }
                                 }
@@ -105,7 +105,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api_router.webGUIAdminConfig"
+                            "$ref": "#/definitions/api_router.adminConfig"
                         }
                     }
                 ],
@@ -121,7 +121,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.webGUIAdminConfig"
+                                            "$ref": "#/definitions/api_router.adminConfig"
                                         }
                                     }
                                 }
@@ -130,6 +130,62 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/gc": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Manually run Go runtime GC and release memory to OS, requires admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Trigger manual GC",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/restart": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Gracefully restart the server",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Trigger server restart",
+                "responses": {
+                    "200": {
+                        "description": "Success",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -3306,6 +3362,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/storage/validate": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Validate storage connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Storage Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.StoragePostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Params",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "401": {
+                        "description": "Token Required",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/support": {
             "get": {
                 "description": "Get support records for the specified language",
@@ -4084,7 +4203,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api_router.webGUIAdminConfig": {
+        "api_router.adminConfig": {
             "type": "object",
             "properties": {
                 "adminUid": {

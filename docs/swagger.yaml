@@ -170,7 +170,7 @@ definitions:
         description: Uptime (seconds) // 运行时间（秒）
         type: number
     type: object
-  api_router.webGUIAdminConfig:
+  api_router.adminConfig:
     properties:
       adminUid:
         description: Admin UID // 管理员 UID
@@ -1390,7 +1390,7 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  $ref: '#/definitions/api_router.webGUIAdminConfig'
+                  $ref: '#/definitions/api_router.adminConfig'
               type: object
         "403":
           description: Insufficient privileges
@@ -1416,7 +1416,7 @@ paths:
         name: params
         required: true
         schema:
-          $ref: '#/definitions/api_router.webGUIAdminConfig'
+          $ref: '#/definitions/api_router.adminConfig'
       produces:
       - application/json
       responses:
@@ -1427,7 +1427,7 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  $ref: '#/definitions/api_router.webGUIAdminConfig'
+                  $ref: '#/definitions/api_router.adminConfig'
               type: object
         "403":
           description: Insufficient privileges
@@ -1438,6 +1438,41 @@ paths:
       summary: Update admin config
       tags:
       - Config
+  /api/admin/gc:
+    get:
+      description: Manually run Go runtime GC and release memory to OS, requires admin
+        privileges
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Trigger manual GC
+      tags:
+      - System
+  /api/admin/restart:
+    get:
+      description: Gracefully restart the server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Trigger server restart
+      tags:
+      - System
   /api/admin/systeminfo:
     get:
       description: Get system information and Go runtime data, requires admin privileges
@@ -3375,6 +3410,46 @@ paths:
                   type: array
               type: object
       summary: Get enabled storage types
+      tags:
+      - Storage
+  /api/storage/validate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Storage Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.StoragePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+        "400":
+          description: Invalid Params
+          schema:
+            $ref: '#/definitions/app.Res'
+        "401":
+          description: Token Required
+          schema:
+            $ref: '#/definitions/app.Res'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Validate storage connection
       tags:
       - Storage
   /api/support:

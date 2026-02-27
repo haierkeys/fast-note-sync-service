@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -167,7 +168,7 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=webGUIAdminConfig} "Success"
+// @Success 200 {object} pkgapp.Res{data=adminConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config [get]
 func (h *AdminControlHandler) GetConfig(c *gin.Context) {
@@ -506,6 +507,91 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	h.App.TriggerUpgrade(extractedBinaryPath)
 
 	response.ToResponse(code.Success.WithDetails("Upgrade triggered, server is restarting..."))
+}
+
+// Restart triggers server automatic restart
+// @Summary Trigger server restart
+// @Description Gracefully restart the server
+// @Tags System
+// @Produce json
+// @Security UserAuthToken
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/admin/restart [get]
+func (h *AdminControlHandler) Restart(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	currentBinary, err := os.Executable()
+	if err != nil {
+		response.ToResponse(code.Failed.WithDetails("Failed to get current executable path: " + err.Error()))
+		return
+	}
+
+	h.App.TriggerUpgrade(currentBinary)
+
+	response.ToResponse(code.Success.WithDetails("Restart triggered, server is restarting..."))
+}
+
+// GC triggers manual garbage collection and releases memory to OS (requires admin privileges)
+// GC 手动触发垃圾回收并释放内存给操作系统（需要管理员权限）
+// @Summary Trigger manual GC
+// @Description Manually run Go runtime GC and release memory to OS, requires admin privileges
+// @Tags System
+// @Produce json
+// @Security UserAuthToken
+// @Success 200 {object} pkgapp.Res "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/gc [get]
+func (h *AdminControlHandler) GC(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	var mBefore, mAfter runtime.MemStats
+	runtime.ReadMemStats(&mBefore)
+
+	startTime := time.Now()
+	// Trigger GC // 触发 GC
+	runtime.GC()
+	// Release memory to OS // 释放内存给操作系统
+	debug.FreeOSMemory()
+	duration := time.Since(startTime)
+
+	runtime.ReadMemStats(&mAfter)
+
+	memReleased := int64(mBefore.Alloc) - int64(mAfter.Alloc)
+	logger.Info("Manual GC completed",
+		zap.Duration("duration", duration),
+		zap.Uint64("allocBefore", mBefore.Alloc),
+		zap.Uint64("allocAfter", mAfter.Alloc),
+		zap.Int64("released", memReleased),
+	)
+
+	data := gin.H{
+		"duration":    duration.String(),
+		"allocBefore": mBefore.Alloc,
+		"allocAfter":  mAfter.Alloc,
+		"released":    memReleased,
+	}
+
+	response.ToResponse(code.Success.WithData(data).WithDetails("Manual GC completed successfully"))
 }
 
 func (h *AdminControlHandler) downloadFile(url string, dest string) error {

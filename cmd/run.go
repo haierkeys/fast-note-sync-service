@@ -139,37 +139,40 @@ func init() {
 				s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
 				s.sc.SendCloseSignal(nil)
 			case newBinaryPath := <-s.GetApp().UpgradeSignal:
-				s.logger.Info("Received upgrade signal, starting smooth restart...", zap.String("newBinary", newBinaryPath))
+				s.logger.Info("Received upgrade/restart signal, starting smooth restart...", zap.String("newBinary", newBinaryPath))
 
-				// 1. Graceful shutdown (close servers, release ports)
+				currentBinary, _ := os.Executable()
+				isRestartOnly := newBinaryPath == currentBinary
+
+				if !isRestartOnly {
+					// 1. Perform file replacement (for upgrade)
+					oldBinary := currentBinary + ".old"
+					_ = os.Remove(oldBinary)
+					if err := util.MoveFile(currentBinary, oldBinary); err != nil {
+						s.logger.Error("Failed to backup current binary", zap.Error(err))
+						return
+					}
+					if err := util.MoveFile(newBinaryPath, currentBinary); err != nil {
+						s.logger.Error("Failed to replace binary", zap.Error(err))
+						// Try to restore?
+						_ = util.MoveFile(oldBinary, currentBinary)
+						return
+					}
+					if err := os.Chmod(currentBinary, 0755); err != nil {
+						s.logger.Error("Failed to set executable permission", zap.Error(err))
+					}
+
+					// 1.1 Cleanup temp directory (where the tar.gz and temporary binary were)
+					tempDir := filepath.Dir(newBinaryPath)
+					if err := os.RemoveAll(tempDir); err != nil {
+						s.logger.Warn("Failed to cleanup upgrade temp directory", zap.String("path", tempDir), zap.Error(err))
+					}
+				}
+
+				// 2. Graceful shutdown (close servers, release ports)
 				s.sc.SendCloseSignal(nil)
 				if err := s.sc.WaitClosed(); err != nil {
-					s.logger.Error("Shutdown failed before upgrade", zap.Error(err))
-				}
-
-				// 2. Perform file replacement
-				currentBinary, _ := os.Executable()
-				oldBinary := currentBinary + ".old"
-				_ = os.Remove(oldBinary)
-				if err := util.MoveFile(currentBinary, oldBinary); err != nil {
-					s.logger.Error("Failed to backup current binary", zap.Error(err))
-					return
-				}
-				if err := util.MoveFile(newBinaryPath, currentBinary); err != nil {
-					s.logger.Error("Failed to replace binary", zap.Error(err))
-					// Try to restore?
-					_ = util.MoveFile(oldBinary, currentBinary)
-					return
-				}
-				if err := os.Chmod(currentBinary, 0755); err != nil {
-					s.logger.Error("Failed to set executable permission", zap.Error(err))
-				}
-
-				// 2.1 Cleanup temp directory (where the tar.gz and temporary binary were)
-				// 清理临时目录（包含压缩包和临时的二进制文件）
-				tempDir := filepath.Dir(newBinaryPath)
-				if err := os.RemoveAll(tempDir); err != nil {
-					s.logger.Warn("Failed to cleanup upgrade temp directory", zap.String("path", tempDir), zap.Error(err))
+					s.logger.Error("Shutdown failed before restart", zap.Error(err))
 				}
 
 				// 3. Restart
