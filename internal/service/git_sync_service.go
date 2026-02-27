@@ -49,8 +49,8 @@ type gitSyncService struct {
 	vaultRepo  domain.VaultRepository
 	logger     *zap.Logger
 	mu         sync.Mutex
-	running    map[int64]bool        // configID -> isRunning
-	timers     map[int64]*time.Timer // configID -> timer
+	running    map[int64]context.CancelFunc // configID -> cancelFunc
+	timers     map[int64]*time.Timer        // configID -> timer
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
@@ -66,7 +66,7 @@ func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteReposi
 		fileRepo:   fileRepo,
 		vaultRepo:  vaultRepo,
 		logger:     logger,
-		running:    make(map[int64]bool),
+		running:    make(map[int64]context.CancelFunc),
 		timers:     make(map[int64]*time.Timer),
 		ctx:        ctx,
 		cancel:     cancel,
@@ -253,13 +253,17 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 		return code.ErrorGitSyncNotFound
 	}
 
-	// Mark as running
+	// 策略：同步/镜像同步直接取消旧任务，启动新任务
 	s.mu.Lock()
-	if s.running[id] {
-		s.mu.Unlock()
-		return code.ErrorGitSyncTaskRunning
+	if oldCancel, running := s.running[id]; running {
+		s.logger.Info("Cancelling existing Git sync task to start a newer one", zap.Int64("uid", uid), zap.Int64("configId", id))
+		oldCancel()
+		delete(s.running, id)
 	}
-	s.running[id] = true
+
+	// 为新任务创建 context
+	taskCtx, taskCancel := context.WithCancel(s.ctx)
+	s.running[id] = taskCancel
 	s.mu.Unlock()
 
 	s.wg.Add(1)
@@ -267,13 +271,18 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 	go func() {
 		defer func() {
 			s.mu.Lock()
-			delete(s.running, id)
+			// 确保只清理当前的 cancel 函数
+			if _, ok := s.running[id]; ok {
+				// 虽然 sync 策略下会先 cancel 再 set，但为了闭包内引用的严谨
+				delete(s.running, id)
+			}
 			s.mu.Unlock()
+			taskCancel()
 			s.wg.Done()
 		}()
 
-		// Use service context for background task
-		s.syncTask(s.ctx, conf)
+		// 使用新创建的任务 context
+		s.syncTask(taskCtx, conf)
 	}()
 
 	return nil
