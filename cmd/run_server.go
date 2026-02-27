@@ -274,6 +274,25 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		}
 	})
 
+	// Start ngrok tunnel if enabled
+	if appConfig.Ngrok.Enabled {
+		s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+			defer done()
+
+			s.logger.Info("Starting ngrok tunnel...")
+			err := s.app.NgrokService.Start(context.Background(), appConfig.Server.HttpPort)
+			if err != nil {
+				s.logger.Error("failed to start ngrok tunnel", zap.Error(err))
+				return
+			}
+
+			s.logger.Info("Ngrok tunnel started", zap.String("url", s.app.NgrokService.TunnelURL()))
+
+			// Stay attached until close signal
+			<-closeSignal
+		})
+	}
+
 	return s, nil
 }
 
