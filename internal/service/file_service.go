@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -79,7 +79,7 @@ type FileService interface {
 
 	// GetContent retrieves raw content of note or attachment file
 	// GetContent 获取笔记或附件文件的原始内容
-	GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error)
+	GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) (io.ReadCloser, string, int64, string, error)
 
 	// GetContentInfo retrieves file metadata and path for zero-copy download
 	// GetContentInfo 获取文件的元数据和路径，用于零拷贝下载
@@ -509,7 +509,7 @@ func (s *fileService) CleanupByTime(ctx context.Context, cutoffTime int64) error
 //   - int64: mtime (Last-Modified) // mtime (Last-Modified)
 //   - string: etag (Content-Hash) // etag (Content-Hash)
 //   - error: Error on failure // 出错时返回错误
-func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) ([]byte, string, int64, string, error) {
+func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.FileGetRequest) (io.ReadCloser, string, int64, string, error) {
 	// 1. Get vault ID
 	// 1. 获取仓库 ID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
@@ -529,29 +529,29 @@ func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.Fil
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && file != nil {
-
-			// Read physical file content
-			// 读取物理文件内容
-			content, err := os.ReadFile(file.SavePath)
-			if err != nil {
-				return nil, "", 0, "", code.ErrorFileReadFailed.WithDetails(err.Error())
-			}
-
 			// Identify file MIME type
 			// 识别文件 MIME 类型
 			ext := filepath.Ext(params.Path)
 			contentType := mime.TypeByExtension(ext)
 			if contentType == "" {
-				// Content sniffing if extension is not recognized
-				// 如果扩展名识别不到, 进行内容嗅探
-				contentType = http.DetectContentType(content)
+				contentType = "application/octet-stream"
 			}
 
-			// Real-time calculation if File table has no ContentHash or is uncertain
-			// File 表没有 ContentHash 或不确定, 实时计算
-			etag := util.EncodeHash32(string(content))
+			// Use file's content hash as ETag from DB if available
+			// 使用 DB 中的 ContentHash 作为 ETag
+			etag := file.ContentHash
+			if etag == "" {
+				etag = file.PathHash
+			}
 
-			return content, contentType, file.Mtime, etag, nil
+			// Open file for streaming
+			// 打开文件用于流式传输
+			f, err := os.Open(file.SavePath)
+			if err != nil {
+				return nil, "", 0, "", code.ErrorFileReadFailed.WithDetails(err.Error())
+			}
+
+			return f, contentType, file.Mtime, etag, nil
 		}
 	}
 
