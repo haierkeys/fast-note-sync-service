@@ -120,4 +120,5 @@ var zh_cn_messages = map[int]string{
 	510: "Git 同步配置不存在",
 	511: "Git 同步任务正在运行中",
 	512: "Git 验证失败",
+	520: "Cloudflared 下载失败",
 }
