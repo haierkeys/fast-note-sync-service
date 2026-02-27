@@ -37,21 +37,22 @@ func (r *backupRepository) configToDomain(m *model.BackupConfig) *domain.BackupC
 		return nil
 	}
 	return &domain.BackupConfig{
-		ID:             m.ID,
-		UID:            m.UID,
-		VaultID:        m.VaultID,
-		Type:           m.Type,
-		StorageIds:     m.StorageIds,
-		IsEnabled:      m.IsEnabled == 1,
-		CronStrategy:   m.CronStrategy,
-		CronExpression: m.CronExpression,
-		RetentionDays:  int(m.RetentionDays),
-		LastRunTime:    m.LastRunTime,
-		NextRunTime:    m.NextRunTime,
-		LastStatus:     int(m.LastStatus),
-		LastMessage:    m.LastMessage,
-		CreatedAt:      time.Time(m.CreatedAt),
-		UpdatedAt:      time.Time(m.UpdatedAt),
+		ID:               m.ID,
+		UID:              m.UID,
+		VaultID:          m.VaultID,
+		Type:             m.Type,
+		StorageIds:       m.StorageIds,
+		IsEnabled:        m.IsEnabled == 1,
+		CronStrategy:     m.CronStrategy,
+		CronExpression:   m.CronExpression,
+		IncludeVaultName: m.IncludeVaultName == 1,
+		RetentionDays:    int(m.RetentionDays),
+		LastRunTime:      m.LastRunTime,
+		NextRunTime:      m.NextRunTime,
+		LastStatus:       int(m.LastStatus),
+		LastMessage:      m.LastMessage,
+		CreatedAt:        time.Time(m.CreatedAt),
+		UpdatedAt:        time.Time(m.UpdatedAt),
 	}
 }
 
@@ -63,22 +64,27 @@ func (r *backupRepository) configToModel(d *domain.BackupConfig) *model.BackupCo
 	if d.IsEnabled {
 		isEnabled = 1
 	}
+	includeVaultName := int64(0)
+	if d.IncludeVaultName {
+		includeVaultName = 1
+	}
 	return &model.BackupConfig{
-		ID:             d.ID,
-		UID:            d.UID,
-		VaultID:        d.VaultID,
-		Type:           d.Type,
-		StorageIds:     d.StorageIds,
-		IsEnabled:      isEnabled,
-		CronStrategy:   d.CronStrategy,
-		CronExpression: d.CronExpression,
-		RetentionDays:  int64(d.RetentionDays),
-		LastRunTime:    d.LastRunTime,
-		NextRunTime:    d.NextRunTime,
-		LastStatus:     int64(d.LastStatus),
-		LastMessage:    d.LastMessage,
-		CreatedAt:      timex.Time(d.CreatedAt),
-		UpdatedAt:      timex.Time(d.UpdatedAt),
+		ID:               d.ID,
+		UID:              d.UID,
+		VaultID:          d.VaultID,
+		Type:             d.Type,
+		StorageIds:       d.StorageIds,
+		IsEnabled:        isEnabled,
+		CronStrategy:     d.CronStrategy,
+		CronExpression:   d.CronExpression,
+		IncludeVaultName: includeVaultName,
+		RetentionDays:    int64(d.RetentionDays),
+		LastRunTime:      d.LastRunTime,
+		NextRunTime:      d.NextRunTime,
+		LastStatus:       int64(d.LastStatus),
+		LastMessage:      d.LastMessage,
+		CreatedAt:        timex.Time(d.CreatedAt),
+		UpdatedAt:        timex.Time(d.UpdatedAt),
 	}
 }
 

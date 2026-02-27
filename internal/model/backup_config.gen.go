@@ -22,6 +22,7 @@ type BackupConfig struct {
 	IsEnabled      int64      `gorm:"column:is_enabled;type:INTEGER;default:0" json:"isEnabled" form:"isEnabled"`
 	CronStrategy   string     `gorm:"column:cron_strategy;default:''" json:"cronStrategy" form:"cronStrategy"`
 	CronExpression string     `gorm:"column:cron_expression;type:TEXT;default:''" json:"cronExpression" form:"cronExpression"`
+	IncludeVaultName int64    `gorm:"column:include_vault_name;type:INTEGER;default:0" json:"includeVaultName" form:"includeVaultName"`
 	RetentionDays  int64      `gorm:"column:retention_days;default:10" json:"retentionDays" form:"retentionDays"`
 	LastRunTime    time.Time  `gorm:"column:last_run_time;type:datetime" json:"lastRunTime" form:"lastRunTime"`
 	NextRunTime    time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
