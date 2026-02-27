@@ -23,6 +23,31 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/admin/cloudflared_tunnel_download": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Trigger the download of cloudflared binary for the current platform",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Download cloudflared binary",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/config": {
             "get": {
                 "security": [
@@ -4124,8 +4149,36 @@ const docTemplate = `{
         "api_router.RuntimeInfo": {
             "type": "object",
             "properties": {
+                "buckHashSys": {
+                    "description": "Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存",
+                    "type": "integer"
+                },
+                "gcSys": {
+                    "description": "Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存",
+                    "type": "integer"
+                },
+                "heapIdle": {
+                    "description": "Memory in idle spans (bytes) // 空闲 Span 占用的内存",
+                    "type": "integer"
+                },
+                "heapInuse": {
+                    "description": "Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存",
+                    "type": "integer"
+                },
                 "heapReleased": {
                     "description": "Memory released to OS (bytes) // 释放回操作系统的内存（字节）",
+                    "type": "integer"
+                },
+                "heapSys": {
+                    "description": "Memory obtained from system for heap (bytes) // 堆占用的系统内存",
+                    "type": "integer"
+                },
+                "mCacheSys": {
+                    "description": "Memory obtained from system for mcache (bytes) // mcache 占用的系统内存",
+                    "type": "integer"
+                },
+                "mSpanSys": {
+                    "description": "Memory obtained from system for mspan (bytes) // mspan 占用的系统内存",
                     "type": "integer"
                 },
                 "memAlloc": {
@@ -4140,12 +4193,24 @@ const docTemplate = `{
                     "description": "Total memory allocated (bytes) // 累计分配内存（字节）",
                     "type": "integer"
                 },
+                "nextGc": {
+                    "description": "Target heap size for the next GC cycle // 下次 GC 的目标堆大小",
+                    "type": "integer"
+                },
                 "numGc": {
                     "description": "Number of completed GC cycles // GC 次数",
                     "type": "integer"
                 },
                 "numGoroutine": {
                     "description": "Number of goroutines // Goroutine 数量",
+                    "type": "integer"
+                },
+                "otherSys": {
+                    "description": "Other system memory (bytes) // 其他系统内存",
+                    "type": "integer"
+                },
+                "stackSys": {
+                    "description": "Memory obtained from system for stack (bytes) // 栈占用的系统内存",
                     "type": "integer"
                 }
             }
@@ -4393,6 +4458,10 @@ const docTemplate = `{
                     "description": "配置ID",
                     "type": "integer"
                 },
+                "includeVaultName": {
+                    "description": "同步路径是否包含仓库名",
+                    "type": "boolean"
+                },
                 "isEnabled": {
                     "description": "是否启用",
                     "type": "boolean"
@@ -4464,6 +4533,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer",
                     "example": 1
+                },
+                "includeVaultName": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "isEnabled": {
                     "type": "boolean",

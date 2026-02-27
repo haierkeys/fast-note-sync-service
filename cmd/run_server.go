@@ -275,7 +275,7 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	})
 
 	// Start ngrok tunnel if enabled
-	if appConfig.Ngrok.Enabled {
+	if appConfig.Ngrok.Enabled && appConfig.Ngrok.AuthToken != "" {
 		s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 			defer done()
 
@@ -287,6 +287,24 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 			}
 
 			s.logger.Info("Ngrok tunnel started", zap.String("url", s.app.NgrokService.TunnelURL()))
+
+			// Stay attached until close signal
+			<-closeSignal
+		})
+	}
+
+	// Start Cloudflare tunnel if enabled
+	if appConfig.Cloudflare.Enabled && appConfig.Cloudflare.Token != "" {
+		s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+			defer done()
+
+			s.logger.Info("Starting Cloudflare tunnel...")
+			if err := s.app.CloudflareService.Start(context.Background(), appConfig.Cloudflare.Token, appConfig.Cloudflare.LogEnabled); err != nil {
+				s.logger.Error("failed to start cloudflare tunnel", zap.Error(err))
+				return
+			}
+
+			s.logger.Info("Cloudflare tunnel started", zap.String("url", s.app.CloudflareService.TunnelURL()))
 
 			// Stay attached until close signal
 			<-closeSignal

@@ -113,12 +113,15 @@ var (
 	ErrorBackupConfigDisabled   = NewError(499)
 
 	// --- Storage Related (500-509) ---
-	ErrorStorageNotFound        = NewError(500)
-	ErrorStorageTypeDisabled    = NewError(501)
-	ErrorStorageValidateFailed  = NewError(502)
+	ErrorStorageNotFound       = NewError(500)
+	ErrorStorageTypeDisabled   = NewError(501)
+	ErrorStorageValidateFailed = NewError(502)
 
 	// --- Git Sync Related (510-519) ---
 	ErrorGitSyncNotFound       = NewError(510)
 	ErrorGitSyncTaskRunning    = NewError(511)
 	ErrorGitSyncValidateFailed = NewError(512)
+
+	// --- Cloudflare Related (520-529) ---
+	ErrorCloudflaredDownloadFailed = NewError(520)
 )

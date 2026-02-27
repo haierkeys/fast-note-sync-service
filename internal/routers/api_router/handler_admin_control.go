@@ -679,3 +679,34 @@ func (h *AdminControlHandler) extractBinary(tarPath string, destDir string, bina
 
 	return fmt.Errorf("binary %s not found in archive", binaryName)
 }
+
+// CloudflaredTunnelDownload triggers cloudflared binary download (requires admin privileges)
+// @Summary Download cloudflared binary
+// @Description Trigger the download of cloudflared binary for the current platform
+// @Tags System
+// @Security UserAuthToken
+// @Produce json
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/admin/cloudflared_tunnel_download [get]
+func (h *AdminControlHandler) CloudflaredTunnelDownload(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	h.App.Logger().Info("Starting manual cloudflared binary download via API")
+
+	path, err := h.App.CloudflareService.DownloadBinary()
+	if err != nil {
+		h.App.Logger().Error("Manual cloudflared download failed", zap.Error(err))
+		// 返回详细的错误提示（包含 DownloadBinary 中构造的建议）
+		response.ToResponse(code.ErrorCloudflaredDownloadFailed.WithDetails(err.Error()))
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(gin.H{"path": path}).WithDetails("Cloudflared binary is ready"))
+}
