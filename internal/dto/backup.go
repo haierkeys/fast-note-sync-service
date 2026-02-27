@@ -11,7 +11,8 @@ type BackupConfigRequest struct {
 	IsEnabled      bool   `json:"isEnabled" form:"isEnabled" example:"true"`
 	CronStrategy   string `json:"cronStrategy" form:"cronStrategy" binding:"required,oneof=daily weekly monthly custom" example:"daily"`
 	CronExpression string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`
-	RetentionDays  int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`
+	RetentionDays    int  `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`
+	IncludeVaultName bool `json:"includeVaultName" form:"includeVaultName" example:"false"`
 }
 
 // BackupExecuteRequest 备份执行请求
@@ -36,8 +37,9 @@ type BackupConfigDTO struct {
 	IsEnabled      bool       `json:"isEnabled"`      // 是否启用
 	CronStrategy   string     `json:"cronStrategy"`   // 定时策略
 	CronExpression string     `json:"cronExpression"` // Cron表达式
-	RetentionDays  int        `json:"retentionDays"`  // 保留天数
-	LastRunTime    timex.Time `json:"lastRunTime"`    // 上次运行时间
+	RetentionDays    int        `json:"retentionDays"`    // 保留天数
+	IncludeVaultName bool       `json:"includeVaultName"` // 同步路径是否包含仓库名
+	LastRunTime      timex.Time `json:"lastRunTime"`      // 上次运行时间
 	NextRunTime    timex.Time `json:"nextRunTime"`    // 下次运行时间
 	LastStatus     int        `json:"lastStatus"`     // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
 	LastMessage    string     `json:"lastMessage"`    // 上次运行结果消息
