@@ -69,6 +69,22 @@ type adminConfig struct {
 	ShareTokenExpiry        string `json:"shareTokenExpiry" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
 }
 
+// ngrokConfig Ngrok tunnel configuration
+// ngrokConfig Ngrok 隧道配置
+type ngrokConfig struct {
+	Enabled   bool   `json:"enabled" form:"enabled"`     // Whether to enable ngrok tunnel // 是否启用 ngrok 隧道
+	AuthToken string `json:"authToken" form:"authToken"` // ngrok auth token // ngrok 认证令牌
+	Domain    string `json:"domain" form:"domain"`       // Custom domain // 自定义域名
+}
+
+// cloudflareConfig Cloudflare tunnel configuration
+// cloudflareConfig Cloudflare 隧道配置
+type cloudflareConfig struct {
+	Enabled    bool   `json:"enabled" form:"enabled"`       // Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道
+	Token      string `json:"token" form:"token"`           // cloudflare tunnel token // cloudflare 隧道令牌
+	LogEnabled bool   `json:"logEnabled" form:"logEnabled"` // Whether to enable cloudflare tunnel logging // 是否开启 cloudflare 隧道日志
+}
+
 // SystemInfo system information response structure
 // SystemInfo 系统信息响应结构
 type SystemInfo struct {
@@ -305,6 +321,178 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	// 保存配置到文件
 	if err := cfg.Save(); err != nil {
 		logger.Error("apiRouter.WebGUI.UpdateConfig.Save err", zap.Error(err))
+		response.ToResponse(code.ErrorConfigSaveFailed)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(params))
+}
+
+// GetNgrokConfig retrieves Ngrok tunnel configuration (requires admin privileges)
+// @Summary Get Ngrok config
+// @Description Get Ngrok tunnel configuration, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=ngrokConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/ngrok [get]
+func (h *AdminControlHandler) GetNgrokConfig(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.GetNgrokConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	data := &ngrokConfig{
+		Enabled:   cfg.Ngrok.Enabled,
+		AuthToken: cfg.Ngrok.AuthToken,
+		Domain:    cfg.Ngrok.Domain,
+	}
+
+	response.ToResponse(code.Success.WithData(data))
+}
+
+// UpdateNgrokConfig updates Ngrok tunnel configuration (requires admin privileges)
+// @Summary Update Ngrok config
+// @Description Modify Ngrok tunnel configuration, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body ngrokConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=ngrokConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/ngrok [post]
+func (h *AdminControlHandler) UpdateNgrokConfig(c *gin.Context) {
+	params := &ngrokConfig{}
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		logger.Error("apiRouter.AdminControl.UpdateNgrokConfig.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.UpdateNgrokConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	cfg.Ngrok.Enabled = params.Enabled
+	cfg.Ngrok.AuthToken = params.AuthToken
+	cfg.Ngrok.Domain = params.Domain
+
+	if err := cfg.Save(); err != nil {
+		logger.Error("apiRouter.AdminControl.UpdateNgrokConfig.Save err", zap.Error(err))
+		response.ToResponse(code.ErrorConfigSaveFailed)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(params))
+}
+
+// GetCloudflareConfig retrieves Cloudflare tunnel configuration (requires admin privileges)
+// @Summary Get Cloudflare config
+// @Description Get Cloudflare tunnel configuration, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=cloudflareConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/cloudflare [get]
+func (h *AdminControlHandler) GetCloudflareConfig(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.GetCloudflareConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	data := &cloudflareConfig{
+		Enabled:    cfg.Cloudflare.Enabled,
+		Token:      cfg.Cloudflare.Token,
+		LogEnabled: cfg.Cloudflare.LogEnabled,
+	}
+
+	response.ToResponse(code.Success.WithData(data))
+}
+
+// UpdateCloudflareConfig updates Cloudflare tunnel configuration (requires admin privileges)
+// @Summary Update Cloudflare config
+// @Description Modify Cloudflare tunnel configuration, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body cloudflareConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=cloudflareConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/cloudflare [post]
+func (h *AdminControlHandler) UpdateCloudflareConfig(c *gin.Context) {
+	params := &cloudflareConfig{}
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		logger.Error("apiRouter.AdminControl.UpdateCloudflareConfig.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.UpdateCloudflareConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	cfg.Cloudflare.Enabled = params.Enabled
+	cfg.Cloudflare.Token = params.Token
+	cfg.Cloudflare.LogEnabled = params.LogEnabled
+
+	if err := cfg.Save(); err != nil {
+		logger.Error("apiRouter.AdminControl.UpdateCloudflareConfig.Save err", zap.Error(err))
 		response.ToResponse(code.ErrorConfigSaveFailed)
 		return
 	}

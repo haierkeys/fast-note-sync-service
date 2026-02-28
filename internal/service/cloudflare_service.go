@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"go.uber.org/zap"
 )
 
@@ -105,12 +106,18 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Get(downloadURL)
 	if err != nil {
-		return "", fmt.Errorf("download failed: %v. \n[💡 Suggestion] Please manually download from: %s \nAnd place it in: %s", err, downloadURL, storageDir)
+		if code.GetGlobalDefaultLang() == "zh_cn" {
+			return "", fmt.Errorf("下载失败:\n%v。 \n[💡 建议] 请手动下载: %s \n并放置于: %s", err, downloadURL, storageDir)
+		}
+		return "", fmt.Errorf("download failed:\n%v. \n[💡 Suggestion] Please manually download from: %s \nAnd place it in: %s", err, downloadURL, storageDir)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download server returned %s. \n[💡 Suggestion] Please manually download from: %s \nAnd place it in: %s", resp.Status, downloadURL, storageDir)
+		if code.GetGlobalDefaultLang() == "zh_cn" {
+			return "", fmt.Errorf("下载服务器返回状态 %s。 \n[💡 建议] 请手动下载: \n %s \n并放置于: %s", resp.Status, downloadURL, storageDir)
+		}
+		return "", fmt.Errorf("download server returned %s. \n[💡 Suggestion] Please manually download from:\n %s \nAnd place it in: %s", resp.Status, downloadURL, storageDir)
 	}
 
 	// 保存到文件

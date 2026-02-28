@@ -244,6 +244,31 @@ definitions:
         description: Upload session timeout // 上传会话超时时间
         type: string
     type: object
+  api_router.cloudflareConfig:
+    properties:
+      enabled:
+        description: Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道
+        type: boolean
+      logEnabled:
+        description: Whether to enable cloudflare tunnel logging // 是否开启 cloudflare
+          隧道日志
+        type: boolean
+      token:
+        description: cloudflare tunnel token // cloudflare 隧道令牌
+        type: string
+    type: object
+  api_router.ngrokConfig:
+    properties:
+      authToken:
+        description: ngrok auth token // ngrok 认证令牌
+        type: string
+      domain:
+        description: Custom domain // 自定义域名
+        type: string
+      enabled:
+        description: Whether to enable ngrok tunnel // 是否启用 ngrok 隧道
+        type: boolean
+    type: object
   api_router.webGUIConfig:
     properties:
       adminUid:
@@ -1489,6 +1514,140 @@ paths:
       security:
       - UserAuthToken: []
       summary: Update admin config
+      tags:
+      - Config
+  /api/admin/config/cloudflare:
+    get:
+      description: Get Cloudflare tunnel configuration, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.cloudflareConfig'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get Cloudflare config
+      tags:
+      - Config
+    post:
+      consumes:
+      - application/json
+      description: Modify Cloudflare tunnel configuration, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Config Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/api_router.cloudflareConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.cloudflareConfig'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update Cloudflare config
+      tags:
+      - Config
+  /api/admin/config/ngrok:
+    get:
+      description: Get Ngrok tunnel configuration, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.ngrokConfig'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get Ngrok config
+      tags:
+      - Config
+    post:
+      consumes:
+      - application/json
+      description: Modify Ngrok tunnel configuration, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Config Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/api_router.ngrokConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/api_router.ngrokConfig'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update Ngrok config
       tags:
       - Config
   /api/admin/gc:
