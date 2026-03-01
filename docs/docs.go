@@ -3772,7 +3772,7 @@ const docTemplate = `{
         },
         "/api/support": {
             "get": {
-                "description": "Get support records for the specified language",
+                "description": "Get support records for the specified language with pagination and sorting",
                 "produces": [
                     "application/json"
                 ],
@@ -3785,6 +3785,30 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Language code (default: en)",
                         "name": "lang",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field (amount, time, name, item)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order (asc, desc)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
                         "in": "query"
                     }
                 ],
@@ -3800,10 +3824,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/app.SupportRecord"
-                                            }
+                                            "$ref": "#/definitions/app.ListRes"
                                         }
                                     }
                                 }
@@ -4743,29 +4764,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vault": {}
-            }
-        },
-        "app.SupportRecord": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "string"
-                },
-                "item": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "time": {
-                    "type": "string"
-                },
-                "unit": {
-                    "type": "string"
-                }
             }
         },
         "diffmatchpatch.Diff": {

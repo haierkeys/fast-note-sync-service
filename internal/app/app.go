@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -456,12 +458,77 @@ func (a *App) loadSupportRecords(efs embed.FS) {
 	}
 }
 
-// GetSupportRecords gets support records
-// GetSupportRecords 获取打赏记录
+// GetSupportRecords gets all support records
+// GetSupportRecords 获取所有打赏记录
 func (a *App) GetSupportRecords() map[string][]pkgapp.SupportRecord {
 	a.supportRecordsMu.RLock()
 	defer a.supportRecordsMu.RUnlock()
 	return a.supportRecords
+}
+
+// GetSupportRecordsPage gets support records with pagination and sorting
+// GetSupportRecordsPage 分页并排序获取打赏记录
+func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSize int) ([]pkgapp.SupportRecord, int) {
+	a.supportRecordsMu.RLock()
+	defer a.supportRecordsMu.RUnlock()
+
+	lang = strings.ToLower(lang)
+	if lang == "" {
+		lang = "en"
+	}
+
+	records, ok := a.supportRecords[lang]
+	if !ok {
+		records = a.supportRecords["en"]
+	}
+
+	total := len(records)
+	if total == 0 {
+		return []pkgapp.SupportRecord{}, 0
+	}
+
+	sortedRecords := make([]pkgapp.SupportRecord, total)
+	copy(sortedRecords, records)
+
+	if sortBy != "" {
+		isDesc := strings.ToLower(sortOrder) == "desc"
+		sort.SliceStable(sortedRecords, func(i, j int) bool {
+			var less bool
+			switch sortBy {
+			case "amount":
+				amountI, _ := strconv.ParseFloat(sortedRecords[i].Amount, 64)
+				amountJ, _ := strconv.ParseFloat(sortedRecords[j].Amount, 64)
+				less = amountI < amountJ
+			case "name":
+				less = sortedRecords[i].Name < sortedRecords[j].Name
+			case "item":
+				less = sortedRecords[i].Item < sortedRecords[j].Item
+			case "time":
+				fallthrough
+			default:
+				less = sortedRecords[i].Time < sortedRecords[j].Time
+			}
+			if isDesc {
+				return !less
+			}
+			return less
+		})
+	}
+
+	offset := (page - 1) * pageSize
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= total {
+		return []pkgapp.SupportRecord{}, total
+	}
+
+	end := offset + pageSize
+	if end > total {
+		end = total
+	}
+
+	return sortedRecords[offset:end], total
 }
 
 // UpdateSupportRecords updates support records for a specific language

@@ -98,22 +98,20 @@ func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 	folderPath := r.dao.GetFileFolderPath(uid, f.ID)
 	standardPath := filepath.Join(folderPath, "file.dat")
 
-	// 如果标准路径不存在，检查是否有旧路径文件并迁移
-	if _, err := os.Stat(standardPath); os.IsNotExist(err) && f.SavePath != "" && f.SavePath != standardPath {
-		if _, errOld := os.Stat(f.SavePath); errOld == nil {
+	// 记录原始 SavePath 以便进行迁移检查
+	oldSavePath := f.SavePath
+
+	// 更新为标准路径
+	f.SavePath = standardPath
+
+	// 仅在标准路径不存在，且明确给出了旧路径，且旧文件确实存在磁盘上时才执行迁移
+	if _, err := os.Stat(standardPath); os.IsNotExist(err) && oldSavePath != "" && oldSavePath != standardPath {
+		if _, errOld := os.Stat(oldSavePath); errOld == nil {
+			// 只有在确定要移动文件时才创建目录
 			_ = os.MkdirAll(folderPath, 0755)
-			_ = os.Rename(f.SavePath, standardPath)
-		} else {
-			// 兜底方案：检查文件夹内是否有任何文件，如果有则重命名第一个
-			if files, err := os.ReadDir(folderPath); err == nil && len(files) > 0 {
-				oldName := files[0].Name()
-				if oldName != "file.dat" {
-					_ = os.Rename(filepath.Join(folderPath, oldName), standardPath)
-				}
-			}
+			_ = os.Rename(oldSavePath, standardPath)
 		}
 	}
-	f.SavePath = standardPath
 }
 
 // GetByID 根据 ID 获取文件
@@ -477,6 +475,7 @@ func (r *fileRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 	err := u.WithContext(ctx).Select(u.Size.Sum().As("size"), u.Size.Count().As("count")).Where(
 		u.VaultID.Eq(vaultID),
 		u.Action.Neq("delete"),
+		u.Rename.Eq(0),
 	).Scan(result)
 
 	if err != nil {
