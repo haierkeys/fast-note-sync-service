@@ -13,6 +13,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
@@ -40,15 +41,17 @@ type folderService struct {
 	vaultService  VaultService
 	sf            singleflight.Group
 	backupService BackupService
+	pool          *workerpool.Pool
 }
 
-func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, backupSvc BackupService) FolderService {
+func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, backupSvc BackupService, pool *workerpool.Pool) FolderService {
 	return &folderService{
 		folderRepo:    folderRepo,
 		noteRepo:      noteRepo,
 		fileRepo:      fileRepo,
 		vaultService:  vaultSvc,
 		backupService: backupSvc,
+		pool:          pool,
 		sf:            singleflight.Group{},
 	}
 }
@@ -481,6 +484,30 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 
 // SyncResourceFID 同步 Vault 下资源的 FID（支持全量或部分同步）
 func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {
+	// Use pool for async execution to avoid CPU spike
+	// 使用协程池异步执行，避免 CPU 飙升
+	if s.pool != nil {
+		// Create a background context to avoid being cancelled by request context
+		// 使用背景 context 避免被请求 context 取消
+		bgCtx := context.Background()
+		err := s.pool.SubmitAsync(bgCtx, func(c context.Context) error {
+			return s.doSyncResourceFID(c, uid, vaultID, noteIDs, fileIDs)
+		})
+		if err != nil {
+			// Fallback to direct goroutine if pool is full/closed (better than losing consistency)
+			// 如果池满或关闭，则回退到直接协程执行（保底一致性）
+			go s.doSyncResourceFID(context.Background(), uid, vaultID, noteIDs, fileIDs)
+		}
+		return nil
+	}
+
+	// Legacy behavior for safety if pool is not initialized
+	// 如果池未初始化，则保留原逻辑
+	go s.doSyncResourceFID(context.Background(), uid, vaultID, noteIDs, fileIDs)
+	return nil
+}
+
+func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {
 	// 同步笔记
 	var notes []*domain.Note
 	var err error
