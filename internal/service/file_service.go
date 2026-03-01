@@ -138,6 +138,7 @@ func (s *fileService) domainToDTO(file *domain.File) *dto.FileDTO {
 		PathHash:         file.PathHash,
 		ContentHash:      file.ContentHash,
 		SavePath:         file.SavePath,
+		Rename:           file.Rename,
 		Size:             file.Size,
 		Ctime:            file.Ctime,
 		Mtime:            file.Mtime,
@@ -269,6 +270,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		file.Mtime = params.Mtime
 		file.Ctime = params.Ctime
 		file.Action = action
+		file.Rename = 0
 
 		updated, err := s.fileRepo.Update(ctx, file, uid)
 		if err != nil {
@@ -335,6 +337,7 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 	// Update to deleted status
 	// 更新为删除状态
 	file.Action = domain.FileActionDelete
+	file.Rename = 0
 
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
@@ -380,6 +383,7 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 	// Update to modified status and update modification time
 	file.Action = domain.FileActionModify
 	file.Mtime = time.Now().UnixMilli()
+	file.Rename = 0
 
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
@@ -713,6 +717,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 
 	// 3. 标记旧文件删除
 	f.Action = domain.FileActionDelete
+	f.Rename = 1
 	f.UpdatedTimestamp = timex.Now().UnixMilli()
 	oldFile, err := s.fileRepo.Update(ctx, f, uid)
 	if err != nil {

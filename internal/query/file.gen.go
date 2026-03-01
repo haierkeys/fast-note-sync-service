@@ -36,6 +36,7 @@ func newFile(db *gorm.DB, opts ...gen.DOOption) file {
 	_file.PathHash = field.NewString(tableName, "path_hash")
 	_file.ContentHash = field.NewString(tableName, "content_hash")
 	_file.SavePath = field.NewString(tableName, "save_path")
+	_file.Rename = field.NewInt64(tableName, "rename")
 	_file.Size = field.NewInt64(tableName, "size")
 	_file.Ctime = field.NewInt64(tableName, "ctime")
 	_file.Mtime = field.NewInt64(tableName, "mtime")
@@ -60,6 +61,7 @@ type file struct {
 	PathHash         field.String
 	ContentHash      field.String
 	SavePath         field.String
+	Rename           field.Int64
 	Size             field.Int64
 	Ctime            field.Int64
 	Mtime            field.Int64
@@ -90,6 +92,7 @@ func (f *file) updateTableName(table string) *file {
 	f.PathHash = field.NewString(table, "path_hash")
 	f.ContentHash = field.NewString(table, "content_hash")
 	f.SavePath = field.NewString(table, "save_path")
+	f.Rename = field.NewInt64(table, "rename")
 	f.Size = field.NewInt64(table, "size")
 	f.Ctime = field.NewInt64(table, "ctime")
 	f.Mtime = field.NewInt64(table, "mtime")
@@ -120,7 +123,7 @@ func (f *file) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (f *file) fillFieldMap() {
-	f.fieldMap = make(map[string]field.Expr, 14)
+	f.fieldMap = make(map[string]field.Expr, 15)
 	f.fieldMap["id"] = f.ID
 	f.fieldMap["vault_id"] = f.VaultID
 	f.fieldMap["action"] = f.Action
@@ -129,6 +132,7 @@ func (f *file) fillFieldMap() {
 	f.fieldMap["path_hash"] = f.PathHash
 	f.fieldMap["content_hash"] = f.ContentHash
 	f.fieldMap["save_path"] = f.SavePath
+	f.fieldMap["rename"] = f.Rename
 	f.fieldMap["size"] = f.Size
 	f.fieldMap["ctime"] = f.Ctime
 	f.fieldMap["mtime"] = f.Mtime

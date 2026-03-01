@@ -21,6 +21,7 @@ type File struct {
 	PathHash         string
 	ContentHash      string
 	SavePath         string
+	Rename           int64
 	Size             int64
 	Ctime            int64
 	Mtime            int64
