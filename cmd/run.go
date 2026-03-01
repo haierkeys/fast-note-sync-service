@@ -80,6 +80,7 @@ func init() {
 				return
 			}
 
+			configChanged := make(chan struct{}, 1)
 			go func() {
 
 				w := watcher.New()
@@ -98,22 +99,16 @@ func init() {
 					for {
 						select {
 						case event := <-w.Event:
-
-							s.logger.Info("config watcher change", zap.String("event", event.Op.String()), zap.String("file", event.Path))
-							s.sc.SendCloseSignal(nil)
-
-							// Re-initialize server
-							// 重新初始化 server
-							s, err = NewServer(runEnv)
-							if err != nil {
-								bootstrapLogger.Error("service start err", zap.Error(err))
-								continue
+							s.logger.Info("config watcher change detected", zap.String("event", event.Op.String()), zap.String("file", event.Path))
+							select {
+							case configChanged <- struct{}{}:
+							default:
 							}
-
 						case err := <-w.Error:
 							s.logger.Error("config watcher error", zap.Error(err))
 						case <-w.Closed:
 							bootstrapLogger.Info("config watcher closed")
+							return
 						}
 					}
 				}()
@@ -134,56 +129,76 @@ func init() {
 			quit1 := make(chan os.Signal, 1)
 			signal.Notify(quit1, syscall.SIGINT, syscall.SIGTERM)
 
-			select {
-			case <-quit1:
-				s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
-				s.sc.SendCloseSignal(nil)
-			case newBinaryPath := <-s.GetApp().UpgradeSignal:
-				s.logger.Info("Received upgrade/restart signal, starting smooth restart...", zap.String("newBinary", newBinaryPath))
+			for {
+				select {
+				case <-quit1:
+					s.logger.Info("Received shutdown signal, initiating graceful shutdown...")
+					s.sc.SendCloseSignal(nil)
+					// 等待并在处理后退出循环
+					goto wait_and_exit
+				case <-configChanged:
+					s.logger.Info("Reloading server due to config change...")
+					s.sc.SendCloseSignal(nil)
+					if err := s.sc.WaitClosed(); err != nil {
+						s.logger.Error("Failed to close old server during reload", zap.Error(err))
+					}
+					// 重新初始化 server
+					newS, err := NewServer(runEnv)
+					if err != nil {
+						bootstrapLogger.Error("failed to re-initialize service after config change", zap.Error(err))
+						continue // 尝试继续运行旧实例（如果可能）或再次等待配置修复
+					}
+					s = newS
+					s.logger.Info("Server re-initialized successfully")
+					continue // 重新进入 select 监听新 s 的 UpgradeSignal
+				case newBinaryPath := <-s.GetApp().UpgradeSignal:
+					s.logger.Info("Received upgrade/restart signal, starting smooth restart...", zap.String("newBinary", newBinaryPath))
 
-				currentBinary, _ := os.Executable()
-				isRestartOnly := newBinaryPath == currentBinary
+					currentBinary, _ := os.Executable()
+					isRestartOnly := newBinaryPath == currentBinary
 
-				if !isRestartOnly {
-					// 1. Perform file replacement (for upgrade)
-					oldBinary := currentBinary + ".old"
-					_ = os.Remove(oldBinary)
-					if err := util.MoveFile(currentBinary, oldBinary); err != nil {
-						s.logger.Error("Failed to backup current binary", zap.Error(err))
-						return
-					}
-					if err := util.MoveFile(newBinaryPath, currentBinary); err != nil {
-						s.logger.Error("Failed to replace binary", zap.Error(err))
-						// Try to restore?
-						_ = util.MoveFile(oldBinary, currentBinary)
-						return
-					}
-					if err := os.Chmod(currentBinary, 0755); err != nil {
-						s.logger.Error("Failed to set executable permission", zap.Error(err))
+					if !isRestartOnly {
+						// 1. Perform file replacement (for upgrade)
+						oldBinary := currentBinary + ".old"
+						_ = os.Remove(oldBinary)
+						if err := util.MoveFile(currentBinary, oldBinary); err != nil {
+							s.logger.Error("Failed to backup current binary", zap.Error(err))
+							return
+						}
+						if err := util.MoveFile(newBinaryPath, currentBinary); err != nil {
+							s.logger.Error("Failed to replace binary", zap.Error(err))
+							// Try to restore?
+							_ = util.MoveFile(oldBinary, currentBinary)
+							return
+						}
+						if err := os.Chmod(currentBinary, 0755); err != nil {
+							s.logger.Error("Failed to set executable permission", zap.Error(err))
+						}
+
+						// 1.1 Cleanup temp directory (where the tar.gz and temporary binary were)
+						tempDir := filepath.Dir(newBinaryPath)
+						if err := os.RemoveAll(tempDir); err != nil {
+							s.logger.Warn("Failed to cleanup upgrade temp directory", zap.String("path", tempDir), zap.Error(err))
+						}
 					}
 
-					// 1.1 Cleanup temp directory (where the tar.gz and temporary binary were)
-					tempDir := filepath.Dir(newBinaryPath)
-					if err := os.RemoveAll(tempDir); err != nil {
-						s.logger.Warn("Failed to cleanup upgrade temp directory", zap.String("path", tempDir), zap.Error(err))
+					// 2. Graceful shutdown (close servers, release ports)
+					s.sc.SendCloseSignal(nil)
+					if err := s.sc.WaitClosed(); err != nil {
+						s.logger.Error("Shutdown failed before restart", zap.Error(err))
 					}
+
+					// 3. Restart
+					env := os.Environ()
+					args := os.Args
+					if err := internalApp.RestartProcess(currentBinary, args, env); err != nil {
+						s.logger.Error("Failed to restart process", zap.Error(err))
+					}
+					return // 退出主循环
 				}
-
-				// 2. Graceful shutdown (close servers, release ports)
-				s.sc.SendCloseSignal(nil)
-				if err := s.sc.WaitClosed(); err != nil {
-					s.logger.Error("Shutdown failed before restart", zap.Error(err))
-				}
-
-				// 3. Restart
-				env := os.Environ()
-				args := os.Args
-				if err := internalApp.RestartProcess(currentBinary, args, env); err != nil {
-					s.logger.Error("Failed to restart process", zap.Error(err))
-				}
-				return // Should not reach here on Linux due to syscall.Exec
 			}
 
+		wait_and_exit:
 			// Wait for all shutdown handlers to complete (including App Container graceful shutdown)
 			// 等待所有关闭处理器完成（包括 App Container 的优雅关闭）
 			if err := s.sc.WaitClosed(); err != nil {
