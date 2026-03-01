@@ -1,8 +1,8 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
-문제가 발생하면 새로운 [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new)를 생성하거나 Telegram 그룹에 가입하여 도움을 요청하세요: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+궁금한 점이 있으면 [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new)를 생성하거나 Telegram 그룹에 가입하여 도움을 요청하세요: [https://t.me/obsidian_users](https://t.me/obsidian_users)
 
-중국 본토 지역은 Tencent `cnb.cool` 미러 저장소 사용을 권장합니다: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
+중국 본토 지역의 경우 Tencent `cnb.cool` 미러 저장소 사용을 권장합니다: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
 
 
 <h1 align="center">Fast Note Sync Service</h1>
