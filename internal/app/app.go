@@ -231,7 +231,7 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 	a.BackupService = service.NewBackupService(a.BackupRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, a.StorageService, &a.config.Storage, logger)
 	a.GitSyncService = service.NewGitSyncService(a.GitSyncRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, a.logger)
 
-	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService, a.BackupService)
+	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService, a.BackupService, a.workerPool)
 	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
 	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
 	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
