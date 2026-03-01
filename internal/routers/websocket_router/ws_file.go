@@ -79,14 +79,17 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 		}
 		s.FileHandle = nil
 	}
+	// Check if SavePath exists before attempting to remove it
 	if s.SavePath != "" {
-		if err := os.Remove(s.SavePath); err != nil {
-			zap.L().Warn("cleanup: failed to remove temp file",
-				zap.String(logger.FieldSessionID, s.ID),
-				zap.String(logger.FieldPath, s.SavePath),
-				zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),
-				zap.Error(err),
-			)
+		if _, err := os.Stat(s.SavePath); err == nil {
+			if err := os.Remove(s.SavePath); err != nil {
+				zap.L().Warn("cleanup: failed to remove temp file",
+					zap.String(logger.FieldSessionID, s.ID),
+					zap.String(logger.FieldPath, s.SavePath),
+					zap.String(logger.FieldMethod, "FileUploadBinaryChunkSession.Cleanup"),
+					zap.Error(err),
+				)
+			}
 		}
 		s.SavePath = ""
 	}
@@ -236,7 +239,23 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	// 计算写入偏移量并写入数据
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
-	if _, err := session.FileHandle.WriteAt(chunkData, offset); err != nil {
+	session.mu.Lock()
+	if session.FileHandle == nil {
+		// Lazy initialize file handle on first chunk
+		// 在收到第一个分片时延迟初始化文件句柄
+		f, err := os.Create(session.SavePath)
+		if err != nil {
+			session.mu.Unlock()
+			h.handleFileUploadSessionCleanup(c, sessionID)
+			h.respondErrorWithData(c, code.ErrorFileUploadFailed, err, map[string]string{"sessionID": sessionID}, "websocket_router.file.FileUploadChunkBinary.Create")
+			return
+		}
+		session.FileHandle = f
+	}
+	fileHandle := session.FileHandle
+	session.mu.Unlock()
+
+	if _, err := fileHandle.WriteAt(chunkData, offset); err != nil {
 		// Cleanup session on fatal error
 		// 致命错误时清理会话
 		h.handleFileUploadSessionCleanup(c, sessionID)
@@ -802,10 +821,19 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		},
 	).WithVault(params.Vault).WithContext(params.Context), dto.FileSyncEnd)
 
-	// Send queued messages individually
-	// 逐条发送队列中的消息
-	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	// Send queued messages in batches to reduce CPU/memory pressure
+	// 分批发送队列中的消息，以减轻 CPU 和内存压力
+	batchSize := 200
+	for i := 0; i < len(messageQueue); i += batchSize {
+		end := i + batchSize
+		if end > len(messageQueue) {
+			end = len(messageQueue)
+		}
+		for _, item := range messageQueue[i:end] {
+			c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+		}
+		// Optional: slight pause could be added here if network congestion is a concern,
+		// but the primary goal is reducing serialization overhead per message block.
 	}
 }
 
@@ -890,12 +918,6 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		}
 	}
 
-	file, err := os.Create(tempPath)
-	if err != nil {
-		h.logError(c, "websocket_router.file.handleFileUploadSession.Create", err)
-		return nil, err
-	}
-
 	// Initialize chunk upload session
 	// 初始化分块上传会话
 	session := &FileUploadBinaryChunkSession{
@@ -909,7 +931,7 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 		Mtime:       mtime,
 		ChunkSize:   getChunkSizeFromConfig(cfg), // 从注入的配置获取
 		SavePath:    tempPath,
-		FileHandle:  file,
+		FileHandle:  nil, // Lazy creation in FileUploadChunkBinary // 在 FileUploadChunkBinary 中延迟创建
 		CreatedAt:   time.Now(),
 	}
 	// Adjust chunk size based on file size
