@@ -918,3 +918,42 @@ func (h *NoteHandler) logError(ctx context.Context, method string, err error) {
 		zap.String("traceId", traceID),
 	)
 }
+
+// RecycleClear clears notes from recycle bin
+// @Summary Clear recycle bin
+// @Description Permanently clear selected notes from recycle bin
+// @Tags Note
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteRecycleClearRequest true "Clear Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/note/recycle-clear [delete]
+func (h *NoteHandler) RecycleClear(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteRecycleClearRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.App.Logger().Error("NoteHandler.RecycleClear.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.RecycleClear err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	ctx := c.Request.Context()
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	if err := noteSvc.RecycleClear(ctx, uid, params); err != nil {
+		h.logError(ctx, "NoteHandler.RecycleClear", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success)
+}

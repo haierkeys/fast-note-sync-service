@@ -86,6 +86,9 @@ type NoteRepository interface {
 
 	// ListByPathPrefix 根据路径前缀获取笔记列表
 	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*Note, error)
+
+	// RecycleClear 清理回收站
+	RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error
 }
 
 // FolderRepository 文件夹仓储接口
@@ -235,6 +238,9 @@ type FileRepository interface {
 
 	// ListByPathPrefix 根据路径前缀获取文件列表
 	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*File, error)
+
+	// RecycleClear 清理回收站
+	RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error
 }
 
 // SettingRepository 配置仓储接口

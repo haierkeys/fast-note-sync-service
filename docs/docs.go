@@ -1087,6 +1087,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/file/recycle-clear": {
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Permanently clear selected files from recycle bin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "Clear recycle bin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Clear Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.FileRecycleClearRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/file/restore": {
             "put": {
                 "security": [
@@ -3048,6 +3094,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/note/recycle-clear": {
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Permanently clear selected notes from recycle bin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Clear recycle bin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Clear Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NoteRecycleClearRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/note/replace": {
             "post": {
                 "security": [
@@ -4929,6 +5021,10 @@ const docTemplate = `{
                     "description": "Path hash // 路径哈希",
                     "type": "string"
                 },
+                "rename": {
+                    "description": "Rename flag // 重命名标记",
+                    "type": "integer"
+                },
                 "size": {
                     "description": "File size // 文件大小",
                     "type": "integer"
@@ -4936,6 +5032,29 @@ const docTemplate = `{
                 "updatedAt": {
                     "description": "Updated at time // 更新时间",
                     "type": "string"
+                }
+            }
+        },
+        "dto.FileRecycleClearRequest": {
+            "type": "object",
+            "required": [
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "description": "File path, empty for all // 文件路径，为空则清理全部",
+                    "type": "string",
+                    "example": "path/to/file.png"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "fhash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
                 }
             }
         },
@@ -5613,6 +5732,29 @@ const docTemplate = `{
                     "description": "Note path // 笔记路径",
                     "type": "string",
                     "example": "ReadMe.md"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "hash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
+        },
+        "dto.NoteRecycleClearRequest": {
+            "type": "object",
+            "required": [
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "description": "Note path, empty for all // 笔记路径，为空则清理全部",
+                    "type": "string",
+                    "example": "path/to/note.md"
                 },
                 "pathHash": {
                     "description": "Path hash // 路径哈希",

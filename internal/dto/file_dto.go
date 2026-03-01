@@ -45,6 +45,13 @@ type FileRestoreRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash" example:"fhash123"`             // Path hash // 路径哈希
 }
 
+// FileRecycleClearRequest clean recycle bin request
+type FileRecycleClearRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
+	Path     string `json:"path" form:"path" example:"path/to/file.png"`             // File path, empty for all // 文件路径，为空则清理全部
+	PathHash string `json:"pathHash" form:"pathHash" example:"fhash123"`             // Path hash // 路径哈希
+}
+
 // FileSyncCheckRequest/ Parameters for checking synchronization of a single record
 // 同步检查单条记录的参数
 type FileSyncCheckRequest struct {

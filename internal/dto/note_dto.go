@@ -65,6 +65,13 @@ type NoteRestoreRequest struct {
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
 }
 
+// NoteRecycleClearRequest clean recycle bin request
+type NoteRecycleClearRequest struct {
+	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
+	Path     string `json:"path" form:"path" example:"path/to/note.md"`              // Note path, empty for all // 笔记路径，为空则清理全部
+	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
+}
+
 // NotePatchFrontmatterRequest parameters for patching note frontmatter
 // NotePatchFrontmatterRequest 修改笔记 Frontmatter 请求参数
 type NotePatchFrontmatterRequest struct {
