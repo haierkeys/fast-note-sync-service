@@ -132,7 +132,7 @@ docker pull haierkeys/fast-note-sync-service:latest
 
 # 2. 启动容器
 docker run -tid --name fast-note-sync-service \
-    -p 9000:9000 -p 9001:9001 \
+    -p 9000:9000 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
     -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
     haierkeys/fast-note-sync-service:latest
@@ -150,8 +150,7 @@ services:
     container_name: fast-note-sync-service
     restart: always
     ports:
-      - "9000:9000"  # API 端口
-      - "9001:9001"  # WebSocket 端口
+      - "9000:9000"  # RESTful API & WebSocket 端口 其中 /api/user/sync 为 WebSocket 接口地址
     volumes:
       - ./storage:/fast-note-sync/storage  # 数据存储
       - ./config:/fast-note-sync/config    # 配置文件
