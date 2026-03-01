@@ -372,6 +372,7 @@ func (s *noteHistoryService) RestoreFromHistory(ctx context.Context, uid int64, 
 	note.ContentHash = restoredContentHash
 	note.Mtime = timex.Now().UnixMilli()
 	note.Action = domain.NoteActionModify
+	note.Rename = 0
 
 	// 6. Update note
 	// 6. 更新笔记
