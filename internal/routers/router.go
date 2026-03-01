@@ -123,8 +123,8 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		c.Next()
 	}
 
-	r.Group("/assets", cacheMiddleware).StaticFS("/", http.FS(frontendAssets))
-	r.Group("/static", cacheMiddleware).StaticFS("/", http.FS(frontendStatic))
+	r.Group("/assets", cacheMiddleware, middleware.StaticCompressMiddleware(frontendFiles)).StaticFS("/", http.FS(frontendAssets))
+	r.Group("/static", cacheMiddleware, middleware.StaticCompressMiddleware(frontendFiles)).StaticFS("/", http.FS(frontendStatic))
 	r.Group("/user_static", cacheMiddleware).Static("/", userStaticPath)
 
 	api := r.Group("/api")
