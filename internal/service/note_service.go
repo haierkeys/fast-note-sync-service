@@ -112,6 +112,9 @@ type NoteService interface {
 	// UpdateNoteLinks extracts wiki links from content and updates the link index
 	// UpdateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
 	UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64)
+
+	// RecycleClear 清理回收站
+	RecycleClear(ctx context.Context, uid int64, params *dto.NoteRecycleClearRequest) error
 }
 
 // noteService implementation of NoteService interface
@@ -1113,6 +1116,26 @@ func (s *noteService) UpdateNoteLinks(ctx context.Context, noteID int64, content
 	}
 
 	_ = s.noteLinkRepo.CreateBatch(ctx, noteLinks, uid)
+}
+
+// RecycleClear 清理回收站
+func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.NoteRecycleClearRequest) error {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return err
+	}
+
+	if params.Path != "" && params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	err = s.noteRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	go s.CountSizeSum(context.Background(), vaultID, uid)
+	return nil
 }
 
 // Verify noteService implements NoteService interface

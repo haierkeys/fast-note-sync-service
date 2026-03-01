@@ -345,3 +345,42 @@ func (h *FileHandler) logError(ctx context.Context, method string, err error) {
 		zap.String("traceId", traceID),
 	)
 }
+
+// RecycleClear clears files from recycle bin
+// @Summary Clear recycle bin
+// @Description Permanently clear selected files from recycle bin
+// @Tags File
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.FileRecycleClearRequest true "Clear Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/file/recycle-clear [delete]
+func (h *FileHandler) RecycleClear(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FileRecycleClearRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		h.App.Logger().Error("FileHandler.RecycleClear.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("FileHandler.RecycleClear err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	ctx := c.Request.Context()
+	fileSvc := h.App.GetFileService(app.WebClientName, "")
+	if err := fileSvc.RecycleClear(ctx, uid, params); err != nil {
+		h.logError(ctx, "FileHandler.RecycleClear", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success)
+}

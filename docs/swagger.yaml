@@ -516,12 +516,32 @@ definitions:
       pathHash:
         description: Path hash // 路径哈希
         type: string
+      rename:
+        description: Rename flag // 重命名标记
+        type: integer
       size:
         description: File size // 文件大小
         type: integer
       updatedAt:
         description: Updated at time // 更新时间
         type: string
+    type: object
+  dto.FileRecycleClearRequest:
+    properties:
+      path:
+        description: File path, empty for all // 文件路径，为空则清理全部
+        example: path/to/file.png
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: fhash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - vault
     type: object
   dto.FileRestoreRequest:
     properties:
@@ -1024,6 +1044,23 @@ definitions:
     required:
     - content
     - path
+    - vault
+    type: object
+  dto.NoteRecycleClearRequest:
+    properties:
+      path:
+        description: Note path, empty for all // 笔记路径，为空则清理全部
+        example: path/to/note.md
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: hash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
     - vault
     type: object
   dto.NoteReplaceRequest:
@@ -2080,6 +2117,35 @@ paths:
       security:
       - UserAuthToken: []
       summary: Get attachment info
+      tags:
+      - File
+  /api/file/recycle-clear:
+    delete:
+      consumes:
+      - application/json
+      description: Permanently clear selected files from recycle bin
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Clear Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.FileRecycleClearRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Clear recycle bin
       tags:
       - File
   /api/file/restore:
@@ -3278,6 +3344,35 @@ paths:
       security:
       - UserAuthToken: []
       summary: Prepend content to note
+      tags:
+      - Note
+  /api/note/recycle-clear:
+    delete:
+      consumes:
+      - application/json
+      description: Permanently clear selected notes from recycle bin
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Clear Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteRecycleClearRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Clear recycle bin
       tags:
       - Note
   /api/note/replace:
