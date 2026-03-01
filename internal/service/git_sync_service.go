@@ -722,6 +722,16 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 
 		_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
 
+		// 增加物理文件存在性检查，防止 src 不存在导致 copyFileIfDifferent 报错中断
+		if _, err := os.Stat(f.SavePath); os.IsNotExist(err) {
+			s.logger.Warn("Attachment file not found in storage, skipping mirror for this file",
+				zap.Int64("uid", conf.UID),
+				zap.Int64("vaultId", conf.VaultID),
+				zap.String("path", f.Path),
+				zap.String("savePath", f.SavePath))
+			continue
+		}
+
 		copyChanged, err := s.copyFileIfDifferent(f.SavePath, fullPath)
 		if err != nil {
 			return false, fmt.Errorf("failed to copy attachment to workspace: %w", err)

@@ -788,6 +788,7 @@ func (r *noteRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 	err := u.WithContext(ctx).Select(u.Size.Sum().As("size"), u.Size.Count().As("count")).Where(
 		u.VaultID.Eq(vaultID),
 		u.Action.Neq("delete"),
+		u.Rename.Eq(0),
 	).Scan(result)
 
 	if err != nil {

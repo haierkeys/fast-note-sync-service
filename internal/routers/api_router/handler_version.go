@@ -53,13 +53,18 @@ func (h *VersionHandler) ServerVersion(c *gin.Context) {
 	}))
 }
 
-// Support retrieves support records by language
+// Support retrieves support records by language with pagination and sorting
+// Support 分页并排序获取指定语言的打赏记录
 // @Summary Get support records
-// @Description Get support records for the specified language
+// @Description Get support records for the specified language with pagination and sorting
 // @Tags System
 // @Produce json
 // @Param lang query string false "Language code (default: en)"
-// @Success 200 {object} pkgapp.Res{data=[]pkgapp.SupportRecord} "Success"
+// @Param sortBy query string false "Sort by field (amount, time, name, item)"
+// @Param sortOrder query string false "Sort order (asc, desc)"
+// @Param page query int false "Page number"
+// @Param pageSize query int false "Page size"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes} "Success"
 // @Router /api/support [get]
 func (h *VersionHandler) Support(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
@@ -68,17 +73,14 @@ func (h *VersionHandler) Support(c *gin.Context) {
 		lang = "en"
 	}
 
-	records := h.App.GetSupportRecords()
-	data, ok := records[lang]
-	if !ok {
-		// Fallback to en if requested language is not found
-		// 如果找不到请求的语言，回退到 en
-		data = records["en"]
+	sortBy := c.Query("sortBy")
+	sortOrder := c.Query("sortOrder")
+	if sortOrder == "" {
+		sortOrder = "desc"
 	}
 
-	if data == nil {
-		data = []pkgapp.SupportRecord{}
-	}
+	pager := pkgapp.NewPager(c)
+	data, total := h.App.GetSupportRecordsPage(lang, sortBy, sortOrder, pager.Page, pager.PageSize)
 
-	response.ToResponse(code.Success.WithData(data))
+	response.ToResponseList(code.Success, data, total)
 }
