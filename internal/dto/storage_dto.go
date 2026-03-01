@@ -31,8 +31,8 @@ type StoragePostRequest struct {
 	Region          string `form:"region" example:"us-east-1"`                                                  // 区域 s3
 	AccountID       string `form:"accountId" example:"123456789"`                                               // 账户ID r2
 	BucketName      string `form:"bucketName" example:"my-bucket"`                                              // 存储桶名称
-	AccessKeyID     string `form:"accessKeyId" example:"AKIAIOSFODNN7EXAMPLE"`                                  // 访问密钥ID
-	AccessKeySecret string `form:"accessKeySecret" example:"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"`          // 访问密钥秘密
+	AccessKeyID     string `form:"accessKeyId" example:""`                                                      // 访问密钥ID
+	AccessKeySecret string `form:"accessKeySecret" example:""`                                                  // 访问密钥秘密
 	CustomPath      string `form:"customPath" example:"/backups"`                                               // 自定义路径
 	AccessURLPrefix string `form:"accessUrlPrefix"  binding:"required,min=2,max=100" example:"https://cdn.com"` // 访问地址前缀
 	User            string `form:"user" example:"admin"`                                                        // 访问用户名
