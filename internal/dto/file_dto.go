@@ -120,6 +120,7 @@ type FileDTO struct {
 	PathHash         string     `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希
 	ContentHash      string     `json:"contentHash" form:"contentHash"`   // Content hash // 内容哈希
 	SavePath         string     `json:"-"`                                // Internal save path // 内部保存路径
+	Rename           int64      `json:"rename"`                           // Rename flag // 重命名标记
 	Size             int64      `json:"size" form:"size"`                 // File size // 文件大小
 	Ctime            int64      `json:"ctime" form:"ctime"`               // Creation timestamp // 创建时间戳
 	Mtime            int64      `json:"mtime" form:"mtime"`               // Modification timestamp // 修改时间戳

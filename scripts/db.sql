@@ -109,6 +109,7 @@ CREATE TABLE "file" (
     "path_hash" text DEFAULT '',
     "content_hash" text DEFAULT '',
     "save_path" text DEFAULT '',
+    "rename" integer DEFAULT 0,
     "size" integer NOT NULL DEFAULT 0,
     "ctime" integer NOT NULL DEFAULT 0,
     "mtime" integer NOT NULL DEFAULT 0,
@@ -120,6 +121,10 @@ CREATE TABLE "file" (
 CREATE INDEX "idx_file_vault_id_action_fid" ON "file" ("vault_id", "action", "fid" DESC);
 
 CREATE INDEX "idx_file_vault_id_path_hash" ON "file" ("vault_id", "path_hash" DESC);
+
+CREATE INDEX "idx_file_vault_id_action_rename" ON "file" ("vault_id", "action", "rename" DESC);
+
+CREATE INDEX "idx_file_vault_id_rename" ON "file" ("vault_id", "rename" DESC);
 
 CREATE INDEX "idx_file_vault_id_updated_at" ON "file" ("vault_id", "updated_at" DESC);
 
