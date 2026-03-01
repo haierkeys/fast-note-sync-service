@@ -61,7 +61,7 @@ app:
   worker-pool-queue-size: 1000
   # 每用户写队列容量，默认 100
   # Per-user write queue capacity, default 100
-  write-queue-capacity: 100
+  write-queue-capacity: 1000
   # 写操作超时时间，默认 30s
   # Write operation timeout, default 30s
   write-queue-timeout: "30s"
