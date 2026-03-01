@@ -222,7 +222,7 @@ type AppSettings struct {
 
 	// Write Queue configurations
 	// Write Queue 配置
-	WriteQueueCapacity int    `yaml:"write-queue-capacity" default:"100"`
+	WriteQueueCapacity int    `yaml:"write-queue-capacity" default:"1000"`
 	WriteQueueTimeout  string `yaml:"write-queue-timeout" default:"30s"`
 	WriteQueueIdleTime string `yaml:"write-queue-idle-time" default:"10m"`
 
