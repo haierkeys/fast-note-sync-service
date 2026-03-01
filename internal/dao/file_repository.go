@@ -54,6 +54,7 @@ func (r *fileRepository) toDomain(m *model.File, uid int64) *domain.File {
 		PathHash:         m.PathHash,
 		ContentHash:      m.ContentHash,
 		SavePath:         m.SavePath,
+		Rename:           m.Rename,
 		Size:             m.Size,
 		Ctime:            m.Ctime,
 		Mtime:            m.Mtime,
@@ -79,6 +80,7 @@ func (r *fileRepository) toModel(file *domain.File) *model.File {
 		PathHash:         file.PathHash,
 		ContentHash:      file.ContentHash,
 		SavePath:         file.SavePath,
+		Rename:           file.Rename,
 		Size:             file.Size,
 		Ctime:            file.Ctime,
 		Mtime:            file.Mtime,
@@ -348,7 +350,7 @@ func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	)
 
 	if isRecycle {
-		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)))
+		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)), u.Rename.Eq(0))
 	} else {
 		q = q.Where(u.Action.Neq(string(domain.FileActionDelete)))
 	}
@@ -406,7 +408,7 @@ func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 	)
 
 	if isRecycle {
-		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)))
+		q = q.Where(u.Action.Eq(string(domain.FileActionDelete)), u.Rename.Eq(0))
 	} else {
 		q = q.Where(u.Action.Neq(string(domain.FileActionDelete)))
 	}
