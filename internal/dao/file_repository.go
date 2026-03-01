@@ -587,6 +587,23 @@ func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) 
 	return res, nil
 }
 
+// RecycleClear 清理回收站
+func (r *fileRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
+		q := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID), u.Action.Eq(string(domain.FileActionDelete)), u.Rename.Eq(0))
+		if pathHash != "" {
+			q = q.Where(u.PathHash.Eq(pathHash))
+		}
+		_, err := q.UpdateSimple(
+			u.Rename.Value(2),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
+}
+
 // 确保 fileRepository 实现了 domain.FileRepository 接口
 var _ domain.FileRepository = (*fileRepository)(nil)
 

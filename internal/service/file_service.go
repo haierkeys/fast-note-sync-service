@@ -93,6 +93,9 @@ type FileService interface {
 	// WithClient sets client info
 	// WithClient 设置客户端信息
 	WithClient(name, version string) FileService
+
+	// RecycleClear 清理回收站
+	RecycleClear(ctx context.Context, uid int64, params *dto.FileRecycleClearRequest) error
 }
 
 // fileService implementation of FileService interface
@@ -798,6 +801,26 @@ func (s *fileService) WithClient(name, version string) FileService {
 		backupService:  s.backupService,
 		gitSyncService: s.gitSyncService,
 	}
+}
+
+// RecycleClear 清理回收站
+func (s *fileService) RecycleClear(ctx context.Context, uid int64, params *dto.FileRecycleClearRequest) error {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return err
+	}
+
+	if params.Path != "" && params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	err = s.fileRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	go s.CountSizeSum(context.Background(), vaultID, uid)
+	return nil
 }
 
 // Verify fileService implements FileService interface

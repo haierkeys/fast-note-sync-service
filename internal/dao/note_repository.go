@@ -891,6 +891,23 @@ func (r *noteRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaul
 	return q.Count()
 }
 
+// RecycleClear 清理回收站
+func (r *noteRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
+		q := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID), u.Action.Eq(string(domain.NoteActionDelete)), u.Rename.Eq(0))
+		if pathHash != "" {
+			q = q.Where(u.PathHash.Eq(pathHash))
+		}
+		_, err := q.UpdateSimple(
+			u.Rename.Value(2),
+			u.UpdatedTimestamp.Value(timex.Now().UnixMilli()),
+			u.UpdatedAt.Value(timex.Now()),
+		)
+		return err
+	})
+}
+
 // 确保 noteRepository 实现了 domain.NoteRepository 接口
 var _ domain.NoteRepository = (*noteRepository)(nil)
 
