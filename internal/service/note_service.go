@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -131,6 +132,7 @@ type noteService struct {
 	config         *ServiceConfig            // Service configuration // 服务配置
 	backupService  BackupService             // Backup service // 备份服务
 	gitSyncService GitSyncService            // Git sync service // Git 同步服务
+	countTimers    sync.Map                  // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewNoteService creates NoteService instance
@@ -146,6 +148,7 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 		gitSyncService: gitSyncSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
+		countTimers:    sync.Map{},
 	}
 }
 
@@ -164,6 +167,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		config:         s.config,
 		backupService:  s.backupService,
 		gitSyncService: s.gitSyncService,
+		countTimers:    s.countTimers, // Share the same timer map // 共享同一个计时器 map
 	}
 }
 
@@ -657,15 +661,32 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 // CountSizeSum counts total number and total size of notes in a vault
 // CountSizeSum 统计 vault 中笔记总数与总大小
 func (s *noteService) CountSizeSum(ctx context.Context, vaultID int64, uid int64) error {
-	key := fmt.Sprintf("note_count_size_sum_%d_%d", uid, vaultID)
-	_, err, _ := s.sf.Do(key, func() (any, error) {
-		result, err := s.noteRepo.CountSizeSum(ctx, vaultID, uid)
-		if err != nil {
-			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	key := fmt.Sprintf("%d_%d", uid, vaultID)
+
+	// Debounce: 10 seconds delay. If a new request comes within 10s, reset the timer.
+	// 防抖：10秒延迟。如果10秒内有新请求，重置计时器。
+	if timerOld, ok := s.countTimers.Load(key); ok {
+		if t, ok := timerOld.(*time.Timer); ok {
+			t.Stop()
 		}
-		return nil, s.vaultService.UpdateNoteStats(ctx, result.Size, result.Count, vaultID, uid)
+	}
+
+	timer := time.AfterFunc(10*time.Second, func() {
+		defer s.countTimers.Delete(key)
+
+		// Use singleflight to ensure only one actual DB query runs for same key even if debounce period ends simultaneously
+		// 使用 singleflight 确保即使防抖期同时结束，同一 key 也只有一个真实的 DB 查询
+		s.sf.Do(key, func() (any, error) {
+			result, err := s.noteRepo.CountSizeSum(context.Background(), vaultID, uid)
+			if err != nil {
+				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+			return nil, s.vaultService.UpdateNoteStats(context.Background(), result.Size, result.Count, vaultID, uid)
+		})
 	})
-	return err
+
+	s.countTimers.Store(key, timer)
+	return nil
 }
 
 // Cleanup cleans up expired soft-deleted notes
