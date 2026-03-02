@@ -18,6 +18,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
 	"golang.org/x/mod/semver"
@@ -109,6 +110,10 @@ type App struct {
 	// Upgrade control
 	// 升级控制
 	UpgradeSignal chan string
+
+	// Source selector
+	// 源选择器
+	sourceSelector *fileurl.SourceSelector
 }
 
 // NewApp creates application container instance
@@ -135,12 +140,13 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 	}
 
 	a := &App{
-		config:        cfg,
-		logger:        logger,
-		DB:            db,
-		shutdownCh:    make(chan struct{}),
-		UpgradeSignal: make(chan string, 1),
-		StartTime:     time.Now(),
+		config:         cfg,
+		logger:         logger,
+		DB:             db,
+		shutdownCh:     make(chan struct{}),
+		UpgradeSignal:  make(chan string, 1),
+		StartTime:      time.Now(),
+		sourceSelector: fileurl.NewSourceSelector(cfg.App.PullSource),
 	}
 
 	// Load support records
@@ -373,6 +379,12 @@ func (a *App) GetAuthTokenKey() string {
 // 根据日志配置中的 Production 字段判断
 func (a *App) IsProductionMode() bool {
 	return a.config.Log.Production
+}
+
+// IsPullFromGitHub returns whether current source is GitHub
+// IsPullFromGitHub 返回当前拉取源是否为 GitHub
+func (a *App) IsPullFromGitHub() bool {
+	return a.sourceSelector.IsGitHub()
 }
 
 // ExecuteWrite executes write operation (serialized through Write Queue)

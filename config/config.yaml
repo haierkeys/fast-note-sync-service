@@ -92,6 +92,9 @@ app:
   # WebSocket 开启压缩的阈值 (字节, 默认 512)
   # WebSocket compression threshold (bytes, default 512)
   ws-compression-threshold: 512
+  # 数据拉取源：auto(自动检测) | github(强制GitHub) | cnb(强制CNB)
+  # Data pull source: auto(auto detect) | github(force GitHub) | cnb(force CNB)
+  pull-source: auto
 
 # webgui
 # WebGUI 设置
