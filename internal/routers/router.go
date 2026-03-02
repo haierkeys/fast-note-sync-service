@@ -41,14 +41,20 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	var wss = pkgapp.NewWebsocketServer(pkgapp.WSConfig{
 		GWSOption: gws.ServerOption{
-			CheckUtf8Enabled: true,
-			ParallelEnabled:  true, // Enable parallel message processing
-			// 开启并行消息处理
+			CheckUtf8Enabled: cfg.App.WebSocketCheckUtf8Enabled,
+			ParallelEnabled:  cfg.App.WebSocketParallelEnabled, // Enable parallel message processing from config
+			// 从配置开启并行消息处理
 			Recovery: gws.Recovery, // Enable exception recovery
 			// 开启异常恢复
-			PermessageDeflate: gws.PermessageDeflate{Enabled: true}, // Enable compression
-			// 开启压缩
-			ParallelGolimit:    8,
+			PermessageDeflate: gws.PermessageDeflate{
+				Enabled:               cfg.App.WebSocketCompressionEnabled,
+				Level:                 cfg.App.WebSocketCompressionLevel,
+				Threshold:             cfg.App.WebSocketCompressionThreshold,
+				ServerContextTakeover: true,
+				ClientContextTakeover: true,
+			}, // Enable compression from config
+			// 从配置开启压缩
+			ParallelGolimit:    cfg.App.WebSocketParallelGolimit,
 			ReadMaxPayloadSize: int(util.ParseSize(cfg.App.WebSocketReadMaxPayloadSize, 1024*1024*64)), // Load from config, default 64MB
 			// 从配置读取，默认 64MB
 			WriteMaxPayloadSize: int(util.ParseSize(cfg.App.WebSocketWriteMaxPayloadSize, 1024*1024*64)), // Load from config, default 64MB

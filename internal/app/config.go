@@ -228,8 +228,14 @@ type AppSettings struct {
 
 	// WebSocket configurations
 	// WebSocket 配置
-	WebSocketReadMaxPayloadSize  string `yaml:"ws-read-max-payload-size" default:"128MB"`
-	WebSocketWriteMaxPayloadSize string `yaml:"ws-write-max-payload-size" default:"128MB"`
+	WebSocketReadMaxPayloadSize   string `yaml:"ws-read-max-payload-size" default:"128MB"`
+	WebSocketWriteMaxPayloadSize  string `yaml:"ws-write-max-payload-size" default:"128MB"`
+	WebSocketParallelEnabled      bool   `yaml:"ws-parallel-enabled" default:"true"`
+	WebSocketParallelGolimit      int    `yaml:"ws-parallel-golimit" default:"8"`
+	WebSocketCheckUtf8Enabled     bool   `yaml:"ws-check-utf8-enabled" default:"true"`
+	WebSocketCompressionEnabled   bool   `yaml:"ws-compression-enabled" default:"true"`
+	WebSocketCompressionLevel     int    `yaml:"ws-compression-level" default:"1"`
+	WebSocketCompressionThreshold int    `yaml:"ws-compression-threshold" default:"512"`
 }
 
 // WebGUIConfig Web GUI configuration
