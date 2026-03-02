@@ -38,23 +38,25 @@ func NewFileWSHandler(a *app.App) *FileWSHandler {
 }
 
 type FileUploadBinaryChunkSession struct {
-	ID             string             // Session ID // 会话 ID
-	Vault          string             // Vault Name // 仓库名称
-	Path           string             // File Path // 文件路径
-	PathHash       string             // File Path Hash // 文件路径哈希值
-	ContentHash    string             // File Content Hash // 文件内容哈希值
-	Ctime          int64              // Creation time // 创建时间
-	Mtime          int64              // Modification time // 修改时间
-	Size           int64              // File size // 文件大小
-	TotalChunks    int64              // Total chunks // 总分块数
-	UploadedChunks int64              // Uploaded chunks // 已上传分块数
-	UploadedBytes  int64              // Uploaded bytes // 已上传字节数
-	ChunkSize      int64              // Chunk size // 分块大小
-	SavePath       string             // Temp save path // 临时保存路径
-	FileHandle     *os.File           // File handle // 文件句柄
-	mu             sync.Mutex         // Mutex to protect concurrent operations // 互斥锁，保护并发操作
-	CreatedAt      time.Time          // Created time // 创建时间
-	CancelFunc     context.CancelFunc // Cancel function for timeout control // 取消函数，用于超时控制
+	ID             string              // Session ID // 会话 ID
+	Vault          string              // Vault Name // 仓库名称
+	Path           string              // File Path // 文件路径
+	PathHash       string              // File Path Hash // 文件路径哈希值
+	ContentHash    string              // File Content Hash // 文件内容哈希值
+	Ctime          int64               // Creation time // 创建时间
+	Mtime          int64               // Modification time // 修改时间
+	Size           int64               // File size // 文件大小
+	TotalChunks    int64               // Total chunks // 总分块数
+	UploadedChunks int64               // Uploaded chunks // 已上传分块数
+	UploadedBytes  int64               // Uploaded bytes // 已上传字节数
+	ChunkSize      int64               // Chunk size // 分块大小
+	SavePath       string              // Temp save path // 临时保存路径
+	FileHandle     *os.File            // File handle // 文件句柄
+	mu             sync.Mutex          // Mutex to protect concurrent operations // 互斥锁，保护并发操作
+	CreatedAt      time.Time           // Created time // 创建时间
+	CancelFunc     context.CancelFunc  // Cancel function for timeout control // 取消函数，用于超时控制
+	uploadedChunks map[uint32]struct{} // Record of uploaded chunk indices for idempotency // 已上传分块索引记录，用于幂等
+	isCompleted    bool                // Whether upload is completely finished // 上传是否已彻底完成
 }
 
 func (s *FileUploadBinaryChunkSession) Cleanup() {
@@ -235,11 +237,27 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		return
 	}
 
+	session.mu.Lock()
+	// 1. Check if completely finished (Idempotency for late chunks)
+	// 1. 检查是否已彻底完成 (针对延迟到达分片的幂等性)
+	if session.isCompleted {
+		session.mu.Unlock()
+		c.ToResponse(code.Success)
+		return
+	}
+
+	// 2. Check if chunk index has been uploaded (Idempotency for duplicate chunks)
+	// 2. 检查分块索引是否已上传 (针对重复分片的幂等性)
+	if _, ok := session.uploadedChunks[chunkIndex]; ok {
+		session.mu.Unlock()
+		c.ToResponse(code.Success)
+		return
+	}
+
 	// Calculate write offset and write data
 	// 计算写入偏移量并写入数据
 	offset := int64(chunkIndex) * int64(session.ChunkSize)
 
-	session.mu.Lock()
 	if session.FileHandle == nil {
 		// Lazy initialize file handle on first chunk
 		// 在收到第一个分片时延迟初始化文件句柄
@@ -266,6 +284,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	// Update uploaded count and bytes
 	// 更新已上传计数和字节数
 	session.mu.Lock()
+	session.uploadedChunks[chunkIndex] = struct{}{} // 记录已上传的分块索引
 	session.UploadedChunks++
 	session.UploadedBytes += int64(len(chunkData))
 	uploadedBytes := session.UploadedBytes
@@ -283,9 +302,8 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			zap.Int64("uploadedChunks", session.UploadedChunks),
 			zap.Int64("totalChunks", session.TotalChunks))
 
-		// Get and remove session from global server
-		// 获取并从全局服务器移除会话
-		c.Server.RemoveSession(c.User.ID, session.ID)
+		// NOTE: Session removal is delayed until UploadComplete is successful
+		// 注意：Session 的移除延迟到 UploadComplete 成功之后
 
 		// Cancel timeout timer
 		// 取消超时定时器
@@ -334,6 +352,14 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		}
 
 		c.ToResponse(code.Success)
+
+		// Mark as completed and remove from global server
+		// 标记为已完成并从全局服务器移除
+		session.mu.Lock()
+		session.isCompleted = true
+		session.mu.Unlock()
+		c.Server.RemoveSession(c.User.ID, session.ID)
+
 		// Broadcast file update message
 		// 广播文件更新消息
 		c.BroadcastResponse(code.Success.WithData(
@@ -921,18 +947,19 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 	// Initialize chunk upload session
 	// 初始化分块上传会话
 	session := &FileUploadBinaryChunkSession{
-		ID:          sessionID,
-		Vault:       vault,
-		Path:        path,
-		PathHash:    pathHash,
-		ContentHash: contentHash,
-		Size:        size,
-		Ctime:       ctime,
-		Mtime:       mtime,
-		ChunkSize:   getChunkSizeFromConfig(cfg), // 从注入的配置获取
-		SavePath:    tempPath,
-		FileHandle:  nil, // Lazy creation in FileUploadChunkBinary // 在 FileUploadChunkBinary 中延迟创建
-		CreatedAt:   time.Now(),
+		ID:             sessionID,
+		Vault:          vault,
+		Path:           path,
+		PathHash:       pathHash,
+		ContentHash:    contentHash,
+		Size:           size,
+		Ctime:          ctime,
+		Mtime:          mtime,
+		ChunkSize:      getChunkSizeFromConfig(cfg), // 从注入的配置获取
+		SavePath:       tempPath,
+		FileHandle:     nil, // Lazy creation in FileUploadChunkBinary // 在 FileUploadChunkBinary 中延迟创建
+		CreatedAt:      time.Now(),
+		uploadedChunks: make(map[uint32]struct{}),
 	}
 	// Adjust chunk size based on file size
 	// 根据文件大小调整分块大小
