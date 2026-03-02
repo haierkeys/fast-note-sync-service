@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	GitHubCheckURL          = "https://api.github.com"
 	GitHubServiceReleaseURL = "https://api.github.com/repos/haierkeys/fast-note-sync-service/releases"
 	GitHubPluginReleaseURL  = "https://api.github.com/repos/haierkeys/obsidian-fast-note-sync/releases"
 	ServiceRepoPath         = "haierkeys/fast-note-sync-service"
@@ -44,8 +43,7 @@ type GitHubTag struct {
 }
 
 type CheckVersionTask struct {
-	app      *app.App
-	isGitHub bool
+	app *app.App
 }
 
 func init() {
@@ -61,14 +59,14 @@ func (t *CheckVersionTask) Name() string {
 }
 
 func (t *CheckVersionTask) Run(ctx context.Context) error {
-	t.isGitHub = t.checkGitHub()
+	isGitHub := t.app.IsPullFromGitHub()
 
 	var serviceLatest, pluginLatest string
 	var serviceLink, pluginLink string
 	var serviceChangelog, pluginChangelog string
 	var err error
 
-	if t.isGitHub {
+	if isGitHub {
 		serviceLatest, err = t.fetchGitHubReleases(GitHubServiceReleaseURL)
 		if err != nil {
 			return err
@@ -112,7 +110,7 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	}
 
 	info := pkgapp.CheckVersionInfo{
-		GithubAvailable:                  t.isGitHub,
+		GithubAvailable:                  isGitHub,
 		VersionNewName:                   serviceLatest,
 		VersionIsNew:                     semver.Compare(serviceLatest, currentServiceVersion) > 0,
 		VersionNewLink:                   serviceLink,
@@ -216,20 +214,8 @@ func (t *CheckVersionTask) fetchTextContent(url string) string {
 	return string(body)
 }
 
-func (t *CheckVersionTask) checkGitHub() bool {
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
-	resp, err := client.Head(GitHubCheckURL)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
-}
-
 func (t *CheckVersionTask) LoopInterval() time.Duration {
-	return 30 * time.Minute
+	return 10 * time.Minute
 }
 
 func (t *CheckVersionTask) IsStartupRun() bool {

@@ -67,6 +67,7 @@ type adminConfig struct {
 	TokenExpiry             string `json:"tokenExpiry" form:"tokenExpiry"`                                   // Token expiry // Token 有效期
 	ShareTokenKey           string `json:"shareTokenKey" form:"shareTokenKey"`                               // Share token key // 分享 Token 密钥
 	ShareTokenExpiry        string `json:"shareTokenExpiry" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
+	PullSource              string `json:"pullSource" form:"pullSource"`                                     // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
 }
 
 // ngrokConfig Ngrok tunnel configuration
@@ -230,6 +231,7 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		TokenExpiry:      cfg.Security.TokenExpiry,
 		ShareTokenKey:    cfg.Security.ShareTokenKey,
 		ShareTokenExpiry: cfg.Security.ShareTokenExpiry,
+		PullSource:       cfg.App.PullSource,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -316,6 +318,7 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	cfg.Security.TokenExpiry = params.TokenExpiry
 	cfg.Security.ShareTokenKey = params.ShareTokenKey
 	cfg.Security.ShareTokenExpiry = params.ShareTokenExpiry
+	cfg.App.PullSource = params.PullSource
 
 	// Save configuration to file
 	// 保存配置到文件
