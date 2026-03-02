@@ -19,8 +19,7 @@ const (
 )
 
 type UpdateSupportTask struct {
-	app      *app.App
-	isGitHub bool
+	app *app.App
 }
 
 func init() {
@@ -36,7 +35,6 @@ func (t *UpdateSupportTask) Name() string {
 }
 
 func (t *UpdateSupportTask) Run(ctx context.Context) error {
-	t.isGitHub = t.checkGitHub()
 
 	recordsMap := t.app.GetSupportRecords()
 	for lang := range recordsMap {
@@ -52,7 +50,7 @@ func (t *UpdateSupportTask) Run(ctx context.Context) error {
 			remoteLang = "zh-TW"
 		}
 
-		if t.isGitHub {
+		if t.app.IsPullFromGitHub() {
 			url = fmt.Sprintf(SupportGitHubRawURL, remoteLang)
 		} else {
 			url = fmt.Sprintf(SupportCNBRawURL, remoteLang)
@@ -97,18 +95,6 @@ func (t *UpdateSupportTask) fetchSupportRecords(url string) ([]pkgapp.SupportRec
 	}
 
 	return records, nil
-}
-
-func (t *UpdateSupportTask) checkGitHub() bool {
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
-	resp, err := client.Head(GitHubCheckURL)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
 }
 
 func (t *UpdateSupportTask) LoopInterval() time.Duration {

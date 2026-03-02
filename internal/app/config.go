@@ -236,6 +236,9 @@ type AppSettings struct {
 	WebSocketCompressionEnabled   bool   `yaml:"ws-compression-enabled" default:"true"`
 	WebSocketCompressionLevel     int    `yaml:"ws-compression-level" default:"1"`
 	WebSocketCompressionThreshold int    `yaml:"ws-compression-threshold" default:"512"`
+	// PullSource data pull source: auto | github | cnb
+	// PullSource 数据拉取源：auto | github | cnb
+	PullSource string `yaml:"pull-source" default:"auto"`
 }
 
 // WebGUIConfig Web GUI configuration

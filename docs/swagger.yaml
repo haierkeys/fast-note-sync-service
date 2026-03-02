@@ -225,6 +225,10 @@ definitions:
       historySaveDelay:
         description: History save delay // 历史保存延迟
         type: string
+      pullSource:
+        description: 'Data pull source: auto | github | cnb // 数据拉取源：auto | github
+          | cnb'
+        type: string
       registerIsEnable:
         description: Registration enablement // 是否开启注册
         type: boolean
@@ -1223,11 +1227,11 @@ definitions:
     properties:
       accessKeyId:
         description: 访问密钥ID
-        example: AKIAIOSFODNN7EXAMPLE
+        example: ""
         type: string
       accessKeySecret:
         description: 访问密钥秘密
-        example: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        example: ""
         type: string
       accessUrlPrefix:
         description: 访问地址前缀
