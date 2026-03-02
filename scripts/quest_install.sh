@@ -53,21 +53,33 @@ draw_banner() {
         local clean_v="${INSTALLED_VER#v}"
         ver_display="${_GREEN}$BIN_BASE v${clean_v}${_RESET}"
     fi
-
+    
     local source_display="${_BLUE}GitHub${_RESET}"
     if [ "$USE_CNB" = "true" ]; then
         source_display="${_MAGENTA}CNB.cool${_RESET}"
     fi
-
+    
     local svc_file="N/A"
     local os_type
     os_type=$(detect_os)
     if [ "$os_type" = "linux" ]; then
         svc_file="/etc/systemd/system/fast-note.service"
-    elif [ "$os_type" = "darwin" ]; then
+        elif [ "$os_type" = "darwin" ]; then
         svc_file="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
     fi
-
+    
+    local latest_v
+    latest_v=$(get_latest_tag)
+    local clean_lv="${latest_v#v}"
+    local latest_display="${_GREEN}v${clean_lv}${_RESET}"
+    
+    # Highlight latest version if update available
+    # 如果有更新，高亮显示最新版本
+    if [ -n "$INSTALLED_VER" ] && [ "${INSTALLED_VER#v}" != "$clean_lv" ]; then
+        latest_display="${_YELLOW}v${clean_lv} (Update Available)${_RESET}"
+        [ "$CURRENT_LANG" = "zh" ] && latest_display="${_YELLOW}v${clean_lv} (有新版本)${_RESET}"
+    fi
+    
     cat <<EOF
 ${_CYAN}${_BOLD}
     ______           __     _   __      __          _____
@@ -80,17 +92,18 @@ ${_CYAN}${_BOLD}
        Fast Note Sync Service Manager Script
    ================================================
    $L_CUR_VER: $ver_display
+   $L_LATEST_VER: $latest_display
    $L_SOURCE  : $source_display
    ------------------------------------------------
-   ${_DIM}Path Info:${_RESET}
-   ${_BLUE}Main Dir :${_RESET} ${_BOLD}$INSTALL_DIR${_RESET}
-   ${_BLUE}Data Dir :${_RESET} ${_BOLD}$INSTALL_DIR/storage${_RESET}
-   ${_BLUE}Conf Dir :${_RESET} ${_BOLD}$INSTALL_DIR/config${_RESET}
-   ${_BLUE}Log File :${_RESET} ${_BOLD}$LOG_FILE${_RESET}
-   ${_BLUE}Svc File :${_RESET} ${_BOLD}$svc_file${_RESET}
+   ${_DIM}$L_PATH_INFO:${_RESET}
+   ${_BLUE}$L_MAIN_DIR :${_RESET} ${_BOLD}$INSTALL_DIR${_RESET}
+   ${_BLUE}$L_DATA_DIR :${_RESET} ${_BOLD}$INSTALL_DIR/storage${_RESET}
+   ${_BLUE}$L_CONF_DIR :${_RESET} ${_BOLD}$INSTALL_DIR/config${_RESET}
+   ${_BLUE}$L_LOG_FILE_PATH :${_RESET} ${_BOLD}$LOG_FILE${_RESET}
+   ${_BLUE}$L_SVC_FILE_PATH :${_RESET} ${_BOLD}$svc_file${_RESET}
    ================================================
 EOF
-  echo -e "\n"
+    echo -e "\n"
 }
 
 msg() { echo -e "${_BOLD}$1${_RESET}"; }
@@ -116,7 +129,7 @@ load_lang() {
     if [ "$force_load" = "init" ] && [ -f "$LANG_CONF" ]; then
         CURRENT_LANG=$(cat "$LANG_CONF" 2>/dev/null | tr -d '[:space:]' || echo "en")
     fi
-
+    
     if [ "$CURRENT_LANG" = "zh" ]; then
         L_MENU_1="安装 / 升级服务"
         L_MENU_1_D="下载服务程序并自动安装管理工具至系统"
@@ -145,7 +158,7 @@ load_lang() {
         L_PATH_WARN="警告: 安装目录 %s 不在您的 PATH 环境变量中。"
         L_PATH_FIX="请手动添加以在任何地方使用快捷命令: export PATH=\$PATH:%s"
         L_SOURCE="下载源"
-
+        
         L_ERR_ROOT="需要 root 权限或安装 sudo 后重试"
         L_TRY_DL="尝试下载"
         L_DL_FAIL_API="直接下载失败，尝试通过 API 查找..."
@@ -156,7 +169,7 @@ load_lang() {
         L_ERR_EXTRACT="解压失败"
         L_ERR_NO_EXE="未在压缩包中找到可执行文件"
         L_LINK_CREATED="已创建快捷命令"
-
+        
         L_SVC_RUNNING="服务已经在运行中"
         L_STARTING="正在启动服务..."
         L_START_SUCCESS="服务已成功启动"
@@ -168,28 +181,35 @@ load_lang() {
         L_STATUS_RUN="运行中"
         L_STATUS_STOP="已停止"
         L_LOG_RECENT="最近 20 行日志预览"
-
+        
         L_UN_WARN="准备执行全部卸载！将删除目录、日志及所有配置。"
         L_UN_CONFIRM="确认执行全部卸载吗？"
         L_UN_CANCEL="已取消卸载"
         L_CLEAN_PROC="清理残留进程..."
         L_CLEAN_FILES="移除安装目录与文件..."
         L_UN_DONE="全部卸载完成"
-
+        
         L_DL_SCRIPT="从指定 URL 下载安装脚本..."
         L_ERR_DL_SCRIPT="下载安装脚本失败"
         L_CP_SCRIPT="复制当前脚本到系统目录..."
         L_ST_DL_SCRIPT="脚本通过 stdin 执行，正在尝试自动获取..."
         L_INST_DONE="安装脚本已就绪"
-
+        
         L_PRE_DL="准备下载 fast-note"
         L_INST_ALL_DONE="安装/升级流程已完成"
         L_INST_TIP="提示: 输入 fns 或选择菜单启动服务。"
         L_INVALID="无效选项，请重新选择"
         L_USAGE="用法"
         L_CUR_VER="当前版本"
+        L_LATEST_VER="最新版本"
         L_NOT_INSTALLED="未安装"
-
+        L_PATH_INFO="路径信息"
+        L_MAIN_DIR="程序目录"
+        L_DATA_DIR="数据目录"
+        L_CONF_DIR="配置目录"
+        L_LOG_FILE_PATH="日志文件"
+        L_SVC_FILE_PATH="系统服务"
+        
         L_AUTO_LINUX="正在配置 Systemd 开机自启..."
         L_AUTO_MAC="正在配置 Launchd 开机自启..."
         L_AUTO_WIN="Windows 暂不支持自动配置服务，请手动添加计划任务。"
@@ -223,7 +243,7 @@ load_lang() {
         L_PATH_WARN="WARNING: Install directory %s is not in your PATH."
         L_PATH_FIX="Add it manually to use commands everywhere: export PATH=\$PATH:%s"
         L_SOURCE="Download Source"
-
+        
         L_ERR_ROOT="Root privileges or sudo required"
         L_TRY_DL="Trying to download"
         L_DL_FAIL_API="Direct download failed, trying via API..."
@@ -234,7 +254,7 @@ load_lang() {
         L_ERR_EXTRACT="Extraction failed"
         L_ERR_NO_EXE="Executable not found in package"
         L_LINK_CREATED="Symbolic link created"
-
+        
         L_SVC_RUNNING="Service is already running"
         L_STARTING="Starting service..."
         L_START_SUCCESS="Service started successfully"
@@ -246,28 +266,35 @@ load_lang() {
         L_STATUS_RUN="Running"
         L_STATUS_STOP="Stopped"
         L_LOG_RECENT="Recent 20 lines of log"
-
+        
         L_UN_WARN="Preparing full uninstall! All data will be deleted."
         L_UN_CONFIRM="Confirm full uninstall?"
         L_UN_CANCEL="Uninstall cancelled"
         L_CLEAN_PROC="Cleaning up processes..."
         L_CLEAN_FILES="Removing directories and files..."
         L_UN_DONE="Full uninstall completed"
-
+        
         L_DL_SCRIPT="Downloading script from URL..."
         L_ERR_DL_SCRIPT="Failed to download script"
         L_CP_SCRIPT="Copying current script to system..."
         L_ST_DL_SCRIPT="Running via stdin, trying to fetch automatically..."
         L_INST_DONE="Installer is ready"
-
+        
         L_PRE_DL="Preparing to download fast-note"
         L_INST_ALL_DONE="Install/Update process completed"
         L_INST_TIP="Tip: Type fns or use menu to start service."
         L_INVALID="Invalid option, please try again"
         L_USAGE="Usage"
         L_CUR_VER="Installed Version"
+        L_LATEST_VER="Latest Version"
         L_NOT_INSTALLED="Not installed"
-
+        L_PATH_INFO="Path Info"
+        L_MAIN_DIR="Main Dir"
+        L_DATA_DIR="Data Dir"
+        L_CONF_DIR="Conf Dir"
+        L_LOG_FILE_PATH="Log File"
+        L_SVC_FILE_PATH="Svc File"
+        
         L_AUTO_LINUX="Configuring Systemd auto-start..."
         L_AUTO_MAC="Configuring Launchd auto-start..."
         L_AUTO_WIN="Windows does not support auto-service config yet. Please add manually."
@@ -365,11 +392,13 @@ _arch_map() {
 get_latest_tag() {
     if [ "$USE_CNB" = "true" ]; then
         local latest
+        # CNB releases API returns a list; we only need the first object's tag_name
+        # CNB releases API 返回一个列表；我们只需要第一个对象的 tag_name
         latest=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: Bearer $CNB_TOKEN" "$CNB_API_BASE" | \
-                sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
+        grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n1 | sed -E 's/.*"([^"]+)"$/\1/' || true)
         if [ -n "$latest" ]; then echo "$latest"; return 0; fi
     fi
-
+    
     if command -v curl >/dev/null 2>&1; then
         local latest
         latest="$(curl -fsSL "$GITHUB_API/releases/latest" 2>/dev/null | sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' || true)"
@@ -398,18 +427,20 @@ download_release_asset() {
     local asset_name
     asset_name="$(asset_name_for "$ver" "$os" "$arch")"
     local out="$TMPDIR/$asset_name"
-
+    
     if [ "$USE_CNB" = "true" ]; then
         # Resolve "latest" tag via CNB API if needed
         # 如需要，通过 CNB API 解析 "latest" tag
         local cnb_tag="$ver"
         if [ "$cnb_tag" = "latest" ]; then
             local api_tag
+            # Get the first occurrence of tag_name from the top of the list
+            # 从列表顶部获取第一个 tag_name 的出现
             api_tag=$(curl -fsSL -H "Accept: application/vnd.cnb.api+json" -H "Authorization: Bearer $CNB_TOKEN" "$CNB_API_BASE" | \
-                sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1 || true)
+            grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n1 | sed -E 's/.*"([^"]+)"$/\1/' || true)
             [ -n "$api_tag" ] && cnb_tag="$api_tag"
         fi
-
+        
         # Construct CNB download URL directly: https://cnb.cool/{repo}/-/releases/download/{tag}/{filename}
         # 直接构造 CNB 下载 URL，无需解析 API JSON
         local cnb_url="https://cnb.cool/$REPO/-/releases/download/${cnb_tag}/${asset_name}"
@@ -420,17 +451,17 @@ download_release_asset() {
         fi
         warn "$L_DL_FAIL_API" >&2
     fi
-
+    
     local url="$GITHUB_RAW/${clean_ver}/${asset_name}"
-
+    
     info "$L_TRY_DL: ${_BOLD}$url${_RESET}" >&2
     if curl -fSL -o "$out" "$url"; then
         echo "$out"
         return 0
     fi
-
+    
     warn "$L_DL_FAIL_API" >&2
-
+    
     # try API: find release by tag or latest
     local release_json
     if [ "$ver" = "latest" ] || [ -z "$ver" ]; then
@@ -442,12 +473,12 @@ download_release_asset() {
             release_json="$(curl -fsSL "$GITHUB_API/releases" 2>/dev/null | grep -A20 "\"tag_name\": \"$ver\"" -n || true)"
         fi
     fi
-
+    
     if [ -z "$release_json" ]; then
         echo "${_RED}$L_ERR_NO_REL${_RESET}" >&2
         return 2
     fi
-
+    
     # If jq exists use it
     if command -v jq >/dev/null 2>&1; then
         local asset_url
@@ -472,7 +503,7 @@ download_release_asset() {
             return 0
         fi
     fi
-
+    
     error "$L_ERR_NO_ASSET (os:$os arch:$arch)" >&2
     return 3
 }
@@ -480,15 +511,15 @@ download_release_asset() {
 install_binary_from_tar() {
     local tarball="$1"
     ensure_root
-
+    
     # 准备临时解压目录
     local extract_tmp
     extract_tmp="$(mktemp -d)"
     trap "$SUDO rm -rf '$extract_tmp'" EXIT
-
+    
     step "$L_EXTRACTING $INSTALL_DIR ..."
     $SUDO tar -xzf "$tarball" -C "$extract_tmp" || { error "$L_ERR_EXTRACT"; return 1; }
-
+    
     # 1. 强制更新二进制程序
     local exe
     if [ -f "$extract_tmp/$BIN_BASE" ]; then
@@ -496,7 +527,7 @@ install_binary_from_tar() {
     else
         exe="$(find "$extract_tmp" -maxdepth 2 -type f -perm -111 | head -n1 || true)"
     fi
-
+    
     if [ -n "$exe" ]; then
         $SUDO mkdir -p "$INSTALL_DIR"
         $SUDO mv -f "$exe" "$BIN_PATH"
@@ -505,14 +536,14 @@ install_binary_from_tar() {
         error "$L_ERR_NO_EXE"
         return 2
     fi
-
+    
     # 2. 保护性移动配置文件
     if [ -d "$extract_tmp/config" ]; then
         $SUDO mkdir -p "$INSTALL_DIR/config"
         # 仅拷贝目标位置不存在的文件，防止覆盖用户修改过的 config.yaml 等
         $SUDO cp -rn "$extract_tmp/config/"* "$INSTALL_DIR/config/" 2>/dev/null || true
     fi
-
+    
     # 3. 创建软链接
     $SUDO mkdir -p "$(dirname "$LINK_BIN")"
     $SUDO ln -sf "$BIN_PATH" "$LINK_BIN"
@@ -523,7 +554,7 @@ install_binary_from_tar() {
 # Auto-Start config // 开机自启配置
 enable_autostart() {
     local os="$(detect_os)"
-
+    
     if [ "$os" = "linux" ]; then
         if [ -d "/etc/systemd/system" ] && command -v systemctl >/dev/null 2>&1; then
             step "$L_AUTO_LINUX"
@@ -554,12 +585,12 @@ EOF
             success "$L_AUTO_DONE"
             return 0
         fi
-    elif [ "$os" = "darwin" ]; then
+        elif [ "$os" = "darwin" ]; then
         # macOS launchd
         step "$L_AUTO_MAC"
         local plist_path="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
         mkdir -p "$(dirname "$plist_path")"
-
+        
         cat <<EOF > "$plist_path"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -588,11 +619,11 @@ EOF
         launchctl load "$plist_path" 2>/dev/null || true
         success "$L_AUTO_DONE"
         return 0
-    elif [ "$os" = "windows" ]; then
+        elif [ "$os" = "windows" ]; then
         warn "$L_AUTO_WIN"
         return 0
     fi
-
+    
     warn "$L_AUTO_FAIL: No supported service manager found."
 }
 
@@ -620,7 +651,7 @@ start_service() {
     auto_migrate_data
     ensure_root
     local os="$(detect_os)"
-
+    
     # 优先尝试 Systemd
     if [ "$os" = "linux" ] && [ -f "/etc/systemd/system/fast-note.service" ]; then
         step "Systemd: $L_STARTING"
@@ -630,14 +661,14 @@ start_service() {
             success "$L_START_SUCCESS"
             return 0
         fi
-    # 优先尝试 Launchd
-    elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        # 优先尝试 Launchd
+        elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
         step "Launchd: $L_STARTING"
         launchctl load "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
         success "$L_START_SUCCESS"
         return 0
     fi
-
+    
     # Fallback to manual
     if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
         warn "$L_SVC_RUNNING (PID: $(pgrep -f "$BIN_PATH"))"
@@ -646,7 +677,7 @@ start_service() {
     step "$L_STARTING (nohup)"
     # 保持 bash -c 包装以解决重定向权限问题
     $SUDO bash -c "set -m; cd $INSTALL_DIR && nohup $BIN_PATH run >> $LOG_FILE 2>&1 &"
-
+    
     sleep 2
     if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
         success "$L_START_SUCCESS"
@@ -659,21 +690,21 @@ start_service() {
 stop_service() {
     ensure_root
     local os="$(detect_os)"
-
+    
     # 优先尝试 Systemd
     if [ "$os" = "linux" ] && [ -f "/etc/systemd/system/fast-note.service" ]; then
         step "Systemd: $L_STOPPING"
         $SUDO systemctl stop fast-note.service
         success "$L_STOP_SUCCESS"
         return 0
-    # 优先尝试 Launchd
-    elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        # 优先尝试 Launchd
+        elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
         step "Launchd: $L_STOPPING"
         launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
         success "$L_STOP_SUCCESS"
         return 0
     fi
-
+    
     if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
         return 0
     fi
@@ -706,13 +737,13 @@ full_uninstall() {
         info "$L_UN_CANCEL"
         return 0
     fi
-
+    
     # Stop service first
     stop_service 2>/dev/null || true
-
+    
     step "$L_CLEAN_PROC"
     $SUDO pkill -f "$BIN_PATH" || true
-
+    
     # Cleanup auto-start
     if [ -f "/etc/systemd/system/fast-note.service" ]; then
         $SUDO systemctl disable fast-note.service 2>/dev/null || true
@@ -723,7 +754,7 @@ full_uninstall() {
         launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
         rm -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
     fi
-
+    
     step "$L_CLEAN_FILES"
     $SUDO rm -rf "$INSTALL_DIR" || true
     $SUDO rm -f "$LINK_BIN" || true
@@ -736,14 +767,14 @@ full_uninstall() {
     # 清理用户级配置文件 / Clean up per-user config files
     rm -f "$LANG_CONF" || true
     rm -f "$CNB_MIRROR_CONF" || true
-
+    
     success "$L_UN_DONE"
 }
 
 install_self() {
     ensure_root
     local src_url="${1:-}"
-
+    
     # Auto-select script URL based on current mirror setting
     # 根据当前镜像设置自动选择脚本 URL
     if [ -z "$src_url" ]; then
@@ -753,13 +784,13 @@ install_self() {
             src_url="$GITHUB_SCRIPT_URL"
         fi
     fi
-
+    
     # 如果没有指定 URL 且当前不是通过本地文件运行（如 curl|bash 或 stdin）
     if [ -z "$src_url" ] && [ ! -f "$0" ]; then
         warn "$L_ST_DL_SCRIPT"
         src_url="$GITHUB_SCRIPT_URL"
     fi
-
+    
     if [ -n "$src_url" ]; then
         step "$L_DL_SCRIPT"
         $SUDO mkdir -p "$(dirname "$INSTALLER_SELF_PATH")"
@@ -772,10 +803,10 @@ install_self() {
             $SUDO cp -f "$0" "$INSTALLER_SELF_PATH"
         fi
     fi
-
+    
     $SUDO chmod +x "$INSTALLER_SELF_PATH"
     $SUDO mkdir -p "$(dirname "$INSTALLER_LINK")"
-
+    
     # Create fns wrapper that passes mirror flag when USE_CNB=true
     # 创建 fns 包装脚本，在 USE_CNB=true 时传递镜像参数
     if [ "$USE_CNB" = "true" ]; then
@@ -839,7 +870,7 @@ show_menu() {
     echo -e "  [L] ${_BOLD}$L_MENU_L${_RESET}"
     echo -e "  [0] ${_BOLD}$L_MENU_0${_RESET}"
     echo -e "\n${_BLUE} ================================================ ${_RESET}"
-
+    
     while true; do
         read -rp "  $(echo -e "${_BOLD}$L_SELECT [0-8, L]: ${_RESET}")" opt
         case "$opt" in
@@ -858,7 +889,7 @@ show_menu() {
                 draw_banner
                 show_menu
                 return
-                ;;
+            ;;
             0|q) exit 0;;
             *) warn "$L_INVALID";;
         esac
@@ -870,9 +901,9 @@ install_cmd() {
     local os arch tarball
     os="$(detect_os)"
     arch="$(_arch_map)"
-
+    
     stop_service
-
+    
     step "$L_PRE_DL ${_BOLD}$ver${_RESET} ($os/$arch)..."
     if [ "$ver" = "latest" ]; then
         ver="$(get_latest_tag || echo latest)"
@@ -881,15 +912,15 @@ install_cmd() {
     install_binary_from_tar "$tarball"
     save_version "$ver"
     install_self >&2
-
+    
     # Enable auto-start by default on install/update
     enable_autostart
-
+    
     success "$L_INST_ALL_DONE"
     info "$L_INST_TIP"
     check_path "$LINK_BIN"
     check_path "$INSTALLER_LINK"
-
+    
     start_service
 }
 
