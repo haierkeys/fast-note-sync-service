@@ -266,6 +266,22 @@ jobs:
             BUILD_DATE=${{ env.BUILD_DATE }}
             GIT_COMMIT=${{ env.GIT_COMMIT }}
 
+      - name: Docker Build & Publish to CNB
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          dockerfile: docker/Dockerfile
+          name: haierkeys/${{ env.NAME }}
+          username: ${{ secrets.CNB_USERNAME }}
+          password: ${{ secrets.CNB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          registry: docker.cnb.cool
+          snapshot: false
+          tags: "${{ env.IMAGE_TAG }}"
+          buildargs: |
+            VERSION=${{ env.TAG_VERSION }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+
   push-release-files:
     needs: [create-release, build-binaries, check-version]
     if: needs.check-version.outputs.should_release == 'true'
