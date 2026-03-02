@@ -74,6 +74,24 @@ app:
   # WebSocket 最大写入负载大小 (如: 128MB / 64MB / 1024KB, default 128MB)
   # WebSocket maximum write payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
   ws-write-max-payload-size: "128MB"
+  # WebSocket 是否开启并行处理 (默认 true)
+  # Whether WebSocket enables parallel processing (default true)
+  ws-parallel-enabled: true
+  # WebSocket 并行处理最大协程数 (默认 8)
+  # WebSocket maximum goroutines for parallel processing (default 8)
+  ws-parallel-golimit: 8
+  # WebSocket 是否开启 UTF-8 校验 (默认 true)
+  # Whether WebSocket enables UTF-8 check (default true)
+  ws-check-utf8-enabled: true
+  # WebSocket 是否开启压缩 (默认 true)
+  # Whether WebSocket enables compression (default true)
+  ws-compression-enabled: true
+  # WebSocket 压缩级别 (1-9, 默认 1)
+  # WebSocket compression level (1-9, default 1)
+  ws-compression-level: 1
+  # WebSocket 开启压缩的阈值 (字节, 默认 512)
+  # WebSocket compression threshold (bytes, default 512)
+  ws-compression-threshold: 512
 
 # webgui
 # WebGUI 设置
