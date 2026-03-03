@@ -7,6 +7,7 @@ import (
 
 	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
@@ -37,8 +38,17 @@ func init() {
 			// Load configuration
 			// 加载配置
 			if configPath == "" {
-				configPath = "config/config.yaml"
+				// We can rely on default logic in further layers or set a default here
+				// Use the same logic as run.go for consistency
+				if fileurl.IsExist("config/config-dev.yaml") {
+					configPath = "config/config-dev.yaml"
+				} else if fileurl.IsExist("config.yaml") {
+					configPath = "config.yaml"
+				} else {
+					configPath = "config/config.yaml"
+				}
 			}
+
 			appConfig, configRealpath, err := internalApp.LoadConfig(configPath)
 			if err != nil {
 				bootstrapLogger.Error("failed to load config", zap.Error(err))
