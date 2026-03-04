@@ -3,14 +3,15 @@ package dto
 // NoteSyncRenameMessage message structure for note rename during sync
 // 同步过程中笔记重命名的消息结构
 type NoteSyncRenameMessage struct {
-	Path        string `json:"path" form:"path" binding:"required" example:"NewName.md"` // New path // 新路径
-	PathHash    string `json:"pathHash" form:"pathHash" example:"nfhash123"`             // New path hash // 新路径哈希
-	ContentHash string `json:"contentHash" form:"contentHash" example:"chash456"`        // Content hash // 内容哈希
-	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                  // Creation timestamp // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime" example:"1700000000"`                  // Modification timestamp // 修改时间戳
-	Size        int64  `json:"size" form:"size" example:"1024"`                          // File size // 文件大小
-	OldPath     string `json:"oldPath" form:"oldPath" example:"OldName.md"`              // Old path // 旧路径
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`       // Old path hash // 旧路径哈希
+	Path             string `json:"path" form:"path" binding:"required" example:"NewName.md"` // New path // 新路径
+	PathHash         string `json:"pathHash" form:"pathHash" example:"nfhash123"`             // New path hash // 新路径哈希
+	ContentHash      string `json:"contentHash" form:"contentHash" example:"chash456"`        // Content hash // 内容哈希
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`                  // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`                  // Modification timestamp // 修改时间戳
+	Size             int64  `json:"size" form:"size" example:"1024"`                          // File size // 文件大小
+	OldPath          string `json:"oldPath" form:"oldPath" example:"OldName.md"`              // Old path // 旧路径
+	OldPathHash      string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`       // Old path hash // 旧路径哈希
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"`    // Record update timestamp // 记录更新时间戳
 }
 
 // NoteSyncModifyMessage message content for note modification or creation
@@ -45,17 +46,19 @@ type NoteSyncNeedPushMessage struct {
 // NoteSyncMtimeMessage message structure for updating mtime during sync
 // NoteSyncMtimeMessage 同步时用于更新 mtime 的消息结构
 type NoteSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path" example:"ReadMe.md"`    // Note path // 笔记路径
-	Ctime int64  `json:"ctime" form:"ctime" example:"1700000000"` // Creation timestamp // 创建时间戳
-	Mtime int64  `json:"mtime" form:"mtime" example:"1700000000"` // Modification timestamp // 修改时间戳
+	Path             string `json:"path" form:"path" example:"ReadMe.md"`                  // Note path // 笔记路径
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
 
 // NoteSyncDeleteMessage message structure for note deletion
 // NoteSyncDeleteMessage 笔记删除的消息结构
 type NoteSyncDeleteMessage struct {
-	Path     string `json:"path" form:"path" example:"DeletedNote.md"`    // Note path // 笔记路径
-	PathHash string `json:"pathHash" form:"pathHash" example:"dnhash789"` // Path hash // 路径哈希值
-	Ctime    int64  `json:"ctime" form:"ctime" example:"1700000000"`      // Creation timestamp // 创建时间戳
-	Mtime    int64  `json:"mtime" form:"mtime" example:"1700000000"`      // Modification timestamp // 修改时间戳
-	Size     int64  `json:"size" form:"size" example:"1024"`              // File size // 文件大小
+	Path             string `json:"path" form:"path" example:"DeletedNote.md"`             // Note path // 笔记路径
+	PathHash         string `json:"pathHash" form:"pathHash" example:"dnhash789"`          // Path hash // 路径哈希值
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
+	Size             int64  `json:"size" form:"size" example:"1024"`                       // File size // 文件大小
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }

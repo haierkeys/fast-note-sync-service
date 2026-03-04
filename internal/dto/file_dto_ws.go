@@ -45,30 +45,33 @@ type FileSyncDownloadMessage struct {
 // FileSyncMtimeMessage defines the message structure for file metadata update
 // FileSyncMtimeMessage 定义文件元数据更新消息结构
 type FileSyncMtimeMessage struct {
-	Path  string `json:"path" example:"Image.png"`   // File path // 文件路径
-	Ctime int64  `json:"ctime" example:"1700000000"` // Creation timestamp // 创建时间戳
-	Mtime int64  `json:"mtime" example:"1700000000"` // Modification timestamp // 修改时间戳
+	Path             string `json:"path" example:"Image.png"`                              // File path // 文件路径
+	Ctime            int64  `json:"ctime" example:"1700000000"`                            // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" example:"1700000000"`                            // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
 
 // FileSyncDeleteMessage defines the message structure for file deletion during sync
 // FileSyncDeleteMessage 定义同步期间文件删除的消息结构
 type FileSyncDeleteMessage struct {
-	Path     string `json:"path" form:"path" example:"DeletedFile.png"`   // File path // 文件路径
-	PathHash string `json:"pathHash" form:"pathHash" example:"dfhash123"` // Path hash // 路径哈希值
-	Ctime    int64  `json:"ctime" form:"ctime" example:"1700000000"`      // Creation timestamp // 创建时间戳
-	Mtime    int64  `json:"mtime" form:"mtime" example:"1700000000"`      // Modification timestamp // 修改时间戳
-	Size     int64  `json:"size" form:"size" example:"1024"`              // File size // 文件大小
+	Path             string `json:"path" form:"path" example:"DeletedFile.png"`            // File path // 文件路径
+	PathHash         string `json:"pathHash" form:"pathHash" example:"dfhash123"`          // Path hash // 路径哈希值
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
+	Size             int64  `json:"size" form:"size" example:"1024"`                       // File size // 文件大小
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
 
 // FileSyncRenameMessage message structure for file rename during sync
 // 同步过程中文件重命名的消息结构
 type FileSyncRenameMessage struct {
-	Path        string `json:"path" form:"path" binding:"required" example:"NewImage.png"` // New path // 新路径
-	PathHash    string `json:"pathHash" form:"pathHash" example:"nfhash123"`               // New path hash // 新路径哈希
-	ContentHash string `json:"contentHash" form:"contentHash" example:"chash456"`          // Content hash // 内容哈希
-	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                    // Creation timestamp // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime" example:"1700000000"`                    // Modification timestamp // 修改时间戳
-	Size        int64  `json:"size" form:"size" example:"1024"`                            // File size // 文件大小
-	OldPath     string `json:"oldPath" form:"oldPath" example:"OldImage.png"`              // Old path // 旧路径
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`         // Old path hash // 旧路径哈希
+	Path             string `json:"path" form:"path" binding:"required" example:"NewImage.png"` // New path // 新路径
+	PathHash         string `json:"pathHash" form:"pathHash" example:"nfhash123"`               // New path hash // 新路径哈希
+	ContentHash      string `json:"contentHash" form:"contentHash" example:"chash456"`          // Content hash // 内容哈希
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`                    // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`                    // Modification timestamp // 修改时间戳
+	Size             int64  `json:"size" form:"size" example:"1024"`                            // File size // 文件大小
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"`      // Record update timestamp // 记录更新时间戳
+	OldPath          string `json:"oldPath" form:"oldPath" example:"OldImage.png"`              // Old path // 旧路径
+	OldPathHash      string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`         // Old path hash // 旧路径哈希
 }

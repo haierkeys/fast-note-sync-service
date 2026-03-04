@@ -32,13 +32,18 @@ type SettingSyncNeedUploadMessage struct {
 // SettingSyncMtimeMessage defines the message structure for setting modification time sync during sync
 // SettingSyncMtimeMessage 同步期间配置元数据更新消息结构
 type SettingSyncMtimeMessage struct {
-	Path  string `json:"path" form:"path" example:"User/Theme"`   // Setting path // 配置路径
-	Ctime int64  `json:"ctime" form:"ctime" example:"1700000000"` // Creation timestamp // 创建时间戳
-	Mtime int64  `json:"mtime" form:"mtime" example:"1700000000"` // Modification timestamp // 修改时间戳
+	Path             string `json:"path" form:"path" example:"User/Theme"`                 // Setting path // 配置路径
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
 
 // SettingSyncDeleteMessage defines the message structure for setting deletion during sync
 // SettingSyncDeleteMessage 同步期间配置删除的消息结构
 type SettingSyncDeleteMessage struct {
-	Path string `json:"path" form:"path" example:"DeletedSetting"` // Setting path // 配置路径
+	Path             string `json:"path" form:"path" example:"DeletedSetting"`             // Setting path // 配置路径
+	PathHash         string `json:"pathHash" form:"pathHash" example:"shash789"`           // Path hash // 路径哈希值
+	Ctime            int64  `json:"ctime" form:"ctime" example:"1700000000"`               // Creation timestamp // 创建时间戳
+	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
+	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
