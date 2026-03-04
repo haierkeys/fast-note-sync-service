@@ -181,9 +181,10 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		// 当用户 mtime 小于服务端 mtime 时，通知用户更新mtime
 		c.ToResponse(code.Success.WithData(
 			dto.FileSyncMtimeMessage{
-				Path:  fileSvc.Path,
-				Ctime: fileSvc.Ctime,
-				Mtime: fileSvc.Mtime,
+				Path:             fileSvc.Path,
+				Ctime:            fileSvc.Ctime,
+				Mtime:            fileSvc.Mtime,
+				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 			},
 		).WithVault(params.Vault), dto.FileSyncMtime)
 		return
@@ -409,11 +410,12 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 广播文件删除消息
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FileSyncDeleteMessage{
-			Path:     fileSvc.Path,
-			PathHash: fileSvc.PathHash,
-			Ctime:    fileSvc.Ctime,
-			Mtime:    fileSvc.Mtime,
-			Size:     fileSvc.Size,
+			Path:             fileSvc.Path,
+			PathHash:         fileSvc.PathHash,
+			Ctime:            fileSvc.Ctime,
+			Mtime:            fileSvc.Mtime,
+			Size:             fileSvc.Size,
+			UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), true, dto.FileSyncDelete)
 }
@@ -439,14 +441,15 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FileSyncRenameMessage{
-			Path:        newFile.Path,
-			PathHash:    newFile.PathHash,
-			ContentHash: newFile.ContentHash,
-			Ctime:       newFile.Ctime,
-			Mtime:       newFile.Mtime,
-			Size:        newFile.Size,
-			OldPath:     oldFile.Path,
-			OldPathHash: oldFile.PathHash,
+			Path:             newFile.Path,
+			PathHash:         newFile.PathHash,
+			ContentHash:      newFile.ContentHash,
+			Ctime:            newFile.Ctime,
+			Mtime:            newFile.Mtime,
+			Size:             newFile.Size,
+			OldPath:          oldFile.Path,
+			OldPathHash:      oldFile.PathHash,
+			UpdatedTimestamp: newFile.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), true, dto.FileSyncRename)
 }
@@ -711,11 +714,12 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.FileSyncDelete,
 					Data: dto.FileSyncDeleteMessage{
-						Path:     file.Path,
-						PathHash: file.PathHash,
-						Ctime:    file.Ctime,
-						Mtime:    file.Mtime,
-						Size:     file.Size,
+						Path:             file.Path,
+						PathHash:         file.PathHash,
+						Ctime:            file.Ctime,
+						Mtime:            file.Mtime,
+						Size:             file.Size,
+						UpdatedTimestamp: file.UpdatedTimestamp,
 					},
 				})
 				needDeleteCount++
@@ -778,9 +782,10 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.FileSyncMtime,
 						Data: dto.FileSyncMtimeMessage{
-							Path:  file.Path,
-							Ctime: file.Ctime,
-							Mtime: file.Mtime,
+							Path:             file.Path,
+							Ctime:            file.Ctime,
+							Mtime:            file.Mtime,
+							UpdatedTimestamp: file.UpdatedTimestamp,
 						},
 					})
 					needSyncMtimeCount++

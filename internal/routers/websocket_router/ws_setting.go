@@ -76,9 +76,10 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
 			dto.SettingSyncMtimeMessage{
-				Path:  settingCheck.Path,
-				Ctime: settingCheck.Ctime,
-				Mtime: settingCheck.Mtime,
+				Path:             settingCheck.Path,
+				Ctime:            settingCheck.Ctime,
+				Mtime:            settingCheck.Mtime,
+				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
 		).WithVault(params.Vault), dto.SettingSyncMtime)
 		return
@@ -121,9 +122,10 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
 			dto.SettingSyncMtimeMessage{
-				Path:  settingCheck.Path,
-				Ctime: settingCheck.Ctime,
-				Mtime: settingCheck.Mtime,
+				Path:             settingCheck.Path,
+				Ctime:            settingCheck.Ctime,
+				Mtime:            settingCheck.Mtime,
+				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
 		).WithVault(params.Vault), dto.SettingSyncMtime)
 		return
@@ -158,7 +160,11 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 	c.ToResponse(code.Success)
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
-			Path: setting.Path,
+			Path:             setting.Path,
+			PathHash:         setting.PathHash,
+			Ctime:            setting.Ctime,
+			Mtime:            setting.Mtime,
+			UpdatedTimestamp: setting.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), true, dto.SettingSyncDelete)
 }
@@ -319,7 +325,13 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 将消息添加到队列而非立即发送
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.SettingSyncDelete,
-					Data:   dto.SettingSyncDeleteMessage{Path: s.Path},
+					Data: dto.SettingSyncDeleteMessage{
+						Path:             s.Path,
+						PathHash:         s.PathHash,
+						Ctime:            s.Ctime,
+						Mtime:            s.Mtime,
+						UpdatedTimestamp: s.UpdatedTimestamp,
+					},
 				})
 				needDeleteCount++
 			}
@@ -390,9 +402,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.SettingSyncMtime,
 						Data: dto.SettingSyncMtimeMessage{
-							Path:  s.Path,
-							Ctime: s.Ctime,
-							Mtime: s.Mtime,
+							Path:             s.Path,
+							Ctime:            s.Ctime,
+							Mtime:            s.Mtime,
+							UpdatedTimestamp: s.UpdatedTimestamp,
 						},
 					})
 					needSyncMtimeCount++

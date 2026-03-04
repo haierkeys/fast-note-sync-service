@@ -373,9 +373,10 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		// 通知 客户端 Note 修改时间更新
 		c.ToResponse(code.Success.WithData(
 			dto.NoteSyncMtimeMessage{
-				Path:  nodeCheck.Path,
-				Ctime: nodeCheck.Ctime,
-				Mtime: nodeCheck.Mtime,
+				Path:             nodeCheck.Path,
+				Ctime:            nodeCheck.Ctime,
+				Mtime:            nodeCheck.Mtime,
+				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
 		).WithVault(params.Vault), dto.NoteSyncMtime)
 		return
@@ -448,9 +449,10 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		// 强制客户端更新mtime 不传输笔记内容
 		c.ToResponse(code.Success.WithData(
 			dto.NoteSyncMtimeMessage{
-				Path:  nodeCheck.Path,
-				Ctime: nodeCheck.Ctime,
-				Mtime: nodeCheck.Mtime,
+				Path:             nodeCheck.Path,
+				Ctime:            nodeCheck.Ctime,
+				Mtime:            nodeCheck.Mtime,
+				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
 		).WithVault(params.Vault), dto.NoteSyncMtime)
 		return
@@ -509,11 +511,12 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success)
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncDeleteMessage{
-			Path:     note.Path,
-			PathHash: note.PathHash,
-			Ctime:    note.Ctime,
-			Mtime:    note.Mtime,
-			Size:     note.Size,
+			Path:             note.Path,
+			PathHash:         note.PathHash,
+			Ctime:            note.Ctime,
+			Mtime:            note.Mtime,
+			Size:             note.Size,
+			UpdatedTimestamp: note.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), true, dto.NoteSyncDelete)
 }
@@ -558,14 +561,15 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success)
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncRenameMessage{
-			Path:        newNote.Path,
-			PathHash:    newNote.PathHash,
-			ContentHash: newNote.ContentHash,
-			Ctime:       newNote.Ctime,
-			Mtime:       newNote.Mtime,
-			Size:        newNote.Size,
-			OldPath:     oldNote.Path,
-			OldPathHash: oldNote.PathHash,
+			Path:             newNote.Path,
+			PathHash:         newNote.PathHash,
+			ContentHash:      newNote.ContentHash,
+			Ctime:            newNote.Ctime,
+			Mtime:            newNote.Mtime,
+			Size:             newNote.Size,
+			UpdatedTimestamp: newNote.UpdatedTimestamp,
+			OldPath:          oldNote.Path,
+			OldPathHash:      oldNote.PathHash,
 		},
 	).WithVault(params.Vault), true, dto.NoteSyncRename)
 }
@@ -804,11 +808,12 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 					Action: dto.NoteSyncDelete,
 					Data: dto.NoteSyncDeleteMessage{
-						Path:     note.Path,
-						PathHash: note.PathHash,
-						Ctime:    note.Ctime,
-						Mtime:    note.Mtime,
-						Size:     note.Size,
+						Path:             note.Path,
+						PathHash:         note.PathHash,
+						Ctime:            note.Ctime,
+						Mtime:            note.Mtime,
+						Size:             note.Size,
+						UpdatedTimestamp: note.UpdatedTimestamp,
 					},
 				})
 				needDeleteCount++
@@ -906,9 +911,10 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Action: dto.NoteSyncMtime,
 						Data: dto.NoteSyncMtimeMessage{
-							Path:  note.Path,
-							Ctime: note.Ctime,
-							Mtime: note.Mtime,
+							Path:             note.Path,
+							Ctime:            note.Ctime,
+							Mtime:            note.Mtime,
+							UpdatedTimestamp: note.UpdatedTimestamp,
 						},
 					})
 					needSyncMtimeCount++
