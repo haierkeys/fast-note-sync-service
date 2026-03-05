@@ -288,6 +288,41 @@ func (r *settingRepository) DeletePhysicalByTimeAll(ctx context.Context, timesta
 	return nil
 }
 
+// List 分页获取配置列表
+func (r *settingRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string) ([]*domain.Setting, error) {
+	u := r.setting(uid).Setting
+	db := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID), u.Action.Neq("delete"))
+	if keyword != "" {
+		db = db.Where(u.Path.Like("%" + keyword + "%"))
+	}
+
+	offset := (page - 1) * pageSize
+	mList, err := db.Order(u.UpdatedAt.Desc()).Offset(offset).Limit(pageSize).Find()
+	if err != nil {
+		return nil, err
+	}
+
+	var results []*domain.Setting
+	for _, m := range mList {
+		s, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, s)
+	}
+	return results, nil
+}
+
+// ListCount 获取配置数量
+func (r *settingRepository) ListCount(ctx context.Context, vaultID, uid int64, keyword string) (int64, error) {
+	u := r.setting(uid).Setting
+	db := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID), u.Action.Neq("delete"))
+	if keyword != "" {
+		db = db.Where(u.Path.Like("%" + keyword + "%"))
+	}
+	return db.Count()
+}
+
 // ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 func (r *settingRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Setting, error) {
 	u := r.setting(uid).Setting
