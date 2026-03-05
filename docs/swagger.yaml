@@ -532,6 +532,33 @@ definitions:
     required:
     - vault
     type: object
+  dto.FileRenameRequest:
+    properties:
+      oldPath:
+        description: Old path // 旧路径
+        example: OldImage.png
+        type: string
+      oldPathHash:
+        description: Old path hash // 旧路径哈希
+        example: ofhash456
+        type: string
+      path:
+        description: New path // 新路径
+        example: NewImage.png
+        type: string
+      pathHash:
+        description: New path hash // 新路径哈希
+        example: nfhash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - oldPath
+    - path
+    - vault
+    type: object
   dto.FileRestoreRequest:
     properties:
       path:
@@ -920,14 +947,6 @@ definitions:
         description: Modification timestamp // 修改时间戳
         example: 1700000000
         type: integer
-      oldPath:
-        description: Old path // 旧路径
-        example: OldPath.md
-        type: string
-      oldPathHash:
-        description: Old path hash // 旧路径哈希
-        example: oldhash789
-        type: string
       path:
         description: Note path // 笔记路径
         example: ReadMe.md
@@ -935,14 +954,6 @@ definitions:
       pathHash:
         description: Path hash // 路径哈希
         example: hash123
-        type: string
-      srcPath:
-        description: Source path (for rename) // 源路径（用于重命名）
-        example: OldName.md
-        type: string
-      srcPathHash:
-        description: Source path hash // 源路径哈希
-        example: oldhash456
         type: string
       vault:
         description: Vault name // 保险库名称
@@ -1050,6 +1061,33 @@ definitions:
         example: MyVault
         type: string
     required:
+    - vault
+    type: object
+  dto.NoteRenameRequest:
+    properties:
+      oldPath:
+        description: Old path // 旧路径
+        example: OldName.md
+        type: string
+      oldPathHash:
+        description: Old path hash // 旧路径哈希
+        example: ohash456
+        type: string
+      path:
+        description: New path // 新路径
+        example: NewName.md
+        type: string
+      pathHash:
+        description: New path hash // 新路径哈希
+        example: nhash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - oldPath
+    - path
     - vault
     type: object
   dto.NoteReplaceRequest:
@@ -2135,6 +2173,40 @@ paths:
       security:
       - UserAuthToken: []
       summary: Clear recycle bin
+      tags:
+      - File
+  /api/file/rename:
+    post:
+      consumes:
+      - application/json
+      description: Rename an attachment to a new path
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Rename Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.FileRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FileDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Rename attachment
       tags:
       - File
   /api/file/restore:
@@ -3362,6 +3434,40 @@ paths:
       security:
       - UserAuthToken: []
       summary: Clear recycle bin
+      tags:
+      - Note
+  /api/note/rename:
+    post:
+      consumes:
+      - application/json
+      description: Rename a note to a new path
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Rename Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NoteRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.NoteDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Rename note
       tags:
       - Note
   /api/note/replace:

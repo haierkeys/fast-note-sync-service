@@ -204,24 +204,14 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		response.ToResponse(code.ErrorInvalidPath)
 		return
 	}
-	if params.SrcPath != "" && !util.ValidatePath(params.SrcPath) {
-		response.ToResponse(code.ErrorInvalidPath)
-		return
-	}
 
 	// Apply default folder if configured
 	// if defaultFolder := h.App.Config().App.DefaultAPIFolder; defaultFolder != "" {
 	// 	params.Path = util.ApplyDefaultFolder(params.Path, defaultFolder)
-	// 	if params.SrcPath != "" {
-	// 		params.SrcPath = util.ApplyDefaultFolder(params.SrcPath, defaultFolder)
-	// 	}
 	// }
 
 	// Calculate hash values
 	// 计算哈希值
-	if params.SrcPathHash == "" {
-		params.SrcPathHash = util.EncodeHash32(params.SrcPath)
-	}
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
@@ -241,25 +231,6 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 
 	noteSvc := h.App.GetNoteService(app.WebClientName, "")
 
-	// Handle rename scenarios
-	// 处理重命名场景
-	if params.SrcPath != "" && params.SrcPath != params.Path {
-		noteSrc, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
-			Vault:    params.Vault,
-			Path:     params.SrcPath,
-			PathHash: params.SrcPathHash,
-		})
-		if err != nil {
-			h.logError(ctx, "NoteHandler.CreateOrUpdate.NoteGet", err)
-			apperrors.ErrorResponse(c, err)
-			return
-		}
-		if noteSrc == nil || noteSrc.Action == "delete" {
-			response.ToResponse(code.ErrorNoteNotFound)
-			return
-		}
-	}
-
 	// Check update
 	// 检查更新
 	checkParams := &dto.NoteUpdateCheckRequest{
@@ -278,34 +249,12 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	}
 
 	if noteSelect != nil {
-		if noteSelect.Action != "delete" && params.SrcPath != "" && params.SrcPathHash != params.PathHash {
-			response.ToResponse(code.ErrorRenameNoteTargetExist)
-			return
-		}
 		if params.ContentHash != noteSelect.ContentHash {
 			params.Mtime = time.Now().UnixMilli()
 		}
 	}
 
 	var noteNew *dto.NoteDTO
-	var noteOld *dto.NoteDTO
-
-	// If path changed, delete old note
-	// 如果路径发生变化，删除旧笔记
-	if params.SrcPath != "" && params.SrcPath != params.Path {
-		deleteParams := &dto.NoteDeleteRequest{
-			Vault:    params.Vault,
-			Path:     params.SrcPath,
-			PathHash: params.SrcPathHash,
-		}
-		noteOld, err = noteSvc.Delete(ctx, uid, deleteParams)
-		if err != nil {
-			h.logError(ctx, "NoteHandler.CreateOrUpdate.NoteDelete", err)
-			apperrors.ErrorResponse(c, err)
-			return
-		}
-		h.WSS.BroadcastToUser(uid, code.Success.WithData(noteOld).WithVault(params.Vault), "NoteSyncDelete")
-	}
 
 	_, noteNew, err = noteSvc.ModifyOrCreate(ctx, uid, params, false)
 	if err != nil {
@@ -316,10 +265,6 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 
 	response.ToResponse(code.Success.WithData(noteNew))
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(noteNew).WithVault(params.Vault), "NoteSyncModify")
-
-	if params.SrcPath != "" && params.SrcPath != params.Path {
-		noteSvc.MigratePush(noteOld.ID, noteNew.ID, uid)
-	}
 }
 
 // Delete deletes a note
@@ -793,6 +738,83 @@ func (h *NoteHandler) Move(c *gin.Context) {
 		h.WSS.BroadcastToUser(uid, code.Success.WithData(oldNote).WithVault(params.Vault), "NoteSyncDelete")
 	}
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(note).WithVault(params.Vault), "NoteSyncModify")
+}
+
+// Rename renames a note
+// @Summary Rename note
+// @Description Rename a note to a new path
+// @Tags Note
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.NoteRenameRequest true "Rename Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
+// @Router /api/note/rename [post]
+func (h *NoteHandler) Rename(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.NoteRenameRequest{}
+
+	// Parameter binding and validation
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("NoteHandler.Rename.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// Get UID
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("NoteHandler.Rename err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Validate paths
+	if !util.ValidatePath(params.Path) || !util.ValidatePath(params.OldPath) {
+		response.ToResponse(code.ErrorInvalidPath)
+		return
+	}
+
+	// Calculate PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+	if params.OldPathHash == "" {
+		params.OldPathHash = util.EncodeHash32(params.OldPath)
+	}
+
+	// Get request context
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+
+	oldNote, newNote, err := noteSvc.Rename(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "NoteHandler.Rename", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(newNote))
+
+	// Broadcast WebSocket event: NoteSyncRename
+	// 广播 WebSocket 事件: 笔记同步重命名
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(dto.NoteSyncRenameMessage{
+		Path:             newNote.Path,
+		PathHash:         newNote.PathHash,
+		ContentHash:      newNote.ContentHash,
+		Ctime:            newNote.Ctime,
+		Mtime:            newNote.Mtime,
+		Size:             newNote.Size,
+		OldPath:          oldNote.Path,
+		OldPathHash:      oldNote.PathHash,
+		UpdatedTimestamp: newNote.UpdatedTimestamp,
+	}).WithVault(params.Vault), "NoteSyncRename")
 }
 
 // GetBacklinks retrieves backlinks to a specific note
