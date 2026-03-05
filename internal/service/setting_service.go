@@ -5,7 +5,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -351,55 +350,22 @@ func (s *settingService) List(ctx context.Context, uid int64, params *dto.Settin
 		return nil, 0, err
 	}
 
-	// Currently SettingRepository only has ListByUpdatedTimestamp.
-	// For general list with keyword, we might need to extend repository or filter here.
-	// Given the context of "settings", the number of records per user is usually small.
-	// However, we follow the pager requirement.
-	// We'll use ListByUpdatedTimestamp(timestamp=0) as a base list for now if keyword is empty.
-	// If a more complex search is needed, we should add it to repository.
+	total, err := s.settingRepo.ListCount(ctx, vaultID, uid, params.Keyword)
+	if err != nil {
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+	}
 
-	// For now, let's implement a basic list from repository.
-	// Note: the repository doesn't have a standard List method with pagination yet.
-	// We should probably add List to SettingRepository if volume is high,
-	// but for settings, we can fetch all and then page in memory for simplicity if preferred,
-	// OR we can add the method to Repository. I'll add it to Repository for consistency.
-	// Wait, I can't easily modify Repository gen code or complex repo without knowing the DB driver details.
-	// I will check repository.go again to see if I can add a method.
-
-	// Actually, I'll fetch all matching vault and uid from repo then return.
-	// BUT the user rule says: "All implementations involving list pagination should use pkgapp.NewPager."
-	// SettingRepository.ListByUpdatedTimestamp(0, vaultID, uid) gets all.
-
-	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	settings, err := s.settingRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	var results []*dto.SettingDTO
 	for _, setting := range settings {
-		// Filter by keyword if provided
-		if params.Keyword != "" && !strings.Contains(setting.Path, params.Keyword) {
-			continue
-		}
-		// Skip deleted if not explicitly requested (usually list doesn't show deleted)
-		if setting.Action == domain.SettingActionDelete {
-			continue
-		}
 		results = append(results, s.domainToDTO(setting))
 	}
 
-	total := int64(len(results))
-	// Manual paging as Pager only has basic fields
-	offset := (pager.Page - 1) * pager.PageSize
-	if offset >= int(total) {
-		return []*dto.SettingDTO{}, total, nil
-	}
-	end := offset + pager.PageSize
-	if end > int(total) {
-		end = int(total)
-	}
-
-	return results[offset:end], total, nil
+	return results, total, nil
 }
 
 // Rename renames a configuration
