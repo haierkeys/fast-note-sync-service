@@ -269,6 +269,12 @@ type SettingRepository interface {
 	// DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的配置
 	DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error
 
+	// List 分页获取配置列表
+	List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string) ([]*Setting, error)
+
+	// ListCount 获取配置数量
+	ListCount(ctx context.Context, vaultID, uid int64, keyword string) (int64, error)
+
 	// ListByUpdatedTimestamp 根据更新时间戳获取配置列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Setting, error)
 
