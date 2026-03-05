@@ -799,25 +799,24 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			lastTime = note.UpdatedTimestamp
 		}
 		if note.Action == "delete" {
-			// Client has it, server already deleted, notify client to delete
-			// Client has it, server already deleted, notify client to delete
-			// 客户端有,服务端已经删除, 通知客户端删除
+			// Server already deleted, notify client to delete (regardless of whether client has it)
+			// 服务端已经删除, 通知客户端删除（不再检查客户端是否存在）
 			if _, ok := cNotes[note.PathHash]; ok {
 				delete(cNotesKeys, note.PathHash)
-				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-					Action: dto.NoteSyncDelete,
-					Data: dto.NoteSyncDeleteMessage{
-						Path:             note.Path,
-						PathHash:         note.PathHash,
-						Ctime:            note.Ctime,
-						Mtime:            note.Mtime,
-						Size:             note.Size,
-						UpdatedTimestamp: note.UpdatedTimestamp,
-					},
-				})
-				needDeleteCount++
 			}
+			// 将消息添加到队列
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+				Action: dto.NoteSyncDelete,
+				Data: dto.NoteSyncDeleteMessage{
+					Path:             note.Path,
+					PathHash:         note.PathHash,
+					Ctime:            note.Ctime,
+					Mtime:            note.Mtime,
+					Size:             note.Size,
+					UpdatedTimestamp: note.UpdatedTimestamp,
+				},
+			})
+			needDeleteCount++
 		} else {
 			// Check if client has it
 			//检查客户端是否有

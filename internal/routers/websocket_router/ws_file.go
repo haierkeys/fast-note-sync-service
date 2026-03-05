@@ -706,24 +706,24 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 
 		if file.Action == "delete" {
-			// Server already deleted, notify client to delete
-			// 服务端已删除，通知客户端删除
+			// Server already deleted, notify client to delete (regardless of whether client has it)
+			// 服务端已删除，通知客户端删除（不再检查客户端是否存在）
 			if _, ok := cFiles[file.PathHash]; ok {
 				delete(cFilesKeys, file.PathHash)
-				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-					Action: dto.FileSyncDelete,
-					Data: dto.FileSyncDeleteMessage{
-						Path:             file.Path,
-						PathHash:         file.PathHash,
-						Ctime:            file.Ctime,
-						Mtime:            file.Mtime,
-						Size:             file.Size,
-						UpdatedTimestamp: file.UpdatedTimestamp,
-					},
-				})
-				needDeleteCount++
 			}
+			// 将消息添加到队列
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+				Action: dto.FileSyncDelete,
+				Data: dto.FileSyncDeleteMessage{
+					Path:             file.Path,
+					PathHash:         file.PathHash,
+					Ctime:            file.Ctime,
+					Mtime:            file.Mtime,
+					Size:             file.Size,
+					UpdatedTimestamp: file.UpdatedTimestamp,
+				},
+			})
+			needDeleteCount++
 
 		} else {
 

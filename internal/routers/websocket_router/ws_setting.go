@@ -319,22 +319,23 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			lastTime = s.UpdatedTimestamp
 		}
 		if s.Action == "delete" {
-
+			// Server already deleted, notify client to delete (regardless of whether client has it)
+			// 服务端已经删除，通知客户端删除（不再检查客户端是否存在）
 			if _, ok := cSettings[s.PathHash]; ok {
 				delete(cSettingsKeys, s.PathHash)
-				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-					Action: dto.SettingSyncDelete,
-					Data: dto.SettingSyncDeleteMessage{
-						Path:             s.Path,
-						PathHash:         s.PathHash,
-						Ctime:            s.Ctime,
-						Mtime:            s.Mtime,
-						UpdatedTimestamp: s.UpdatedTimestamp,
-					},
-				})
-				needDeleteCount++
 			}
+			// 将消息添加到队列
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+				Action: dto.SettingSyncDelete,
+				Data: dto.SettingSyncDeleteMessage{
+					Path:             s.Path,
+					PathHash:         s.PathHash,
+					Ctime:            s.Ctime,
+					Mtime:            s.Mtime,
+					UpdatedTimestamp: s.UpdatedTimestamp,
+				},
+			})
+			needDeleteCount++
 		} else {
 			if cSetting, ok := cSettings[s.PathHash]; ok {
 				delete(cSettingsKeys, s.PathHash)
