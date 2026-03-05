@@ -220,6 +220,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/note", noteHandler.CreateOrUpdate)
 			auth.DELETE("/note", noteHandler.Delete)
 			auth.PUT("/note/restore", noteHandler.Restore)
+			auth.POST("/note/rename", noteHandler.Rename)
 			auth.GET("/notes", noteHandler.List)
 			auth.DELETE("/note/recycle-clear", noteHandler.RecycleClear)
 
@@ -248,6 +249,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.OPTIONS("/file/info", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 			auth.DELETE("/file", fileHandler.Delete)
 			auth.PUT("/file/restore", fileHandler.Restore)
+			auth.POST("/file/rename", fileHandler.Rename)
 			auth.GET("/files", fileHandler.List)
 			auth.DELETE("/file/recycle-clear", fileHandler.RecycleClear)
 			auth.OPTIONS("/files", func(c *gin.Context) { c.Status(http.StatusNoContent) })
