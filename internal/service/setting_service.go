@@ -5,10 +5,12 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
@@ -52,6 +54,14 @@ type SettingService interface {
 	// Sync synchronizes configuration (alias for ListByLastTime)
 	// Sync 同步配置（ListByLastTime 的别名）
 	Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
+
+	// List retrieves configurations with pagination
+	// List 分页获取配置列表
+	List(ctx context.Context, uid int64, params *dto.SettingListRequest, pager *pkgapp.Pager) ([]*dto.SettingDTO, int64, error)
+
+	// Rename renames a configuration
+	// Rename 重命名配置
+	Rename(ctx context.Context, uid int64, params *dto.SettingRenameRequest) (*dto.SettingDTO, error)
 
 	// Cleanup cleans up expired soft-deleted configurations
 	// Cleanup 清理过期的软删除配置
@@ -331,6 +341,102 @@ func (s *settingService) ListByLastTime(ctx context.Context, uid int64, params *
 // Sync 同步配置（ListByLastTime 的别名）
 func (s *settingService) Sync(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error) {
 	return s.ListByLastTime(ctx, uid, params)
+}
+
+// List retrieves configurations with pagination
+// List 分页获取配置列表
+func (s *settingService) List(ctx context.Context, uid int64, params *dto.SettingListRequest, pager *pkgapp.Pager) ([]*dto.SettingDTO, int64, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Currently SettingRepository only has ListByUpdatedTimestamp.
+	// For general list with keyword, we might need to extend repository or filter here.
+	// Given the context of "settings", the number of records per user is usually small.
+	// However, we follow the pager requirement.
+	// We'll use ListByUpdatedTimestamp(timestamp=0) as a base list for now if keyword is empty.
+	// If a more complex search is needed, we should add it to repository.
+
+	// For now, let's implement a basic list from repository.
+	// Note: the repository doesn't have a standard List method with pagination yet.
+	// We should probably add List to SettingRepository if volume is high,
+	// but for settings, we can fetch all and then page in memory for simplicity if preferred,
+	// OR we can add the method to Repository. I'll add it to Repository for consistency.
+	// Wait, I can't easily modify Repository gen code or complex repo without knowing the DB driver details.
+	// I will check repository.go again to see if I can add a method.
+
+	// Actually, I'll fetch all matching vault and uid from repo then return.
+	// BUT the user rule says: "All implementations involving list pagination should use pkgapp.NewPager."
+	// SettingRepository.ListByUpdatedTimestamp(0, vaultID, uid) gets all.
+
+	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	var results []*dto.SettingDTO
+	for _, setting := range settings {
+		// Filter by keyword if provided
+		if params.Keyword != "" && !strings.Contains(setting.Path, params.Keyword) {
+			continue
+		}
+		// Skip deleted if not explicitly requested (usually list doesn't show deleted)
+		if setting.Action == domain.SettingActionDelete {
+			continue
+		}
+		results = append(results, s.domainToDTO(setting))
+	}
+
+	total := int64(len(results))
+	// Manual paging as Pager only has basic fields
+	offset := (pager.Page - 1) * pager.PageSize
+	if offset >= int(total) {
+		return []*dto.SettingDTO{}, total, nil
+	}
+	end := offset + pager.PageSize
+	if end > int(total) {
+		end = int(total)
+	}
+
+	return results[offset:end], total, nil
+}
+
+// Rename renames a configuration
+// Rename 重命名配置
+func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.SettingRenameRequest) (*dto.SettingDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1. Find the old setting
+	setting, err := s.settingRepo.GetByPathHash(ctx, params.OldPathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorSettingNotFound
+		}
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 2. Check if new path already exists
+	existing, _ := s.settingRepo.GetByPathHash(ctx, params.NewPathHash, vaultID, uid)
+	if existing != nil && existing.Action != domain.SettingActionDelete {
+		return nil, code.ErrorSettingExist
+	}
+
+	// 3. Update path and pathHash
+	setting.Path = params.NewPath
+	setting.PathHash = params.NewPathHash
+	setting.Action = domain.SettingActionModify
+	// Mtime and UpdatedTimestamp are handled in Update
+
+	updated, err := s.settingRepo.Update(ctx, setting, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	return s.domainToDTO(updated), nil
 }
 
 // Cleanup cleans up expired soft-deleted configurations

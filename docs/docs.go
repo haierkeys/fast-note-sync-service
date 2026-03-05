@@ -3492,6 +3492,320 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/setting": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get setting info for current user by path or pathHash",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setting"
+                ],
+                "summary": "Get setting info",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "User/Theme",
+                        "description": "Setting path // 配置路径",
+                        "name": "path",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "hash123",
+                        "description": "Path hash // 路径哈希",
+                        "name": "pathHash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "MyVault",
+                        "description": "Vault name // 保险库名称",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SettingDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Create a new setting or update an existing one",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setting"
+                ],
+                "summary": "Create or update setting",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Create/Update Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SettingModifyOrCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SettingDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Soft delete a setting by path or pathHash",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setting"
+                ],
+                "summary": "Delete setting",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SettingDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setting/rename": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Rename a setting and update its path and pathHash",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setting"
+                ],
+                "summary": "Rename setting",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Rename Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SettingRenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SettingDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/settings": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get setting list for current user with pagination and keyword filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setting"
+                ],
+                "summary": "Get setting list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "User/",
+                        "description": "Keyword // 关键词",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "MyVault",
+                        "description": "Vault name // 保险库名称",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number // 页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size // 每页数量",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.SettingDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/share": {
             "post": {
                 "security": [
@@ -6074,6 +6388,154 @@ const docTemplate = `{
                 "version": {
                     "description": "Version number // 版本号",
                     "type": "integer"
+                }
+            }
+        },
+        "dto.SettingDTO": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Setting content // 配置内容",
+                    "type": "string"
+                },
+                "contentHash": {
+                    "description": "Content hash // 内容哈希",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "Created at time // 创建时间",
+                    "type": "string"
+                },
+                "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Setting ID // 配置 ID",
+                    "type": "integer"
+                },
+                "lastTime": {
+                    "description": "Record update timestamp // 记录更新时间戳",
+                    "type": "integer"
+                },
+                "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
+                    "type": "integer"
+                },
+                "path": {
+                    "description": "Setting path // 配置路径",
+                    "type": "string"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希值",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "Updated at time // 更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SettingDeleteRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "description": "Setting path // 配置路径",
+                    "type": "string",
+                    "example": "User/Theme"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "hash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
+        },
+        "dto.SettingModifyOrCreateRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "content": {
+                    "description": "Setting content // 配置内容",
+                    "type": "string",
+                    "example": "dark"
+                },
+                "contentHash": {
+                    "description": "Content hash // 内容哈希",
+                    "type": "string",
+                    "example": "chash456"
+                },
+                "ctime": {
+                    "description": "Creation timestamp // 创建时间戳",
+                    "type": "integer",
+                    "example": 1700000000
+                },
+                "mtime": {
+                    "description": "Modification timestamp // 修改时间戳",
+                    "type": "integer",
+                    "example": 1700000000
+                },
+                "path": {
+                    "description": "Setting path // 配置路径",
+                    "type": "string",
+                    "example": "User/Theme"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "hash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
+        },
+        "dto.SettingRenameRequest": {
+            "type": "object",
+            "required": [
+                "newPath",
+                "oldPath",
+                "vault"
+            ],
+            "properties": {
+                "newPath": {
+                    "description": "New path // 新路径",
+                    "type": "string",
+                    "example": "New/Path"
+                },
+                "newPathHash": {
+                    "description": "New path hash // 新路径哈希",
+                    "type": "string",
+                    "example": "newhash456"
+                },
+                "oldPath": {
+                    "description": "Old path // 旧路径",
+                    "type": "string",
+                    "example": "Old/Path"
+                },
+                "oldPathHash": {
+                    "description": "Old path hash // 旧路径哈希",
+                    "type": "string",
+                    "example": "oldhash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
                 }
             }
         },

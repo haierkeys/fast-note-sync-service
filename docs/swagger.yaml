@@ -1193,6 +1193,118 @@ definitions:
         description: Version number // 版本号
         type: integer
     type: object
+  dto.SettingDTO:
+    properties:
+      content:
+        description: Setting content // 配置内容
+        type: string
+      contentHash:
+        description: Content hash // 内容哈希
+        type: string
+      createdAt:
+        description: Created at time // 创建时间
+        type: string
+      ctime:
+        description: Creation timestamp // 创建时间戳
+        type: integer
+      id:
+        description: Setting ID // 配置 ID
+        type: integer
+      lastTime:
+        description: Record update timestamp // 记录更新时间戳
+        type: integer
+      mtime:
+        description: Modification timestamp // 修改时间戳
+        type: integer
+      path:
+        description: Setting path // 配置路径
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希值
+        type: string
+      updatedAt:
+        description: Updated at time // 更新时间
+        type: string
+    type: object
+  dto.SettingDeleteRequest:
+    properties:
+      path:
+        description: Setting path // 配置路径
+        example: User/Theme
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: hash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.SettingModifyOrCreateRequest:
+    properties:
+      content:
+        description: Setting content // 配置内容
+        example: dark
+        type: string
+      contentHash:
+        description: Content hash // 内容哈希
+        example: chash456
+        type: string
+      ctime:
+        description: Creation timestamp // 创建时间戳
+        example: 1700000000
+        type: integer
+      mtime:
+        description: Modification timestamp // 修改时间戳
+        example: 1700000000
+        type: integer
+      path:
+        description: Setting path // 配置路径
+        example: User/Theme
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: hash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - path
+    - vault
+    type: object
+  dto.SettingRenameRequest:
+    properties:
+      newPath:
+        description: New path // 新路径
+        example: New/Path
+        type: string
+      newPathHash:
+        description: New path hash // 新路径哈希
+        example: newhash456
+        type: string
+      oldPath:
+        description: Old path // 旧路径
+        example: Old/Path
+        type: string
+      oldPathHash:
+        description: Old path hash // 旧路径哈希
+        example: oldhash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - newPath
+    - oldPath
+    - vault
+    type: object
   dto.ShareCreateRequest:
     properties:
       path:
@@ -3614,6 +3726,195 @@ paths:
       summary: Get note list
       tags:
       - Note
+  /api/setting:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete a setting by path or pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Delete Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SettingDeleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Delete setting
+      tags:
+      - Setting
+    get:
+      description: Get setting info for current user by path or pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Setting path // 配置路径
+        example: User/Theme
+        in: query
+        name: path
+        type: string
+      - description: Path hash // 路径哈希
+        example: hash123
+        in: query
+        name: pathHash
+        type: string
+      - description: Vault name // 保险库名称
+        example: MyVault
+        in: query
+        name: vault
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SettingDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get setting info
+      tags:
+      - Setting
+    post:
+      consumes:
+      - application/json
+      description: Create a new setting or update an existing one
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Create/Update Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SettingModifyOrCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SettingDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Create or update setting
+      tags:
+      - Setting
+  /api/setting/rename:
+    post:
+      consumes:
+      - application/json
+      description: Rename a setting and update its path and pathHash
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Rename Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SettingRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SettingDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Rename setting
+      tags:
+      - Setting
+  /api/settings:
+    get:
+      description: Get setting list for current user with pagination and keyword filtering
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Keyword // 关键词
+        example: User/
+        in: query
+        name: keyword
+        type: string
+      - description: Vault name // 保险库名称
+        example: MyVault
+        in: query
+        name: vault
+        required: true
+        type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.SettingDTO'
+                        type: array
+                    type: object
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get setting list
+      tags:
+      - Setting
   /api/share:
     post:
       consumes:
