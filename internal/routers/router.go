@@ -160,6 +160,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		storageHandler := api_router.NewStorageHandler(appContainer)
 		backupHandler := api_router.NewBackupHandler(appContainer)
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
+		settingHandler := api_router.NewSettingHandler(appContainer, wss)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -277,6 +278,12 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/git-sync/config/clean", gitSyncHandler.CleanWorkspace)
 			auth.POST("/git-sync/config/execute", gitSyncHandler.Execute)
 			auth.GET("/git-sync/histories", gitSyncHandler.GetHistories)
+
+			auth.GET("/setting", settingHandler.Get)
+			auth.POST("/setting", settingHandler.CreateOrUpdate)
+			auth.DELETE("/setting", settingHandler.Delete)
+			auth.POST("/setting/rename", settingHandler.Rename)
+			auth.GET("/settings", settingHandler.List)
 		}
 
 	}

@@ -41,6 +41,23 @@ type SettingClearRequest struct {
 	Vault string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 }
 
+// SettingListRequest Parameters for listing settings
+// 获取配置列表参数
+type SettingListRequest struct {
+	Vault   string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
+	Keyword string `json:"keyword" form:"keyword" example:"User/"`                  // Keyword // 关键词
+}
+
+// SettingRenameRequest Parameters for renaming settings
+// 重命名配置参数
+type SettingRenameRequest struct {
+	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`      // Vault name // 保险库名称
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"Old/Path"` // Old path // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"oldhash123"`          // Old path hash // 旧路径哈希
+	NewPath     string `json:"newPath" form:"newPath" binding:"required" example:"New/Path"` // New path // 新路径
+	NewPathHash string `json:"newPathHash" form:"newPathHash" example:"newhash456"`          // New path hash // 新路径哈希
+}
+
 // SettingGetRequest Parameters for retrieving a single setting
 // 获取单条配置参数
 type SettingGetRequest struct {
