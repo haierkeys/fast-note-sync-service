@@ -384,3 +384,80 @@ func (h *FileHandler) RecycleClear(c *gin.Context) {
 
 	response.ToResponse(code.Success)
 }
+
+// Rename renames a file
+// @Summary Rename attachment
+// @Description Rename an attachment to a new path
+// @Tags File
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.FileRenameRequest true "Rename Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
+// @Router /api/file/rename [post]
+func (h *FileHandler) Rename(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.FileRenameRequest{}
+
+	// Parameter binding and validation
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("FileHandler.Rename.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// Get UID
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("FileHandler.Rename err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Validate paths
+	if !util.ValidatePath(params.Path) || !util.ValidatePath(params.OldPath) {
+		response.ToResponse(code.ErrorInvalidPath)
+		return
+	}
+
+	// Calculate PathHash
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+	if params.OldPathHash == "" {
+		params.OldPathHash = util.EncodeHash32(params.OldPath)
+	}
+
+	// Get request context
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	fileSvc := h.App.GetFileService(app.WebClientName, "")
+
+	oldFile, newFile, err := fileSvc.Rename(ctx, uid, params)
+	if err != nil {
+		h.logError(ctx, "FileHandler.Rename", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(newFile))
+
+	// Broadcast WebSocket event: FileSyncRename
+	// 广播 WebSocket 事件: 文件同步重命名
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(dto.FileSyncRenameMessage{
+		Path:             newFile.Path,
+		PathHash:         newFile.PathHash,
+		ContentHash:      newFile.ContentHash,
+		Ctime:            newFile.Ctime,
+		Mtime:            newFile.Mtime,
+		Size:             newFile.Size,
+		UpdatedTimestamp: newFile.UpdatedTimestamp,
+		OldPath:          oldFile.Path,
+		OldPathHash:      oldFile.PathHash,
+	}).WithVault(params.Vault), "FileSyncRename")
+}

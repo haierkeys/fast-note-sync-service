@@ -1133,6 +1133,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/file/rename": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Rename an attachment to a new path",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "Rename attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Rename Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.FileRenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FileDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/file/restore": {
             "put": {
                 "security": [
@@ -3140,6 +3198,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/note/rename": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Rename a note to a new path",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Note"
+                ],
+                "summary": "Rename note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Rename Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NoteRenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/note/replace": {
             "post": {
                 "security": [
@@ -5060,6 +5176,41 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.FileRenameRequest": {
+            "type": "object",
+            "required": [
+                "oldPath",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "oldPath": {
+                    "description": "Old path // 旧路径",
+                    "type": "string",
+                    "example": "OldImage.png"
+                },
+                "oldPathHash": {
+                    "description": "Old path hash // 旧路径哈希",
+                    "type": "string",
+                    "example": "ofhash456"
+                },
+                "path": {
+                    "description": "New path // 新路径",
+                    "type": "string",
+                    "example": "NewImage.png"
+                },
+                "pathHash": {
+                    "description": "New path hash // 新路径哈希",
+                    "type": "string",
+                    "example": "nfhash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
+        },
         "dto.FileRestoreRequest": {
             "type": "object",
             "required": [
@@ -5601,16 +5752,6 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1700000000
                 },
-                "oldPath": {
-                    "description": "Old path // 旧路径",
-                    "type": "string",
-                    "example": "OldPath.md"
-                },
-                "oldPathHash": {
-                    "description": "Old path hash // 旧路径哈希",
-                    "type": "string",
-                    "example": "oldhash789"
-                },
                 "path": {
                     "description": "Note path // 笔记路径",
                     "type": "string",
@@ -5620,16 +5761,6 @@ const docTemplate = `{
                     "description": "Path hash // 路径哈希",
                     "type": "string",
                     "example": "hash123"
-                },
-                "srcPath": {
-                    "description": "Source path (for rename) // 源路径（用于重命名）",
-                    "type": "string",
-                    "example": "OldName.md"
-                },
-                "srcPathHash": {
-                    "description": "Source path hash // 源路径哈希",
-                    "type": "string",
-                    "example": "oldhash456"
                 },
                 "vault": {
                     "description": "Vault name // 保险库名称",
@@ -5762,6 +5893,41 @@ const docTemplate = `{
                     "description": "Path hash // 路径哈希",
                     "type": "string",
                     "example": "hash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
+        },
+        "dto.NoteRenameRequest": {
+            "type": "object",
+            "required": [
+                "oldPath",
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "oldPath": {
+                    "description": "Old path // 旧路径",
+                    "type": "string",
+                    "example": "OldName.md"
+                },
+                "oldPathHash": {
+                    "description": "Old path hash // 旧路径哈希",
+                    "type": "string",
+                    "example": "ohash456"
+                },
+                "path": {
+                    "description": "New path // 新路径",
+                    "type": "string",
+                    "example": "NewName.md"
+                },
+                "pathHash": {
+                    "description": "New path hash // 新路径哈希",
+                    "type": "string",
+                    "example": "nhash123"
                 },
                 "vault": {
                     "description": "Vault name // 保险库名称",

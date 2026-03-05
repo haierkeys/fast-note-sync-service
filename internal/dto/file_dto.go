@@ -109,11 +109,11 @@ type FileListRequest struct {
 // FileRenameRequest Parameters required for renaming a file
 // 重命名文件所需参数
 type FileRenameRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`               // Vault name // 保险库名称
-	Path        string `json:"path" form:"path" binding:"required" example:"NewImage.png"`            // Current path // 当前路径
-	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"nfhash123"`       // Current path hash // 当前路径哈希
-	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldImage.png"`      // Old path // 旧路径
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required" example:"ofhash456"` // Old path hash // 旧路径哈希
+	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`          // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required" example:"NewImage.png"`       // New path // 新路径
+	PathHash    string `json:"pathHash" form:"pathHash" example:"nfhash123"`                     // New path hash // 新路径哈希
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldImage.png"` // Old path // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`               // Old path hash // 旧路径哈希
 }
 
 // ---------------- DTO / Response ----------------

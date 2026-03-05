@@ -24,16 +24,12 @@ type NoteModifyOrCreateRequest struct {
 	Vault           string `json:"vault" form:"vault" binding:"required" example:"MyVault"`      // Vault name // 保险库名称
 	Path            string `json:"path" form:"path" binding:"required" example:"ReadMe.md"`      // Note path // 笔记路径
 	PathHash        string `json:"pathHash" form:"pathHash" example:"hash123"`                   // Path hash // 路径哈希
-	SrcPath         string `json:"srcPath" form:"srcPath" example:"OldName.md"`                  // Source path (for rename) // 源路径（用于重命名）
-	SrcPathHash     string `json:"srcPathHash" form:"srcPathHash" example:"oldhash456"`          // Source path hash // 源路径哈希
 	BaseHash        string `json:"baseHash" form:"baseHash" binding:"" example:"bhash789"`       // Base hash for sync // 同步基准哈希
 	BaseHashMissing bool   `json:"baseHashMissing" form:"baseHashMissing" example:"false"`       // Marks if baseHash is unavailable // 标记基准哈希是否缺失
 	Content         string `json:"content" form:"content" binding:"" example:"# Hello World"`    // Note content // 笔记内容
 	ContentHash     string `json:"contentHash" form:"contentHash" binding:"" example:"chash012"` // Content hash // 内容哈希
 	Ctime           int64  `json:"ctime" form:"ctime" example:"1700000000"`                      // Creation timestamp // 创建时间戳
 	Mtime           int64  `json:"mtime" form:"mtime" example:"1700000000"`                      // Modification timestamp // 修改时间戳
-	OldPath         string `json:"oldPath" form:"oldPath" example:"OldPath.md"`                  // Old path // 旧路径
-	OldPathHash     string `json:"oldPathHash" form:"oldPathHash" example:"oldhash789"`          // Old path hash // 旧路径哈希
 	CreateOnly      bool   `json:"createOnly" form:"createOnly" example:"false"`                 // If true, fail if note already exists // 如果为 true，笔记已存在则失败
 }
 
@@ -178,11 +174,11 @@ type NoteGetRequest struct {
 // NoteRenameRequest Parameters required for renaming a note
 // 重命名笔记所需参数
 type NoteRenameRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`              // Vault name // 保险库名称
-	Path        string `json:"path" form:"path" binding:"required" example:"NewName.md"`             // Current path // 当前路径
-	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"nhash123"`       // Current path hash // 当前路径哈希
-	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldName.md"`       // Old path // 旧路径
-	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required" example:"ohash456"` // Old path hash // 旧路径哈希
+	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`        // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required" example:"NewName.md"`       // New path // 新路径
+	PathHash    string `json:"pathHash" form:"pathHash" example:"nhash123"`                    // New path hash // 新路径哈希
+	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldName.md"` // Old path // 旧路径
+	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ohash456"`              // Old path hash // 旧路径哈希
 }
 
 // NoteListRequest Pagination parameters for retrieving the note list
