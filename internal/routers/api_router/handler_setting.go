@@ -7,6 +7,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 )
 
@@ -102,6 +103,9 @@ func (h *SettingHandler) CreateOrUpdate(c *gin.Context) {
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
+
+	params.Mtime = timex.Now().UnixMilli()
+	params.Ctime = timex.Now().UnixMilli()
 
 	uid := pkgapp.GetUID(c)
 	_, res, err := h.appContainer.SettingService.ModifyOrCreate(c.Request.Context(), uid, params, false)
