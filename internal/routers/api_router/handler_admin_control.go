@@ -33,13 +33,15 @@ import (
 // 使用 App Container 注入依赖
 type AdminControlHandler struct {
 	*Handler
+	wss *pkgapp.WebsocketServer
 }
 
 // NewAdminControlHandler creates AdminControlHandler instance
 // NewAdminControlHandler 创建 AdminControlHandler 实例
-func NewAdminControlHandler(a *app.App) *AdminControlHandler {
+func NewAdminControlHandler(a *app.App, wss *pkgapp.WebsocketServer) *AdminControlHandler {
 	return &AdminControlHandler{
 		Handler: NewHandler(a),
+		wss:     wss,
 	}
 }
 
@@ -803,6 +805,35 @@ func (h *AdminControlHandler) GC(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(data).WithDetails("Manual GC completed successfully"))
+}
+
+// GetWSClients retrieves all currently connected WebSocket clients (requires admin privileges)
+// @Summary Get connected WebSocket clients
+// @Description Get a list of all current WebSocket connections, requires admin privileges
+// @Tags System
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=[]pkgapp.WSClientInfo} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/ws_clients [get]
+func (h *AdminControlHandler) GetWSClients(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if uid == 0 {
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	clients := h.wss.GetClients()
+	response.ToResponse(code.Success.WithData(clients))
 }
 
 func (h *AdminControlHandler) downloadFile(url string, dest string) error {

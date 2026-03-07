@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
@@ -208,6 +209,13 @@ type ClientInfoMessage struct {
 	Name                string `json:"name"`                // Client name // 客户端名称
 	Version             string `json:"version"`             // Client version // 客户端版本
 	Type                string `json:"type"`                // Client type "web" | "desktop" | "mobile" | "obsidianPlugin" // 客户端类型 "web" | "desktop" | "mobile" | "obsidianPlugin"
+	IsDesktop           bool   `json:"isDesktop"`           // Is desktop // 是否为桌面端
+	IsMobile            bool   `json:"isMobile"`            // Is mobile // 是否为移动端
+	IsPhone             bool   `json:"isPhone"`             // Is phone // 是否为手机
+	IsTablet            bool   `json:"isTablet"`            // Is tablet // 是否为平板
+	IsMacOS             bool   `json:"isMacOS"`             // Is macOS // 是否为 macOS
+	IsWin               bool   `json:"isWin"`               // Is Windows // 是否为 Windows
+	IsLinux             bool   `json:"isLinux"`             // Is Linux // 是否为 Linux
 	OfflineSyncStrategy string `json:"offlineSyncStrategy"` // Offline device sync strategy "newTimeMerge" | "ignoreTimeMerge" // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 }
 
@@ -247,7 +255,10 @@ type WebsocketClient struct {
 	SF                  *singleflight.Group       // Concurrency control // 并发控制：相同 key 的请求只执行一次，其余等待结果
 	BinaryMu            sync.Mutex                // Synchronization lock when reading and writing data // 用于读写数据时的同步锁 (不再保护 map 存储)
 	ClientName          string                    // Client name (e.g., "Mac", "Windows", "iPhone") // 客户端名称 (例如 "Mac", "Windows", "iPhone")
+	ClientType          string                    // Client type "web" | "desktop" | "mobile" | "obsidianPlugin" // 客户端类型 "web" | "desktop" | "mobile" | "obsidianPlugin"
+	ClientPlatform      map[string]bool           // Client platform details // 客户端平台详情
 	ClientVersion       string                    // Client version number (e.g., "1.2.4") // 客户端版本号 (例如 "1.2.4")
+	StartTime           timex.Time                // Connection start time // 连接开始时间
 	IsFirstSync         bool                      // Whether it's the first sync // 是否是第一次同步过
 	DiffMergePaths      map[string]DiffMergeEntry // File paths needing merging // 需要合并的文件路径，包含创建时间用于超时清理
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
@@ -634,6 +645,45 @@ type WebsocketServer struct {
 	sessionsMu          sync.RWMutex
 }
 
+// WSClientInfo WebSocket client information for API responses
+// WSClientInfo 用于 API 响应的 WebSocket 客户端信息
+type WSClientInfo struct {
+	UID           string          `json:"uid"`
+	Nickname      string          `json:"nickname"`
+	ClientName    string          `json:"clientName"`
+	ClientType    string          `json:"clientType"`
+	ClientVersion string          `json:"clientVersion"`
+	PlatformInfo  map[string]bool `json:"platformInfo"`
+	RemoteAddr    string          `json:"remoteAddr"`
+	StartTime     timex.Time      `json:"startTime"`
+	TraceID       string          `json:"traceId"`
+}
+
+// GetClients returns information of all currently connected WebSocket clients
+// GetClients 返回所有当前已连接的 WebSocket 客户端信息
+func (w *WebsocketServer) GetClients() []WSClientInfo {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	clients := make([]WSClientInfo, 0, len(w.clients))
+	for _, c := range w.clients {
+		info := WSClientInfo{
+			ClientName:    c.ClientName,
+			ClientType:    c.ClientType,
+			ClientVersion: c.ClientVersion,
+			PlatformInfo:  c.ClientPlatform,
+			RemoteAddr:    c.conn.RemoteAddr().String(),
+			StartTime:     c.StartTime,
+			TraceID:       c.TraceID,
+		}
+		if c.User != nil {
+			info.UID = c.User.ID
+			info.Nickname = c.User.Nickname
+		}
+		clients = append(clients, info)
+	}
+	return clients
+}
+
 // NewWebsocketServer creates WebSocket server instance
 // NewWebsocketServer 创建 WebSocket 服务器实例
 // c: WebSocket config
@@ -695,12 +745,13 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		traceID := extractOrGenerateTraceID(c)
 
 		client := &WebsocketClient{
-			conn:   socket,
-			done:   make(chan struct{}),
-			app:    w.app,
-			Server: w,
-			Ctx:    c,
-			SF:     new(singleflight.Group),
+			conn:      socket,
+			done:      make(chan struct{}),
+			app:       w.app,
+			Server:    w,
+			Ctx:       c,
+			SF:        new(singleflight.Group),
+			StartTime: timex.Now(),
 		}
 
 		// Initialize long-lifecycle context for WebSocket connection
@@ -785,7 +836,17 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 	}
 
 	c.ClientName = info.Name
+	c.ClientType = info.Type
 	c.ClientVersion = info.Version
+	c.ClientPlatform = map[string]bool{
+		"isDesktop": info.IsDesktop,
+		"isMobile":  info.IsMobile,
+		"isPhone":   info.IsPhone,
+		"isTablet":  info.IsTablet,
+		"isMacOS":   info.IsMacOS,
+		"isWin":     info.IsWin,
+		"isLinux":   info.IsLinux,
+	}
 	c.OfflineSyncStrategy = info.OfflineSyncStrategy
 	c.DiffMergePaths = make(map[string]DiffMergeEntry)
 

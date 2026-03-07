@@ -532,6 +532,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/admin/ws_clients": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get a list of all current WebSocket connections, requires admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get connected WebSocket clients",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/app.WSClientInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/backup/config": {
             "post": {
                 "security": [
@@ -5198,6 +5253,41 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vault": {}
+            }
+        },
+        "app.WSClientInfo": {
+            "type": "object",
+            "properties": {
+                "clientName": {
+                    "type": "string"
+                },
+                "clientType": {
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "platformInfo": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
+                "remoteAddr": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "traceId": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
             }
         },
         "diffmatchpatch.Diff": {

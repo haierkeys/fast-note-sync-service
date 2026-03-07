@@ -155,7 +155,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		fileHandler := api_router.NewFileHandler(appContainer, wss)
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
-		adminControlHandler := api_router.NewAdminControlHandler(appContainer)
+		adminControlHandler := api_router.NewAdminControlHandler(appContainer, wss)
 		shareHandler := api_router.NewShareHandler(appContainer)
 		storageHandler := api_router.NewStorageHandler(appContainer)
 		backupHandler := api_router.NewBackupHandler(appContainer)
@@ -209,6 +209,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/admin/upgrade", adminControlHandler.Upgrade)
 			auth.GET("/admin/restart", adminControlHandler.Restart)
 			auth.GET("/admin/gc", adminControlHandler.GC)
+			auth.GET("/admin/ws_clients", adminControlHandler.GetWSClients)
 			auth.GET("/admin/cloudflared_tunnel_download", adminControlHandler.CloudflaredTunnelDownload)
 
 			auth.POST("/user/change_password", userHandler.UserChangePassword)
