@@ -318,6 +318,29 @@ definitions:
         type: boolean
       vault: {}
     type: object
+  app.WSClientInfo:
+    properties:
+      clientName:
+        type: string
+      clientType:
+        type: string
+      clientVersion:
+        type: string
+      nickname:
+        type: string
+      platformInfo:
+        additionalProperties:
+          type: boolean
+        type: object
+      remoteAddr:
+        type: string
+      startTime:
+        type: string
+      traceId:
+        type: string
+      uid:
+        type: string
+    type: object
   diffmatchpatch.Diff:
     properties:
       text:
@@ -1910,6 +1933,39 @@ paths:
       security:
       - UserAuthToken: []
       summary: Trigger server upgrade
+      tags:
+      - System
+  /api/admin/ws_clients:
+    get:
+      description: Get a list of all current WebSocket connections, requires admin
+        privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/app.WSClientInfo'
+                  type: array
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get connected WebSocket clients
       tags:
       - System
   /api/backup/config:
