@@ -370,6 +370,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 	noteDTO := &dto.NoteDTO{
 		ID:               note.ID,
 		Path:             note.Path,
+		PathHash:         note.PathHash,
 		Content:          note.Content,
 		ContentHash:      note.ContentHash,
 		Version:          note.Version,
