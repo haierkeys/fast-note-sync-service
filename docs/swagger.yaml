@@ -1334,7 +1334,7 @@ definitions:
         description: Resource path // 资源路径
         example: ReadMe.md
         type: string
-      path_hash:
+      pathHash:
         description: Resource path Hash // 资源路径哈希
         example: hash123
         type: string
@@ -1344,7 +1344,7 @@ definitions:
         type: string
     required:
     - path
-    - path_hash
+    - pathHash
     - vault
     type: object
   dto.ShareCreateResponse:
