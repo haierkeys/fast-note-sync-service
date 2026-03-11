@@ -106,6 +106,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	frontendAssets, _ := fs.Sub(frontendFiles, "frontend/assets")
 	frontendStatic, _ := fs.Sub(frontendFiles, "frontend/static")
 	frontendIndexContent, _ := frontendFiles.ReadFile("frontend/index.html")
+	frontendShareContent, _ := frontendFiles.ReadFile("frontend/share.html")
 
 	r := gin.New()
 	r.Use(middleware.Cors())
@@ -115,6 +116,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	})
 	r.GET("/webgui/", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendIndexContent)
+	})
+
+	r.GET("/share/:side/:token", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", frontendShareContent)
 	})
 
 	userStaticPath := "storage/user_static"
