@@ -7,7 +7,7 @@ import "time"
 type ShareCreateRequest struct {
 	Vault    string `json:"vault" binding:"required" example:"defaultVault"` // Vault name // 保险库名称
 	Path     string `json:"path" binding:"required" example:"ReadMe.md"`     // Resource path // 资源路径
-	PathHash string `json:"path_hash" binding:"required" example:"hash123"`  // Resource path Hash // 资源路径哈希
+	PathHash string `json:"pathHash" binding:"required" example:"hash123"`   // Resource path Hash // 资源路径哈希
 }
 
 // ShareResourceRequest Request parameters for retrieving a shared resource

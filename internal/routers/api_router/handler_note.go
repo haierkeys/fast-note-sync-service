@@ -106,16 +106,6 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(noteWithLinks))
 }
 
-// GetShared retrieves shared note details
-// @Summary Get shared note details
-// @Description Get specific note content (restricted read-only access) via share token
-// @Tags Note
-// @Security ShareAuthToken
-// @Param Share-Token header string true "Auth Token"
-// @Produce json
-// @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
-// @Router /api/share/note [get]
-
 // List retrieves note list
 // @Summary Get note list
 // @Description Get note list for current user with pagination

@@ -6633,7 +6633,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "path",
-                "path_hash",
+                "pathHash",
                 "vault"
             ],
             "properties": {
@@ -6642,7 +6642,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "ReadMe.md"
                 },
-                "path_hash": {
+                "pathHash": {
                     "description": "Resource path Hash // 资源路径哈希",
                     "type": "string",
                     "example": "hash123"
