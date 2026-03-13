@@ -111,6 +111,23 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 	return res
 }
 
+
+// isFileProtocol 判断 URL 是否使用 file:// 协议
+func isFileProtocol(repoURL string) bool {
+	return len(repoURL) >= 7 && repoURL[:7] == "file://"
+}
+
+// getAuth 根据 URL 协议返回合适的认证方式
+// file:// 协议返回 nil，其他协议返回 BasicAuth
+func getAuth(repoURL, username, password string) transport.AuthMethod {
+	if isFileProtocol(repoURL) {
+		return nil
+	}
+	return &http.BasicAuth{
+		Username: username,
+		Password: password,
+	}
+}
 func (s *gitSyncService) GetConfigs(ctx context.Context, uid int64) ([]*dto.GitSyncConfigDTO, error) {
 	configs, err := s.repo.List(ctx, uid)
 	if err != nil {
@@ -208,10 +225,7 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 		branch = "main"
 	}
 
-	auth := &http.BasicAuth{
-		Username: params.Username,
-		Password: params.Password,
-	}
+	auth := getAuth(params.RepoURL, params.Username, params.Password)
 
 	// Try LsRemote to validate credentials and repo visibility
 	rem := git.NewRemote(nil, &config.RemoteConfig{
@@ -519,10 +533,7 @@ func (s *gitSyncService) scheduleGC() {
 
 func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig) error {
 	wsPath := s.getWorkspacePath(conf.UID, conf.ID)
-	auth := &http.BasicAuth{
-		Username: conf.Username,
-		Password: conf.Password,
-	}
+	auth := getAuth(conf.RepoURL, conf.Username, conf.Password)
 
 	var r *git.Repository
 	var err error
