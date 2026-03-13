@@ -62,6 +62,14 @@ type ShareService interface {
 	// ListShares 列出用户的所有分享
 	ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error)
 
+	// GetShareByPath retrieves share info by path
+	// GetShareByPath 根据路径获取分享信息
+	GetShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) (*domain.UserShare, error)
+
+	// StopShareByPath revokes a share by path
+	// StopShareByPath 根据路径撤销分享
+	StopShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) error
+
 	// Shutdown shuts down the service and flushes remaining data
 	// Shutdown 关闭服务并同步最后的数据
 	Shutdown(ctx context.Context) error
@@ -216,6 +224,8 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 
 	share := &domain.UserShare{
 		UID:       uid,
+		ResType:   mainType,
+		ResID:     mainID,
 		Resources: resolvedResources,
 		Status:    1,
 		ExpiresAt: expiresAt,
@@ -349,6 +359,54 @@ func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error
 // ListShares 列出用户的所有分享
 func (s *shareService) ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
 	return s.repo.ListByUID(ctx, uid)
+}
+
+// GetShareByPath retrieves share info by path
+// GetShareByPath 根据路径获取分享信息
+func (s *shareService) GetShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) (*domain.UserShare, error) {
+	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	resID := int64(0)
+	resType := ""
+
+	// Check if it's a note or file
+	note, err := s.noteRepo.GetByPathHash(ctx, pathHash, vault.ID, uid)
+	if err == nil && note != nil {
+		resID = note.ID
+		resType = "note"
+	} else {
+		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vault.ID, uid)
+		if err == nil && file != nil {
+			resID = file.ID
+			resType = "file"
+		}
+	}
+
+	if resID == 0 {
+		return nil, code.ErrorFileNotFound
+	}
+
+	// Use precision index query instead of iterating list
+	// 使用精确索引查询，替代遍历列表
+	share, err := s.repo.GetByRes(ctx, uid, resType, resID)
+	if err != nil {
+		return nil, code.ErrorFileNotFound // No active share found
+	}
+
+	return share, nil
+}
+
+// StopShareByPath revokes a share by path
+// StopShareByPath 根据路径撤销分享
+func (s *shareService) StopShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) error {
+	share, err := s.GetShareByPath(ctx, uid, vaultName, pathHash)
+	if err != nil {
+		return err
+	}
+	return s.StopShare(ctx, uid, share.ID)
 }
 
 // GetSharedNote retrieves specific shared note details

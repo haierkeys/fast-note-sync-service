@@ -46,6 +46,8 @@ func (r *userShareRepository) toDomain(m *model.UserShare) *domain.UserShare {
 	return &domain.UserShare{
 		ID:           m.ID,
 		UID:          m.UID,
+		ResType:      m.ResType,
+		ResID:        m.ResID,
 		Resources:    res,
 		Status:       m.Status,
 		ViewCount:    m.ViewCount,
@@ -65,6 +67,8 @@ func (r *userShareRepository) toModel(d *domain.UserShare) *model.UserShare {
 	return &model.UserShare{
 		ID:           d.ID,
 		UID:          d.UID,
+		ResType:      d.ResType,
+		ResID:        d.ResID,
 		Res:          string(resBytes),
 		Status:       d.Status,
 		ViewCount:    d.ViewCount,
@@ -90,6 +94,15 @@ func (r *userShareRepository) Create(ctx context.Context, uid int64, share *doma
 func (r *userShareRepository) GetByID(ctx context.Context, uid int64, id int64) (*domain.UserShare, error) {
 	us := r.userShare(uid).UserShare
 	m, err := us.WithContext(ctx).Where(us.ID.Eq(id)).First()
+	if err != nil {
+		return nil, err
+	}
+	return r.toDomain(m), nil
+}
+
+func (r *userShareRepository) GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*domain.UserShare, error) {
+	us := r.userShare(uid).UserShare
+	m, err := us.WithContext(ctx).Where(us.ResType.Eq(resType), us.ResID.Eq(resID), us.Status.Eq(1)).First()
 	if err != nil {
 		return nil, err
 	}

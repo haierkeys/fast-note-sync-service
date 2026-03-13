@@ -3862,6 +3862,71 @@ const docTemplate = `{
             }
         },
         "/api/share": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get share token and info by vault and path",
+                "tags": [
+                    "Share"
+                ],
+                "summary": "Query share by path",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "ReadMe.md",
+                        "description": "Resource path // 资源路径",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "hash123",
+                        "description": "Resource path Hash // 资源路径哈希",
+                        "name": "pathHash",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "defaultVault",
+                        "description": "Vault name // 保险库名称",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ShareCreateResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -3914,6 +3979,50 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Cancel a share by ID or path parameters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Share"
+                ],
+                "summary": "Cancel share",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Cancel Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ShareCancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
                         }
                     }
                 }
@@ -4006,6 +4115,52 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/dto.NoteDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/shares": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get all active and inactive shares of the user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Share"
+                ],
+                "summary": "List shares",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ShareListResponse"
                                         }
                                     }
                                 }
@@ -6629,6 +6784,34 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ShareCancelRequest": {
+            "type": "object",
+            "required": [
+                "vault"
+            ],
+            "properties": {
+                "id": {
+                    "description": "Share ID (optional) // 分享 ID (可选)",
+                    "type": "integer",
+                    "example": 1
+                },
+                "path": {
+                    "description": "Resource path (optional) // 资源路径 (可选)",
+                    "type": "string",
+                    "example": "ReadMe.md"
+                },
+                "pathHash": {
+                    "description": "Resource path Hash (optional) // 资源路径哈希 (可选)",
+                    "type": "string",
+                    "example": "hash123"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "defaultVault"
+                }
+            }
+        },
         "dto.ShareCreateRequest": {
             "type": "object",
             "required": [
@@ -6672,6 +6855,63 @@ const docTemplate = `{
                 "type": {
                     "description": "Resource type: note or file // 资源类型：笔记（note）或文件（file）",
                     "type": "string"
+                }
+            }
+        },
+        "dto.ShareListItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "Expiration time // 过期时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Share ID // 分享记录 ID",
+                    "type": "integer"
+                },
+                "last_viewed_at": {
+                    "description": "Last viewed time // 最后访问时间",
+                    "type": "string"
+                },
+                "res": {
+                    "description": "Authorized resources // 资源授权列表",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "status": {
+                    "description": "Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "User ID // 用户 ID",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "view_count": {
+                    "description": "View count // 访问次数",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.ShareListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "Share list // 分享列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ShareListItem"
+                    }
                 }
             }
         },
