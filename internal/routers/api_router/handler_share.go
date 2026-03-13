@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -177,6 +178,146 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 	}
 
 	http.ServeContent(c.Writer, c.Request, fileName, time.UnixMilli(mtime), file)
+}
+
+// Query queries a share by path
+// @Summary Query share by path
+// @Description Get share token and info by vault and path
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Param params query dto.ShareQueryRequest true "Query Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.ShareCreateResponse} "Success"
+// @Router /api/share [get]
+func (h *ShareHandler) Query(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.ShareQueryRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	share, err := h.App.ShareService.GetShareByPath(ctx, uid, params.Vault, params.PathHash)
+	if err != nil {
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
+		}
+		return
+	}
+
+	// Generate Token again (since it's not stored in DB, we use the SID encryption scheme)
+	token, err := h.App.TokenManager.ShareGenerate(share.ID, uid, share.Resources)
+	if err != nil {
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+
+	// Determine main ID and type for response
+	var mainID int64
+	var mainType string
+	if ids, ok := share.Resources["note"]; ok && len(ids) > 0 {
+		mainID, _ = strconv.ParseInt(ids[0], 10, 64)
+		mainType = "note"
+	} else if ids, ok := share.Resources["file"]; ok && len(ids) > 0 {
+		mainID, _ = strconv.ParseInt(ids[0], 10, 64)
+		mainType = "file"
+	}
+
+	response.ToResponse(code.Success.WithData(&dto.ShareCreateResponse{
+		ID:        mainID,
+		Type:      mainType,
+		Token:     token,
+		ExpiresAt: share.ExpiresAt,
+	}))
+}
+
+// Cancel cancels a share by ID or path
+// @Summary Cancel share
+// @Description Cancel a share by ID or path parameters
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.ShareCancelRequest true "Cancel Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/share [delete]
+func (h *ShareHandler) Cancel(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.ShareCancelRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	var err error
+	if params.ID > 0 {
+		err = h.App.ShareService.StopShare(ctx, uid, params.ID)
+	} else if params.Vault != "" && params.PathHash != "" {
+		err = h.App.ShareService.StopShareByPath(ctx, uid, params.Vault, params.PathHash)
+	} else {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("Either ID or Vault + PathHash must be provided"))
+		return
+	}
+
+	if err != nil {
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
+		}
+		return
+	}
+
+	response.ToResponse(code.Success)
+}
+
+// List lists all shares of a user
+// @Summary List shares
+// @Description Get all active and inactive shares of the user
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=dto.ShareListResponse} "Success"
+// @Router /api/shares [get]
+func (h *ShareHandler) List(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	shares, err := h.App.ShareService.ListShares(ctx, uid)
+	if err != nil {
+		response.ToResponse(code.Failed.WithDetails(err.Error()))
+		return
+	}
+
+	var items []*dto.ShareListItem
+	for _, s := range shares {
+		items = append(items, &dto.ShareListItem{
+			ID:           s.ID,
+			UID:          s.UID,
+			Resources:    s.Resources,
+			Status:       s.Status,
+			ViewCount:    s.ViewCount,
+			LastViewedAt: s.LastViewedAt,
+			ExpiresAt:    s.ExpiresAt,
+			CreatedAt:    s.CreatedAt,
+			UpdatedAt:    s.UpdatedAt,
+		})
+	}
+
+	response.ToResponse(code.Success.WithData(&dto.ShareListResponse{Items: items}))
 }
 
 // logError records error log, including Trace ID

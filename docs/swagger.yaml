@@ -1328,6 +1328,27 @@ definitions:
     - oldPath
     - vault
     type: object
+  dto.ShareCancelRequest:
+    properties:
+      id:
+        description: Share ID (optional) // 分享 ID (可选)
+        example: 1
+        type: integer
+      path:
+        description: Resource path (optional) // 资源路径 (可选)
+        example: ReadMe.md
+        type: string
+      pathHash:
+        description: Resource path Hash (optional) // 资源路径哈希 (可选)
+        example: hash123
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: defaultVault
+        type: string
+    required:
+    - vault
+    type: object
   dto.ShareCreateRequest:
     properties:
       path:
@@ -1362,6 +1383,46 @@ definitions:
       type:
         description: 'Resource type: note or file // 资源类型：笔记（note）或文件（file）'
         type: string
+    type: object
+  dto.ShareListItem:
+    properties:
+      created_at:
+        type: string
+      expires_at:
+        description: Expiration time // 过期时间
+        type: string
+      id:
+        description: Share ID // 分享记录 ID
+        type: integer
+      last_viewed_at:
+        description: Last viewed time // 最后访问时间
+        type: string
+      res:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: Authorized resources // 资源授权列表
+        type: object
+      status:
+        description: 'Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销'
+        type: integer
+      uid:
+        description: User ID // 用户 ID
+        type: integer
+      updated_at:
+        type: string
+      view_count:
+        description: View count // 访问次数
+        type: integer
+    type: object
+  dto.ShareListResponse:
+    properties:
+      items:
+        description: Share list // 分享列表
+        items:
+          $ref: '#/definitions/dto.ShareListItem'
+        type: array
     type: object
   dto.StorageDTO:
     properties:
@@ -3972,6 +4033,75 @@ paths:
       tags:
       - Setting
   /api/share:
+    delete:
+      consumes:
+      - application/json
+      description: Cancel a share by ID or path parameters
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Cancel Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShareCancelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Cancel share
+      tags:
+      - Share
+    get:
+      description: Get share token and info by vault and path
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Resource path // 资源路径
+        example: ReadMe.md
+        in: query
+        name: path
+        required: true
+        type: string
+      - description: Resource path Hash // 资源路径哈希
+        example: hash123
+        in: query
+        name: pathHash
+        required: true
+        type: string
+      - description: Vault name // 保险库名称
+        example: defaultVault
+        in: query
+        name: vault
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ShareCreateResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Query share by path
+      tags:
+      - Share
     post:
       consumes:
       - application/json
@@ -4064,6 +4194,32 @@ paths:
       security:
       - ShareAuthToken: []
       summary: Get shared note details
+      tags:
+      - Share
+  /api/shares:
+    get:
+      description: Get all active and inactive shares of the user
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ShareListResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: List shares
       tags:
       - Share
   /api/storage:
