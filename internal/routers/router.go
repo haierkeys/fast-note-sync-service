@@ -201,6 +201,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			// Create share
 			// 创建分享
 			auth.POST("/share", shareHandler.Create)
+			auth.GET("/share", shareHandler.Query)
+			auth.DELETE("/share", shareHandler.Cancel)
+			auth.GET("/shares", shareHandler.List)
 
 			// Admin config interface
 			// 管理员配置接口

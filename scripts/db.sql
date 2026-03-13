@@ -167,6 +167,10 @@ DROP TABLE IF EXISTS "user_share";
 CREATE TABLE "user_share" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "uid" integer NOT NULL DEFAULT 0,
+    "res_type" text NOT NULL DEFAULT '',
+    -- 资源类型: note, file
+    "res_id" integer NOT NULL DEFAULT 0,
+    -- 资源ID
     "res" text NOT NULL DEFAULT '',
     -- 资源列表 (JSON: {"note":["id1"],"file":["id2"]})
     "status" integer DEFAULT 1,
@@ -180,6 +184,8 @@ CREATE TABLE "user_share" (
 );
 
 CREATE INDEX "idx_user_share_uid" ON "user_share" ("uid");
+
+CREATE INDEX "idx_user_share_res_type_id" ON "user_share" ("res_type", "res_id");
 
 -- ----------------------------
 -- Table structure for note_link
@@ -273,6 +279,8 @@ CREATE TABLE "backup_config" (
     "cron_strategy" text DEFAULT '',
     -- daily, weekly, monthly, custom
     "cron_expression" text DEFAULT '',
+    "include_vault_name" integer DEFAULT 0,
+    -- Whether to include vault name in backup file name
     "retention_days" integer DEFAULT 10,
     -- Retention policy (days)
     "last_run_time" datetime DEFAULT NULL,
