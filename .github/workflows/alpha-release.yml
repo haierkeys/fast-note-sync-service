@@ -228,7 +228,13 @@ jobs:
           echo "IMAGE_TAG=${TAG_VERSION}" >> ${GITHUB_ENV}
           echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> ${GITHUB_ENV}
           echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
-
+          # Set DockerHub username
+          DOCKERHUB_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$DOCKERHUB_USER" ]; then
+            DOCKERHUB_USER="${{ github.actor }}"
+          fi
+          echo "DOCKERHUB_USER=${DOCKERHUB_USER}" >> ${GITHUB_ENV}
+          # Set DockerHub username (use secret if available, otherwise use github.actor)
 
 
       - uses: docker/setup-qemu-action@v2
@@ -254,8 +260,8 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
           dockerfile: docker/Dockerfile
-          name: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}/${{ env.NAME }}
-          username: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}
+          name: ${{ env.DOCKERHUB_USER }}/${{ env.NAME }}
+          username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           platforms: linux/amd64,linux/arm64
           snapshot: false
