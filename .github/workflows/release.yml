@@ -256,8 +256,8 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
           dockerfile: docker/Dockerfile
-          name: ${{ github.actor }}/${{ env.NAME }}
-          username: ${{ github.actor }}
+          name: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}/${{ env.NAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           platforms: linux/amd64,linux/arm64
           snapshot: false

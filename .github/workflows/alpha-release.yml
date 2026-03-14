@@ -17,7 +17,6 @@ env:
 
 jobs:
   check-version:
-    if: github.actor == 'haierkeys'
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
@@ -80,7 +79,7 @@ jobs:
 
   prepare-message:
     needs: check-version
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     outputs:
       commit_msg: ${{ steps.trans.outputs.commit_msg }}
@@ -114,7 +113,7 @@ jobs:
 
   create-release:
     needs: [check-version, prepare-message]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
@@ -137,7 +136,7 @@ jobs:
 
   build-binaries:
     needs: [check-version, prepare-message, create-release]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -202,7 +201,7 @@ jobs:
 
   push-docker:
     needs: [check-version, build-binaries, create-release]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -255,8 +254,8 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
           dockerfile: docker/Dockerfile
-          name: ${{ github.actor }}/${{ env.NAME }}
-          username: ${{ github.actor }}
+          name: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}/${{ env.NAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || github.actor }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           platforms: linux/amd64,linux/arm64
           snapshot: false
