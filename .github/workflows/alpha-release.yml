@@ -17,7 +17,6 @@ env:
 
 jobs:
   check-version:
-    if: github.actor == 'haierkeys'
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
@@ -80,7 +79,7 @@ jobs:
 
   prepare-message:
     needs: check-version
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     outputs:
       commit_msg: ${{ steps.trans.outputs.commit_msg }}
@@ -114,7 +113,7 @@ jobs:
 
   create-release:
     needs: [check-version, prepare-message]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
@@ -137,7 +136,7 @@ jobs:
 
   build-binaries:
     needs: [check-version, prepare-message, create-release]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -202,7 +201,7 @@ jobs:
 
   push-docker:
     needs: [check-version, build-binaries, create-release]
-    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys'
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -229,7 +228,13 @@ jobs:
           echo "IMAGE_TAG=${TAG_VERSION}" >> ${GITHUB_ENV}
           echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> ${GITHUB_ENV}
           echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
-
+          # Set DockerHub username
+          DOCKERHUB_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$DOCKERHUB_USER" ]; then
+            DOCKERHUB_USER="${{ github.actor }}"
+          fi
+          echo "DOCKERHUB_USER=${DOCKERHUB_USER}" >> ${GITHUB_ENV}
+          # Set DockerHub username (use secret if available, otherwise use github.actor)
 
 
       - uses: docker/setup-qemu-action@v2
@@ -255,8 +260,8 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
           dockerfile: docker/Dockerfile
-          name: ${{ github.actor }}/${{ env.NAME }}
-          username: ${{ github.actor }}
+          name: ${{ env.DOCKERHUB_USER }}/${{ env.NAME }}
+          username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           platforms: linux/amd64,linux/arm64
           snapshot: false

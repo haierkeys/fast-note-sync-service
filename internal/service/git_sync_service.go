@@ -111,6 +111,53 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 	return res
 }
 
+
+// isFileProtocol 判断 URL 是否使用 file:// 协议
+func isFileProtocol(repoURL string) bool {
+	return len(repoURL) >= 7 && repoURL[:7] == "file://"
+}
+
+// isLocalPath 判断是否为本地路径（绝对路径或相对路径）
+func isLocalPath(repoURL string) bool {
+	// 如果是 file:// 协议，返回 true
+	if isFileProtocol(repoURL) {
+		return true
+	}
+	// 如果包含 ://，说明是其他协议（http://, https://, git://, ssh:// 等）
+	if len(repoURL) > 0 && (repoURL[0] == '/' || repoURL[0] == '.') {
+		return true
+	}
+	// 检查是否包含协议标识
+	for i := 0; i < len(repoURL) && i < 10; i++ {
+		if repoURL[i] == ':' && i+2 < len(repoURL) && repoURL[i+1] == '/' && repoURL[i+2] == '/' {
+			return false // 包含 :// 说明是远程协议
+		}
+	}
+	// 不包含协议标识，可能是相对路径或绝对路径
+	return true
+}
+
+// normalizeRepoURL 将 file:// 协议的 URL 转换为本地路径
+// go-git 对本地仓库使用直接路径而不是 file:// URL
+func normalizeRepoURL(repoURL string) string {
+	if isFileProtocol(repoURL) {
+		// file:///path/to/repo -> /path/to/repo
+		return repoURL[7:]
+	}
+	return repoURL
+}
+
+// getAuth 根据 URL 协议返回合适的认证方式
+// 本地路径返回 nil，远程协议返回 BasicAuth
+func getAuth(repoURL, username, password string) transport.AuthMethod {
+	if isLocalPath(repoURL) {
+		return nil
+	}
+	return &http.BasicAuth{
+		Username: username,
+		Password: password,
+	}
+}
 func (s *gitSyncService) GetConfigs(ctx context.Context, uid int64) ([]*dto.GitSyncConfigDTO, error) {
 	configs, err := s.repo.List(ctx, uid)
 	if err != nil {
@@ -208,15 +255,13 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 		branch = "main"
 	}
 
-	auth := &http.BasicAuth{
-		Username: params.Username,
-		Password: params.Password,
-	}
+	normalizedURL := normalizeRepoURL(params.RepoURL)
+	auth := getAuth(params.RepoURL, params.Username, params.Password)
 
 	// Try LsRemote to validate credentials and repo visibility
 	rem := git.NewRemote(nil, &config.RemoteConfig{
 		Name: "origin",
-		URLs: []string{params.RepoURL},
+		URLs: []string{normalizedURL},
 	})
 
 	refs, err := rem.List(&git.ListOptions{
@@ -519,10 +564,17 @@ func (s *gitSyncService) scheduleGC() {
 
 func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig) error {
 	wsPath := s.getWorkspacePath(conf.UID, conf.ID)
-	auth := &http.BasicAuth{
-		Username: conf.Username,
-		Password: conf.Password,
-	}
+	normalizedURL := normalizeRepoURL(conf.RepoURL)
+	auth := getAuth(conf.RepoURL, conf.Username, conf.Password)
+
+	// 诊断日志
+	s.logger.Info("doSync 开始",
+		zap.String("repoURL", conf.RepoURL),
+		zap.String("normalizedURL", normalizedURL),
+		zap.Bool("isLocalPath", isLocalPath(conf.RepoURL)),
+		zap.Bool("authIsNil", auth == nil),
+		zap.String("branch", conf.Branch),
+		zap.String("wsPath", wsPath))
 
 	var r *git.Repository
 	var err error
@@ -532,12 +584,13 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		s.logger.Info("Initializing local git repo", zap.String("path", wsPath))
 		_ = os.RemoveAll(wsPath)
 		r, err = git.PlainClone(wsPath, false, &git.CloneOptions{
-			URL:           conf.RepoURL,
+			URL:           normalizedURL,
 			Auth:          auth,
 			ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 			SingleBranch:  true,
 		})
 		if err != nil {
+			s.logger.Error("Clone 失败", zap.Error(err), zap.String("repoURL", normalizedURL))
 			if errors.Is(err, transport.ErrEmptyRemoteRepository) {
 				s.logger.Info("Remote repository is empty, initializing locally", zap.String("path", wsPath))
 				r, err = git.PlainInit(wsPath, false)
@@ -546,7 +599,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 				}
 				_, err = r.CreateRemote(&config.RemoteConfig{
 					Name: "origin",
-					URLs: []string{conf.RepoURL},
+					URLs: []string{normalizedURL},
 				})
 				if err != nil {
 					return fmt.Errorf("create remote failed: %w", err)
@@ -556,11 +609,24 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			}
 		}
 	} else {
+		s.logger.Info("打开已存在的仓库", zap.String("path", wsPath))
 		r, err = git.PlainOpen(wsPath)
 		if err != nil {
+			s.logger.Error("打开仓库失败，尝试重新初始化", zap.Error(err))
 			// Try to re-init if open fails
 			_ = os.RemoveAll(wsPath)
 			return s.doSync(ctx, conf)
+		}
+
+		// 检查 remote 配置
+		remote, err := r.Remote("origin")
+		if err != nil {
+			s.logger.Error("获取 remote 失败", zap.Error(err))
+		} else {
+			cfg := remote.Config()
+			s.logger.Info("当前 remote 配置",
+				zap.Strings("urls", cfg.URLs),
+				zap.String("name", cfg.Name))
 		}
 	}
 
@@ -570,13 +636,24 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	}
 
 	// 2. Pull latest
-	s.logger.Info("Pulling latest changes", zap.Int64("configId", conf.ID))
+	s.logger.Info("准备 Pull",
+		zap.Int64("configId", conf.ID),
+		zap.String("branch", conf.Branch),
+		zap.Bool("authIsNil", auth == nil))
+
 	err = wt.Pull(&git.PullOptions{
 		Auth:          auth,
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
 	})
+
+	s.logger.Info("Pull 结果",
+		zap.Error(err),
+		zap.Bool("isAlreadyUpToDate", errors.Is(err, git.NoErrAlreadyUpToDate)),
+		zap.Bool("isEmptyRemote", errors.Is(err, transport.ErrEmptyRemoteRepository)),
+		zap.Bool("isAuthRequired", errors.Is(err, transport.ErrAuthenticationRequired)))
+
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		if errors.Is(err, transport.ErrEmptyRemoteRepository) || errors.Is(err, git.ErrRemoteNotFound) || errors.Is(err, plumbing.ErrReferenceNotFound) {
 			s.logger.Info("Remote is empty or branch not found, skipping pull", zap.Int64("configId", conf.ID))
