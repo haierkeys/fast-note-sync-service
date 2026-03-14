@@ -535,6 +535,14 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	wsPath := s.getWorkspacePath(conf.UID, conf.ID)
 	auth := getAuth(conf.RepoURL, conf.Username, conf.Password)
 
+	// 诊断日志
+	s.logger.Info("doSync 开始",
+		zap.String("repoURL", conf.RepoURL),
+		zap.Bool("isFileProtocol", isFileProtocol(conf.RepoURL)),
+		zap.Bool("authIsNil", auth == nil),
+		zap.String("branch", conf.Branch),
+		zap.String("wsPath", wsPath))
+
 	var r *git.Repository
 	var err error
 
@@ -549,6 +557,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			SingleBranch:  true,
 		})
 		if err != nil {
+			s.logger.Error("Clone 失败", zap.Error(err), zap.String("repoURL", conf.RepoURL))
 			if errors.Is(err, transport.ErrEmptyRemoteRepository) {
 				s.logger.Info("Remote repository is empty, initializing locally", zap.String("path", wsPath))
 				r, err = git.PlainInit(wsPath, false)
@@ -567,11 +576,24 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			}
 		}
 	} else {
+		s.logger.Info("打开已存在的仓库", zap.String("path", wsPath))
 		r, err = git.PlainOpen(wsPath)
 		if err != nil {
+			s.logger.Error("打开仓库失败，尝试重新初始化", zap.Error(err))
 			// Try to re-init if open fails
 			_ = os.RemoveAll(wsPath)
 			return s.doSync(ctx, conf)
+		}
+
+		// 检查 remote 配置
+		remote, err := r.Remote("origin")
+		if err != nil {
+			s.logger.Error("获取 remote 失败", zap.Error(err))
+		} else {
+			cfg := remote.Config()
+			s.logger.Info("当前 remote 配置",
+				zap.Strings("urls", cfg.URLs),
+				zap.String("name", cfg.Name))
 		}
 	}
 
@@ -581,13 +603,24 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	}
 
 	// 2. Pull latest
-	s.logger.Info("Pulling latest changes", zap.Int64("configId", conf.ID))
+	s.logger.Info("准备 Pull",
+		zap.Int64("configId", conf.ID),
+		zap.String("branch", conf.Branch),
+		zap.Bool("authIsNil", auth == nil))
+
 	err = wt.Pull(&git.PullOptions{
 		Auth:          auth,
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
 	})
+
+	s.logger.Info("Pull 结果",
+		zap.Error(err),
+		zap.Bool("isAlreadyUpToDate", errors.Is(err, git.NoErrAlreadyUpToDate)),
+		zap.Bool("isEmptyRemote", errors.Is(err, transport.ErrEmptyRemoteRepository)),
+		zap.Bool("isAuthRequired", errors.Is(err, transport.ErrAuthenticationRequired)))
+
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		if errors.Is(err, transport.ErrEmptyRemoteRepository) || errors.Is(err, git.ErrRemoteNotFound) || errors.Is(err, plumbing.ErrReferenceNotFound) {
 			s.logger.Info("Remote is empty or branch not found, skipping pull", zap.Int64("configId", conf.ID))
