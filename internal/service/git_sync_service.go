@@ -117,6 +117,26 @@ func isFileProtocol(repoURL string) bool {
 	return len(repoURL) >= 7 && repoURL[:7] == "file://"
 }
 
+// isLocalPath 判断是否为本地路径（绝对路径或相对路径）
+func isLocalPath(repoURL string) bool {
+	// 如果是 file:// 协议，返回 true
+	if isFileProtocol(repoURL) {
+		return true
+	}
+	// 如果包含 ://，说明是其他协议（http://, https://, git://, ssh:// 等）
+	if len(repoURL) > 0 && (repoURL[0] == '/' || repoURL[0] == '.') {
+		return true
+	}
+	// 检查是否包含协议标识
+	for i := 0; i < len(repoURL) && i < 10; i++ {
+		if repoURL[i] == ':' && i+2 < len(repoURL) && repoURL[i+1] == '/' && repoURL[i+2] == '/' {
+			return false // 包含 :// 说明是远程协议
+		}
+	}
+	// 不包含协议标识，可能是相对路径或绝对路径
+	return true
+}
+
 // normalizeRepoURL 将 file:// 协议的 URL 转换为本地路径
 // go-git 对本地仓库使用直接路径而不是 file:// URL
 func normalizeRepoURL(repoURL string) string {
@@ -128,9 +148,9 @@ func normalizeRepoURL(repoURL string) string {
 }
 
 // getAuth 根据 URL 协议返回合适的认证方式
-// file:// 协议返回 nil，其他协议返回 BasicAuth
+// 本地路径返回 nil，远程协议返回 BasicAuth
 func getAuth(repoURL, username, password string) transport.AuthMethod {
-	if isFileProtocol(repoURL) {
+	if isLocalPath(repoURL) {
 		return nil
 	}
 	return &http.BasicAuth{
@@ -551,7 +571,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	s.logger.Info("doSync 开始",
 		zap.String("repoURL", conf.RepoURL),
 		zap.String("normalizedURL", normalizedURL),
-		zap.Bool("isFileProtocol", isFileProtocol(conf.RepoURL)),
+		zap.Bool("isLocalPath", isLocalPath(conf.RepoURL)),
 		zap.Bool("authIsNil", auth == nil),
 		zap.String("branch", conf.Branch),
 		zap.String("wsPath", wsPath))
