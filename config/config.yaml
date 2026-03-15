@@ -167,6 +167,13 @@ tracer:
   # Trace ID header name
   header: "X-Trace-ID"
 
+# git
+# Git 提交配置 (可选)
+# Git commit configuration (optional)
+git:
+  name: "FNS Service"
+  email: "fns@email.com"
+
 # storage
 # 存储配置
 # Storage configuration

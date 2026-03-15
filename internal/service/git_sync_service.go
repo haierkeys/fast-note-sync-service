@@ -18,6 +18,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	appconfig "github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -50,6 +51,7 @@ type gitSyncService struct {
 	folderRepo domain.FolderRepository
 	fileRepo   domain.FileRepository
 	vaultRepo  domain.VaultRepository
+	gitConf    *appconfig.GitConfig
 	logger     *zap.Logger
 	mu         sync.Mutex
 	running    map[int64]context.CancelFunc // configID -> cancelFunc
@@ -62,7 +64,7 @@ type gitSyncService struct {
 }
 
 // NewGitSyncService 创建 GitSyncService 实例
-func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, logger *zap.Logger) GitSyncService {
+func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, gitConf *appconfig.GitConfig, logger *zap.Logger) GitSyncService {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &gitSyncService{
 		repo:       repo,
@@ -70,6 +72,7 @@ func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteReposi
 		folderRepo: folderRepo,
 		fileRepo:   fileRepo,
 		vaultRepo:  vaultRepo,
+		gitConf:    gitConf,
 		logger:     logger,
 		running:    make(map[int64]context.CancelFunc),
 		timers:     make(map[int64]*time.Timer),
@@ -612,10 +615,19 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		return err
 	}
 
+	name := s.gitConf.Name
+	if name == "" {
+		name = "FNS Service"
+	}
+	email := s.gitConf.Email
+	if email == "" {
+		email = "fns@email.com"
+	}
+
 	_, err = wt.Commit("Update from Sync Service", &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "FNS Service",
-			Email: "fns@email.com",
+			Name:  name,
+			Email: email,
 			When:  time.Now(),
 		},
 	})
