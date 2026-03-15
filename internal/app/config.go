@@ -32,6 +32,7 @@ type AppConfig struct {
 	Tracer   TracerConfig   `yaml:"tracer"`
 
 	Storage    config.StorageConfig `yaml:"storage"`
+	Git        config.GitConfig     `yaml:"git"`
 	WebGUI     WebGUIConfig         `yaml:"webgui"`
 	Ngrok      NgrokConfig          `yaml:"ngrok"`
 	Cloudflare CloudflareConfig     `yaml:"cloudflare"`
