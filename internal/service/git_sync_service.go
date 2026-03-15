@@ -93,8 +93,9 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 		Password:    conf.Password,
 		Branch:      conf.Branch,
 		IsEnabled:   conf.IsEnabled,
-		Delay:       conf.Delay,
-		LastStatus:  conf.LastStatus,
+		Delay:         conf.Delay,
+		RetentionDays: conf.RetentionDays,
+		LastStatus:    conf.LastStatus,
 		LastMessage: conf.LastMessage,
 		CreatedAt:   timex.Time(conf.CreatedAt),
 		UpdatedAt:   timex.Time(conf.UpdatedAt),
@@ -175,6 +176,7 @@ func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dt
 	}
 	conf.IsEnabled = params.IsEnabled
 	conf.Delay = params.Delay
+	conf.RetentionDays = params.RetentionDays
 
 	saved, err := s.repo.Save(ctx, conf, uid)
 	if err != nil {
