@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -59,28 +58,27 @@ func (w *WebDAV) setModifiedTime(pathKey string, modTime time.Time) error {
 func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
 	fileKey = path.Join("/", w.Config.CustomPath, fileKey)
-	dir := path.Dir(fileKey)
-	if dir != "/" && dir != "." && dir != "" {
-		err := w.Client.MkdirAll(dir, 0644)
-		if err != nil {
-			return "", errors.Wrap(err, "webdav")
-		}
-	}
 
 	content, err := io.ReadAll(file)
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")
 	}
 
-	if !modTime.IsZero() {
-		w.Client.SetHeader("X-OC-Mtime", strconv.FormatInt(modTime.Unix(), 10))
-		_ = w.setModifiedTime(fileKey, modTime)
-	}
-
 	err = w.Client.Write(fileKey, content, os.ModePerm)
+	if err != nil {
+		dir := path.Dir(fileKey)
+		if dir != "/" && dir != "." && dir != "" {
+			_ = w.Client.MkdirAll(dir, 0755)
+			err = w.Client.Write(fileKey, content, os.ModePerm)
+		}
+	}
 
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")
+	}
+
+	if !modTime.IsZero() {
+		_ = w.setModifiedTime(fileKey, modTime)
 	}
 
 	return fileKey, nil
@@ -90,19 +88,15 @@ func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime 
 func (w *WebDAV) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
 
 	fileKey = path.Join("/", w.Config.CustomPath, fileKey)
-	dir := path.Dir(fileKey)
-	if dir != "/" && dir != "." && dir != "" {
-		err := w.Client.MkdirAll(dir, 0644)
-		if err != nil {
-			return "", errors.Wrap(err, "webdav")
-		}
-	}
-
-	if !modTime.IsZero() {
-		w.Client.SetHeader("X-OC-Mtime", strconv.FormatInt(modTime.Unix(), 10))
-	}
 
 	err := w.Client.Write(fileKey, content, os.ModePerm)
+	if err != nil {
+		dir := path.Dir(fileKey)
+		if dir != "/" && dir != "." && dir != "" {
+			_ = w.Client.MkdirAll(dir, 0755)
+			err = w.Client.Write(fileKey, content, os.ModePerm)
+		}
+	}
 
 	if err != nil {
 		return "", errors.Wrap(err, "webdav")
