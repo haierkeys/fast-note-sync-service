@@ -58,9 +58,22 @@ func (s *Scheduler) startTask(task Task) {
 		defer done()
 
 		// 如果任务需要立即执行
+		// Use a context derived from closeSignal so the task can respond to shutdown signals.
+		// 使用从 closeSignal 派生的 context，使任务能在关闭时正确退出
 		if task.IsStartupRun() {
 			s.logger.Info("task running", zap.String("name", task.Name()), zap.Bool("startupRun", true))
+			taskCtx, taskCancel := context.WithCancel(context.Background())
 			go func() {
+				// Forward the close signal to the task's context.
+				// 将 closeSignal 转发给任务 context
+				select {
+				case <-closeSignal:
+					taskCancel()
+				case <-taskCtx.Done():
+				}
+			}()
+			go func() {
+				defer taskCancel()
 				defer func() {
 					if r := recover(); r != nil {
 						s.logger.Error("task startupRun panic",
@@ -69,7 +82,7 @@ func (s *Scheduler) startTask(task Task) {
 							zap.Stack("stack"))
 					}
 				}()
-				if err := task.Run(context.Background()); err != nil {
+				if err := task.Run(taskCtx); err != nil {
 					s.logger.Error("task running error",
 						zap.String("name", task.Name()),
 						zap.Bool("startupRun", true),

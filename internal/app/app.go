@@ -629,6 +629,28 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	// 0.3 Shutdown GitSyncService (wait for all sync goroutines to finish)
+	// 0.3 关闭 GitSyncService（等待所有同步 goroutine 结束）
+	if a.GitSyncService != nil {
+		a.logger.Info("Shutting down git sync service...")
+		if err := a.GitSyncService.Shutdown(ctx); err != nil {
+			a.logger.Warn("Git sync service shutdown error", zap.Error(err))
+		} else {
+			a.logger.Info("Git sync service shutdown completed")
+		}
+	}
+
+	// 0.4 Shutdown BackupService (wait for all backup goroutines to finish)
+	// 0.4 关闭 BackupService（等待所有备份 goroutine 结束）
+	if a.BackupService != nil {
+		a.logger.Info("Shutting down backup service...")
+		if err := a.BackupService.Shutdown(ctx); err != nil {
+			a.logger.Warn("Backup service shutdown error", zap.Error(err))
+		} else {
+			a.logger.Info("Backup service shutdown completed")
+		}
+	}
+
 	// 1. Shutdown Worker Pool (stop accepting new tasks, wait for existing tasks to complete)
 	// 1. 关闭 Worker Pool（停止接受新任务，等待现有任务完成）
 	if a.workerPool != nil {
@@ -640,6 +662,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 			a.logger.Info("Worker pool shutdown completed")
 		}
 	}
+
 
 	// 2. Shutdown Write Queue Manager (drain all queues)
 	// 2. 关闭 Write Queue Manager（排空所有队列）
