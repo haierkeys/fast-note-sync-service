@@ -47,11 +47,12 @@ type ShareCreateResponse struct {
 // ShareNoteInfo Note information attached to a share list item
 // ShareNoteInfo 分享列表项关联的笔记信息
 type ShareNoteInfo struct {
-	ID      int64  `json:"id"`      // Note ID // 笔记 ID
-	Path    string `json:"path"`    // Note path // 笔记路径
-	Ctime   int64  `json:"ctime"`   // Creation timestamp (ms) // 创建时间戳（毫秒）
-	Mtime   int64  `json:"mtime"`   // Modification timestamp (ms) // 修改时间戳（毫秒）
-	Version int64  `json:"version"` // Version number // 版本号
+	ID        int64  `json:"id"`         // Note ID // 笔记 ID
+	Path      string `json:"path"`       // Note path // 笔记路径
+	VaultName string `json:"vault_name"` // Vault name // 仓库名称
+	Ctime     int64  `json:"ctime"`      // Creation timestamp (ms) // 创建时间戳（毫秒）
+	Mtime     int64  `json:"mtime"`      // Modification timestamp (ms) // 修改时间戳（毫秒）
+	Version   int64  `json:"version"`    // Version number // 版本号
 }
 
 // ShareListItem Represents a share item in list
@@ -61,6 +62,7 @@ type ShareListItem struct {
 	UID          int64               `json:"uid"`            // User ID // 用户 ID
 	Resources    map[string][]string `json:"res"`            // Authorized resources // 资源授权列表
 	Status       int64               `json:"status"`         // Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销
+	Token        string              `json:"token,omitempty"` // Share Token (only for active shares) // 分享 Token（仅有效分享时有值）
 	ViewCount    int64               `json:"view_count"`     // View count // 访问次数
 	LastViewedAt time.Time           `json:"last_viewed_at"` // Last viewed time // 最后访问时间
 	ExpiresAt    time.Time           `json:"expires_at"`     // Expiration time // 过期时间

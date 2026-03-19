@@ -375,28 +375,45 @@ func (s *shareService) ListSharesWithDetail(ctx context.Context, uid int64) ([]*
 
 	items := make([]*dto.ShareListItem, 0, len(shares))
 	for _, share := range shares {
+		// glebarez/sqlite reads DATETIME strings as UTC regardless of stored timezone.
+		// Since values were stored in local time, re-interpret the numeric values as local time.
+		fixTime := func(t time.Time) time.Time {
+			return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
+		}
 		item := &dto.ShareListItem{
 			ID:           share.ID,
 			UID:          share.UID,
 			Resources:    share.Resources,
 			Status:       share.Status,
 			ViewCount:    share.ViewCount,
-			LastViewedAt: share.LastViewedAt,
-			ExpiresAt:    share.ExpiresAt,
-			CreatedAt:    share.CreatedAt,
-			UpdatedAt:    share.UpdatedAt,
+			LastViewedAt: fixTime(share.LastViewedAt),
+			ExpiresAt:    fixTime(share.ExpiresAt),
+			CreatedAt:    fixTime(share.CreatedAt),
+			UpdatedAt:    fixTime(share.UpdatedAt),
 		}
 
 		if share.ResType == "note" && share.ResID > 0 {
 			note, err := s.noteRepo.GetByID(ctx, share.ResID, uid)
 			if err == nil && note != nil {
-				item.NoteInfo = &dto.ShareNoteInfo{
-					ID:      note.ID,
-					Path:    note.Path,
-					Ctime:   note.Ctime,
-					Mtime:   note.Mtime,
-					Version: note.Version,
+				vaultName := ""
+				if vault, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && vault != nil {
+					vaultName = vault.Name
 				}
+				item.NoteInfo = &dto.ShareNoteInfo{
+					ID:        note.ID,
+					Path:      note.Path,
+					VaultName: vaultName,
+					Ctime:     note.Ctime,
+					Mtime:     note.Mtime,
+					Version:   note.Version,
+				}
+			}
+		}
+
+		// Generate token for active shares
+		if share.Status == 1 && share.ExpiresAt.After(time.Now()) {
+			if token, err := s.tokenManager.ShareGenerate(share.ID, uid, share.Resources); err == nil {
+				item.Token = token
 			}
 		}
 
