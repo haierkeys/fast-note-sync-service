@@ -1,5 +1,5 @@
 FROM woahbase/alpine-glibc:latest
-MAINTAINER HaierKeys <haierkeys@gmail.com>
+MAINTAINER chenxiccc <chenxiccc@github.com>
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION
@@ -15,20 +15,20 @@ ARG GIT_COMMIT=${GIT_COMMIT}
 LABEL name="fast-note-sync-service"
 LABEL version=${VERSION}
 LABEL description="Provide image resizing, cropping, upload/download, and cloud storage features for Obsidian CIAU."
-LABEL maintainer="HaierKeys <haierkeys@gmail.com>"
+LABEL maintainer="chenxiccc <chenxiccc@github.com>"
 
 
 LABEL org.opencontainers.image.title="Fast Note Sync Service"
 LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors="HaierKeys <haierkeys@gmail.com>"
+LABEL org.opencontainers.image.authors="chenxiccc <chenxiccc@github.com>"
 LABEL org.opencontainers.image.version=${VERSION}
 LABEL org.opencontainers.image.description="Provide image resizing, cropping, upload/download, and cloud storage features for Obsidian CIAU."
-LABEL org.opencontainers.image.url="https://github.com/haierkeys/fast-note-sync-service"
-LABEL org.opencontainers.image.source="https://github.com/haierkeys/fast-note-sync-service"
-LABEL org.opencontainers.image.documentation="https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/refs/heads/main/README.md"
+LABEL org.opencontainers.image.url="https://github.com/chenxiccc/fast-note-sync-service"
+LABEL org.opencontainers.image.source="https://github.com/chenxiccc/fast-note-sync-service"
+LABEL org.opencontainers.image.documentation="https://raw.githubusercontent.com/chenxiccc/fast-note-sync-service/refs/heads/master/README.md"
 LABEL org.opencontainers.image.revision=${GIT_COMMIT}
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.vendor="HaierKeys"
+LABEL org.opencontainers.image.vendor="chenxiccc"
 
 
 

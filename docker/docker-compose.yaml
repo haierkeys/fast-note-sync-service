@@ -1,6 +1,6 @@
 services:
   fast-note-sync-service:
-    image: haierkeys/fast-note-sync-service:latest
+    image: chenxiccc/fast-note-sync-service:latest
     container_name: fast-note-sync-service
     ports:
       - "9000:9000"

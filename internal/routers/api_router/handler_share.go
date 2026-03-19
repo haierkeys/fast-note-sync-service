@@ -296,25 +296,10 @@ func (h *ShareHandler) List(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
 
-	shares, err := h.App.ShareService.ListShares(ctx, uid)
+	items, err := h.App.ShareService.ListSharesWithDetail(ctx, uid)
 	if err != nil {
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
-	}
-
-	var items []*dto.ShareListItem
-	for _, s := range shares {
-		items = append(items, &dto.ShareListItem{
-			ID:           s.ID,
-			UID:          s.UID,
-			Resources:    s.Resources,
-			Status:       s.Status,
-			ViewCount:    s.ViewCount,
-			LastViewedAt: s.LastViewedAt,
-			ExpiresAt:    s.ExpiresAt,
-			CreatedAt:    s.CreatedAt,
-			UpdatedAt:    s.UpdatedAt,
-		})
 	}
 
 	response.ToResponse(code.Success.WithData(&dto.ShareListResponse{Items: items}))

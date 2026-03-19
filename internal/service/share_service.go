@@ -62,6 +62,10 @@ type ShareService interface {
 	// ListShares 列出用户的所有分享
 	ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error)
 
+	// ListSharesWithDetail lists all shares with associated note info
+	// ListSharesWithDetail 列出用户的所有分享，并附带笔记详情
+	ListSharesWithDetail(ctx context.Context, uid int64) ([]*dto.ShareListItem, error)
+
 	// GetShareByPath retrieves share info by path
 	// GetShareByPath 根据路径获取分享信息
 	GetShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) (*domain.UserShare, error)
@@ -359,6 +363,47 @@ func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error
 // ListShares 列出用户的所有分享
 func (s *shareService) ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
 	return s.repo.ListByUID(ctx, uid)
+}
+
+// ListSharesWithDetail lists all shares with associated note info
+// ListSharesWithDetail 列出用户的所有分享，并附带笔记详情
+func (s *shareService) ListSharesWithDetail(ctx context.Context, uid int64) ([]*dto.ShareListItem, error) {
+	shares, err := s.repo.ListByUID(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*dto.ShareListItem, 0, len(shares))
+	for _, share := range shares {
+		item := &dto.ShareListItem{
+			ID:           share.ID,
+			UID:          share.UID,
+			Resources:    share.Resources,
+			Status:       share.Status,
+			ViewCount:    share.ViewCount,
+			LastViewedAt: share.LastViewedAt,
+			ExpiresAt:    share.ExpiresAt,
+			CreatedAt:    share.CreatedAt,
+			UpdatedAt:    share.UpdatedAt,
+		}
+
+		if share.ResType == "note" && share.ResID > 0 {
+			note, err := s.noteRepo.GetByID(ctx, share.ResID, uid)
+			if err == nil && note != nil {
+				item.NoteInfo = &dto.ShareNoteInfo{
+					ID:      note.ID,
+					Path:    note.Path,
+					Ctime:   note.Ctime,
+					Mtime:   note.Mtime,
+					Version: note.Version,
+				}
+			}
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
 }
 
 // GetShareByPath retrieves share info by path

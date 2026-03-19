@@ -10,7 +10,7 @@
 # -------------------------
 REPO = $(eval REPO := $$(shell go list -f '{{.ImportPath}}' .))$(value REPO)
 
-DockerHubUser   = haierkeys
+DockerHubUser   = chenxiccc
 DockerHubName   = fast-note-sync-service
 
 ReleaseTagPre   = release-v
