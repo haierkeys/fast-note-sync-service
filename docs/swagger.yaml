@@ -1407,6 +1407,9 @@ definitions:
       status:
         description: 'Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销'
         type: integer
+      title:
+        description: Resource title (note title or file name) // 资源标题（笔记标题或文件名）
+        type: string
       uid:
         description: User ID // 用户 ID
         type: integer
@@ -1415,14 +1418,6 @@ definitions:
       view_count:
         description: View count // 访问次数
         type: integer
-    type: object
-  dto.ShareListResponse:
-    properties:
-      items:
-        description: Share list // 分享列表
-        items:
-          $ref: '#/definitions/dto.ShareListItem'
-        type: array
     type: object
   dto.StorageDTO:
     properties:
@@ -4198,13 +4193,30 @@ paths:
       - Share
   /api/shares:
     get:
-      description: Get all active and inactive shares of the user
+      description: Get all active and inactive shares of the user, supports sorting
+        and pagination
       parameters:
       - description: Auth Token
         in: header
         name: token
         required: true
         type: string
+      - description: 'Sort field: created_at, updated_at, expires_at (default: created_at)'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort direction: asc or desc (default: desc)'
+        in: query
+        name: sort_order
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -4215,7 +4227,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ShareListResponse'
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.ShareListItem'
+                        type: array
+                    type: object
               type: object
       security:
       - UserAuthToken: []

@@ -33,5 +33,6 @@ type UserShareRepository interface {
 	GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*UserShare, error)
 	UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error
 	UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error
-	ListByUID(ctx context.Context, uid int64) ([]*UserShare, error)
+	ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*UserShare, error)
+	CountByUID(ctx context.Context, uid int64) (int64, error)
 }
