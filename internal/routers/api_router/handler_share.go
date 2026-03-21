@@ -284,41 +284,39 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 
 // List lists all shares of a user
 // @Summary List shares
-// @Description Get all active and inactive shares of the user
+// @Description Get all active and inactive shares of the user, supports sorting and pagination
 // @Tags Share
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
+// @Param sort_by query string false "Sort field: created_at, updated_at, expires_at (default: created_at)"
+// @Param sort_order query string false "Sort direction: asc or desc (default: desc)"
+// @Param page query int false "Page number"
+// @Param pageSize query int false "Page size"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=dto.ShareListResponse} "Success"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.ShareListItem}} "Success"
 // @Router /api/shares [get]
 func (h *ShareHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
+	params := &dto.ShareListRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
+	pager := pkgapp.NewPager(c)
 
-	shares, err := h.App.ShareService.ListShares(ctx, uid)
+	items, count, err := h.App.ShareService.ListShares(ctx, uid, params.SortBy, params.SortOrder, pager)
 	if err != nil {
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
 		return
 	}
 
-	var items []*dto.ShareListItem
-	for _, s := range shares {
-		items = append(items, &dto.ShareListItem{
-			ID:           s.ID,
-			UID:          s.UID,
-			Resources:    s.Resources,
-			Status:       s.Status,
-			ViewCount:    s.ViewCount,
-			LastViewedAt: s.LastViewedAt,
-			ExpiresAt:    s.ExpiresAt,
-			CreatedAt:    s.CreatedAt,
-			UpdatedAt:    s.UpdatedAt,
-		})
-	}
-
-	response.ToResponse(code.Success.WithData(&dto.ShareListResponse{Items: items}))
+	response.ToResponseList(code.Success, items, count)
 }
+
 
 // logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
