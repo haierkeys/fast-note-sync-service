@@ -4131,7 +4131,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Get all active and inactive shares of the user",
+                "description": "Get all active and inactive shares of the user, supports sorting and pagination",
                 "produces": [
                     "application/json"
                 ],
@@ -4146,6 +4146,30 @@ const docTemplate = `{
                         "name": "token",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort field: created_at, updated_at, expires_at (default: created_at)",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort direction: asc or desc (default: desc)",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4160,7 +4184,22 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.ShareListResponse"
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.ShareListItem"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -6890,6 +6929,10 @@ const docTemplate = `{
                     "description": "Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销",
                     "type": "integer"
                 },
+                "title": {
+                    "description": "Resource title (note title or file name) // 资源标题（笔记标题或文件名）",
+                    "type": "string"
+                },
                 "uid": {
                     "description": "User ID // 用户 ID",
                     "type": "integer"
@@ -6900,18 +6943,6 @@ const docTemplate = `{
                 "view_count": {
                     "description": "View count // 访问次数",
                     "type": "integer"
-                }
-            }
-        },
-        "dto.ShareListResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "description": "Share list // 分享列表",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.ShareListItem"
-                    }
                 }
             }
         },

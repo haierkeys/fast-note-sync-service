@@ -128,9 +128,35 @@ func (r *userShareRepository) UpdateViewStats(ctx context.Context, uid int64, id
 	})
 }
 
-func (r *userShareRepository) ListByUID(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
+func (r *userShareRepository) ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*domain.UserShare, error) {
 	us := r.userShare(uid).UserShare
-	ms, err := us.WithContext(ctx).Where(us.UID.Eq(uid)).Find()
+
+	// 白名单验证排序字段
+	allowedFields := map[string]string{
+		"created_at": "created_at",
+		"updated_at": "updated_at",
+		"expires_at": "expires_at",
+	}
+	field, ok := allowedFields[sortBy]
+	if !ok {
+		field = "created_at"
+	}
+
+	// 验证排序方向
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	orderClause := field + " " + sortOrder
+
+	var ms []*model.UserShare
+	q := us.WithContext(ctx).Where(us.UID.Eq(uid))
+
+	if limit > 0 {
+		q = q.Limit(limit).Offset(offset)
+	}
+
+	err := q.UnderlyingDB().Order(orderClause).Find(&ms).Error
 	if err != nil {
 		return nil, err
 	}
@@ -140,5 +166,11 @@ func (r *userShareRepository) ListByUID(ctx context.Context, uid int64) ([]*doma
 	}
 	return ds, nil
 }
+
+func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64, error) {
+	us := r.userShare(uid).UserShare
+	return us.WithContext(ctx).Where(us.UID.Eq(uid)).Count()
+}
+
 
 var _ domain.UserShareRepository = (*userShareRepository)(nil)

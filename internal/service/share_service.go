@@ -58,9 +58,9 @@ type ShareService interface {
 	// StopShare 撤销分享
 	StopShare(ctx context.Context, uid int64, id int64) error
 
-	// ListShares lists all shares of a user
-	// ListShares 列出用户的所有分享
-	ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error)
+	// ListShares lists all shares of a user with sorting and pagination
+	// ListShares 列出用户的所有分享（支持排序和分页）
+	ListShares(ctx context.Context, uid int64, sortBy string, sortOrder string, pager *pkgapp.Pager) ([]*dto.ShareListItem, int, error)
 
 	// GetShareByPath retrieves share info by path
 	// GetShareByPath 根据路径获取分享信息
@@ -355,10 +355,67 @@ func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error
 	return s.repo.UpdateStatus(ctx, uid, id, 2)
 }
 
-// ListShares lists all shares of a user
-// ListShares 列出用户的所有分享
-func (s *shareService) ListShares(ctx context.Context, uid int64) ([]*domain.UserShare, error) {
-	return s.repo.ListByUID(ctx, uid)
+// ListShares lists all shares of a user with sorting, pagination and fills in resource titles
+// ListShares 列出用户的所有分享，支持排序、分页，并填充资源标题
+func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string, sortOrder string, pager *pkgapp.Pager) ([]*dto.ShareListItem, int, error) {
+	// 1. 获取总数
+	count64, err := s.repo.CountByUID(ctx, uid)
+	if err != nil {
+		return nil, 0, err
+	}
+	count := int(count64)
+
+	if count == 0 {
+		return []*dto.ShareListItem{}, 0, nil
+	}
+
+	// 2. 获取分页数据
+	shares, err := s.repo.ListByUID(ctx, uid, sortBy, sortOrder, pkgapp.GetPageOffset(pager.Page, pager.PageSize), pager.PageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]*dto.ShareListItem, 0, len(shares))
+	for _, share := range shares {
+		item := &dto.ShareListItem{
+			ID:           share.ID,
+			UID:          share.UID,
+			Resources:    share.Resources,
+			Status:       share.Status,
+			ViewCount:    share.ViewCount,
+			LastViewedAt: share.LastViewedAt,
+			ExpiresAt:    share.ExpiresAt,
+			CreatedAt:    share.CreatedAt,
+			UpdatedAt:    share.UpdatedAt,
+		}
+
+		// 生成 Token 并拼接 URL /ResID/token
+		// Generate Token and concatenate URL /ResID/token
+		token, err := s.tokenManager.ShareGenerate(share.ID, uid, share.Resources)
+		if err == nil {
+			item.URL = "/share/" + strconv.FormatInt(share.ResID, 10) + "/" + token
+		}
+
+		// 关联查询标题：note 类型取笔记路径，file 类型取文件路径
+		// Fill title from associated note/file path
+		switch share.ResType {
+		case "note":
+			if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
+				baseName := filepath.Base(note.Path)
+				// Remove .md suffix for note title
+				// 去掉 .md 后缀作为标题
+				item.Title = strings.TrimSuffix(baseName, ".md")
+			}
+		case "file":
+			if file, err := s.fileRepo.GetByID(ctx, share.ResID, uid); err == nil && file != nil {
+				item.Title = filepath.Base(file.Path)
+			}
+		}
+
+		items = append(items, item)
+	}
+
+	return items, count, nil
 }
 
 // GetShareByPath retrieves share info by path

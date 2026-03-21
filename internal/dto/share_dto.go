@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+)
 
 // ShareCreateRequest Request parameters for creating a share
 // 创建分享请求
@@ -33,6 +37,14 @@ type ShareResourceRequest struct {
 	ID int64 `json:"id" form:"id" binding:"required" example:"1"` // Resource ID // 资源 ID
 }
 
+// ShareListRequest Request parameters for listing shares
+// 分享列表请求
+type ShareListRequest struct {
+	pkgapp.PaginationRequest
+	SortBy    string `json:"sort_by" form:"sort_by" example:"created_at"`     // Sort field: created_at, updated_at, expires_at // 排序字段: created_at, updated_at, expires_at
+	SortOrder string `json:"sort_order" form:"sort_order" example:"desc"` // Sort direction: asc or desc // 排序方向: asc 或 desc
+}
+
 // ---------------- DTO / Response ----------------
 
 // ShareCreateResponse Response for creating a share
@@ -49,6 +61,8 @@ type ShareCreateResponse struct {
 type ShareListItem struct {
 	ID           int64               `json:"id"`             // Share ID // 分享记录 ID
 	UID          int64               `json:"uid"`            // User ID // 用户 ID
+	Title        string              `json:"title"`          // Resource title (note title or file name) // 资源标题（笔记标题或文件名）
+	URL          string              `json:"url"`            // Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)
 	Resources    map[string][]string `json:"res"`            // Authorized resources // 资源授权列表
 	Status       int64               `json:"status"`         // Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销
 	ViewCount    int64               `json:"view_count"`     // View count // 访问次数
