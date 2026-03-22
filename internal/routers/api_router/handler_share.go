@@ -2,6 +2,7 @@ package api_router
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -234,6 +235,7 @@ func (h *ShareHandler) Query(c *gin.Context) {
 		Type:      mainType,
 		Token:     token,
 		ExpiresAt: share.ExpiresAt,
+		ShortLink: share.ShortLink,
 	}))
 }
 
@@ -280,6 +282,49 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success)
+}
+
+// CreateShortLink creates a short link for an existing share
+// @Summary Create short link for share
+// @Description Call sink.cool API to generate a short link for a given share record
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.ShareShortLinkCreateRequest true "Short Link Parameters"
+// @Success 200 {object} pkgapp.Res{data=string} "Success"
+// @Router /api/share/short_link [post]
+func (h *ShareHandler) CreateShortLink(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.ShareShortLinkCreateRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	// Detect protocol and host to construct dynamic baseURL
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	shortURL, err := h.App.ShareService.CreateShortLink(ctx, uid, params.Vault, params.Path, params.PathHash, baseURL, params.IsForce)
+	if err != nil {
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
+		}
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(shortURL))
 }
 
 // List lists all shares of a user

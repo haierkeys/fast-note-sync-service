@@ -37,6 +37,15 @@ type ShareResourceRequest struct {
 	ID int64 `json:"id" form:"id" binding:"required" example:"1"` // Resource ID // 资源 ID
 }
 
+// ShareShortLinkCreateRequest Request parameters for creating a short link
+// 创建短链请求
+type ShareShortLinkCreateRequest struct {
+	Vault    string `json:"vault" binding:"required" example:"work"` // Vault name // 库名
+	Path     string `json:"path" binding:"required" example:"notes/todo.md"` // Path // 路径
+	PathHash string `json:"pathHash" binding:"required" example:"..."` // Path hash // 路径哈希
+	IsForce  bool   `json:"is_force" example:"false"` // Whether to force regeneration // 是否强制重新生成
+}
+
 // ShareListRequest Request parameters for listing shares
 // 分享列表请求
 type ShareListRequest struct {
@@ -54,6 +63,7 @@ type ShareCreateResponse struct {
 	Type      string    `json:"type"`       // Resource type: note or file // 资源类型：笔记（note）或文件（file）
 	Token     string    `json:"token"`      // Share Token // 分享 Token
 	ExpiresAt time.Time `json:"expires_at"` // Expiration time // 过期时间
+	ShortLink string    `json:"short_link"` // Short link // 短链
 }
 
 // ShareListItem Represents a share item in list
@@ -68,6 +78,7 @@ type ShareListItem struct {
 	ViewCount    int64               `json:"view_count"`     // View count // 访问次数
 	LastViewedAt time.Time           `json:"last_viewed_at"` // Last viewed time // 最后访问时间
 	ExpiresAt    time.Time           `json:"expires_at"`     // Expiration time // 过期时间
+	ShortLink    string              `json:"short_link"`     // Short link // 短链
 	CreatedAt    time.Time           `json:"created_at"`
 	UpdatedAt    time.Time           `json:"updated_at"`
 }

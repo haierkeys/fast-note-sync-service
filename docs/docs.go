@@ -4124,6 +4124,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/share/short_link": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Call sink.cool API to generate a short link for a given share record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Share"
+                ],
+                "summary": "Create short link for share",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Short Link Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ShareShortLinkCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/shares": {
             "get": {
                 "security": [
@@ -6887,6 +6945,10 @@ const docTemplate = `{
                     "description": "ID of the note or file table (primary resource ID) // 笔记或文件表 ID（主资源 ID）",
                     "type": "integer"
                 },
+                "short_link": {
+                    "description": "Short link // 短链",
+                    "type": "string"
+                },
                 "token": {
                     "description": "Share Token // 分享 Token",
                     "type": "string"
@@ -6925,6 +6987,10 @@ const docTemplate = `{
                         }
                     }
                 },
+                "short_link": {
+                    "description": "Short link // 短链",
+                    "type": "string"
+                },
                 "status": {
                     "description": "Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销",
                     "type": "integer"
@@ -6940,9 +7006,43 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string"
                 },
+                "url": {
+                    "description": "Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)",
+                    "type": "string"
+                },
                 "view_count": {
                     "description": "View count // 访问次数",
                     "type": "integer"
+                }
+            }
+        },
+        "dto.ShareShortLinkCreateRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "pathHash",
+                "vault"
+            ],
+            "properties": {
+                "is_force": {
+                    "description": "Whether to force regeneration // 是否强制重新生成",
+                    "type": "boolean",
+                    "example": false
+                },
+                "path": {
+                    "description": "Path // 路径",
+                    "type": "string",
+                    "example": "notes/todo.md"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "..."
+                },
+                "vault": {
+                    "description": "Vault name // 库名",
+                    "type": "string",
+                    "example": "work"
                 }
             }
         },

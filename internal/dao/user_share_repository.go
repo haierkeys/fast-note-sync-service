@@ -53,6 +53,7 @@ func (r *userShareRepository) toDomain(m *model.UserShare) *domain.UserShare {
 		ViewCount:    m.ViewCount,
 		LastViewedAt: m.LastViewedAt,
 		ExpiresAt:    m.ExpiresAt,
+		ShortLink:    m.ShortLink,
 		CreatedAt:    time.Time(m.CreatedAt),
 		UpdatedAt:    time.Time(m.UpdatedAt),
 	}
@@ -74,6 +75,7 @@ func (r *userShareRepository) toModel(d *domain.UserShare) *model.UserShare {
 		ViewCount:    d.ViewCount,
 		LastViewedAt: d.LastViewedAt,
 		ExpiresAt:    d.ExpiresAt,
+		ShortLink:    d.ShortLink,
 		CreatedAt:    timex.Time(d.CreatedAt),
 		UpdatedAt:    timex.Time(d.UpdatedAt),
 	}
@@ -98,6 +100,21 @@ func (r *userShareRepository) GetByID(ctx context.Context, uid int64, id int64) 
 		return nil, err
 	}
 	return r.toDomain(m), nil
+}
+
+func (r *userShareRepository) GetByPath(ctx context.Context, uid int64, vaultID int64, pathHash string) (*domain.UserShare, error) {
+	// Get Note (Triggers Notes migration via noteRepo)
+	noteRepo := NewNoteRepository(r.dao)
+	note, err := noteRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+	if err != nil {
+		return nil, err
+	}
+	if note == nil {
+		return nil, nil
+	}
+
+	// 3. Get UserShare (Triggers UserShare migration via GetByRes -> userShare(uid))
+	return r.GetByRes(ctx, uid, "note", note.ID)
 }
 
 func (r *userShareRepository) GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*domain.UserShare, error) {
@@ -148,14 +165,11 @@ func (r *userShareRepository) ListByUID(ctx context.Context, uid int64, sortBy s
 	}
 
 	orderClause := field + " " + sortOrder
-
 	var ms []*model.UserShare
 	q := us.WithContext(ctx).Where(us.UID.Eq(uid))
-
 	if limit > 0 {
 		q = q.Limit(limit).Offset(offset)
 	}
-
 	err := q.UnderlyingDB().Order(orderClause).Find(&ms).Error
 	if err != nil {
 		return nil, err
@@ -167,10 +181,17 @@ func (r *userShareRepository) ListByUID(ctx context.Context, uid int64, sortBy s
 	return ds, nil
 }
 
+func (r *userShareRepository) UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.ShortLink, shortLink)
+		return err
+	})
+}
+
 func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64, error) {
 	us := r.userShare(uid).UserShare
 	return us.WithContext(ctx).Where(us.UID.Eq(uid)).Count()
 }
-
 
 var _ domain.UserShareRepository = (*userShareRepository)(nil)

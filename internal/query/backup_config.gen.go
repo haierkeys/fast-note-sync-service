@@ -36,6 +36,7 @@ func newBackupConfig(db *gorm.DB, opts ...gen.DOOption) backupConfig {
 	_backupConfig.IsEnabled = field.NewInt64(tableName, "is_enabled")
 	_backupConfig.CronStrategy = field.NewString(tableName, "cron_strategy")
 	_backupConfig.CronExpression = field.NewString(tableName, "cron_expression")
+	_backupConfig.IncludeVaultName = field.NewInt64(tableName, "include_vault_name")
 	_backupConfig.RetentionDays = field.NewInt64(tableName, "retention_days")
 	_backupConfig.LastRunTime = field.NewTime(tableName, "last_run_time")
 	_backupConfig.NextRunTime = field.NewTime(tableName, "next_run_time")
@@ -52,22 +53,23 @@ func newBackupConfig(db *gorm.DB, opts ...gen.DOOption) backupConfig {
 type backupConfig struct {
 	backupConfigDo backupConfigDo
 
-	ALL            field.Asterisk
-	ID             field.Int64
-	UID            field.Int64
-	VaultID        field.Int64
-	Type           field.String
-	StorageIds     field.String
-	IsEnabled      field.Int64
-	CronStrategy   field.String
-	CronExpression field.String
-	RetentionDays  field.Int64
-	LastRunTime    field.Time
-	NextRunTime    field.Time
-	LastStatus     field.Int64
-	LastMessage    field.String
-	CreatedAt      field.Field
-	UpdatedAt      field.Field
+	ALL              field.Asterisk
+	ID               field.Int64
+	UID              field.Int64
+	VaultID          field.Int64
+	Type             field.String
+	StorageIds       field.String
+	IsEnabled        field.Int64
+	CronStrategy     field.String
+	CronExpression   field.String
+	IncludeVaultName field.Int64
+	RetentionDays    field.Int64
+	LastRunTime      field.Time
+	NextRunTime      field.Time
+	LastStatus       field.Int64
+	LastMessage      field.String
+	CreatedAt        field.Field
+	UpdatedAt        field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -92,6 +94,7 @@ func (b *backupConfig) updateTableName(table string) *backupConfig {
 	b.IsEnabled = field.NewInt64(table, "is_enabled")
 	b.CronStrategy = field.NewString(table, "cron_strategy")
 	b.CronExpression = field.NewString(table, "cron_expression")
+	b.IncludeVaultName = field.NewInt64(table, "include_vault_name")
 	b.RetentionDays = field.NewInt64(table, "retention_days")
 	b.LastRunTime = field.NewTime(table, "last_run_time")
 	b.NextRunTime = field.NewTime(table, "next_run_time")
@@ -127,7 +130,7 @@ func (b *backupConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (b *backupConfig) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 15)
+	b.fieldMap = make(map[string]field.Expr, 16)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["uid"] = b.UID
 	b.fieldMap["vault_id"] = b.VaultID
@@ -136,6 +139,7 @@ func (b *backupConfig) fillFieldMap() {
 	b.fieldMap["is_enabled"] = b.IsEnabled
 	b.fieldMap["cron_strategy"] = b.CronStrategy
 	b.fieldMap["cron_expression"] = b.CronExpression
+	b.fieldMap["include_vault_name"] = b.IncludeVaultName
 	b.fieldMap["retention_days"] = b.RetentionDays
 	b.fieldMap["last_run_time"] = b.LastRunTime
 	b.fieldMap["next_run_time"] = b.NextRunTime

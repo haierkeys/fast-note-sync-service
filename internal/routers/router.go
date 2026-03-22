@@ -203,6 +203,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/share", shareHandler.Create)
 			auth.GET("/share", shareHandler.Query)
 			auth.DELETE("/share", shareHandler.Cancel)
+			auth.POST("/share/short_link", shareHandler.CreateShortLink)
 			auth.GET("/shares", shareHandler.List)
 
 			// Admin config interface
