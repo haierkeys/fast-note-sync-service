@@ -30,6 +30,7 @@ type AppConfig struct {
 	Log      LogConfig      `yaml:"log"`
 	User     UserConfig     `yaml:"user"`
 	Tracer   TracerConfig   `yaml:"tracer"`
+	ShortLink ShortLinkConfig `yaml:"short-link"`
 
 	Storage    config.StorageConfig `yaml:"storage"`
 	Git        config.GitConfig     `yaml:"git"`
@@ -240,6 +241,19 @@ type AppSettings struct {
 	// PullSource data pull source: auto | github | cnb
 	// PullSource 数据拉取源：auto | github | cnb
 	PullSource string `yaml:"pull-source" default:"auto"`
+
+	// ShortLink configurations
+	// 短链配置
+	ShortLink ShortLinkConfig `yaml:"short-link"`
+}
+
+// ShortLinkConfig short link configuration
+// ShortLinkConfig 短链配置
+type ShortLinkConfig struct {
+	BaseURL  string `yaml:"base-url" default:"https://sink.cool"`
+	APIKey   string `yaml:"api-key" default:"SinkCool"`
+	Password string `yaml:"password" default:""`
+	Cloaking bool   `yaml:"cloaking" default:"false"`
 }
 
 // WebGUIConfig Web GUI configuration

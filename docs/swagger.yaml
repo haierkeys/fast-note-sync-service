@@ -1377,6 +1377,9 @@ definitions:
         description: ID of the note or file table (primary resource ID) // 笔记或文件表
           ID（主资源 ID）
         type: integer
+      short_link:
+        description: Short link // 短链
+        type: string
       token:
         description: Share Token // 分享 Token
         type: string
@@ -1404,6 +1407,9 @@ definitions:
           type: array
         description: Authorized resources // 资源授权列表
         type: object
+      short_link:
+        description: Short link // 短链
+        type: string
       status:
         description: 'Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销'
         type: integer
@@ -1415,9 +1421,35 @@ definitions:
         type: integer
       updated_at:
         type: string
+      url:
+        description: 'Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)'
+        type: string
       view_count:
         description: View count // 访问次数
         type: integer
+    type: object
+  dto.ShareShortLinkCreateRequest:
+    properties:
+      is_force:
+        description: Whether to force regeneration // 是否强制重新生成
+        example: false
+        type: boolean
+      path:
+        description: Path // 路径
+        example: notes/todo.md
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: '...'
+        type: string
+      vault:
+        description: Vault name // 库名
+        example: work
+        type: string
+    required:
+    - path
+    - pathHash
+    - vault
     type: object
   dto.StorageDTO:
     properties:
@@ -4189,6 +4221,40 @@ paths:
       security:
       - ShareAuthToken: []
       summary: Get shared note details
+      tags:
+      - Share
+  /api/share/short_link:
+    post:
+      consumes:
+      - application/json
+      description: Call sink.cool API to generate a short link for a given share record
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Short Link Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShareShortLinkCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  type: string
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Create short link for share
       tags:
       - Share
   /api/shares:
