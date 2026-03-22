@@ -41,7 +41,7 @@
 
 * **🚀 REST API 支持**：
     * 提供标准的 REST API 接口，支持通过编程方式（如自动化脚本、AI 助手集成）对 Obsidian 笔记进行增删改查。
-    * 详情请参阅 [REST API 文档](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/REST_API.md)。
+    * 详情请参阅 [RESTful API 文档](/docs/REST_API.md) 或 [OpenAPI 文档](/docs/swagger.yaml)。
 * **💻 Web 管理面板**：
   * 内置现代化管理界面，轻松创建用户、生成插件配置、管理仓库及笔记内容。
 * **🔄 多端笔记同步**：
@@ -64,6 +64,23 @@
     * 支持笔记离线编辑自动合并。(需要插件端设置)
     * 离线删除，重连之后自动补全或删除同步。(需要插件端设置)
 
+* **🔗 分享功能**：
+    * 可以 创建/取消 笔记分享。
+    * 自动解析分享笔记中引用的图片、音视频等附件。
+    * 提供分享访问统计功能。
+* **📂 目录同步**：
+    * 支持文件夹的 创建/重命名/移动/删除 同步。
+
+* **🌳 Git 自动化**：
+    * 当附件和笔记发生变更时，自动更新并推送至远程 Git 仓库。
+    * 任务结束后自动释放系统内存。
+
+* **☁️ 多存储备份与单向镜像同步**：
+    * 适配 S3/OSS/R2/WebDAV/本地 等多种存储协议。
+    * 支持全量/增量 ZIP 定时归档备份。
+    * 支持 Vault 资源单向镜像同步至远程存储。
+    * 自动清理过期备份，支持自定义保留天数。
+
 ## ☕ 赞助与支持
 
 - 如果觉得这个插件很有用，并且想要它继续开发，请在以下方式支持我:
@@ -84,13 +101,9 @@
 
 我们正在持续改进，以下是未来的开发计划：
 
-- [ ] **分享功能**：支持笔记的分享。
-- [ ] **MCP支持**：增加 AI MCP 相关功能支持。
-- [ ] **目录同步**：支持目录的增删改查。
-- [ ] **Git 版本控制集成**：为笔记提供更安全的版本回溯。
-- [ ] **云存储与备份策略**：
-    - [ ] 自定义备份策略配置。
-    - [ ] 多协议适配：S3 / Minio / Cloudflare R2 / 阿里云 OSS / WebDAV。
+
+- [ ] **🤖 MCP支持**：增加 AI MCP 相关功能支持。
+- [ ] **更多数据库类型的支持**
 
 > **如果您有改进建议或新想法，欢迎通过提交 issue 与我们分享——我们会认真评估并采纳合适的建议。**
 
@@ -194,9 +207,9 @@ docker compose up -d
 
 查看完整配置示例：[https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
-## 🔗 相关资源
+## 🔗 客户端 & 客户端插件
 
-  * [Obsidian Fast Note Sync Plugin (客户端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
-  * [Obsidian Fast Note Sync Plugin (cnb.cool 镜像库)](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
-
-
+* Obsidian Fast Note Sync 插件
+  * [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) / [cnb.cool 镜像库](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
+* 三方客户端
+  * [FastNodeSync-CLI ](https://github.com/Go1c/FastNodeSync-CLI) 基于 Python 和 FNS WS接口实现的双向实时同步的命令行客户端, 适用于无 GUI 的 Linux 服务器环境（如 OpenClaw），实现与 Obsidian 桌面/移动端等价的同步能力。
