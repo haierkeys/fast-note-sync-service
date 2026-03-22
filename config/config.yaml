@@ -96,6 +96,17 @@ app:
   # Data pull source: auto(auto detect) | github(force GitHub) | cnb(force CNB)
   pull-source: auto
 
+# short-link
+# 短地址服务器设置
+short-link:
+  # 短地址服务器地址
+  base-url: "https://sink.cool"
+  # 短地址 API_KEY
+  api-key: "SinkCool"
+  # 短地址访问密码，默认为空
+  password: ""
+  # 是否启用隐藏原始地址，默认为 false
+  cloaking: false
 # webgui
 # WebGUI 设置
 webgui:

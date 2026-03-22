@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"mime"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/shortlink"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
@@ -57,6 +59,10 @@ type ShareService interface {
 	// StopShare revokes a share
 	// StopShare 撤销分享
 	StopShare(ctx context.Context, uid int64, id int64) error
+
+	// CreateShortLink generates a short link for a share
+	// CreateShortLink 为分享生成短链
+	CreateShortLink(ctx context.Context, uid int64, vaultName string, path string, pathHash string, baseURL string, isForce bool) (string, error)
 
 	// ListShares lists all shares of a user with sorting and pagination
 	// ListShares 列出用户的所有分享（支持排序和分页）
@@ -249,6 +255,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		Type:      mainType,
 		Token:     token,
 		ExpiresAt: expiresAt,
+		ShortLink: share.ShortLink,
 	}, nil
 }
 
@@ -385,6 +392,7 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 			ViewCount:    share.ViewCount,
 			LastViewedAt: share.LastViewedAt,
 			ExpiresAt:    share.ExpiresAt,
+			ShortLink:    share.ShortLink,
 			CreatedAt:    share.CreatedAt,
 			UpdatedAt:    share.UpdatedAt,
 		}
@@ -454,6 +462,67 @@ func (s *shareService) GetShareByPath(ctx context.Context, uid int64, vaultName 
 	}
 
 	return share, nil
+}
+
+// CreateShortLink generates a short link for a share record
+// CreateShortLink 为分享记录生成短链
+func (s *shareService) CreateShortLink(ctx context.Context, uid int64, vaultName string, path string, pathHash string, baseURL string, isForce bool) (string, error) {
+	// Find vault first to get ID
+	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
+	if err != nil {
+		return "", err
+	}
+	if vault == nil {
+		return "", code.ErrorVaultNotFound
+	}
+
+	// Find existing share record by path using vault.ID
+	share, err := s.repo.GetByPath(ctx, uid, vault.ID, pathHash)
+	if err != nil {
+		return "", err
+	}
+
+	if share == nil {
+		return "", code.ErrorShareNotFound
+	}
+
+	// If short link already exists and not forcing regeneration, return it
+	if !isForce && share.ShortLink != "" {
+		return share.ShortLink, nil
+	}
+
+	// Prepare short link creation parameters from service config
+	sinkBaseURL := s.config.App.ShortLink.BaseURL
+	apiKey := s.config.App.ShortLink.APIKey
+	password := s.config.App.ShortLink.Password
+	cloaking := s.config.App.ShortLink.Cloaking
+
+	// expiration matches the share record
+	expiresAt := share.ExpiresAt
+
+	// Generate a session token for the original share URL
+	token, err := s.tokenManager.ShareGenerate(share.ID, uid, share.Resources)
+	if err != nil {
+		return "", err
+	}
+
+	// Construct the original long URL with dynamic base URL
+	// Format: {baseURL}/share/{ResID}/{Token}
+	longURL := fmt.Sprintf("%s/share/%d/%s", strings.TrimRight(baseURL, "/"), share.ResID, token)
+
+	client := shortlink.NewSinkCoolClient(sinkBaseURL, apiKey)
+	shortURL, err := client.Create(longURL, expiresAt, password, cloaking)
+
+	if err != nil {
+		return "", err
+	}
+
+	// Save the generated short link back to database
+	if err := s.repo.UpdateShortLink(ctx, uid, share.ID, shortURL); err != nil {
+		return "", err
+	}
+
+	return shortURL, nil
 }
 
 // StopShareByPath revokes a share by path

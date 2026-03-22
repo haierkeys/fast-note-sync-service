@@ -22,4 +22,14 @@ type AppServiceConfig struct {
 	HistoryKeepVersions     int    // History versions to keep // 历史记录保留版本数
 	HistorySaveDelay        string // History save delay (e.g., 10s, 1m, default 10s) // 历史记录保存延迟时间（支持格式：10s、1m，默认 10s）
 	ShareTokenExpiry        string // Share token expiry // 分享 Token 过期时间
+	ShortLink               ShortLinkServiceConfig // Short link configuration // 短链配置
+}
+
+// ShortLinkServiceConfig short link service configuration
+// ShortLinkServiceConfig 短链服务配置
+type ShortLinkServiceConfig struct {
+	BaseURL  string // Base URL // 基础 URL
+	APIKey   string // API Key // API 密钥
+	Password string // Password // 密码
+	Cloaking bool   // Cloaking // 遮盖
 }

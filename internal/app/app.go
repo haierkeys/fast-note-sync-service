@@ -228,6 +228,12 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 			HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 			HistorySaveDelay:        cfg.App.HistorySaveDelay,
 			ShareTokenExpiry:        cfg.Security.ShareTokenExpiry,
+			ShortLink: service.ShortLinkServiceConfig{
+				BaseURL:  cfg.ShortLink.BaseURL,
+				APIKey:   cfg.ShortLink.APIKey,
+				Password: cfg.ShortLink.Password,
+				Cloaking: cfg.ShortLink.Cloaking,
+			},
 		},
 	}
 
