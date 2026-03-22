@@ -1,35 +1,35 @@
-# Fast Note Sync Service - REST API 文档
+# Fast Note Sync Service - REST API Documentation
 
-本文档基于源码深度分析生成，提供准确的接口定义。
+This document is generated from `swagger.json` and provides the latest API definitions.
 
 ---
 
-## 通用说明
+## General Information
 
-### 基础 URL
+### Base URL
 ```
 http://{host}:9000/api
 ```
 
-### 认证方式
-需要认证的接口必须在请求头中携带 Token：
+### Authentication
+Endpoints requiring authentication must include the Token in the request header:
 ```
 Authorization: {token}
 ```
-Token 通过登录接口获取。
+The Token is obtained via the login interface.
 
-### 通用响应结构
+### Standard Response Structure
 ```typescript
 interface Response<T> {
-  code: number;      // 状态码 (0=失败, 1+=成功)
-  status: boolean;   // 操作状态
-  message: string;   // 提示信息
-  data: T;           // 业务数据
-  details?: string[]; // 错误详情（可选）
+  code: number;      // Status code (0=fail, 1+=success)
+  status: boolean;   // Operation status
+  message: string;   // Status message
+  data: T;           // Business data
+  details?: string[]; // Error details (optional)
 }
 ```
 
-### 分页响应结构
+### Paginated Response Structure
 ```typescript
 interface ListResponse<T> {
   code: number;
@@ -46,603 +46,1413 @@ interface ListResponse<T> {
 }
 ```
 
-### 分页参数
-| 参数 | 类型 | 说明 | 默认值 |
-|------|------|------|--------|
-| page | number | 页码 | 1 |
-| page_size | number | 每页数量 | 10 (最大100) |
+### Pagination Parameters
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| page | number | Page number | 1 |
+| page_size | number | Items per page | 10 (Max 100) |
 
 ---
 
-## 错误码参考
+## Error Codes Reference
 
-| Code | 说明 |
-|------|------|
-| 0 | 失败 |
-| 1-6 | 成功状态 |
-| 400-446 | 业务错误 |
-| 500-534 | 系统/同步错误 |
+| Code | Description |
+|------|-------------|
+| 0 | Failure |
+| 1-6 | Success states |
+| 400-446 | Business errors |
+| 500-534 | System/Sync errors |
 
-### 常见错误码
-| Code | 中文 | English |
-|------|------|---------|
-| 405 | 用户注册已关闭 | User registration is closed |
-| 407 | 用户不存在 | Username does not exist |
-| 408 | 用户已经存在 | Username already exists |
-| 414 | 笔记仓库不存在 | Note Vault does not exist |
-| 428 | 笔记不存在 | Note does not exist |
-| 445 | 此操作需要管理员权限 | This operation requires administrator privileges |
-| 505 | 参数验证失败 | Invalid Params |
-| 507 | 尚未登录 | Not logged in |
-| 508 | 登录状态失效 | Session expired |
 
----
-
-## 公开接口（无需认证）
-
-### 1. 用户注册
-```
-POST /api/user/register
-```
-
-**请求参数** (JSON/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| email | string | ✓ | 邮箱地址 |
-| username | string | ✓ | 用户名 (3-15位，字母/数字/下划线) |
-| password | string | ✓ | 密码 |
-| confirmPassword | string | ✓ | 确认密码 |
-
-**响应 Data**:
-```typescript
-{
-  uid: number;
-  email: string;
-  username: string;
-  token: string;
-  avatar: string;
-  updatedAt: string;
-  createdAt: string;
-}
-```
+### Common Error Codes
+| Code | Description |
+|------|-------------|
+| 405 | User registration is closed |
+| 407 | Username does not exist |
+| 408 | Username already exists |
+| 414 | Note Vault does not exist |
+| 428 | Note does not exist |
+| 445 | This operation requires administrator privileges |
+| 505 | Invalid Params |
+| 507 | Not logged in |
+| 508 | Session expired |
 
 ---
 
-### 2. 用户登录
-```
-POST /api/user/login
-```
+## Backup APIs
 
-**请求参数** (Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| credentials | string | ✓ | 用户名或邮箱 |
-| password | string | ✓ | 密码 |
+### Update backup configuration
+**Endpoint**: `POST /api/backup/config`
 
-**响应 Data**:
-```typescript
-{
-  uid: number;
-  email: string;
-  username: string;
-  token: string;      // 用于后续认证
-  avatar: string;
-  updatedAt: string;
-  createdAt: string;
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.BackupConfigRequest | ✓ | Backup Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-### 3. 获取服务端版本
-```
-GET /api/version
-```
+### Delete backup configuration
+**Endpoint**: `DELETE /api/backup/config`
 
-**响应 Data**:
-```typescript
-{
-  version: string;    // 版本号
-  gitTag: string;     // Git 标签
-  buildTime: string;  // 构建时间
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| id | query | integer | - |  |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-### 4. 获取 WebGUI 配置
-```
-GET /api/webgui/config
-```
+### Get backup configurations
+**Endpoint**: `GET /api/backup/configs`
 
-**响应 Data**:
-```typescript
-{
-  fontSet: string;          // 字体设置 ("local" | "" | URL)
-  registerIsEnable: boolean; // 是否开放注册
-  adminUid: number;         // 管理员 UID (0=未设置)
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-### 5. WebSocket 连接
-```
-GET /api/user/sync
-```
-升级为 WebSocket 连接，用于实时同步。详见 WebSocket API 文档。
+### Trigger a backup manually
+**Endpoint**: `POST /api/backup/execute`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.BackupExecuteRequest | ✓ | Backup Execute Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-## 需认证接口
+### Get backup history list
+**Endpoint**: `GET /api/backup/historys`
 
-### 用户相关
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| configId | query | integer | ✓ |  |
+| page | query | integer | - |  |
+| pageSize | query | integer | - |  |
 
-#### 6. 获取用户信息
-```
-GET /api/user/info
-```
-
-**响应 Data**:
-```typescript
-{
-  uid: number;
-  email: string;
-  username: string;
-  avatar: string;
-  updatedAt: string;
-  createdAt: string;
-}
-```
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 7. 修改密码
-```
-POST /api/user/change_password
-```
+## Config APIs
 
-**请求参数** (JSON/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| oldPassword | string | ✓ | 当前密码 |
-| password | string | ✓ | 新密码 |
-| confirmPassword | string | ✓ | 确认新密码 |
+### Get full admin config
+**Endpoint**: `GET /api/admin/config`
 
-**响应**: 成功返回 code=5, message="密码修改成功"
+Get full system configuration information, requires admin privileges
 
----
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
 
-### Vault (仓库) 相关
-
-#### 8. 获取仓库列表
-```
-GET /api/vault
-```
-
-**响应 Data**:
-```typescript
-Array<{
-  id: number;
-  vault: string;      // 仓库名称
-  noteCount: number;  // 笔记数量
-  noteSize: number;   // 笔记总大小 (bytes)
-  fileCount: number;  // 附件数量
-  fileSize: number;   // 附件总大小 (bytes)
-  size: number;       // 总大小 (noteSize + fileSize)
-}>
-```
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 9. 创建/更新仓库
-```
-POST /api/vault
-```
+### Update admin config
+**Endpoint**: `POST /api/admin/config`
 
-**请求参数** (JSON/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| id | number | - | 仓库ID (有值=更新，无值=创建) |
+Modify full system configuration information, requires admin privileges
 
-**响应 Data**:
-```typescript
-{
-  id: number;
-  vault: string;
-  noteCount: number;
-  noteSize: number;
-  fileCount: number;
-  fileSize: number;
-  size: number;
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | api_router.adminConfig | ✓ | Config Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 10. 删除仓库
-```
-DELETE /api/vault
-```
+### Get Cloudflare config
+**Endpoint**: `GET /api/admin/config/cloudflare`
 
-**请求参数** (Query/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | number | ✓ | 仓库ID (≥1) |
+Get Cloudflare tunnel configuration, requires admin privileges
 
-**响应**: 成功返回 code=4, message="删除成功"
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
 
----
-
-### Note (笔记) 相关
-
-#### 11. 获取笔记列表
-```
-GET /api/notes
-```
-
-**请求参数** (Query):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| keyword | string | - | 搜索关键词 |
-| isRecycle | boolean | - | 是否查询回收站 |
-| page | number | - | 页码 |
-| page_size | number | - | 每页数量 |
-
-**响应 Data** (分页):
-```typescript
-{
-  list: Array<{
-    id: number;
-    action: string;           // "create" | "modify" | "delete"
-    path: string;             // 笔记路径
-    pathHash: string;         // 路径哈希
-    version: number;          // 版本号
-    ctime: number;            // 创建时间戳 (毫秒)
-    mtime: number;            // 修改时间戳 (毫秒)
-    updatedTimestamp: number; // 更新时间戳 (毫秒)
-    updatedAt: string;        // 更新时间
-    createdAt: string;        // 创建时间
-  }>;
-  pager: { page, pageSize, totalRows }
-}
-```
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 12. 获取单条笔记
-```
-GET /api/note
-```
+### Update Cloudflare config
+**Endpoint**: `POST /api/admin/config/cloudflare`
 
-**请求参数** (Query):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| path | string | ✓ | 笔记路径 |
-| pathHash | string | - | 路径哈希 (可选，自动计算) |
-| isRecycle | boolean | - | 是否查询回收站 |
+Modify Cloudflare tunnel configuration, requires admin privileges
 
-**响应 Data**:
-```typescript
-{
-  id: number;
-  path: string;
-  pathHash: string;
-  content: string;            // 笔记内容 (Markdown)
-  contentHash: string;        // 内容哈希
-  fileLinks: Record<string, string>; // 嵌入文件链接映射
-  version: number;
-  ctime: number;
-  mtime: number;
-  updatedTimestamp: number;
-  updatedAt: string;
-  createdAt: string;
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | api_router.cloudflareConfig | ✓ | Config Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 13. 创建/更新笔记
-```
-POST /api/note
-```
+### Get Ngrok config
+**Endpoint**: `GET /api/admin/config/ngrok`
 
-**请求参数** (JSON/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| path | string | ✓ | 笔记路径 |
-| content | string | - | 笔记内容 |
-| pathHash | string | - | 路径哈希 (自动计算) |
-| contentHash | string | - | 内容哈希 (自动计算) |
-| srcPath | string | - | 原路径 (重命名时使用) |
-| srcPathHash | string | - | 原路径哈希 |
-| ctime | number | - | 创建时间戳 (默认当前时间) |
-| mtime | number | - | 修改时间戳 (默认当前时间) |
+Get Ngrok tunnel configuration, requires admin privileges
 
-**响应 Data**:
-```typescript
-{
-  id: number;
-  path: string;
-  pathHash: string;
-  content: string;
-  contentHash: string;
-  version: number;
-  ctime: number;
-  mtime: number;
-  lastTime: number;  // updatedTimestamp
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
 
-**副作用**: 成功后会通过 WebSocket 广播 `NoteSyncModify` 消息
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 14. 删除笔记
-```
-DELETE /api/note
-```
+### Update Ngrok config
+**Endpoint**: `POST /api/admin/config/ngrok`
 
-**请求参数** (Query/Form):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| path | string | ✓ | 笔记路径 |
-| pathHash | string | - | 路径哈希 |
+Modify Ngrok tunnel configuration, requires admin privileges
 
-**响应 Data**: 返回被删除的笔记信息
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | api_router.ngrokConfig | ✓ | Config Parameters |
 
-**副作用**: 成功后会通过 WebSocket 广播 `NoteSyncDelete` 消息
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 15. 获取笔记/附件原始内容
-```
-GET /api/note/file
-```
+### Get WebGUI basic config
+**Endpoint**: `GET /api/webgui/config`
 
-**请求参数** (Query):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| path | string | ✓ | 文件路径 |
-| pathHash | string | - | 路径哈希 |
+Get non-sensitive configuration required for frontend display, such as font settings, registration status, etc.
 
-**响应**: 直接返回文件内容 (非 JSON)
-- Content-Type: 根据文件类型自动识别
-- Cache-Control: public, max-age=31536000
-- ETag: 内容哈希
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-### Note History (笔记历史) 相关
+## File APIs
 
-#### 16. 获取笔记历史列表
-```
-GET /api/note/histories
-```
+### Get attachment content
+**Endpoint**: `GET /api/file`
 
-**请求参数** (Query):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| path | string | ✓ | 笔记路径 |
-| pathHash | string | - | 路径哈希 |
-| isRecycle | boolean | - | 是否查询回收站 |
-| page | number | - | 页码 |
-| page_size | number | - | 每页数量 |
+Get raw binary data of an attachment by path, supports strong cache control
 
-**响应 Data** (分页):
-```typescript
-{
-  list: Array<{
-    id: number;
-    noteId: number;
-    vaultId: number;
-    path: string;
-    clientName: string;  // 修改来源客户端
-    version: number;
-    createdAt: string;
-  }>;
-  pager: { page, pageSize, totalRows }
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| path | query | string | ✓ | File path // 文件路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `file`
 
 ---
 
-#### 17. 获取历史详情
-```
-GET /api/note/history
-```
+### Delete attachment
+**Endpoint**: `DELETE /api/file`
 
-**请求参数** (Query):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | number | ✓ | 历史记录ID |
+Permanently delete a specific attachment record and its physical file
 
-**响应 Data**:
-```typescript
-{
-  id: number;
-  noteId: number;
-  vaultId: number;
-  path: string;
-  diffs: Array<{      // Diff 结果
-    Type: number;     // -1=删除, 0=相等, 1=插入
-    Text: string;
-  }>;
-  content: string;    // 该版本的完整内容
-  contentHash: string;
-  clientName: string;
-  version: number;
-  createdAt: string;
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | ✓ | File path // 文件路径 |
+| pathHash | query | string | ✓ | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 18. 从历史版本恢复笔记
-```
-PUT /api/note/history/restore
-```
+### Get attachment info
+**Endpoint**: `GET /api/file/info`
 
-**请求参数** (JSON):
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| vault | string | ✓ | 仓库名称 |
-| historyId | number | ✓ | 历史记录ID |
+Get attachment metadata (FileDTO) by path
 
-**响应 Data**:
-```typescript
-{
-  id: number;
-  path: string;
-  pathHash: string;
-  content: string;
-  contentHash: string;
-  version: number;
-  ctime: number;
-  mtime: number;
-  lastTime: number;  // updatedTimestamp
-}
-```
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| path | query | string | ✓ | File path // 文件路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
 
-**说明**: 将笔记内容恢复到指定的历史版本。恢复操作会自动保存当前内容为新的历史版本。
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-### Admin (管理员) 相关
+### Clear recycle bin
+**Endpoint**: `DELETE /api/file/recycle-clear`
 
-#### 19. 获取管理配置
-```
-GET /api/admin/config
-```
+Permanently clear selected files from recycle bin
 
-**权限**: 需要管理员权限 (当 adminUid ≠ 0 时，仅该 UID 可访问)
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.FileRecycleClearRequest | ✓ | Clear Parameters |
 
-**响应 Data**:
-```typescript
-{
-  fontSet: string;
-  registerIsEnable: boolean;
-  fileChunkSize: string;           // 如 "512KB"
-  softDeleteRetentionTime: string; // 如 "7d"
-  uploadSessionTimeout: string;    // 如 "1d"
-  historyKeepVersions: number;     // 如 100
-  adminUid: number;
-}
-```
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-#### 20. 更新管理配置
-```
-POST /api/admin/config
-```
+### Rename attachment
+**Endpoint**: `POST /api/file/rename`
 
-**权限**: 需要管理员权限
+Rename an attachment to a new path
 
-**请求参数** (JSON/Form):
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| fontSet | string | 字体设置 |
-| registerIsEnable | boolean | 是否开放注册 |
-| fileChunkSize | string | 文件分块大小 |
-| softDeleteRetentionTime | string | 软删除保留时长 |
-| uploadSessionTimeout | string | 上传会话超时 |
-| historyKeepVersions | number | 历史记录保留版本数 |
-| adminUid | number | 管理员 UID |
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.FileRenameRequest | ✓ | Rename Parameters |
 
-**响应 Data**: 返回更新后的配置
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-## 接口路由汇总
+### Restore attachment
+**Endpoint**: `PUT /api/file/restore`
 
-| 方法 | 路径 | 认证 | 说明 |
-|------|------|------|------|
-| POST | /api/user/register | ✗ | 用户注册 |
-| POST | /api/user/login | ✗ | 用户登录 |
-| GET | /api/user/sync | ✗ | WebSocket 连接 |
-| GET | /api/version | ✗ | 获取版本信息 |
-| GET | /api/webgui/config | ✗ | 获取 WebGUI 配置 |
-| GET | /api/user/info | ✓ | 获取用户信息 |
-| POST | /api/user/change_password | ✓ | 修改密码 |
-| GET | /api/vault | ✓ | 获取仓库列表 |
-| POST | /api/vault | ✓ | 创建/更新仓库 |
-| DELETE | /api/vault | ✓ | 删除仓库 |
-| GET | /api/notes | ✓ | 获取笔记列表 |
-| GET | /api/note | ✓ | 获取单条笔记 |
-| POST | /api/note | ✓ | 创建/更新笔记 |
-| DELETE | /api/note | ✓ | 删除笔记 |
-| GET | /api/note/file | ✓ | 获取文件内容 |
-| GET | /api/note/histories | ✓ | 获取历史列表 |
-| GET | /api/note/history | ✓ | 获取历史详情 |
-| PUT | /api/note/history/restore | ✓ | 从历史版本恢复 |
-| GET | /api/admin/config | ✓ | 获取管理配置 |
-| POST | /api/admin/config | ✓ | 更新管理配置 |
+Restore deleted attachment from trash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.FileRestoreRequest | ✓ | Restore Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-## 时间戳说明
+### Get file list
+**Endpoint**: `GET /api/files`
 
-所有时间戳字段 (`ctime`, `mtime`, `updatedTimestamp`, `lastTime`) 均为 **毫秒级 Unix 时间戳**。
+Get attachment list for current user with pagination, search, filter, and sort support
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| keyword | query | string | - | Search keyword // 搜索关键词 |
+| sortBy | query | string | - | Sort by field // 排序字段 |
+| sortOrder | query | string | - | Sort order // 排序顺序 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-## 哈希算法
+## Folder APIs
 
-`pathHash` 和 `contentHash` 使用 32 位哈希算法 (FNV-1a 或类似)，客户端可自动计算或由服务端生成。
+### Get folder info
+**Endpoint**: `GET /api/folder`
+
+Get folder info for current user by path or pathHash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | - | Folder path // 文件夹路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
 
 ---
 
-## 全文搜索 (FTS)
+### Create folder
+**Endpoint**: `POST /api/folder`
 
-服务端内置基于 SQLite FTS5 的全文搜索引擎，支持对笔记路径和内容进行高效的全文检索。
+Create a new folder or restore a deleted one by path
 
-### 技术实现
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.FolderCreateRequest | ✓ | Create Parameters |
 
-- 使用 SQLite FTS5 虚拟表
-- 支持 Unicode 字符分词 (`unicode61 remove_diacritics 2`)
-- 自动维护索引版本，版本变更时自动重建
+**Success Response (200)**:
+Schema: `app.Res`
 
-### FTS 表结构
-```sql
-CREATE VIRTUAL TABLE note_fts USING fts5(
-    note_id UNINDEXED,  -- 关联的笔记 ID（不索引）
-    path,               -- 笔记路径（可搜索）
-    content,            -- 笔记内容（可搜索）
-    tokenize='unicode61 remove_diacritics 2'
-)
-```
+---
 
-### 内部接口 (DAO 层)
+### Delete folder
+**Endpoint**: `DELETE /api/folder`
 
-FTS 功能目前通过 `NoteFTSRepository` 接口提供，包含以下方法：
+Soft delete a folder by path or pathHash
 
-| 方法 | 说明 |
-|------|------|
-| `Upsert(noteID, path, content, uid)` | 插入或更新 FTS 索引 |
-| `Delete(noteID, uid)` | 删除 FTS 索引 |
-| `Search(keyword, vaultID, uid, limit, offset)` | 全文搜索，返回匹配的 note_id 列表 |
-| `SearchCount(keyword, vaultID, uid)` | 全文搜索计数 |
-| `RebuildIndex(uid)` | 重建用户的全部 FTS 索引 |
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.FolderDeleteRequest | ✓ | Delete Parameters |
 
-### 搜索行为
+**Success Response (200)**:
+Schema: `app.Res`
 
-- 搜索词使用双引号包裹进行精确短语匹配
-- 搜索结果按相关性排序 (`ORDER BY rank`)
-- 自动过滤已删除的笔记 (`action != 'delete'`)
-- 支持按 vault 过滤搜索范围
+---
 
-### 笔记列表搜索增强
+### List files in folder
+**Endpoint**: `GET /api/folder/files`
 
-现有的 `GET /api/notes` 接口的 `keyword` 参数已支持 FTS 全文搜索：
+List non-deleted files in a specific folder with pagination and sorting
 
-- 当提供 `keyword` 参数时，会使用 FTS 引擎进行内容搜索
-- 搜索范围包括笔记路径和笔记内容
-- 返回结果按相关性排序
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | - | Folder path // 文件夹路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| sortBy | query | string | - | Sort by field // 排序字段 |
+| sortOrder | query | string | - | Sort order // 排序顺序 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### List notes in folder
+**Endpoint**: `GET /api/folder/notes`
+
+List non-deleted notes in a specific folder with pagination and sorting
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | - | Folder path // 文件夹路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| sortBy | query | string | - | Sort by field // 排序字段 |
+| sortOrder | query | string | - | Sort order // 排序顺序 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get folder tree
+**Endpoint**: `GET /api/folder/tree`
+
+Get the complete folder tree structure for a vault
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| depth | query | integer | - | Tree depth // 树深度 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get folder list
+**Endpoint**: `GET /api/folders`
+
+Get folder list for current user by parent path or pathHash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | - | Folder path // 文件夹路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## GitSync APIs
+
+### Update git sync configuration
+**Endpoint**: `POST /api/git-sync/config`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.GitSyncConfigRequest | ✓ | Git Sync Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Delete git sync configuration
+**Endpoint**: `DELETE /api/git-sync/config`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.GitSyncDeleteRequest | ✓ | Git Sync ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Clean local git workspace
+**Endpoint**: `DELETE /api/git-sync/config/clean`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.GitSyncCleanRequest | ✓ | Clean Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Trigger a manual git sync
+**Endpoint**: `POST /api/git-sync/config/execute`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.GitSyncExecuteRequest | ✓ | Execute Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get git sync configurations
+**Endpoint**: `GET /api/git-sync/configs`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get git sync histories
+**Endpoint**: `GET /api/git-sync/histories`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| configId | query | integer | - |  |
+| page | query | integer | - |  |
+| pageSize | query | integer | - |  |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Validate git sync parameters
+**Endpoint**: `POST /api/git-sync/validate`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.GitSyncValidateRequest | ✓ | Validation Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Note APIs
+
+### Get note details
+**Endpoint**: `GET /api/note`
+
+Get specific note content and metadata by path or path hash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| path | query | string | ✓ | Note path // 笔记路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Create or update note
+**Endpoint**: `POST /api/note`
+
+Handle note creation, modification, or renaming (identified by path change)
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteModifyOrCreateRequest | ✓ | Note Content |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Delete note
+**Endpoint**: `DELETE /api/note`
+
+Move note to trash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | ✓ | Note path // 笔记路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Append content to note
+**Endpoint**: `POST /api/note/append`
+
+Append content to the end of a note
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteAppendRequest | ✓ | Append Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get backlinks
+**Endpoint**: `GET /api/note/backlinks`
+
+Get all other notes that link to the specified note
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | ✓ | Note path // 笔记路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Modify note frontmatter
+**Endpoint**: `PATCH /api/note/frontmatter`
+
+Update or delete note frontmatter fields
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NotePatchFrontmatterRequest | ✓ | Frontmatter Modification Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Move note
+**Endpoint**: `POST /api/note/move`
+
+Move a note to a new path
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteMoveRequest | ✓ | Move Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get outgoing links
+**Endpoint**: `GET /api/note/outlinks`
+
+Get other notes that the specified note links to
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | ✓ | Note path // 笔记路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Prepend content to note
+**Endpoint**: `POST /api/note/prepend`
+
+Insert content at the beginning of a note (after frontmatter)
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NotePrependRequest | ✓ | Prepend Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Clear recycle bin
+**Endpoint**: `DELETE /api/note/recycle-clear`
+
+Permanently clear selected notes from recycle bin
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteRecycleClearRequest | ✓ | Clear Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Rename note
+**Endpoint**: `POST /api/note/rename`
+
+Rename a note to a new path
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteRenameRequest | ✓ | Rename Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Find and replace in note
+**Endpoint**: `POST /api/note/replace`
+
+Perform find and replace operation in a note, supporting regular expressions
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteReplaceRequest | ✓ | Find and Replace Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Restore note
+**Endpoint**: `PUT /api/note/restore`
+
+Restore deleted note from trash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteRestoreRequest | ✓ | Restore Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get note list
+**Endpoint**: `GET /api/notes`
+
+Get note list for current user with pagination
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| keyword | query | string | - | Search keyword // 搜索关键词 |
+| searchContent | query | boolean | - | Whether to search content // 是否搜索内容 |
+| searchMode | query | string | - | Search mode (path, content, regex) // 搜索模式（路径、内容、正则） |
+| sortBy | query | string | - | Sort by field // 排序字段 |
+| sortOrder | query | string | - | Sort order // 排序顺序 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Note History APIs
+
+### Get note history list
+**Endpoint**: `GET /api/note/histories`
+
+Get all history records for a specific note with pagination
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| isRecycle | query | boolean | - | Is in recycle bin // 是否在回收站 |
+| path | query | string | ✓ | Note path // 笔记路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get note history details
+**Endpoint**: `GET /api/note/history`
+
+Get specific note history content by history record ID
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | History Record ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Restore note from history
+**Endpoint**: `PUT /api/note/history/restore`
+
+Restore note content to a specific history version
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.NoteHistoryRestoreRequest | ✓ | Restore Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Setting APIs
+
+### Get setting info
+**Endpoint**: `GET /api/setting`
+
+Get setting info for current user by path or pathHash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | - | Setting path // 配置路径 |
+| pathHash | query | string | - | Path hash // 路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Create or update setting
+**Endpoint**: `POST /api/setting`
+
+Create a new setting or update an existing one
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.SettingModifyOrCreateRequest | ✓ | Create/Update Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Delete setting
+**Endpoint**: `DELETE /api/setting`
+
+Soft delete a setting by path or pathHash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.SettingDeleteRequest | ✓ | Delete Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Rename setting
+**Endpoint**: `POST /api/setting/rename`
+
+Rename a setting and update its path and pathHash
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.SettingRenameRequest | ✓ | Rename Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get setting list
+**Endpoint**: `GET /api/settings`
+
+Get setting list for current user with pagination and keyword filtering
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| keyword | query | string | - | Keyword // 关键词 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+| page | query | integer | - | Page number // 页码 |
+| pageSize | query | integer | - | Page size // 每页数量 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Share APIs
+
+### Query share by path
+**Endpoint**: `GET /api/share`
+
+Get share token and info by vault and path
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| path | query | string | ✓ | Resource path // 资源路径 |
+| pathHash | query | string | ✓ | Resource path Hash // 资源路径哈希 |
+| vault | query | string | ✓ | Vault name // 保险库名称 |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Create resource share
+**Endpoint**: `POST /api/share`
+
+Create a share token for a specific note or attachment, automatically resolve attachment references and authorize
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.ShareCreateRequest | ✓ | Share Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Cancel share
+**Endpoint**: `DELETE /api/share`
+
+Cancel a share by ID or path parameters
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.ShareCancelRequest | ✓ | Cancel Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get shared attachment content
+**Endpoint**: `GET /api/share/file`
+
+Get raw binary data of a specific attachment via share token
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| Share-Token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | Resource ID // 资源 ID |
+
+**Success Response (200)**:
+Schema: `file`
+
+---
+
+### Get shared note details
+**Endpoint**: `GET /api/share/note`
+
+Get specific note content (restricted read-only access) via share token
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| Share-Token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | Resource ID // 资源 ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### List shares
+**Endpoint**: `GET /api/shares`
+
+Get all active and inactive shares of the user, supports sorting and pagination
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| sort_by | query | string | - | Sort field: created_at, updated_at, expires_at (default: created_at) |
+| sort_order | query | string | - | Sort direction: asc or desc (default: desc) |
+| page | query | integer | - | Page number |
+| pageSize | query | integer | - | Page size |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Storage APIs
+
+### Get storage configuration list
+**Endpoint**: `GET /api/storage`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Create or update storage configuration
+**Endpoint**: `POST /api/storage`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.StoragePostRequest | ✓ | Storage Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Delete storage configuration
+**Endpoint**: `DELETE /api/storage`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | Storage ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get enabled storage types
+**Endpoint**: `GET /api/storage/enabled_types`
+
+Get list of enabled storage types. Possible values: localfs, oss, s3, r2, minio, webdav
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Validate storage connection
+**Endpoint**: `POST /api/storage/validate`
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.StoragePostRequest | ✓ | Storage Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## System APIs
+
+### Download cloudflared binary
+**Endpoint**: `GET /api/admin/cloudflared_tunnel_download`
+
+Trigger the download of cloudflared binary for the current platform
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Trigger manual GC
+**Endpoint**: `GET /api/admin/gc`
+
+Manually run Go runtime GC and release memory to OS, requires admin privileges
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Trigger server restart
+**Endpoint**: `GET /api/admin/restart`
+
+Gracefully restart the server
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get system and runtime info
+**Endpoint**: `GET /api/admin/systeminfo`
+
+Get system information and Go runtime data, requires admin privileges
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Trigger server upgrade
+**Endpoint**: `GET /api/admin/upgrade`
+
+Download latest version and restart server
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| version | query | string | ✓ | Version to upgrade (e.g. 2.0.10 or latest) |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get connected WebSocket clients
+**Endpoint**: `GET /api/admin/ws_clients`
+
+Get a list of all current WebSocket connections, requires admin privileges
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Health check
+**Endpoint**: `GET /api/health`
+
+Check service health status, including database connection
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `api_router.HealthResponse`
+
+---
+
+### Get support records
+**Endpoint**: `GET /api/support`
+
+Get support records for the specified language with pagination and sorting
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| lang | query | string | - | Language code (default: en) |
+| sortBy | query | string | - | Sort by field (amount, time, name, item) |
+| sortOrder | query | string | - | Sort order (asc, desc) |
+| page | query | integer | - | Page number |
+| pageSize | query | integer | - | Page size |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get server version info
+**Endpoint**: `GET /api/version`
+
+Get current server software version, Git tag, and build time
+
+**Parameters**:
+None
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## User APIs
+
+### Change user password
+**Endpoint**: `POST /api/user/change_password`
+
+Handle password change request for current user, validate old password and update new password.
+处理当前用户的修改密码请求，验证旧密码并更新新密码。
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.UserChangePasswordRequest | ✓ | Change Password Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get user info
+**Endpoint**: `GET /api/user/info`
+
+Handle request to get current user info.
+处理获取当前用户信息的请求。
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### User login
+**Endpoint**: `POST /api/user/login`
+
+Handle user login HTTP request, validate parameters and return auth token.
+处理用户登录 HTTP 请求，验证参数并返回认证 Token。
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| params | body | dto.UserLoginRequest | ✓ | Login Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### User registration
+**Endpoint**: `POST /api/user/register`
+
+Handle user registration HTTP request, validate parameters and call UserService. Registration may be disabled in server settings.
+处理用户注册 HTTP 请求，验证参数并调用 UserService。注册功能可能在服务器设置中被禁用。
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| params | body | dto.UserCreateRequest | ✓ | Register Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Vault APIs
+
+### Get vault list
+**Endpoint**: `GET /api/vault`
+
+Get all note vaults for current user
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Create or update vault
+**Endpoint**: `POST /api/vault`
+
+Be used to create a new vault or update an existing vault configuration based on the ID in the request parameters
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| params | body | dto.VaultPostRequest | ✓ | Vault Parameters |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Delete vault
+**Endpoint**: `DELETE /api/vault`
+
+Permanently delete a specific note vault and all associated notes and attachments
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | Vault ID // 保险库 ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+### Get vault details
+**Endpoint**: `GET /api/vault/get`
+
+Get specific vault configuration details by vault ID
+
+**Parameters**:
+| Name | In | Type | Required | Description |
+|------|----|------|----------|-------------|
+| token | header | string | ✓ | Auth Token |
+| id | query | integer | ✓ | Vault ID |
+
+**Success Response (200)**:
+Schema: `app.Res`
+
+---
+
+## Timestamp Format
+
+All timestamp fields (`ctime`, `mtime`, `updatedTimestamp`, `lastTime`) are **Unix timestamps in milliseconds**.
+
+---
+
+## Hash Algorithms
+
+`pathHash` and `contentHash` use a 32-bit hash algorithm (e.g., FNV-1a). Clients can compute these automatically or receive them from the server.
+
+---
+
+## Full-Text Search (FTS)
+
+The server includes a built-in full-text search engine based on SQLite FTS5 for efficient searching of note paths and content.

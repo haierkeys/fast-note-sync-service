@@ -40,18 +40,18 @@
 ## ✨ 核心功能
 
 * **🚀 REST API 支持**：
-* **🚀 REST API 支援**：
-    * 提供標準的 REST API 介面，支援透過編程方式（如自動化腳本、AI 助手整合）對 Obsidian 筆記進行增刪改查。
-    * 詳情請參閱 [REST API 文件](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/REST_API.md)。
+    * 提供標準的 REST API 接口，支持通過編程方式（如自動化腳本、AI 助手集成）對 Obsidian 筆記進行增刪改查。
+    * 詳情請參閱 [RESTful API 文檔](/docs/REST_API.md) 或 [OpenAPI 文檔](/docs/swagger.yaml)。
 * **💻 Web 管理面板**：
-  * 內建現代化管理介面，輕鬆建立使用者、產生外掛程式配置、管理倉庫及筆記內容。
+  * 內置現代化管理界面，輕鬆創建用戶、生成插件配置、管理倉庫及筆記內容。
 * **🔄 多端筆記同步**：
-    * 支援 **Vault (倉庫)** 自動建立。
-    * 支援筆記管理（增、刪、改、查），變更毫秒級即時分發至所有線上設備。
-* **🖼️ 附件同步支援**：
-    * 完美支援圖片等非筆記檔案同步。
-    * 支援大附件 分片上傳下載，分片大小可配置，提升同步效率。
+    * 支持 **Vault (倉庫)** 自動創建。
+    * 支持筆記管理（增、刪、改、查），變更毫秒級實時分發至所有在線設備。
+* **🖼️ 附件同步支持**：
+    * 完美支持圖片等非筆記文件同步。
+    * 支持大附件 分片上傳下載，分片大小可配置，提升同步效率。
 * **⚙️ 配置同步**：
+    * 支持 `.obsidian` 配置文件的同步。
     * 支持 `PDF` 進度狀態同步。
 * **📝 筆記歷史**：
     * 可以在 Web 頁面，插件端查看每一個筆記的 歷史修改版本。
@@ -63,6 +63,23 @@
 * **🚫 離線同步策略**：
     * 支持筆記離線編輯自動合併。(需要插件端設置)
     * 離線刪除，重連之後自動補全或刪除同步。(需要插件端設置)
+
+* **🔗 分享功能**：
+    * 可以 創建/取消 筆記分享。
+    * 自動解析分享筆記中引用的圖片、音視頻等附件。
+    * 提供分享訪問統計功能。
+* **📂 目錄同步**：
+    * 支持文件夾的 創建/重命名/移動/刪除 同步。
+
+* **🌳 Git 自動化**：
+    * 當附件和筆記發生變更時，自動更新並推送至遠程 Git 倉庫。
+    * 任務結束後自動釋放系統內存。
+
+* **☁️ 多儲存備份與單向鏡像同步**：
+    * 適配 S3/OSS/R2/WebDAV/本地 等多種儲存協議。
+    * 支持全量/增量 ZIP 定時歸檔備份。
+    * 支持 Vault 資源單向鏡像同步至遠程儲存。
+    * 自動清理過期備份，支持自定義保留天數。
 
 ## ☕ 贊助與支持
 
@@ -84,13 +101,9 @@
 
 我們正在持續改進，以下是未來的開發計劃：
 
-- [ ] **分享功能**：支持筆記的分享。
-- [ ] **MCP支持**：增加 AI MCP 相關功能支持。
-- [ ] **目錄同步**：支持目錄的增刪改查。
-- [ ] **Git 版本控制集成**：為筆記提供更安全的版本回溯。
-- [ ] **雲存儲與備份策略**：
-    - [ ] 自定義備份策略配置。
-    - [ ] 多協議適配：S3 / Minio / Cloudflare R2 / 阿里雲 OSS / WebDAV。
+
+- [ ] **🤖 MCP支持**：增加 AI MCP 相關功能支持。
+- [ ] **更多數據庫類型的支持**
 
 > **如果您有改進建議或新想法，歡迎通過提交 issue 與我們分享——我們會認真評估並採納合適的建議。**
 
@@ -98,7 +111,7 @@
 
 我們提供多種安裝方式，推薦使用 **一鍵腳本** 或 **Docker**。
 
-### 方式一：一鍵腳本（推薦）
+### 方式一：一键脚本（推荐）
 
 自動檢測系統環境並完成安裝、服務註冊。
 
@@ -132,7 +145,7 @@ docker pull haierkeys/fast-note-sync-service:latest
 
 # 2. 啟動容器
 docker run -tid --name fast-note-sync-service \
-    -p 9000:9000 -p 9001:9001 \
+    -p 9000:9000 \
     -v /data/fast-note-sync/storage/:/fast-note-sync/storage/ \
     -v /data/fast-note-sync/config/:/fast-note-sync/config/ \
     haierkeys/fast-note-sync-service:latest
@@ -150,10 +163,9 @@ services:
     container_name: fast-note-sync-service
     restart: always
     ports:
-      - "9000:9000"  # API 端口
-      - "9001:9001"  # WebSocket 端口
+      - "9000:9000"  # RESTful API & WebSocket 端口 其中 /api/user/sync 為 WebSocket 接口地址
     volumes:
-      - ./storage:/fast-note-sync/storage  # 數據存儲
+      - ./storage:/fast-note-sync/storage  # 數據儲存
       - ./config:/fast-note-sync/config    # 配置文件
 ```
 
@@ -178,7 +190,7 @@ docker compose up -d
 1.  **訪問管理面板**：
     在瀏覽器打開 `http://{服務器IP}:9000`。
 2.  **初始化設置**：
-    首次訪問需註冊帳號。*(如需關閉註冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
+    首次訪問需註冊賬號。*(如需關閉註冊功能，請在配置文件中設置 `user.register-is-enable: false`)*
 3.  **配置客戶端**：
     登錄管理面板，點擊 **「複製 API 配置」**。
 4.  **連接 Obsidian**：
@@ -195,7 +207,9 @@ docker compose up -d
 
 查看完整配置示例：[https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
-## 🔗 相關資源
+## 🔗 客戶端 & 客戶端插件
 
-  * [Obsidian Fast Note Sync Plugin (客戶端插件)](https://github.com/haierkeys/obsidian-fast-note-sync)
-  * [Obsidian Fast Note Sync Plugin (cnb.cool 鏡像庫)](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
+* Obsidian Fast Note Sync 插件
+  * [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) / [cnb.cool 鏡像庫](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
+* 三方客戶端
+  * [FastNodeSync-CLI](https://github.com/Go1c/FastNodeSync-CLI) 基於 Python 和 FNS WS 接口實現的高性能雙向實時同步的命令行客戶端, 適用於無 GUI 的 Linux 服務器環境（如 OpenClaw），實現與 Obsidian 桌面/移動端等價的同步能力。
