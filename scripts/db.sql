@@ -179,6 +179,7 @@ CREATE TABLE "user_share" (
     -- 访问次数
     "last_viewed_at" datetime DEFAULT NULL,
     "expires_at" datetime DEFAULT NULL,
+    "password" text DEFAULT '',
     "short_link" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL

@@ -47,6 +47,12 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 			return
 		}
 
+		// 获取密码参数
+		password := c.Query("password")
+		if password == "" {
+			password = c.PostForm("password")
+		}
+
 		// Determine resource ID and type currently requested
 		// 确定当前请求想要访问的资源 ID 和类型
 		rid := c.Query("id")
@@ -69,7 +75,7 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 
 		// Verify Token and its availability in database
 		// 验证 Token 及其在数据库中的生效状态
-		entity, err := shareService.VerifyShare(c.Request.Context(), token, rid, rtp)
+		entity, err := shareService.VerifyShare(c.Request.Context(), token, rid, rtp, password)
 
 		if err != nil {
 			switch err {
@@ -77,6 +83,10 @@ func ShareAuthToken(shareService service.ShareService) gin.HandlerFunc {
 				response.ToResponse(code.ErrorShareRevoked)
 			case domain.ErrShareExpired:
 				response.ToResponse(code.ErrorShareExpired)
+			case domain.ErrSharePasswordRequired:
+				response.ToResponse(code.ErrorSharePasswordRequired)
+			case domain.ErrSharePasswordInvalid:
+				response.ToResponse(code.ErrorSharePasswordInvalid)
 			default:
 				response.ToResponse(code.ErrorShareNotFound)
 			}

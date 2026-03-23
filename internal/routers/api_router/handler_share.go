@@ -59,7 +59,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 
 	// Call service layer to generate Token (automatically identify type and resolve associated resources)
 	// 调用服务层生成 Token (自动识别类型及解析关联资源)
-	shareRes, err := h.App.ShareService.ShareGenerate(ctx, uid, params.Vault, params.Path, params.PathHash)
+	shareRes, err := h.App.ShareService.ShareGenerate(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
@@ -103,8 +103,12 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 		return
 	}
 
+	// 获取密码参数 (从上下文获取，由中间件解析)
+	password, _ := c.Get("share_password")
+	sharePassword, _ := password.(string)
+
 	ctx := c.Request.Context()
-	noteDTO, err := h.App.ShareService.GetSharedNote(ctx, shareToken, params.ID)
+	noteDTO, err := h.App.ShareService.GetSharedNote(ctx, shareToken, params.ID, sharePassword)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
@@ -147,8 +151,12 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
+	// 获取密码参数 (从上下文获取，由中间件解析)
+	pass, _ := c.Get("share_password")
+	sharePassword, _ := pass.(string)
+
 	ctx := c.Request.Context()
-	savePath, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFileInfo(ctx, shareToken, params.ID)
+	savePath, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFileInfo(ctx, shareToken, params.ID, sharePassword)
 
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
@@ -272,6 +280,42 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 		return
 	}
 
+	if err != nil {
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
+		}
+		return
+	}
+
+	response.ToResponse(code.Success)
+}
+
+// UpdatePassword updates share password
+// @Summary Update share password
+// @Description Set or update password for a share record
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.SharePasswordUpdateRequest true "Update Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/share/password [post]
+func (h *ShareHandler) UpdatePassword(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.SharePasswordUpdateRequest{}
+
+	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	err := h.App.ShareService.UpdateSharePassword(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)

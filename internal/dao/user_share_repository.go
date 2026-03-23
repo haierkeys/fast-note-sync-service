@@ -53,6 +53,7 @@ func (r *userShareRepository) toDomain(m *model.UserShare) *domain.UserShare {
 		ViewCount:    m.ViewCount,
 		LastViewedAt: m.LastViewedAt,
 		ExpiresAt:    m.ExpiresAt,
+		Password:     m.Password,
 		ShortLink:    m.ShortLink,
 		CreatedAt:    time.Time(m.CreatedAt),
 		UpdatedAt:    time.Time(m.UpdatedAt),
@@ -75,6 +76,7 @@ func (r *userShareRepository) toModel(d *domain.UserShare) *model.UserShare {
 		ViewCount:    d.ViewCount,
 		LastViewedAt: d.LastViewedAt,
 		ExpiresAt:    d.ExpiresAt,
+		Password:     d.Password,
 		ShortLink:    d.ShortLink,
 		CreatedAt:    timex.Time(d.CreatedAt),
 		UpdatedAt:    timex.Time(d.UpdatedAt),
@@ -185,6 +187,14 @@ func (r *userShareRepository) UpdateShortLink(ctx context.Context, uid int64, id
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		us := r.userShare(uid).UserShare
 		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.ShortLink, shortLink)
+		return err
+	})
+}
+
+func (r *userShareRepository) UpdatePassword(ctx context.Context, uid int64, id int64, password string) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.Password, password)
 		return err
 	})
 }

@@ -37,6 +37,7 @@ func newUserShare(db *gorm.DB, opts ...gen.DOOption) userShare {
 	_userShare.ViewCount = field.NewInt64(tableName, "view_count")
 	_userShare.LastViewedAt = field.NewTime(tableName, "last_viewed_at")
 	_userShare.ExpiresAt = field.NewTime(tableName, "expires_at")
+	_userShare.Password = field.NewString(tableName, "password")
 	_userShare.ShortLink = field.NewString(tableName, "short_link")
 	_userShare.CreatedAt = field.NewField(tableName, "created_at")
 	_userShare.UpdatedAt = field.NewField(tableName, "updated_at")
@@ -59,6 +60,7 @@ type userShare struct {
 	ViewCount    field.Int64
 	LastViewedAt field.Time
 	ExpiresAt    field.Time
+	Password     field.String
 	ShortLink    field.String
 	CreatedAt    field.Field
 	UpdatedAt    field.Field
@@ -87,6 +89,7 @@ func (u *userShare) updateTableName(table string) *userShare {
 	u.ViewCount = field.NewInt64(table, "view_count")
 	u.LastViewedAt = field.NewTime(table, "last_viewed_at")
 	u.ExpiresAt = field.NewTime(table, "expires_at")
+	u.Password = field.NewString(table, "password")
 	u.ShortLink = field.NewString(table, "short_link")
 	u.CreatedAt = field.NewField(table, "created_at")
 	u.UpdatedAt = field.NewField(table, "updated_at")
@@ -116,7 +119,7 @@ func (u *userShare) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userShare) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 13)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["uid"] = u.UID
 	u.fieldMap["res_type"] = u.ResType
@@ -126,6 +129,7 @@ func (u *userShare) fillFieldMap() {
 	u.fieldMap["view_count"] = u.ViewCount
 	u.fieldMap["last_viewed_at"] = u.LastViewedAt
 	u.fieldMap["expires_at"] = u.ExpiresAt
+	u.fieldMap["password"] = u.Password
 	u.fieldMap["short_link"] = u.ShortLink
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt

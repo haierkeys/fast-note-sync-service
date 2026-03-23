@@ -12,6 +12,7 @@ type ShareCreateRequest struct {
 	Vault    string `json:"vault" binding:"required" example:"defaultVault"` // Vault name // 保险库名称
 	Path     string `json:"path" binding:"required" example:"ReadMe.md"`     // Resource path // 资源路径
 	PathHash string `json:"pathHash" binding:"required" example:"hash123"`   // Resource path Hash // 资源路径哈希
+	Password string `json:"password" example:"123456"`                      // Share password // 分享密码
 }
 
 // ShareQueryRequest Request parameters for querying a share
@@ -34,7 +35,17 @@ type ShareCancelRequest struct {
 // ShareResourceRequest Request parameters for retrieving a shared resource
 // 分享资源获取请求
 type ShareResourceRequest struct {
-	ID int64 `json:"id" form:"id" binding:"required" example:"1"` // Resource ID // 资源 ID
+	ID       int64  `json:"id" form:"id" binding:"required" example:"1"` // Resource ID // 资源 ID
+	Password string `json:"password" form:"password" example:"123456"`    // Share password // 分享密码
+}
+
+// SharePasswordUpdateRequest Request parameters for updating share password
+// 更新分享密码请求
+type SharePasswordUpdateRequest struct {
+	Vault    string `json:"vault" binding:"required" example:"test"`         // Vault name // 保险库名称
+	Path     string `json:"path" binding:"required" example:"未命名.md"`        // Resource path // 资源路径
+	PathHash string `json:"pathHash" binding:"required" example:"-677306325"` // Resource path Hash // 资源路径哈希
+	Password string `json:"password" example:"123456"`                      // New password // 新密码
 }
 
 // ShareShortLinkCreateRequest Request parameters for creating a short link
