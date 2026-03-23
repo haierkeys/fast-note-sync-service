@@ -461,6 +461,7 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 				// Remove .md suffix for note title
 				// 去掉 .md 后缀作为标题
 				item.Title = strings.TrimSuffix(baseName, ".md")
+				item.NotePath = note.Path
 			}
 		case "file":
 			if file, err := s.fileRepo.GetByID(ctx, share.ResID, uid); err == nil && file != nil {
