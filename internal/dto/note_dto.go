@@ -191,6 +191,7 @@ type NoteListRequest struct {
 	SearchContent bool   `json:"searchContent" form:"searchContent" example:"true"`       // Whether to search content // 是否搜索内容
 	SortBy        string `json:"sortBy" form:"sortBy" example:"mtime"`                    // Sort by field // 排序字段
 	SortOrder     string `json:"sortOrder" form:"sortOrder" example:"desc"`               // Sort order // 排序顺序
+	Paths         string `json:"paths" form:"paths" example:"note1.md,note2.md"`          // Comma-separated exact path list for share filter // 逗号分隔的精确路径列表，用于分享筛选
 }
 
 // NoteHistoryListRequest Note history list request parameters
