@@ -3462,6 +3462,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "example": "note1.md,note2.md",
+                        "description": "Comma-separated exact path list for share filter // 逗号分隔的精确路径列表，用于分享筛选",
+                        "name": "paths",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "example": true,
                         "description": "Whether to search content // 是否搜索内容",
@@ -7002,7 +7009,7 @@ const docTemplate = `{
         "dto.ShareCreateResponse": {
             "type": "object",
             "properties": {
-                "expires_at": {
+                "expiresAt": {
                     "description": "Expiration time // 过期时间",
                     "type": "string"
                 },
@@ -7010,7 +7017,11 @@ const docTemplate = `{
                     "description": "ID of the note or file table (primary resource ID) // 笔记或文件表 ID（主资源 ID）",
                     "type": "integer"
                 },
-                "short_link": {
+                "isPassword": {
+                    "description": "Whether password is set // 是否设置了密码",
+                    "type": "boolean"
+                },
+                "shortLink": {
                     "description": "Short link // 短链",
                     "type": "string"
                 },
@@ -7027,10 +7038,10 @@ const docTemplate = `{
         "dto.ShareListItem": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
-                "expires_at": {
+                "expiresAt": {
                     "description": "Expiration time // 过期时间",
                     "type": "string"
                 },
@@ -7038,8 +7049,16 @@ const docTemplate = `{
                     "description": "Share ID // 分享记录 ID",
                     "type": "integer"
                 },
-                "last_viewed_at": {
+                "isPassword": {
+                    "description": "Whether password is set // 是否设置了密码",
+                    "type": "boolean"
+                },
+                "lastViewedAt": {
                     "description": "Last viewed time // 最后访问时间",
+                    "type": "string"
+                },
+                "notePath": {
+                    "description": "Note path, for frontend share filter matching // 笔记路径，用于前端分享筛选匹配",
                     "type": "string"
                 },
                 "res": {
@@ -7052,7 +7071,7 @@ const docTemplate = `{
                         }
                     }
                 },
-                "short_link": {
+                "shortLink": {
                     "description": "Short link // 短链",
                     "type": "string"
                 },
@@ -7068,14 +7087,14 @@ const docTemplate = `{
                     "description": "User ID // 用户 ID",
                     "type": "integer"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 },
                 "url": {
                     "description": "Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)",
                     "type": "string"
                 },
-                "view_count": {
+                "viewCount": {
                     "description": "View count // 访问次数",
                     "type": "integer"
                 }

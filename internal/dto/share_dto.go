@@ -73,8 +73,9 @@ type ShareCreateResponse struct {
 	ID        int64     `json:"id"`         // ID of the note or file table (primary resource ID) // 笔记或文件表 ID（主资源 ID）
 	Type      string    `json:"type"`       // Resource type: note or file // 资源类型：笔记（note）或文件（file）
 	Token     string    `json:"token"`      // Share Token // 分享 Token
-	ExpiresAt time.Time `json:"expires_at"` // Expiration time // 过期时间
-	ShortLink string    `json:"short_link"` // Short link // 短链
+	IsPassword bool     `json:"isPassword"` // Whether password is set // 是否设置了密码
+	ExpiresAt time.Time `json:"expiresAt"`  // Expiration time // 过期时间
+	ShortLink string    `json:"shortLink"`  // Short link // 短链
 }
 
 // ShareListItem Represents a share item in list
@@ -86,13 +87,14 @@ type ShareListItem struct {
 	URL          string              `json:"url"`            // Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)
 	Resources    map[string][]string `json:"res"`            // Authorized resources // 资源授权列表
 	NotePath     string              `json:"notePath"`       // Note path, for frontend share filter matching // 笔记路径，用于前端分享筛选匹配
+	IsPassword   bool                `json:"isPassword"`     // Whether password is set // 是否设置了密码
 	Status       int64               `json:"status"`         // Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销
-	ViewCount    int64               `json:"view_count"`     // View count // 访问次数
-	LastViewedAt time.Time           `json:"last_viewed_at"` // Last viewed time // 最后访问时间
-	ExpiresAt    time.Time           `json:"expires_at"`     // Expiration time // 过期时间
-	ShortLink    string              `json:"short_link"`     // Short link // 短链
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ViewCount    int64               `json:"viewCount"`      // View count // 访问次数
+	LastViewedAt time.Time           `json:"lastViewedAt"`   // Last viewed time // 最后访问时间
+	ExpiresAt    time.Time           `json:"expiresAt"`      // Expiration time // 过期时间
+	ShortLink    string              `json:"shortLink"`      // Short link // 短链
+	CreatedAt    time.Time           `json:"createdAt"`
+	UpdatedAt    time.Time           `json:"updatedAt"`
 }
 
 // ShareListResponse Response for listing shares
