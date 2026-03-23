@@ -231,11 +231,12 @@ func (h *ShareHandler) Query(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(&dto.ShareCreateResponse{
-		ID:        mainID,
-		Type:      mainType,
-		Token:     token,
-		ExpiresAt: share.ExpiresAt,
-		ShortLink: share.ShortLink,
+		ID:         mainID,
+		Type:       mainType,
+		Token:      token,
+		ExpiresAt:  share.ExpiresAt,
+		ShortLink:  share.ShortLink,
+		IsPassword: share.Password != "",
 	}))
 }
 
