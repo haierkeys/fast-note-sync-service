@@ -243,11 +243,11 @@ func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 	// 使用 LoadOrStore 确保只有一个队列被创建
 	actual, loaded := m.queues.LoadOrStore(uid, queue)
 	if loaded {
-		// Existing queue, close new one
-		// 已存在队列，关闭新创建的
-		close(queue.stopCh)
 		existingQueue := actual.(*userWriteQueue)
 		if !existingQueue.closed.Load() {
+            // Existing queue, close new one
+            // 已存在队列，关闭新创建的
+            close(queue.stopCh)
 			existingQueue.lastUsed.Store(time.Now().UnixNano())
 			return existingQueue
 		}
