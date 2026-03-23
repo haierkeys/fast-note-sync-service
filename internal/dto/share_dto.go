@@ -64,6 +64,7 @@ type ShareListItem struct {
 	Title        string              `json:"title"`          // Resource title (note title or file name) // 资源标题（笔记标题或文件名）
 	URL          string              `json:"url"`            // Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)
 	Resources    map[string][]string `json:"res"`            // Authorized resources // 资源授权列表
+	NotePath     string              `json:"notePath"`       // Note path, for frontend share filter matching // 笔记路径，用于前端分享筛选匹配
 	Status       int64               `json:"status"`         // Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销
 	ViewCount    int64               `json:"view_count"`     // View count // 访问次数
 	LastViewedAt time.Time           `json:"last_viewed_at"` // Last viewed time // 最后访问时间
