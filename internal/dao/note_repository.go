@@ -552,7 +552,7 @@ func (r *noteRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp 
 }
 
 // List 分页获取笔记列表
-func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool, sortBy string, sortOrder string) ([]*domain.Note, error) {
+func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool, sortBy string, sortOrder string, paths []string) ([]*domain.Note, error) {
 	u := r.note(uid).Note
 	q := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
@@ -570,7 +570,14 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	var modelList []*model.Note
 	var err error
 
-	if keyword != "" {
+	if len(paths) > 0 {
+		// 精确路径列表查询（分享筛选模式），忽略 keyword
+		err = q.UnderlyingDB().Where("path IN ?", paths).
+			Order(orderClause).
+			Limit(pageSize).
+			Offset(app.GetPageOffset(page, pageSize)).
+			Find(&modelList).Error
+	} else if keyword != "" {
 		// 内容搜索模式：使用 FTS5 全文搜索
 		if searchMode == "content" {
 			db := q.UnderlyingDB()
@@ -677,7 +684,7 @@ func buildOrderClause(sortBy, sortOrder string) string {
 }
 
 // ListCount 获取笔记数量
-func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool) (int64, error) {
+func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool, searchMode string, searchContent bool, paths []string) (int64, error) {
 	u := r.note(uid).Note
 	q := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
@@ -692,7 +699,10 @@ func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 	var count int64
 	var err error
 
-	if keyword != "" {
+	if len(paths) > 0 {
+		// 精确路径列表计数（分享筛选模式）
+		err = q.UnderlyingDB().Where("path IN ?", paths).Count(&count).Error
+	} else if keyword != "" {
 		// 内容搜索模式：使用 FTS5 全文搜索
 		if searchMode == "content" {
 			db := q.UnderlyingDB()
