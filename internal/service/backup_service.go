@@ -889,7 +889,7 @@ func (s *backupService) forEachResource(ctx context.Context, uid int64, v *domai
 		notes, err = s.noteRepo.ListByUpdatedTimestamp(ctx, lastRun.UnixMilli(), v.ID, uid)
 	} else {
 		// List(ctx, vaultID, page, pageSize, uid, keyword, isDeleted, sort, isAsc, tag, folder)
-		notes, err = s.noteRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", false, "", "")
+		notes, err = s.noteRepo.List(ctx, v.ID, 1, 1000000, uid, "", false, "", false, "", "", nil)
 	}
 
 	if err != nil {
