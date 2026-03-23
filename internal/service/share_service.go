@@ -231,12 +231,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		}
 	}
 	expiresAt := time.Now().Add(expiry)
-	
+
 	pwdMd5 := ""
 	if password != "" {
 		pwdMd5 = util.EncodeMD5(password)
 	}
-	
+
 	share := &domain.UserShare{
 		UID:       uid,
 		ResType:   mainType,
@@ -272,12 +272,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 	shortURL := share.ShortLink
 
 	return &dto.ShareCreateResponse{
-		ID:        mainID,
-		Type:      mainType,
-		Token:     token,
+		ID:         mainID,
+		Type:       mainType,
+		Token:      token,
 		IsPassword: pwdMd5 != "",
-		ExpiresAt: expiresAt,
-		ShortLink: shortURL,
+		ExpiresAt:  expiresAt,
+		ShortLink:  shortURL,
 	}, nil
 }
 
