@@ -612,12 +612,22 @@ func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListR
 		return nil, 0, err
 	}
 
-	notes, err := s.noteRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent, params.SortBy, params.SortOrder)
+	// 解析 paths 参数（逗号分隔 → []string）
+	var paths []string
+	if params.Paths != "" {
+		for _, p := range strings.Split(params.Paths, ",") {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				paths = append(paths, trimmed)
+			}
+		}
+	}
+
+	notes, err := s.noteRepo.List(ctx, vaultID, pager.Page, pager.PageSize, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent, params.SortBy, params.SortOrder, paths)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	count, err := s.noteRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent)
+	count, err := s.noteRepo.ListCount(ctx, vaultID, uid, params.Keyword, params.IsRecycle, params.SearchMode, params.SearchContent, paths)
 	if err != nil {
 		return nil, 0, code.ErrorDBQuery.WithDetails(err.Error())
 	}
