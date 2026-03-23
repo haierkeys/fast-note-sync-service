@@ -4058,6 +4058,13 @@ const docTemplate = `{
                         "name": "id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "123456",
+                        "description": "Share password // 分享密码",
+                        "name": "password",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4100,6 +4107,13 @@ const docTemplate = `{
                         "name": "id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "123456",
+                        "description": "Share password // 分享密码",
+                        "name": "password",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4119,6 +4133,52 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/share/password": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Set or update password for a share record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Share"
+                ],
+                "summary": "Update share password",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Update Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SharePasswordUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
                         }
                     }
                 }
@@ -6917,6 +6977,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "password": {
+                    "description": "Share password // 分享密码",
+                    "type": "string",
+                    "example": "123456"
+                },
                 "path": {
                     "description": "Resource path // 资源路径",
                     "type": "string",
@@ -7013,6 +7078,36 @@ const docTemplate = `{
                 "view_count": {
                     "description": "View count // 访问次数",
                     "type": "integer"
+                }
+            }
+        },
+        "dto.SharePasswordUpdateRequest": {
+            "type": "object",
+            "required": [
+                "path",
+                "pathHash",
+                "vault"
+            ],
+            "properties": {
+                "password": {
+                    "description": "New password // 新密码",
+                    "type": "string",
+                    "example": "123456"
+                },
+                "path": {
+                    "description": "Resource path // 资源路径",
+                    "type": "string",
+                    "example": "未命名.md"
+                },
+                "pathHash": {
+                    "description": "Resource path Hash // 资源路径哈希",
+                    "type": "string",
+                    "example": "-677306325"
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "test"
                 }
             }
         },

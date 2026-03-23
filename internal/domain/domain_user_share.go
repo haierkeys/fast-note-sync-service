@@ -7,8 +7,10 @@ import (
 )
 
 var (
-	ErrShareCancelled = errors.New("share has been cancelled")
-	ErrShareExpired   = errors.New("share has expired")
+	ErrShareCancelled        = errors.New("share has been cancelled")
+	ErrShareExpired          = errors.New("share has expired")
+	ErrSharePasswordRequired = errors.New("share password required")
+	ErrSharePasswordInvalid  = errors.New("share password invalid")
 )
 
 // UserShare 笔记分享领域模型
@@ -22,6 +24,7 @@ type UserShare struct {
 	ViewCount    int64               `json:"view_count"`     // 统计：访问次数
 	LastViewedAt time.Time           `json:"last_viewed_at"` // 统计：最后访问时间
 	ExpiresAt    time.Time           `json:"expires_at"`     // 过期时间
+	Password     string              `json:"-"`              // 分享密码 (MD5)
 	ShortLink    string              `json:"short_link"`     // 短链接
 	CreatedAt    time.Time           `json:"created_at"`
 	UpdatedAt    time.Time           `json:"updated_at"`
@@ -35,6 +38,7 @@ type UserShareRepository interface {
 	GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*UserShare, error)
 	UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error
 	UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error
+	UpdatePassword(ctx context.Context, uid int64, id int64, password string) error
 	UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error
 	ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*UserShare, error)
 	CountByUID(ctx context.Context, uid int64) (int64, error)

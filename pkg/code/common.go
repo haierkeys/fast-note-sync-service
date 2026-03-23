@@ -100,6 +100,8 @@ var (
 	ErrorShareNotFound = NewError(480)
 	ErrorShareExpired  = NewError(481)
 	ErrorShareRevoked  = NewError(482)
+	ErrorSharePasswordRequired = NewError(483)
+	ErrorSharePasswordInvalid  = NewError(484)
 
 	// --- Sync & History (490-499) ---
 	ErrorHistoryNotFound        = NewError(491)

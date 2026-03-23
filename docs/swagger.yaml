@@ -1351,6 +1351,10 @@ definitions:
     type: object
   dto.ShareCreateRequest:
     properties:
+      password:
+        description: Share password // 分享密码
+        example: "123456"
+        type: string
       path:
         description: Resource path // 资源路径
         example: ReadMe.md
@@ -1427,6 +1431,29 @@ definitions:
       view_count:
         description: View count // 访问次数
         type: integer
+    type: object
+  dto.SharePasswordUpdateRequest:
+    properties:
+      password:
+        description: New password // 新密码
+        example: "123456"
+        type: string
+      path:
+        description: Resource path // 资源路径
+        example: 未命名.md
+        type: string
+      pathHash:
+        description: Resource path Hash // 资源路径哈希
+        example: "-677306325"
+        type: string
+      vault:
+        description: Vault name // 保险库名称
+        example: test
+        type: string
+    required:
+    - path
+    - pathHash
+    - vault
     type: object
   dto.ShareShortLinkCreateRequest:
     properties:
@@ -4178,6 +4205,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Share password // 分享密码
+        example: "123456"
+        in: query
+        name: password
+        type: string
       produces:
       - application/octet-stream
       responses:
@@ -4206,6 +4238,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Share password // 分享密码
+        example: "123456"
+        in: query
+        name: password
+        type: string
       produces:
       - application/json
       responses:
@@ -4221,6 +4258,35 @@ paths:
       security:
       - ShareAuthToken: []
       summary: Get shared note details
+      tags:
+      - Share
+  /api/share/password:
+    post:
+      consumes:
+      - application/json
+      description: Set or update password for a share record
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Update Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SharePasswordUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update share password
       tags:
       - Share
   /api/share/short_link:
