@@ -260,12 +260,24 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		return nil, err
 	}
 
+	// The instruction implies `shortURL` should be used, but it's not defined.
+	// Assuming `shortURL` is intended to be `share.ShortLink` for now,
+	// or that `CreateShortLink` would be called here to generate it.
+	// Since the instruction only provides the return block, we'll use `share.ShortLink`
+	// and add `IsPassword`. If `shortURL` was meant to be a new variable,
+	// the instruction should have included its definition.
+	// Given the instruction's snippet, it seems `shortURL` is a placeholder for the actual short link.
+	// To make the code syntactically correct and follow the instruction's spirit,
+	// we'll assume `shortURL` refers to `share.ShortLink` as it's the only short link available here.
+	shortURL := share.ShortLink
+
 	return &dto.ShareCreateResponse{
 		ID:        mainID,
 		Type:      mainType,
 		Token:     token,
+		IsPassword: pwdMd5 != "",
 		ExpiresAt: expiresAt,
-		ShortLink: share.ShortLink,
+		ShortLink: shortURL,
 	}, nil
 }
 
@@ -443,6 +455,7 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 			ShortLink:    share.ShortLink,
 			CreatedAt:    share.CreatedAt,
 			UpdatedAt:    share.UpdatedAt,
+			IsPassword:   share.Password != "",
 		}
 
 		// 生成 Token 并拼接 URL /ResID/token
@@ -590,7 +603,10 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 	ridStr := strconv.FormatInt(noteID, 10)
 	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "note", password)
 	if err != nil {
-		return nil, code.ErrorInvalidAuthToken
+		if cObj, ok := err.(*code.Code); ok {
+			return nil, cObj
+		}
+		return nil, code.ErrorInvalidAuthToken.WithDetails(err.Error())
 	}
 
 	// Retrieve note directly via ID (using resource owner's UID)
@@ -689,7 +705,10 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 	ridStr := strconv.FormatInt(fileID, 10)
 	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "file", password)
 	if err != nil {
-		return nil, "", 0, "", "", code.ErrorInvalidAuthToken
+		if cObj, ok := err.(*code.Code); ok {
+			return nil, "", 0, "", "", cObj
+		}
+		return nil, "", 0, "", "", code.ErrorInvalidAuthToken.WithDetails(err.Error())
 	}
 
 	// 1. Get resource owner's UID
@@ -738,7 +757,10 @@ func (s *shareService) GetSharedFileInfo(ctx context.Context, shareToken string,
 	ridStr := strconv.FormatInt(fileID, 10)
 	shareEntity, err := s.VerifyShare(ctx, shareToken, ridStr, "file", password)
 	if err != nil {
-		return "", "", 0, "", "", code.ErrorInvalidAuthToken
+		if cObj, ok := err.(*code.Code); ok {
+			return "", "", 0, "", "", cObj
+		}
+		return "", "", 0, "", "", code.ErrorInvalidAuthToken.WithDetails(err.Error())
 	}
 
 	// 1. Get resource owner's UID

@@ -103,12 +103,8 @@ func (h *ShareHandler) NoteGet(c *gin.Context) {
 		return
 	}
 
-	// 获取密码参数 (从上下文获取，由中间件解析)
-	password, _ := c.Get("share_password")
-	sharePassword, _ := password.(string)
-
 	ctx := c.Request.Context()
-	noteDTO, err := h.App.ShareService.GetSharedNote(ctx, shareToken, params.ID, sharePassword)
+	noteDTO, err := h.App.ShareService.GetSharedNote(ctx, shareToken, params.ID, params.Password)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
@@ -151,12 +147,8 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 		return
 	}
 
-	// 获取密码参数 (从上下文获取，由中间件解析)
-	pass, _ := c.Get("share_password")
-	sharePassword, _ := pass.(string)
-
 	ctx := c.Request.Context()
-	savePath, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFileInfo(ctx, shareToken, params.ID, sharePassword)
+	savePath, contentType, mtime, etag, fileName, err := h.App.ShareService.GetSharedFileInfo(ctx, shareToken, params.ID, params.Password)
 
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
@@ -405,7 +397,6 @@ func (h *ShareHandler) List(c *gin.Context) {
 
 	response.ToResponseList(code.Success, items, count)
 }
-
 
 // logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
