@@ -99,6 +99,8 @@ var en_messages = map[int]string{
 	480: "Share link not found",
 	481: "Share link has expired",
 	482: "Share link has been revoked",
+	483: "Password required for viewing",
+	484: "Invalid share password",
 
 	// --- Sync & History (490-499) ---
 	490: "Note modification conflict detected. Full content has been preserved and requires manual handling.",
