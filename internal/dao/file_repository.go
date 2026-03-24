@@ -33,6 +33,15 @@ func (r *fileRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "File",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewFileRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // file 获取文件查询对象
 func (r *fileRepository) file(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {

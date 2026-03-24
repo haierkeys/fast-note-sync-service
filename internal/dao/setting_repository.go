@@ -32,6 +32,15 @@ func (r *settingRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "Setting",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewSettingRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // setting 获取配置查询对象
 func (r *settingRepository) setting(uid int64) *query.Query {
 	key := r.GetKey(uid)

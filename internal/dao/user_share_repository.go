@@ -28,6 +28,15 @@ func (r *userShareRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "UserShare",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewUserShareRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // userShare 获取分享查询对象
 func (r *userShareRepository) userShare(uid int64) *query.Query {
 	key := r.GetKey(uid)

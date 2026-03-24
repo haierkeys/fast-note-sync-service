@@ -107,6 +107,20 @@ type daoDBCustomKey interface {
 	GetKey(uid int64) string
 }
 
+// ModelConfig 描述一个模型的数据库路由信息
+type ModelConfig struct {
+	Name        string
+	RepoFactory func(d *Dao) daoDBCustomKey
+	IsMainDB    bool
+}
+
+var modelConfigs []ModelConfig
+
+// RegisterModel 供各 Repository 文件在 init() 中调用
+func RegisterModel(cfg ModelConfig) {
+	modelConfigs = append(modelConfigs, cfg)
+}
+
 // New 创建 Dao 实例（支持依赖注入）
 // db: 主数据库连接
 // ctx: 上下文
@@ -491,42 +505,25 @@ func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
 		return "" // 主数据库
 	}
 
-	switch modelKey {
-	case "User":
-		return "" // 用户表在主库
-	case "Note":
-		return NewNoteRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "File":
-		return NewFileRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "Setting":
-		return NewSettingRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "NoteHistory":
-		return NewNoteHistoryRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "Vault":
-		return NewVaultRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "Folder":
-		return NewFolderRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "BackupConfig", "BackupHistory":
-		return NewBackupRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "Storage":
-		return NewStorageRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "GitSyncConfig", "GitSyncHistory":
-		return NewGitSyncRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "UserShare":
-		return NewUserShareRepository(d).(daoDBCustomKey).GetKey(uid)
-	case "NoteLink":
-		return NewNoteLinkRepository(d).(daoDBCustomKey).GetKey(uid)
-	default:
-		return ""
+	for _, cfg := range modelConfigs {
+		if cfg.Name == modelKey {
+			if cfg.IsMainDB {
+				return ""
+			}
+			if cfg.RepoFactory != nil {
+				return cfg.RepoFactory(d).GetKey(uid)
+			}
+		}
 	}
+
+	return ""
 }
 
 func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	// 1. 如果 modelKey 为空，说明是“全量迁移”，按模型分别路由迁移
 	if modelKey == "" {
-		models := []string{"User", "Note", "File", "Setting", "NoteHistory", "Vault", "Folder", "Storage", "BackupConfig", "BackupHistory", "GitSyncConfig", "GitSyncHistory", "NoteLink", "UserShare"}
-		for _, m := range models {
-			if err := d.AutoMigrate(uid, m); err != nil {
+		for _, cfg := range modelConfigs {
+			if err := d.AutoMigrate(uid, cfg.Name); err != nil {
 				return err
 			}
 		}

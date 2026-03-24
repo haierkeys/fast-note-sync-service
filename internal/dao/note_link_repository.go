@@ -28,6 +28,15 @@ func (r *noteLinkRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "NoteLink",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewNoteLinkRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // getDB gets the per-user database connection and ensures the table is migrated
 func (r *noteLinkRepository) getDB(uid int64) *gorm.DB {
 	key := r.GetKey(uid)
