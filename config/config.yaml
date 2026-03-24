@@ -98,17 +98,23 @@ app:
 
 # short-link
 # 短地址服务器设置
+# Short link server settings
 short-link:
   # 短地址服务器地址
+  # Short link server base URL
   base-url: "https://sink.cool"
   # 短地址 API_KEY
+  # Short link API KEY
   api-key: "SinkCool"
   # 短地址访问密码，默认为空
+  # Short link access password, default is empty
   password: ""
   # 是否启用隐藏原始地址，默认为 false
+  # Whether to enable URL cloaking, default is false
   cloaking: false
 # webgui
 # WebGUI 设置
+# WebGUI settings
 webgui:
   # 字体设置 当留空不设置字体; 设置为 local 时使用本地字体; 设置为 字体链接 则可以让字体从网络加载
   # Font Settings When left blank, no font is set; when set to local, use local font; when set to font link, the font can be loaded from the network
@@ -150,9 +156,17 @@ security:
 # 数据库配置
 # Database configuration
 database:
+  # 数据库类型 (sqlite)
+  # Database type (sqlite)
   type: sqlite
+  # 数据库文件路径
+  # Database file path
   path: storage/database/db.sqlite3
+  # 数据库表前缀
+  # Database table prefix
   table-prefix:
+  # 是否开启自动迁移
+  # Whether to enable automatic migration
   auto-migrate: true
   # 最大打开连接数，默认 100
   # Maximum number of open connections, default 100
@@ -182,7 +196,11 @@ tracer:
 # Git 提交配置 (可选)
 # Git commit configuration (optional)
 git:
+  # Git 提交者名称
+  # Git committer name
   name: "FNS Service"
+  # Git 提交者邮箱
+  # Git committer email
   email: "fns@email.com"
 
 # storage
@@ -206,35 +224,40 @@ storage:
   # 阿里云 OSS 存储
   # Aliyun OSS storage
   aliyun-oss:
-    # is-enable
+    # 是否开启阿里云 OSS 存储
+    # Whether to enable Aliyun OSS storage
     is-enable: true
 
   # aws-s3
   # AWS S3 存储
   # AWS S3 storage
   aws-s3:
-    # is-enable
+    # 是否开启 AWS S3 存储
+    # Whether to enable AWS S3 storage
     is-enable: true
 
   # cloudflare-r2
   # Cloudflare R2 存储
   # Cloudflare R2 storage
   cloudflare-r2:
-    # is-enable
+    # 是否开启 Cloudflare R2 存储
+    # Whether to enable Cloudflare R2 storage
     is-enable: true
 
   # minio
   # MinIO 存储
   # MinIO storage
   minio:
-    # is-enable
+    # 是否开启 MinIO 存储
+    # Whether to enable MinIO storage
     is-enable: true
 
   # webdav
   # WebDAV 存储
   # WebDAV storage
   webdav:
-    # is-enable
+    # 是否开启 WebDAV 存储
+    # Whether to enable WebDAV storage
     is-enable: true
 
 # ngrok
