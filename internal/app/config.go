@@ -23,13 +23,13 @@ type AppConfig struct {
 	File string `yaml:"-"` // config file path, not serialized
 	// 配置文件路径, 不序列化
 
-	Server   ServerConfig   `yaml:"server"`
-	App      AppSettings    `yaml:"app"`
-	Security SecurityConfig `yaml:"security"`
-	Database DatabaseConfig `yaml:"database"`
-	Log      LogConfig      `yaml:"log"`
-	User     UserConfig     `yaml:"user"`
-	Tracer   TracerConfig   `yaml:"tracer"`
+	Server    ServerConfig    `yaml:"server"`
+	App       AppSettings     `yaml:"app"`
+	Security  SecurityConfig  `yaml:"security"`
+	Database  DatabaseConfig  `yaml:"database"`
+	Log       LogConfig       `yaml:"log"`
+	User      UserConfig      `yaml:"user"`
+	Tracer    TracerConfig    `yaml:"tracer"`
 	ShortLink ShortLinkConfig `yaml:"short-link"`
 
 	Storage    config.StorageConfig `yaml:"storage"`

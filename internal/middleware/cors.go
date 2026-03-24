@@ -28,7 +28,7 @@ func Cors() gin.HandlerFunc {
 				domain = "http" + "://" + domain
 			}
 		}
- 
+
 		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With,  AccessToken, X-CSRF-Token, Authorization, Debug, Domain, Token, Share-Token, Lang, Content-Type, Content-Length,  Accept")

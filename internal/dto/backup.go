@@ -4,15 +4,15 @@ import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 // BackupConfigRequest 备份配置请求
 type BackupConfigRequest struct {
-	ID             int64  `json:"id" form:"id" example:"1"`
-	Vault          string `json:"vault" form:"vault" example:"test"`
-	Type           string `json:"type" form:"type" binding:"required,oneof=full incremental sync" example:"sync"`
-	StorageIds     string `json:"storageIds" form:"storageIds" binding:"required" example:"[1, 2]"`
-	IsEnabled      bool   `json:"isEnabled" form:"isEnabled" example:"true"`
-	CronStrategy   string `json:"cronStrategy" form:"cronStrategy" binding:"required,oneof=daily weekly monthly custom" example:"daily"`
-	CronExpression string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`
-	RetentionDays    int  `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`
-	IncludeVaultName bool `json:"includeVaultName" form:"includeVaultName" example:"false"`
+	ID               int64  `json:"id" form:"id" example:"1"`
+	Vault            string `json:"vault" form:"vault" example:"test"`
+	Type             string `json:"type" form:"type" binding:"required,oneof=full incremental sync" example:"sync"`
+	StorageIds       string `json:"storageIds" form:"storageIds" binding:"required" example:"[1, 2]"`
+	IsEnabled        bool   `json:"isEnabled" form:"isEnabled" example:"true"`
+	CronStrategy     string `json:"cronStrategy" form:"cronStrategy" binding:"required,oneof=daily weekly monthly custom" example:"daily"`
+	CronExpression   string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`
+	RetentionDays    int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`
+	IncludeVaultName bool   `json:"includeVaultName" form:"includeVaultName" example:"false"`
 }
 
 // BackupExecuteRequest 备份执行请求
@@ -29,22 +29,22 @@ type BackupHistoryListRequest struct {
 
 // BackupConfigDTO 备份配置 DTO
 type BackupConfigDTO struct {
-	ID             int64      `json:"id"`             // 配置ID
-	UID            int64      `json:"uid"`            // 用户ID
-	Vault          string     `json:"vault"`          // 关联库名称
-	Type           string     `json:"type"`           // 备份类型 (full, incremental, sync)
-	StorageIds     string     `json:"storageIds"`     // 存储ID列表
-	IsEnabled      bool       `json:"isEnabled"`      // 是否启用
-	CronStrategy   string     `json:"cronStrategy"`   // 定时策略
-	CronExpression string     `json:"cronExpression"` // Cron表达式
+	ID               int64      `json:"id"`               // 配置ID
+	UID              int64      `json:"uid"`              // 用户ID
+	Vault            string     `json:"vault"`            // 关联库名称
+	Type             string     `json:"type"`             // 备份类型 (full, incremental, sync)
+	StorageIds       string     `json:"storageIds"`       // 存储ID列表
+	IsEnabled        bool       `json:"isEnabled"`        // 是否启用
+	CronStrategy     string     `json:"cronStrategy"`     // 定时策略
+	CronExpression   string     `json:"cronExpression"`   // Cron表达式
 	RetentionDays    int        `json:"retentionDays"`    // 保留天数
 	IncludeVaultName bool       `json:"includeVaultName"` // 同步路径是否包含仓库名
 	LastRunTime      timex.Time `json:"lastRunTime"`      // 上次运行时间
-	NextRunTime    timex.Time `json:"nextRunTime"`    // 下次运行时间
-	LastStatus     int        `json:"lastStatus"`     // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
-	LastMessage    string     `json:"lastMessage"`    // 上次运行结果消息
-	CreatedAt      timex.Time `json:"createdAt"`      // 创建时间
-	UpdatedAt      timex.Time `json:"updatedAt"`      // 更新时间
+	NextRunTime      timex.Time `json:"nextRunTime"`      // 下次运行时间
+	LastStatus       int        `json:"lastStatus"`       // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+	LastMessage      string     `json:"lastMessage"`      // 上次运行结果消息
+	CreatedAt        timex.Time `json:"createdAt"`        // 创建时间
+	UpdatedAt        timex.Time `json:"updatedAt"`        // 更新时间
 }
 
 // BackupHistoryDTO 备份历史 DTO
