@@ -564,8 +564,15 @@ func (s *shareService) CreateShortLink(ctx context.Context, uid int64, vaultName
 	client := shortlink.NewSinkCoolClient(sinkBaseURL, apiKey)
 
 	title := ""
-	if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
-		title = strings.TrimSuffix(filepath.Base(note.Path), ".md")
+	switch share.ResType {
+	case "note":
+		if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
+			title = strings.TrimSuffix(filepath.Base(note.Path), ".md")
+		}
+	case "file":
+		if file, err := s.fileRepo.GetByID(ctx, share.ResID, uid); err == nil && file != nil {
+			title = filepath.Base(file.Path)
+		}
 	}
 
 	shortURL, err := client.Create(longURL, expiresAt, password, cloaking, title)
