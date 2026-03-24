@@ -168,7 +168,7 @@ func (r *userShareRepository) ListByUID(ctx context.Context, uid int64, sortBy s
 
 	orderClause := field + " " + sortOrder
 	var ms []*model.UserShare
-	q := us.WithContext(ctx).Where(us.UID.Eq(uid))
+	q := us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(1))
 	if limit > 0 {
 		q = q.Limit(limit).Offset(offset)
 	}
@@ -201,7 +201,7 @@ func (r *userShareRepository) UpdatePassword(ctx context.Context, uid int64, id 
 
 func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64, error) {
 	us := r.userShare(uid).UserShare
-	return us.WithContext(ctx).Where(us.UID.Eq(uid)).Count()
+	return us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(1)).Count()
 }
 
 var _ domain.UserShareRepository = (*userShareRepository)(nil)
