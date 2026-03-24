@@ -27,6 +27,20 @@ func (r *gitSyncRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	factory := func(d *Dao) daoDBCustomKey {
+		return NewGitSyncRepository(d).(daoDBCustomKey)
+	}
+	RegisterModel(ModelConfig{
+		Name:        "GitSyncConfig",
+		RepoFactory: factory,
+	})
+	RegisterModel(ModelConfig{
+		Name:        "GitSyncHistory",
+		RepoFactory: factory,
+	})
+}
+
 func (r *gitSyncRepository) gitSync(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		if err := model.AutoMigrate(g, "GitSyncConfig"); err != nil {
