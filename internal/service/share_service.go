@@ -260,24 +260,13 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		return nil, err
 	}
 
-	// The instruction implies `shortURL` should be used, but it's not defined.
-	// Assuming `shortURL` is intended to be `share.ShortLink` for now,
-	// or that `CreateShortLink` would be called here to generate it.
-	// Since the instruction only provides the return block, we'll use `share.ShortLink`
-	// and add `IsPassword`. If `shortURL` was meant to be a new variable,
-	// the instruction should have included its definition.
-	// Given the instruction's snippet, it seems `shortURL` is a placeholder for the actual short link.
-	// To make the code syntactically correct and follow the instruction's spirit,
-	// we'll assume `shortURL` refers to `share.ShortLink` as it's the only short link available here.
-	shortURL := share.ShortLink
-
 	return &dto.ShareCreateResponse{
 		ID:         mainID,
 		Type:       mainType,
 		Token:      token,
 		IsPassword: pwdMd5 != "",
 		ExpiresAt:  expiresAt,
-		ShortLink:  shortURL,
+		ShortLink:  share.ShortLink,
 	}, nil
 }
 

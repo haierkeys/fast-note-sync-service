@@ -18,10 +18,10 @@ type UserServiceConfig struct {
 // AppServiceConfig app service configuration
 // AppServiceConfig 应用服务配置
 type AppServiceConfig struct {
-	SoftDeleteRetentionTime string // Soft delete retention time (e.g., 7d, 24h, 30m, 0/empty for no cleanup) // 软删除保留时间（支持格式：7d、24h、30m、0 或空表示不自动清理）
-	HistoryKeepVersions     int    // History versions to keep // 历史记录保留版本数
-	HistorySaveDelay        string // History save delay (e.g., 10s, 1m, default 10s) // 历史记录保存延迟时间（支持格式：10s、1m，默认 10s）
-	ShareTokenExpiry        string // Share token expiry // 分享 Token 过期时间
+	SoftDeleteRetentionTime string                 // Soft delete retention time (e.g., 7d, 24h, 30m, 0/empty for no cleanup) // 软删除保留时间（支持格式：7d、24h、30m、0 或空表示不自动清理）
+	HistoryKeepVersions     int                    // History versions to keep // 历史记录保留版本数
+	HistorySaveDelay        string                 // History save delay (e.g., 10s, 1m, default 10s) // 历史记录保存延迟时间（支持格式：10s、1m，默认 10s）
+	ShareTokenExpiry        string                 // Share token expiry // 分享 Token 过期时间
 	ShortLink               ShortLinkServiceConfig // Short link configuration // 短链配置
 }
 

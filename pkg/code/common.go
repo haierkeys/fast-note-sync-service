@@ -97,9 +97,9 @@ var (
 	ErrorConfigSaveFailed            = NewError(479)
 
 	// --- Share Related (480-489) ---
-	ErrorShareNotFound = NewError(480)
-	ErrorShareExpired  = NewError(481)
-	ErrorShareRevoked  = NewError(482)
+	ErrorShareNotFound         = NewError(480)
+	ErrorShareExpired          = NewError(481)
+	ErrorShareRevoked          = NewError(482)
 	ErrorSharePasswordRequired = NewError(483)
 	ErrorSharePasswordInvalid  = NewError(484)
 
