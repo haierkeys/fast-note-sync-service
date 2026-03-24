@@ -2,7 +2,7 @@ package dao
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -23,7 +23,16 @@ func NewStorageRepository(dao *Dao) domain.StorageRepository {
 }
 
 func (r *storageRepository) GetKey(uid int64) string {
-	return "user_storage_" + fmt.Sprintf("%d", uid)
+	return "user_storage_" + strconv.FormatInt(uid, 10)
+}
+
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "Storage",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewStorageRepository(d).(daoDBCustomKey)
+		},
+	})
 }
 
 // storage 获取存储配置查询对象

@@ -33,6 +33,15 @@ func (r *noteRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "Note",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewNoteRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // note 获取笔记查询对象
 func (r *noteRepository) note(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {

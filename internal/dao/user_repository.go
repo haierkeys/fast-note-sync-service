@@ -26,6 +26,13 @@ func (r *userRepository) GetKey(uid int64) string {
 	return ""
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name:     "User",
+		IsMainDB: true,
+	})
+}
+
 // user 获取用户查询对象
 func (r *userRepository) user() *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {

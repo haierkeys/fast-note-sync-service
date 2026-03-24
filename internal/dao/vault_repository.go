@@ -28,6 +28,15 @@ func (r *vaultRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "Vault",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewVaultRepository(d).(daoDBCustomKey)
+		},
+	})
+}
+
 // vault 获取保险库查询对象
 func (r *vaultRepository) vault(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {

@@ -25,6 +25,20 @@ func (r *backupRepository) GetKey(uid int64) string {
 	return "user_backup_" + fmt.Sprintf("%d", uid)
 }
 
+func init() {
+	factory := func(d *Dao) daoDBCustomKey {
+		return NewBackupRepository(d).(daoDBCustomKey)
+	}
+	RegisterModel(ModelConfig{
+		Name:        "BackupConfig",
+		RepoFactory: factory,
+	})
+	RegisterModel(ModelConfig{
+		Name:        "BackupHistory",
+		RepoFactory: factory,
+	})
+}
+
 func (r *backupRepository) backup(uid int64) *query.Query {
 	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
 		model.AutoMigrate(g, "BackupConfig")

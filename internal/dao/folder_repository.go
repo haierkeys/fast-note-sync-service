@@ -2,7 +2,7 @@ package dao
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -13,15 +13,25 @@ import (
 )
 
 type folderRepository struct {
-	*Dao
+	Dao             *Dao
+	customPrefixKey string
 }
 
 func NewFolderRepository(d *Dao) domain.FolderRepository {
-	return &folderRepository{Dao: d}
+	return &folderRepository{Dao: d, customPrefixKey: "user_folder_"} // Modified initialization
 }
 
 func (r *folderRepository) GetKey(uid int64) string {
-	return "user_folder_" + fmt.Sprintf("%d", uid)
+	return r.customPrefixKey + strconv.FormatInt(uid, 10)
+}
+
+func init() {
+	RegisterModel(ModelConfig{
+		Name: "Folder",
+		RepoFactory: func(d *Dao) daoDBCustomKey {
+			return NewFolderRepository(d).(daoDBCustomKey)
+		},
+	})
 }
 
 // folder returns the query with auto-migration
