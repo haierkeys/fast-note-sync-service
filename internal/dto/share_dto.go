@@ -54,6 +54,7 @@ type ShareShortLinkCreateRequest struct {
 	Vault    string `json:"vault" binding:"required" example:"work"` // Vault name // 库名
 	Path     string `json:"path" binding:"required" example:"notes/todo.md"` // Path // 路径
 	PathHash string `json:"pathHash" binding:"required" example:"..."` // Path hash // 路径哈希
+	URL      string `json:"url" example:"https://example.com/share/129/CNmkmQlq0s-4elT3NuZG2w"` // Full share URL from client; if provided, used directly without regenerating token // 客户端传入的完整分享链接，非空时直接使用，不重新生成 token
 	IsForce  bool   `json:"is_force" example:"false"` // Whether to force regeneration // 是否强制重新生成
 }
 

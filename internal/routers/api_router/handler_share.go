@@ -344,14 +344,21 @@ func (h *ShareHandler) CreateShortLink(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
 
-	// Detect protocol and host to construct dynamic baseURL
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
+	// Only compute baseURL when client did not provide the full share URL
+	baseURL := ""
+	if params.URL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		host := c.GetHeader("X-Forwarded-Host")
+		if host == "" {
+			host = c.Request.Host
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, host)
 	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 
-	shortURL, err := h.App.ShareService.CreateShortLink(ctx, uid, params.Vault, params.Path, params.PathHash, baseURL, params.IsForce)
+	shortURL, err := h.App.ShareService.CreateShortLink(ctx, uid, params.Vault, params.Path, params.PathHash, baseURL, params.URL, params.IsForce)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
