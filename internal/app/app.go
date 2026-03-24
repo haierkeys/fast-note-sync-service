@@ -1,4 +1,4 @@
-// Package app provides application container, encapsulates all dependencies and services
+                                 // Package app provides application container, encapsulates all dependencies and services
 // Package app 提供应用容器，封装所有依赖和服务
 package app
 
@@ -14,11 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/internal/dao"
-	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
-	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
 	"golang.org/x/mod/semver"
@@ -39,81 +36,20 @@ const (
 // App application container, encapsulates all dependencies and services
 // App 应用容器，封装所有依赖和服务
 type App struct {
-	// Infrastructure (injected dependencies)
-	// 基础设施（注入的依赖）
-	config *AppConfig
-	logger *zap.Logger
-	DB     *gorm.DB
-	Dao    *dao.Dao
+	// Embedded sub-containers
+	*Infra
+	*Repositories
+	*Services
 
-	// Concurrency control components
-	// 并发控制组件
-	workerPool    *workerpool.Pool
-	writeQueueMgr *writequeue.Manager
-
-	// Repository layer
-	// Repository 层
-	NoteRepo        domain.NoteRepository
-	VaultRepo       domain.VaultRepository
-	UserRepo        domain.UserRepository
-	FileRepo        domain.FileRepository
-	SettingRepo     domain.SettingRepository
-	NoteHistoryRepo domain.NoteHistoryRepository
-	NoteLinkRepo    domain.NoteLinkRepository
-	ShareRepo       domain.UserShareRepository
-	FolderRepo      domain.FolderRepository
-	StorageRepo     domain.StorageRepository
-	BackupRepo      domain.BackupRepository
-	GitSyncRepo     domain.GitSyncRepository
-
-	// Service layer
-	// Service 层
-	VaultService       service.VaultService
-	NoteService        service.NoteService
-	UserService        service.UserService
-	FileService        service.FileService
-	SettingService     service.SettingService
-	NoteHistoryService service.NoteHistoryService
-	ConflictService    service.ConflictService
-	ShareService       service.ShareService
-	NoteLinkService    service.NoteLinkService
-	FolderService      service.FolderService
-	StorageService     service.StorageService
-	BackupService      service.BackupService
-	GitSyncService     service.GitSyncService
-	NgrokService       service.NgrokService
-	CloudflareService  service.CloudflareService
-
-	// Infrastructure components
-	// 基础设施组件
-	TokenManager pkgapp.TokenManager
-
-	// Shutdown control
-	// 关闭控制
-	shutdownCh chan struct{}
-	wg         sync.WaitGroup
-
-	// Version check info
-	// 版本检查信息
+	// App-level state and control
+	shutdownCh     chan struct{}
+	UpgradeSignal  chan string
+	StartTime      time.Time
+	wg             sync.WaitGroup
 	checkVersionMu sync.RWMutex
 	checkVersion   pkgapp.CheckVersionInfo
-
-	// Support records
-	// 打赏记录
 	supportRecordsMu sync.RWMutex
 	supportRecords   map[string][]pkgapp.SupportRecord
-
-	// Startup time (for uptime calculation)
-	// 启动时间（用于计算 uptime）
-	StartTime time.Time
-
-	// Upgrade control
-	// 升级控制
-	UpgradeSignal chan string
-
-	// Source selector
-	// 源选择器
-	sourceSelector *fileurl.SourceSelector
 }
 
 // NewApp creates application container instance
@@ -129,136 +65,35 @@ type App struct {
 // efs: frontend files embedded file system
 // efs: 前端文件嵌入文件系统
 func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App, error) {
-	if cfg == nil {
-		return nil, fmt.Errorf("configuration is required")
-	}
-	if logger == nil {
-		return nil, fmt.Errorf("logger is required")
-	}
-	if db == nil {
-		return nil, fmt.Errorf("database is required")
+	if cfg == nil || logger == nil || db == nil {
+		return nil, fmt.Errorf("config, logger and db are required")
 	}
 
-	a := &App{
-		config:         cfg,
-		logger:         logger,
-		DB:             db,
-		shutdownCh:     make(chan struct{}),
-		UpgradeSignal:  make(chan string, 1),
-		StartTime:      time.Now(),
-		sourceSelector: fileurl.NewSourceSelector(cfg.App.PullSource),
+	// 1. Initialize Infrastructure
+	infra, err := initInfra(cfg, logger, db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize infra: %w", err)
 	}
+
+	// 2. Initialize Repositories
+	repos := initRepositories(infra.Dao)
+
+	// 3. Initialize App shell
+	a := &App{
+		Infra:         infra,
+		Repositories:  repos,
+		shutdownCh:    make(chan struct{}),
+		UpgradeSignal: make(chan string, 1),
+		StartTime:     time.Now(),
+	}
+
+	// 4. Initialize Services (needs app context for some reason? No, it's just wiring)
+	a.Services = initServices(cfg, infra, repos, logger)
 
 	// Load support records
-	// 加载打赏记录
 	a.loadSupportRecords(efs)
 
-	// Initialize Worker Pool
-	// 初始化 Worker Pool
-	wpConfig := cfg.GetWorkerPoolConfig()
-	a.workerPool = workerpool.New(&wpConfig, logger)
-
-	// Initialize Write Queue Manager
-	// 初始化 Write Queue Manager
-	wqConfig := cfg.GetWriteQueueConfig()
-	a.writeQueueMgr = writequeue.New(&wqConfig, logger)
-
-	// Create DatabaseConfig for DAO
-	// 创建 DatabaseConfig 用于 DAO
-	dbConfig := &dao.DatabaseConfig{
-		Type:            cfg.Database.Type,
-		Path:            cfg.Database.Path,
-		UserName:        cfg.Database.UserName,
-		Password:        cfg.Database.Password,
-		Host:            cfg.Database.Host,
-		Name:            cfg.Database.Name,
-		TablePrefix:     cfg.Database.TablePrefix,
-		AutoMigrate:     cfg.Database.AutoMigrate,
-		Charset:         cfg.Database.Charset,
-		ParseTime:       cfg.Database.ParseTime,
-		MaxIdleConns:    cfg.Database.MaxIdleConns,
-		MaxOpenConns:    cfg.Database.MaxOpenConns,
-		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
-		RunMode:         cfg.Server.RunMode,
-	}
-
-	// Initialize DAO (using dependency injection)
-	// 初始化 DAO（使用依赖注入）
-	a.Dao = dao.New(db, context.Background(),
-		dao.WithConfig(dbConfig),
-		dao.WithLogger(logger),
-		dao.WithWriteQueueManager(a.writeQueueMgr),
-	)
-
-	// Initialize TokenManager
-	// 初始化 TokenManager
-	tokenConfig := pkgapp.TokenConfig{
-		SecretKey:     cfg.Security.AuthTokenKey,
-		Issuer:        "fast-note-sync-service",
-		Expiry:        cfg.GetTokenExpiry(),
-		ShareTokenKey: cfg.Security.ShareTokenKey,
-		ShareExpiry:   cfg.GetShareTokenExpiry(),
-	}
-	a.TokenManager = pkgapp.NewTokenManager(tokenConfig)
-
-	// Initialize Repository layer
-	// 初始化 Repository 层
-	a.NoteRepo = dao.NewNoteRepository(a.Dao)
-	a.VaultRepo = dao.NewVaultRepository(a.Dao)
-	a.UserRepo = dao.NewUserRepository(a.Dao)
-	a.FileRepo = dao.NewFileRepository(a.Dao)
-	a.SettingRepo = dao.NewSettingRepository(a.Dao)
-	a.NoteHistoryRepo = dao.NewNoteHistoryRepository(a.Dao)
-	a.NoteLinkRepo = dao.NewNoteLinkRepository(a.Dao)
-	a.ShareRepo = dao.NewUserShareRepository(a.Dao)
-	a.FolderRepo = dao.NewFolderRepository(a.Dao)
-	a.StorageRepo = dao.NewStorageRepository(a.Dao)
-	a.BackupRepo = dao.NewBackupRepository(a.Dao)
-	a.GitSyncRepo = dao.NewGitSyncRepository(a.Dao)
-
-	// Create ServiceConfig (extract config needed by Service layer from AppConfig)
-	// 创建 ServiceConfig（从 AppConfig 提取 Service 层需要的配置）
-	svcConfig := &service.ServiceConfig{
-		User: service.UserServiceConfig{
-			RegisterIsEnable: cfg.User.RegisterIsEnable,
-		},
-		App: service.AppServiceConfig{
-			SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
-			HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
-			HistorySaveDelay:        cfg.App.HistorySaveDelay,
-			ShareTokenExpiry:        cfg.Security.ShareTokenExpiry,
-			ShortLink: service.ShortLinkServiceConfig{
-				BaseURL:  cfg.ShortLink.BaseURL,
-				APIKey:   cfg.ShortLink.APIKey,
-				Password: cfg.ShortLink.Password,
-				Cloaking: cfg.ShortLink.Cloaking,
-			},
-		},
-	}
-
-	// Initialize Service layer (dependency injection)
-	a.VaultService = service.NewVaultService(a.VaultRepo)
-	a.StorageService = service.NewStorageService(a.StorageRepo, &a.config.Storage)
-	a.BackupService = service.NewBackupService(a.BackupRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, a.StorageService, &a.config.Storage, logger)
-	a.GitSyncService = service.NewGitSyncService(a.GitSyncRepo, a.NoteRepo, a.FolderRepo, a.FileRepo, a.VaultRepo, &a.config.Git, a.logger)
-
-	a.FolderService = service.NewFolderService(a.FolderRepo, a.NoteRepo, a.FileRepo, a.VaultService, a.BackupService, a.workerPool)
-	a.NoteService = service.NewNoteService(a.NoteRepo, a.NoteLinkRepo, a.FileRepo, a.ShareRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
-	a.UserService = service.NewUserService(a.UserRepo, a.TokenManager, logger, svcConfig)
-	a.FileService = service.NewFileService(a.FileRepo, a.NoteRepo, a.VaultService, a.FolderService, a.BackupService, a.GitSyncService, svcConfig)
-	a.SettingService = service.NewSettingService(a.SettingRepo, a.VaultService, svcConfig)
-	a.NoteHistoryService = service.NewNoteHistoryService(a.NoteHistoryRepo, a.NoteRepo, a.UserRepo, a.VaultService, a.FolderService, a.NoteService, a.BackupService, a.GitSyncService, logger, &svcConfig.App)
-	a.ConflictService = service.NewConflictService(a.NoteRepo, a.VaultService, logger)
-	a.ShareService = service.NewShareService(a.ShareRepo, a.TokenManager, a.NoteRepo, a.FileRepo, a.VaultRepo, logger, svcConfig)
-	a.NoteLinkService = service.NewNoteLinkService(a.NoteLinkRepo, a.NoteRepo, a.VaultService)
-	a.NgrokService = service.NewNgrokService(logger, cfg.Ngrok.AuthToken, cfg.Ngrok.Domain)
-	a.CloudflareService = service.NewCloudflareService(logger)
-
-	logger.Info("App container initialized successfully",
-		zap.Int("workerPoolMaxWorkers", wpConfig.MaxWorkers),
-		zap.Int("writeQueueCapacity", wqConfig.QueueCapacity))
-
+	logger.Info("App container initialized successfully")
 	return a, nil
 }
 
