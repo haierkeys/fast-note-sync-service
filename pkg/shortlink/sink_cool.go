@@ -19,6 +19,7 @@ type CreateRequest struct {
 	Expiration int64  `json:"expiration,omitempty"` // Unix seconds
 	Password   string `json:"password,omitempty"`
 	Cloaking   bool   `json:"cloaking,omitempty"`
+	Title      string `json:"title,omitempty"`
 }
 
 type CreateResponse struct {
@@ -34,11 +35,12 @@ func NewSinkCoolClient(baseURL, apiKey string) *SinkCoolClient {
 	}
 }
 
-func (c *SinkCoolClient) Create(url string, expiresAt time.Time, password string, cloaking bool) (string, error) {
+func (c *SinkCoolClient) Create(url string, expiresAt time.Time, password string, cloaking bool, title string) (string, error) {
 	reqBody := CreateRequest{
 		URL:      url,
 		Password: password,
 		Cloaking: cloaking,
+		Title:    title,
 	}
 	if !expiresAt.IsZero() {
 		reqBody.Expiration = expiresAt.Unix()
