@@ -669,7 +669,6 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
-
 	// 2. Shutdown Write Queue Manager (drain all queues)
 	// 2. 关闭 Write Queue Manager（排空所有队列）
 	if a.writeQueueMgr != nil {

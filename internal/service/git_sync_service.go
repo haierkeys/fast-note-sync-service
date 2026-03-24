@@ -86,19 +86,19 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 		return nil
 	}
 	res := &dto.GitSyncConfigDTO{
-		ID:          conf.ID,
-		UID:         conf.UID,
-		RepoURL:     conf.RepoURL,
-		Username:    conf.Username,
-		Password:    conf.Password,
-		Branch:      conf.Branch,
-		IsEnabled:   conf.IsEnabled,
+		ID:            conf.ID,
+		UID:           conf.UID,
+		RepoURL:       conf.RepoURL,
+		Username:      conf.Username,
+		Password:      conf.Password,
+		Branch:        conf.Branch,
+		IsEnabled:     conf.IsEnabled,
 		Delay:         conf.Delay,
 		RetentionDays: conf.RetentionDays,
 		LastStatus:    conf.LastStatus,
-		LastMessage: conf.LastMessage,
-		CreatedAt:   timex.Time(conf.CreatedAt),
-		UpdatedAt:   timex.Time(conf.UpdatedAt),
+		LastMessage:   conf.LastMessage,
+		CreatedAt:     timex.Time(conf.CreatedAt),
+		UpdatedAt:     timex.Time(conf.UpdatedAt),
 	}
 	if conf.LastSyncTime != nil {
 		res.LastSyncTime = timex.Time(*conf.LastSyncTime)
