@@ -121,27 +121,29 @@ type NoteService interface {
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
-	noteRepo       domain.NoteRepository     // Note repository // 笔记仓库
-	noteLinkRepo   domain.NoteLinkRepository // Note link repository // 笔记链接仓库
-	fileRepo       domain.FileRepository     // File repository // 文件仓库
-	vaultService   VaultService              // Vault service // 仓库服务
-	folderService  FolderService             // Folder service // 文件夹服务
-	sf             *singleflight.Group       // Singleflight group // 并发请求合并组
-	clientName     string                    // Client name // 客户端名称
-	clientVer      string                    // Client version // 客户端版本
-	config         *ServiceConfig            // Service configuration // 服务配置
-	backupService  BackupService             // Backup service // 备份服务
-	gitSyncService GitSyncService            // Git sync service // Git 同步服务
-	countTimers    sync.Map                  // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	noteRepo       domain.NoteRepository         // Note repository // 笔记仓库
+	noteLinkRepo   domain.NoteLinkRepository     // Note link repository // 笔记链接仓库
+	fileRepo       domain.FileRepository         // File repository // 文件仓库
+	shareRepo      domain.UserShareRepository    // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
+	vaultService   VaultService                  // Vault service // 仓库服务
+	folderService  FolderService                 // Folder service // 文件夹服务
+	sf             *singleflight.Group           // Singleflight group // 并发请求合并组
+	clientName     string                        // Client name // 客户端名称
+	clientVer      string                        // Client version // 客户端版本
+	config         *ServiceConfig                // Service configuration // 服务配置
+	backupService  BackupService                 // Backup service // 备份服务
+	gitSyncService GitSyncService                // Git sync service // Git 同步服务
+	countTimers    sync.Map                      // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) NoteService {
 	return &noteService{
 		noteRepo:       noteRepo,
 		noteLinkRepo:   noteLinkRepo,
 		fileRepo:       fileRepo,
+		shareRepo:      shareRepo,
 		vaultService:   vaultSvc,
 		folderService:  folderSvc,
 		backupService:  backupSvc,
@@ -159,6 +161,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		noteRepo:       s.noteRepo,
 		noteLinkRepo:   s.noteLinkRepo,
 		fileRepo:       s.fileRepo,
+		shareRepo:      s.shareRepo,
 		vaultService:   s.vaultService,
 		folderService:  s.folderService,
 		sf:             s.sf,
@@ -423,6 +426,14 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// 若笔记有 active 分享，自动撤销（防止计数残留）
+	// Auto-revoke active share if exists, to prevent stale count
+	if s.shareRepo != nil {
+		if share, err := s.shareRepo.GetByRes(ctx, uid, "note", note.ID); err == nil && share != nil {
+			_ = s.shareRepo.UpdateStatus(ctx, uid, share.ID, 2)
+		}
 	}
 
 	// 重新获取更新后的笔记
