@@ -249,6 +249,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		UpdatedAt: time.Now(),
 	}
 
+	// 幂等：若该资源已有 active 分享，先撤销，避免重复计数
+	// Idempotent: revoke any existing active share before creating a new one
+	if existing, err := s.repo.GetByRes(ctx, uid, mainType, mainID); err == nil && existing != nil {
+		_ = s.StopShare(ctx, uid, existing.ID)
+	}
+
 	if err := s.repo.Create(ctx, uid, share); err != nil {
 		return nil, err
 	}
@@ -459,11 +465,13 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 		switch share.ResType {
 		case "note":
 			if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
-				baseName := filepath.Base(note.Path)
-				// Remove .md suffix for note title
-				// 去掉 .md 后缀作为标题
-				item.Title = strings.TrimSuffix(baseName, ".md")
-				item.NotePath = note.Path
+				if note.Action != domain.NoteActionDelete {
+					baseName := filepath.Base(note.Path)
+					// Remove .md suffix for note title
+					// 去掉 .md 后缀作为标题
+					item.Title = strings.TrimSuffix(baseName, ".md")
+					item.NotePath = note.Path
+				}
 			}
 		case "file":
 			if file, err := s.fileRepo.GetByID(ctx, share.ResID, uid); err == nil && file != nil {
