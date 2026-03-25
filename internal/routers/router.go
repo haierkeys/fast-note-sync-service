@@ -235,6 +235,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/note/rename", noteHandler.Rename)
 			auth.GET("/notes", noteHandler.List)
 			auth.DELETE("/note/recycle-clear", noteHandler.RecycleClear)
+			auth.GET("/notes/share-paths", shareHandler.NoteSharePaths)
 
 			auth.GET("/folder", folderHandler.Get)
 			auth.POST("/folder", folderHandler.Create)

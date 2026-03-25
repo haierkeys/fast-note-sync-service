@@ -80,6 +80,10 @@ type ShareService interface {
 	// StopShareByPath 根据路径撤销分享
 	StopShareByPath(ctx context.Context, uid int64, vaultName string, pathHash string) error
 
+	// GetActiveNotePathsByVault returns active shared note paths for a vault
+	// GetActiveNotePathsByVault 返回指定 vault 下所有有效分享的笔记路径列表
+	GetActiveNotePathsByVault(ctx context.Context, uid int64, vaultName string) ([]string, error)
+
 	// Shutdown shuts down the service and flushes remaining data
 	// Shutdown 关闭服务并同步最后的数据
 	Shutdown(ctx context.Context) error
@@ -438,7 +442,49 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 	}
 
 	items := make([]*dto.ShareListItem, 0, len(shares))
-	vaultNameCache := make(map[int64]string) // 缓存 vaultID → vaultName，避免重复查询
+
+	// 批量收集 noteIDs 和 fileIDs，避免 N+1 查询
+	// Collect noteIDs and fileIDs in bulk to avoid N+1 queries
+	var noteIDs, fileIDs []int64
+	for _, share := range shares {
+		switch share.ResType {
+		case "note":
+			noteIDs = append(noteIDs, share.ResID)
+		case "file":
+			fileIDs = append(fileIDs, share.ResID)
+		}
+	}
+
+	// 批量查询 notes，建立 id→note 映射
+	// Batch query notes and build id→note map
+	noteMap := make(map[int64]*domain.Note)
+	if len(noteIDs) > 0 {
+		notes, err := s.noteRepo.ListByIDs(ctx, noteIDs, uid)
+		if err != nil {
+			s.logger.Warn("ListShares: batch query notes failed", zap.Error(err))
+		} else {
+			for _, n := range notes {
+				noteMap[n.ID] = n
+			}
+		}
+	}
+
+	fileMap := make(map[int64]*domain.File)
+	if len(fileIDs) > 0 {
+		files, err := s.fileRepo.ListByIDs(ctx, fileIDs, uid)
+		if err != nil {
+			s.logger.Warn("ListShares: batch query files failed", zap.Error(err))
+		} else {
+			for _, f := range files {
+				fileMap[f.ID] = f
+			}
+		}
+	}
+
+	// 查询 vault 名称（vault 数量极少，按需缓存）
+	// Query vault names on demand with local cache (vault count is always small)
+	vaultNameCache := make(map[int64]string)
+
 	for _, share := range shares {
 		item := &dto.ShareListItem{
 			ID:           share.ID,
@@ -461,24 +507,22 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 			item.URL = "/share/" + strconv.FormatInt(share.ResID, 10) + "/" + token
 		}
 
-		// 关联查询标题：note 类型取笔记路径，file 类型取文件路径
-		// Fill title from associated note/file path
+		// 从预加载的 map 中回填标题，无额外查询
+		// Fill title from preloaded maps, no extra DB queries
 		switch share.ResType {
 		case "note":
-			if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
-				if note.Action != domain.NoteActionDelete {
-					item.Title = strings.TrimSuffix(filepath.Base(note.Path), ".md")
-					item.NotePath = note.Path
-					if name, ok := vaultNameCache[note.VaultID]; ok {
-						item.VaultName = name
-					} else if v, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && v != nil {
-						vaultNameCache[note.VaultID] = v.Name
-						item.VaultName = v.Name
-					}
+			if note, ok := noteMap[share.ResID]; ok && note.Action != domain.NoteActionDelete {
+				item.Title = strings.TrimSuffix(filepath.Base(note.Path), ".md")
+				item.NotePath = note.Path
+				if name, ok := vaultNameCache[note.VaultID]; ok {
+					item.VaultName = name
+				} else if v, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && v != nil {
+					vaultNameCache[note.VaultID] = v.Name
+					item.VaultName = v.Name
 				}
 			}
 		case "file":
-			if file, err := s.fileRepo.GetByID(ctx, share.ResID, uid); err == nil && file != nil {
+			if file, ok := fileMap[share.ResID]; ok {
 				item.Title = filepath.Base(file.Path)
 			}
 		}
@@ -609,6 +653,16 @@ func (s *shareService) StopShareByPath(ctx context.Context, uid int64, vaultName
 		return err
 	}
 	return s.StopShare(ctx, uid, share.ID)
+}
+
+// GetActiveNotePathsByVault returns active shared note paths for a vault
+// GetActiveNotePathsByVault 返回指定 vault 下所有有效分享的笔记路径，使用单次 JOIN 查询
+func (s *shareService) GetActiveNotePathsByVault(ctx context.Context, uid int64, vaultName string) ([]string, error) {
+	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.ListNotePathsByVault(ctx, uid, vault.ID)
 }
 
 // GetSharedNote retrieves specific shared note details
