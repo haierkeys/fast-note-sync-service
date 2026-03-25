@@ -386,7 +386,7 @@ func (s *shareService) flush() {
 // StopShare revokes a share
 // StopShare 撤销分享
 func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error {
-	return s.repo.UpdateStatus(ctx, uid, id, 2)
+	return s.repo.UpdateStatus(ctx, uid, id, domain.UserShareStatusRevoked)
 }
 
 // UpdateSharePassword updates password for a share
@@ -467,17 +467,13 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 		case "note":
 			if note, err := s.noteRepo.GetByID(ctx, share.ResID, uid); err == nil && note != nil {
 				if note.Action != domain.NoteActionDelete {
-					baseName := filepath.Base(note.Path)
-					// Remove .md suffix for note title
-					// 去掉 .md 后缀作为标题
-					item.Title = strings.TrimSuffix(baseName, ".md")
+					item.Title = strings.TrimSuffix(filepath.Base(note.Path), ".md")
 					item.NotePath = note.Path
-					// 查 vault 名（带缓存）
 					if name, ok := vaultNameCache[note.VaultID]; ok {
 						item.VaultName = name
-					} else if vault, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && vault != nil {
-						vaultNameCache[note.VaultID] = vault.Name
-						item.VaultName = vault.Name
+					} else if v, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && v != nil {
+						vaultNameCache[note.VaultID] = v.Name
+						item.VaultName = v.Name
 					}
 				}
 			}
