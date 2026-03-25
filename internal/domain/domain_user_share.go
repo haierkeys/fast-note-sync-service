@@ -48,4 +48,7 @@ type UserShareRepository interface {
 	UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error
 	ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*UserShare, error)
 	CountByUID(ctx context.Context, uid int64) (int64, error)
+	// ListNotePathsByVault returns active shared note paths for a vault using a single JOIN query
+	// ListNotePathsByVault 通过一次 JOIN 查询返回指定 vault 下所有有效分享的笔记路径
+	ListNotePathsByVault(ctx context.Context, uid int64, vaultID int64) ([]string, error)
 }
