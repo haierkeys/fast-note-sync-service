@@ -429,12 +429,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	}
 
 	// 若笔记有 active 分享，自动撤销（防止计数残留）
-	// Auto-revoke active share if exists, to prevent stale count
-	if s.shareRepo != nil {
-		if share, err := s.shareRepo.GetByRes(ctx, uid, "note", note.ID); err == nil && share != nil {
-			_ = s.shareRepo.UpdateStatus(ctx, uid, share.ID, 2)
-		}
-	}
+	_ = s.shareRepo.UpdateStatusByRes(ctx, uid, "note", note.ID, domain.UserShareStatusRevoked)
 
 	// 重新获取更新后的笔记
 	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
