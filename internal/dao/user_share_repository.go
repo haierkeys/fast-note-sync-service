@@ -221,22 +221,21 @@ func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64,
 	return us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(domain.UserShareStatusActive)).Count()
 }
 
-// ListNotePathsByVault returns active shared note paths for a vault using a single JOIN query
-// ListNotePathsByVault 通过一次 JOIN 查询返回指定 vault 下所有有效分享的笔记路径，避免 N+1
-func (r *userShareRepository) ListNotePathsByVault(ctx context.Context, uid int64, vaultID int64) ([]string, error) {
+// ListActiveNoteResIDs returns note res_ids for all active shares of a user
+// ListActiveNoteResIDs 查询该用户所有有效分享中 res_type='note' 的 res_id 列表（只查 user_shares 表，无跨库 JOIN）
+func (r *userShareRepository) ListActiveNoteResIDs(ctx context.Context, uid int64) ([]int64, error) {
 	us := r.userShare(uid).UserShare
-	var paths []string
-	err := us.WithContext(ctx).UnderlyingDB().Raw(
-		`SELECT n.path FROM user_shares us
-		JOIN notes n ON us.res_id = n.id AND us.res_type = 'note'
-		WHERE us.uid = ? AND us.status = ? AND us.expires_at > datetime('now')
-		  AND n.vault_id = ? AND n.action != 'delete'`,
-		uid, domain.UserShareStatusActive, vaultID,
-	).Scan(&paths).Error
+	ms, err := us.WithContext(ctx).
+		Where(us.UID.Eq(uid), us.ResType.Eq("note"), us.Status.Eq(domain.UserShareStatusActive)).
+		Find()
 	if err != nil {
 		return nil, err
 	}
-	return paths, nil
+	ids := make([]int64, 0, len(ms))
+	for _, m := range ms {
+		ids = append(ids, m.ResID)
+	}
+	return ids, nil
 }
 
 var _ domain.UserShareRepository = (*userShareRepository)(nil)
