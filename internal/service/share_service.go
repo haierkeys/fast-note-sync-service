@@ -656,13 +656,37 @@ func (s *shareService) StopShareByPath(ctx context.Context, uid int64, vaultName
 }
 
 // GetActiveNotePathsByVault returns active shared note paths for a vault
-// GetActiveNotePathsByVault 返回指定 vault 下所有有效分享的笔记路径，使用单次 JOIN 查询
+// GetActiveNotePathsByVault 返回指定 vault 下所有有效分享的笔记路径（两步查询，避免跨库 JOIN）
 func (s *shareService) GetActiveNotePathsByVault(ctx context.Context, uid int64, vaultName string) ([]string, error) {
 	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.ListNotePathsByVault(ctx, uid, vault.ID)
+
+	// Step 1: query active note res_ids from user_shares DB (no cross-DB JOIN)
+	// 步骤1：从 user_shares 库查出有效分享的 note res_id 列表（不做跨库 JOIN）
+	noteIDs, err := s.repo.ListActiveNoteResIDs(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	if len(noteIDs) == 0 {
+		return []string{}, nil
+	}
+
+	// Step 2: batch query notes from notes DB, filter by vault and non-deleted action
+	// 步骤2：从 notes 库批量查笔记，按 vault 和非删除状态过滤
+	notes, err := s.noteRepo.ListByIDs(ctx, noteIDs, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make([]string, 0, len(notes))
+	for _, n := range notes {
+		if n.VaultID == vault.ID && n.Action != domain.NoteActionDelete {
+			paths = append(paths, n.Path)
+		}
+	}
+	return paths, nil
 }
 
 // GetSharedNote retrieves specific shared note details
