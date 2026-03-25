@@ -438,6 +438,7 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 	}
 
 	items := make([]*dto.ShareListItem, 0, len(shares))
+	vaultNameCache := make(map[int64]string) // 缓存 vaultID → vaultName，避免重复查询
 	for _, share := range shares {
 		item := &dto.ShareListItem{
 			ID:           share.ID,
@@ -471,6 +472,13 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 					// 去掉 .md 后缀作为标题
 					item.Title = strings.TrimSuffix(baseName, ".md")
 					item.NotePath = note.Path
+					// 查 vault 名（带缓存）
+					if name, ok := vaultNameCache[note.VaultID]; ok {
+						item.VaultName = name
+					} else if vault, err := s.vaultRepo.GetByID(ctx, note.VaultID, uid); err == nil && vault != nil {
+						vaultNameCache[note.VaultID] = vault.Name
+						item.VaultName = vault.Name
+					}
 				}
 			}
 		case "file":
