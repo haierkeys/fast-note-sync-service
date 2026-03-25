@@ -130,7 +130,7 @@ func (r *userShareRepository) GetByPath(ctx context.Context, uid int64, vaultID 
 
 func (r *userShareRepository) GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*domain.UserShare, error) {
 	us := r.userShare(uid).UserShare
-	m, err := us.WithContext(ctx).Where(us.ResType.Eq(resType), us.ResID.Eq(resID), us.Status.Eq(1)).First()
+	m, err := us.WithContext(ctx).Where(us.ResType.Eq(resType), us.ResID.Eq(resID), us.Status.Eq(domain.UserShareStatusActive)).First()
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +141,14 @@ func (r *userShareRepository) UpdateStatus(ctx context.Context, uid int64, id in
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		us := r.userShare(uid).UserShare
 		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.Status, status)
+		return err
+	})
+}
+
+func (r *userShareRepository) UpdateStatusByRes(ctx context.Context, uid int64, resType string, resID int64, status int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.UID.Eq(uid), us.ResType.Eq(resType), us.ResID.Eq(resID), us.Status.Eq(domain.UserShareStatusActive)).Update(us.Status, status)
 		return err
 	})
 }
@@ -177,7 +185,7 @@ func (r *userShareRepository) ListByUID(ctx context.Context, uid int64, sortBy s
 
 	orderClause := field + " " + sortOrder
 	var ms []*model.UserShare
-	q := us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(1))
+	q := us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(domain.UserShareStatusActive))
 	if limit > 0 {
 		q = q.Limit(limit).Offset(offset)
 	}
@@ -210,7 +218,7 @@ func (r *userShareRepository) UpdatePassword(ctx context.Context, uid int64, id 
 
 func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64, error) {
 	us := r.userShare(uid).UserShare
-	return us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(1)).Count()
+	return us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(domain.UserShareStatusActive)).Count()
 }
 
 var _ domain.UserShareRepository = (*userShareRepository)(nil)
