@@ -207,6 +207,8 @@ docker compose up -d
 
 查看完整配置示例：[https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
+
+
 ## 🔗 客户端 & 客户端插件
 
 * Obsidian Fast Note Sync 插件
