@@ -13,6 +13,11 @@ var (
 	ErrSharePasswordInvalid  = errors.New("share password invalid")
 )
 
+const (
+	UserShareStatusActive  int64 = 1 // 有效
+	UserShareStatusRevoked int64 = 2 // 已撤销
+)
+
 // UserShare 笔记分享领域模型
 type UserShare struct {
 	ID           int64               `json:"id"`
@@ -37,9 +42,13 @@ type UserShareRepository interface {
 	GetByPath(ctx context.Context, uid int64, vaultID int64, pathHash string) (*UserShare, error)
 	GetByRes(ctx context.Context, uid int64, resType string, resID int64) (*UserShare, error)
 	UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error
+	UpdateStatusByRes(ctx context.Context, uid int64, resType string, resID int64, status int64) error
 	UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error
 	UpdatePassword(ctx context.Context, uid int64, id int64, password string) error
 	UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error
 	ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*UserShare, error)
 	CountByUID(ctx context.Context, uid int64) (int64, error)
+	// ListActiveNoteResIDs returns note res_ids for all active shares of a user
+	// ListActiveNoteResIDs 返回该用户所有有效分享中 res_type='note' 的 res_id 列表
+	ListActiveNoteResIDs(ctx context.Context, uid int64) ([]int64, error)
 }
