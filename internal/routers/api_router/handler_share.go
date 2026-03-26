@@ -406,6 +406,39 @@ func (h *ShareHandler) List(c *gin.Context) {
 	response.ToResponseList(code.Success, items, count)
 }
 
+// NoteSharePaths returns active shared note paths for a vault
+// NoteSharePaths 返回指定 vault 下有效分享的笔记路径列表，供前端懒加载分享图标
+// @Summary Get active shared note paths
+// @Tags Share
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Param vault query string true "Vault name"
+// @Success 200 {object} pkgapp.Res{data=[]string} "Success"
+// @Router /api/notes/share-paths [get]
+func (h *ShareHandler) NoteSharePaths(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	vault := c.Query("vault")
+	if vault == "" {
+		response.ToResponse(code.ErrorInvalidParams)
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	paths, err := h.App.ShareService.GetActiveNotePathsByVault(ctx, uid, vault)
+	if err != nil {
+		if cObj, ok := err.(*code.Code); ok {
+			response.ToResponse(cObj)
+		} else {
+			response.ToResponse(code.Failed.WithDetails(err.Error()))
+		}
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(paths))
+}
+
 // logError records error log, including Trace ID
 // logError 记录错误日志，包含 Trace ID
 func (h *ShareHandler) logError(ctx context.Context, method string, err error) {

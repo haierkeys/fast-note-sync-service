@@ -88,6 +88,7 @@ type ShareListItem struct {
 	URL          string              `json:"url"`          // Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)
 	Resources    map[string][]string `json:"res"`          // Authorized resources // 资源授权列表
 	NotePath     string              `json:"notePath"`     // Note path, for frontend share filter matching // 笔记路径，用于前端分享筛选匹配
+	VaultName    string              `json:"vaultName"`    // Vault name where the note belongs // 笔记所属仓库名
 	IsPassword   bool                `json:"isPassword"`   // Whether password is set // 是否设置了密码
 	Status       int64               `json:"status"`       // Status: 1-Active, 2-Cancelled // 状态: 1-有效, 2-已撤销
 	ViewCount    int64               `json:"viewCount"`    // View count // 访问次数
