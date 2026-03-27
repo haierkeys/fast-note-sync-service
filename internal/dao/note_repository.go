@@ -746,12 +746,24 @@ func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 
 // ListByUpdatedTimestamp 根据更新时间戳获取笔记列表
 func (r *noteRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Note, error) {
+	return r.ListByUpdatedTimestampPage(ctx, timestamp, vaultID, uid, 0, 0)
+}
+
+// ListByUpdatedTimestampPage 根据更新时间戳分页获取笔记列表
+func (r *noteRepository) ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
 	u := r.note(uid).Note
-	mList, err := u.WithContext(ctx).Where(
+	query := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
 		u.UpdatedTimestamp.Gt(timestamp),
-	).Order(u.UpdatedTimestamp.Desc()).
-		Find()
+	).Order(u.UpdatedTimestamp.Desc())
+
+	var mList []*model.Note
+	var err error
+	if limit > 0 {
+		mList, _, err = query.FindByPage(offset, limit)
+	} else {
+		mList, err = query.Find()
+	}
 
 	if err != nil {
 		return nil, err
