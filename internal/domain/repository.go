@@ -64,6 +64,9 @@ type NoteRepository interface {
 	// ListByUpdatedTimestamp 根据更新时间戳获取笔记列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Note, error)
 
+	// ListByUpdatedTimestampPage 根据更新时间戳分页获取笔记列表
+	ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*Note, error)
+
 	// ListContentUnchanged 获取内容未变更的笔记列表
 	ListContentUnchanged(ctx context.Context, uid int64) ([]*Note, error)
 
@@ -215,6 +218,9 @@ type FileRepository interface {
 
 	// ListByUpdatedTimestamp 根据更新时间戳获取文件列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*File, error)
+
+	// ListByUpdatedTimestampPage 根据更新时间戳分页获取文件列表
+	ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*File, error)
 
 	// ListByMtime 根据修改时间戳获取文件列表
 	ListByMtime(ctx context.Context, timestamp, vaultID, uid int64) ([]*File, error)
