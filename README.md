@@ -40,6 +40,8 @@ For users in mainland China, we recommend using the Tencent `cnb.cool` mirror: [
 
 ## ✨ Core Features
 
+* **🧰 MCP (Model Context Protocol) Native Support**:
+  * `FNS` can serve as an MCP server, connecting to compatible AI clients such as `Cherry Studio` and `Cursor`, enabling AI to read and write private notes and attachments, with all changes synced to all devices in real time via WebSocket.
 * **🚀 REST API Support**:
     * Provides standard REST API interfaces, supporting programmatic access (e.g., automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
     * See the [RESTful API Documentation](/docs/REST_API.md) or [OpenAPI Documentation](/docs/swagger.yaml).
@@ -69,6 +71,8 @@ For users in mainland China, we recommend using the Tencent `cnb.cool` mirror: [
     * Create/cancel note sharing.
     * Automatically resolves referenced images, audio, video, and other attachments in shared notes.
     * Provides sharing access statistics.
+    * Supports setting an access password for shared notes.
+    * Supports generating short links for shared notes.
 * **📂 Directory Sync**:
     * Supports folder create/rename/move/delete synchronization.
 
@@ -103,7 +107,6 @@ For users in mainland China, we recommend using the Tencent `cnb.cool` mirror: [
 We are continuously improving. Here are our future development plans:
 
 
-- [x] **🤖 MCP Support**: Add AI MCP related feature support.
 - [ ] **More database type support**
 
 
@@ -211,9 +214,9 @@ View the full configuration example: [https-nginx-example.conf](https://github.c
 
 ## 🧰 MCP (Model Context Protocol) Support
 
-FNS now natively supports **MCP (Model Context Protocol)**.
+FNS natively supports **MCP (Model Context Protocol)**.
 
-You can connect FNS directly as an MCP server to compatible AI clients such as Cherry Studio and Cursor. Once connected, the AI will have the ability to read and write private notes and attachments. Meanwhile, all changes made by MCP will be synced in real-time to your various device endpoints via WebSocket.
+`FNS` can serve as an MCP server, connecting to compatible AI clients such as `Cherry Studio` and `Cursor`, enabling AI to read and write private notes and attachments, with all changes synced to all devices in real time via WebSocket.
 
 ### Connection Configuration (SSE Mode)
 

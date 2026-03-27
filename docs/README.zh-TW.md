@@ -40,6 +40,8 @@
 
 ## ✨ 核心功能
 
+* **🧰 MCP (Model Context Protocol) 原生支援**：
+  * `FNS` 可以作為 MCP 服務端接入 `Cherry Studio`、`Cursor` 等相容的 AI 客戶端，即可讓 AI 具備讀寫私人筆記與附件的能力，且所有變更會透過 WebSocket 即時同步至各裝置終端。
 * **🚀 REST API 支援**：
     * 提供標準的 REST API 介面，支援透過程式化方式（如自動化腳本、AI 助手整合）對 Obsidian 筆記進行增刪改查。
     * 詳情請參閱 [RESTful API 文件](/docs/REST_API.md) 或 [OpenAPI 文件](/docs/swagger.yaml)。
@@ -69,6 +71,8 @@
     * 可以建立/取消筆記分享。
     * 自動解析分享筆記中引用的圖片、音視頻等附件。
     * 提供分享存取統計功能。
+    * 可以設定分享筆記的訪問密碼。
+    * 可以對分享筆記產生短連結。
 * **📂 目錄同步**：
     * 支援資料夾的建立/重新命名/移動/刪除同步。
 
@@ -103,7 +107,6 @@
 我們正在持續改進，以下是未來的開發計劃：
 
 
-- [x] **🤖 MCP 支援**：增加 AI MCP 相關功能支援。
 - [ ] **更多資料庫類型的支援**
 
 
@@ -211,9 +214,9 @@ docker compose up -d
 
 ## 🧰 MCP（模型上下文協議）支援
 
-FNS 現已原生支援 **MCP (Model Context Protocol)**。
+FNS 原生支援 **MCP (Model Context Protocol)**。
 
-您可以將 FNS 作為 MCP 服務端直接接入 Cherry Studio、Cursor 等相容的 AI 客戶端。接入後，AI 即可具備讀寫私人筆記和附件的能力。同時，所有由 MCP 產生的修改，都會透過 WebSocket 即時同步到您的各個裝置端點。
+`FNS` 可以作為 MCP 服務端接入 `Cherry Studio`、`Cursor` 等相容的 AI 客戶端，即可讓 AI 具備讀寫私人筆記與附件的能力，且所有變更會透過 WebSocket 即時同步至各裝置終端。
 
 ### 接入設定（SSE 模式）
 
