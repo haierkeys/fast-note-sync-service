@@ -1,4 +1,4 @@
-                                 // Package app provides application container, encapsulates all dependencies and services
+// Package app provides application container, encapsulates all dependencies and services
 // Package app 提供应用容器，封装所有依赖和服务
 package app
 
@@ -42,12 +42,12 @@ type App struct {
 	*Services
 
 	// App-level state and control
-	shutdownCh     chan struct{}
-	UpgradeSignal  chan string
-	StartTime      time.Time
-	wg             sync.WaitGroup
-	checkVersionMu sync.RWMutex
-	checkVersion   pkgapp.CheckVersionInfo
+	shutdownCh       chan struct{}
+	UpgradeSignal    chan string
+	StartTime        time.Time
+	wg               sync.WaitGroup
+	checkVersionMu   sync.RWMutex
+	checkVersion     pkgapp.CheckVersionInfo
 	supportRecordsMu sync.RWMutex
 	supportRecords   map[string][]pkgapp.SupportRecord
 }
