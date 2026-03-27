@@ -31,6 +31,8 @@ import (
 // errNoChanges 表示 Git 同步检查后没有发现任何需要提交的变更
 var errNoChanges = errors.New("no changes found")
 
+const gitSyncBatchSize = 100
+
 // GitSyncService 定义 Git 同步业务服务接口
 type GitSyncService interface {
 	GetConfigs(ctx context.Context, uid int64) ([]*dto.GitSyncConfigDTO, error)
@@ -541,6 +543,8 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			Auth:          auth,
 			ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 			SingleBranch:  true,
+			Depth:         1,
+			Tags:          git.NoTags,
 		})
 		if err != nil {
 			if errors.Is(err, transport.ErrEmptyRemoteRepository) {
@@ -581,6 +585,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
+		Depth:         1,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		if errors.Is(err, transport.ErrEmptyRemoteRepository) || errors.Is(err, git.ErrRemoteNotFound) || errors.Is(err, plumbing.ErrReferenceNotFound) {
@@ -665,23 +670,58 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 		s.logger.Info("Performing initial full sync to workspace (using unified incremental method)", zap.Int64("configId", conf.ID))
 	}
 
-	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, ts, v.ID, conf.UID)
-	if err != nil {
-		return false, err
-	}
-
-	files, err := s.fileRepo.ListByUpdatedTimestamp(ctx, ts, v.ID, conf.UID)
-	if err != nil {
-		return false, err
-	}
-
-	if len(notes) == 0 && len(files) == 0 {
-		return false, nil
-	}
-
 	var actuallyChanged bool
 
-	// 1. Process Notes
+	for offset := 0; ; offset += gitSyncBatchSize {
+		notes, err := s.noteRepo.ListByUpdatedTimestampPage(ctx, ts, v.ID, conf.UID, offset, gitSyncBatchSize)
+		if err != nil {
+			return false, err
+		}
+		if len(notes) == 0 {
+			break
+		}
+
+		batchChanged, err := s.processNotesBatch(notes, wsPath)
+		if err != nil {
+			return false, err
+		}
+		if batchChanged {
+			actuallyChanged = true
+		}
+
+		if len(notes) < gitSyncBatchSize {
+			break
+		}
+	}
+
+	for offset := 0; ; offset += gitSyncBatchSize {
+		files, err := s.fileRepo.ListByUpdatedTimestampPage(ctx, ts, v.ID, conf.UID, offset, gitSyncBatchSize)
+		if err != nil {
+			return false, err
+		}
+		if len(files) == 0 {
+			break
+		}
+
+		batchChanged, err := s.processFilesBatch(files, conf, wsPath)
+		if err != nil {
+			return false, err
+		}
+		if batchChanged {
+			actuallyChanged = true
+		}
+
+		if len(files) < gitSyncBatchSize {
+			break
+		}
+	}
+
+	return actuallyChanged, nil
+}
+
+func (s *gitSyncService) processNotesBatch(notes []*domain.Note, wsPath string) (bool, error) {
+	var actuallyChanged bool
+
 	for _, n := range notes {
 		targetPath := n.Path
 		if filepath.Ext(targetPath) == "" {
@@ -722,7 +762,12 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 		}
 	}
 
-	// 2. Process Files
+	return actuallyChanged, nil
+}
+
+func (s *gitSyncService) processFilesBatch(files []*domain.File, conf *domain.GitSyncConfig, wsPath string) (bool, error) {
+	var actuallyChanged bool
+
 	for _, f := range files {
 		fullPath := filepath.Join(wsPath, f.Path)
 

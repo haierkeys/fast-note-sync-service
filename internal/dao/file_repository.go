@@ -434,12 +434,24 @@ func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 
 // ListByUpdatedTimestamp 根据更新时间戳获取文件列表
 func (r *fileRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.File, error) {
+	return r.ListByUpdatedTimestampPage(ctx, timestamp, vaultID, uid, 0, 0)
+}
+
+// ListByUpdatedTimestampPage 根据更新时间戳分页获取文件列表
+func (r *fileRepository) ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.File, error) {
 	u := r.file(uid).File
-	mList, err := u.WithContext(ctx).Where(
+	query := u.WithContext(ctx).Where(
 		u.VaultID.Eq(vaultID),
 		u.UpdatedTimestamp.Gt(timestamp),
-	).Order(u.UpdatedTimestamp.Desc()).
-		Find()
+	).Order(u.UpdatedTimestamp.Desc())
+
+	var mList []*model.File
+	var err error
+	if limit > 0 {
+		mList, _, err = query.FindByPage(offset, limit)
+	} else {
+		mList, err = query.Find()
+	}
 
 	if err != nil {
 		return nil, err
