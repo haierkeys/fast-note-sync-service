@@ -102,7 +102,7 @@
 我们正在持续改进，以下是未来的开发计划：
 
 
-- [ ] **🤖 MCP支持**：增加 AI MCP 相关功能支持。
+- [x] **🤖 MCP支持**：增加 AI MCP 相关功能支持。
 - [ ] **更多数据库类型的支持**
 
 > **如果您有改进建议或新想法，欢迎通过提交 issue 与我们分享——我们会认真评估并采纳合适的建议。**
@@ -207,7 +207,38 @@ docker compose up -d
 
 查看完整配置示例：[https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
+## 🧰 MCP (模型上下文协议) 支持
 
+FNS 现已原生支持 **MCP (Model Context Protocol)**。
+
+您可以将 FNS 作为 MCP 服务端直接接入 Cherry Studio、Cursor 等兼容的 AI 客户端。接入后，AI 即可具备读写私人笔记和附件的能力。同时，所有由 MCP 产生的修改，都会通过 WebSocket 实时同步到您的各个设备终端。
+
+### 接入配置 (SSE 模式)
+
+FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
+- **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp/sse`
+- **鉴权 Header**：`token: <您的 API Token>`（在 WebGUI 的复制 API 配置中获取）
+
+
+#### 示例：Cherry Studio
+
+请在 Cherry Studio 的 MCP Server 配置中添加如下 JSON 节点。
+*(注：请将 `<ServerIP>`、`<Port>` 和 `<Token>` 替换为您自己的实际信息)*
+
+```json
+{
+  "mcpServers": {
+    "fns": {
+      "url": "http://<ServerIP>:<Port>/api/mcp/sse",
+      "type": "sse",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <Token>"
+      }
+    }
+  }
+}
+```
 
 ## 🔗 客户端 & 客户端插件
 
