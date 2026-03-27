@@ -12,6 +12,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/mcp_router"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/limiter"
@@ -166,6 +167,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		backupHandler := api_router.NewBackupHandler(appContainer)
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
 		settingHandler := api_router.NewSettingHandler(appContainer, wss)
+		mcpHandler := mcp_router.NewMCPHandler(appContainer, wss)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -296,6 +298,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/setting", settingHandler.Delete)
 			auth.POST("/setting/rename", settingHandler.Rename)
 			auth.GET("/settings", settingHandler.List)
+
+			// MCP SSE
+			auth.GET("/mcp/sse", mcpHandler.HandleSSE)
+			auth.POST("/mcp/message", mcpHandler.HandleMessage)
 		}
 
 	}
