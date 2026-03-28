@@ -219,13 +219,14 @@ FNS 现已原生支持 **MCP (Model Context Protocol)**。
 
 FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
 - **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp/sse`
-- **鉴权 Header**：`token: <您的 API Token>`（在 WebGUI 的复制 API 配置中获取）
+- **鉴权 Header**：`Authorization: Bearer <您的 API Token>`（在 WebGUI 的复制 API 配置中获取）
+- **可选 Header**：`X-Default-Vault-Name: <笔记库名称>`（用于指定 MCP 操作的默认笔记库，若工具调用时未指定 `vault` 参数，则使用此值）
 
 
-#### 示例：Cherry Studio
+#### 示例：Cherry Studio / Cursor / Cline 等
 
-请在 Cherry Studio 的 MCP Server 配置中添加如下 JSON 节点。
-*(注：请将 `<ServerIP>`、`<Port>` 和 `<Token>` 替换为您自己的实际信息)*
+请在您的 MCP 客户端配置中参考如下配置：
+*(注：请将 `<ServerIP>`、`<Port>`、`<Token>` 和 `<VaultName>` 替换为您自己的实际信息)*
 
 ```json
 {
@@ -235,7 +236,8 @@ FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
       "type": "sse",
       "headers": {
         "Content-Type": "application/json",
-        "Authorization": "Bearer <Token>"
+        "Authorization": "Bearer <Token>",
+        "X-Default-Vault-Name": "<VaultName>"
       }
     }
   }

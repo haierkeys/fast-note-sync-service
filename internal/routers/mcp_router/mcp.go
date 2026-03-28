@@ -19,9 +19,11 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 	srv := NewMCPServer(appContainer, wss)
 
 	sseSrv := mcpserver.NewSSEServer(srv, mcpserver.WithMessageEndpoint("/api/mcp/message"), mcpserver.WithSSEContextFunc(func(ctx context.Context, r *http.Request) context.Context {
-		val := r.Context().Value("uid")
-		if val != nil {
-			return context.WithValue(ctx, "uid", val)
+		if val := r.Context().Value("uid"); val != nil {
+			ctx = context.WithValue(ctx, "uid", val)
+		}
+		if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
+			ctx = context.WithValue(ctx, "default_vault_name", vaultName)
 		}
 		return ctx
 	}))
@@ -35,6 +37,9 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
+	if vaultName := c.GetHeader("X-Default-Vault-Name"); vaultName != "" {
+		ctx = context.WithValue(ctx, "default_vault_name", vaultName)
+	}
 	// Let SSEServer handle the SSE connection
 	h.sseServer.SSEHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
