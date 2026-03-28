@@ -21,13 +21,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 1. List Notes
 	toolListNotes := mcp.NewTool("note_list",
 		mcp.WithDescription("List notes in a vault"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 	)
 	srv.AddTool(toolListNotes, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		keyword, _ := args["keyword"].(string)
 
 		pager := &pkgapp.Pager{
@@ -53,13 +56,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 2. Get Note
 	toolGetNote := mcp.NewTool("note_get",
 		mcp.WithDescription("Get a single note by path"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolGetNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
@@ -79,7 +85,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 3. Create or Update Note
 	toolCreateUpdateNote := mcp.NewTool("note_create_or_update",
 		mcp.WithDescription("Create or update a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Note content")),
 	)
@@ -87,6 +93,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
 		pathHash := util.EncodeHash32(path)
@@ -114,13 +123,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 4. Delete Note
 	toolDeleteNote := mcp.NewTool("note_delete",
 		mcp.WithDescription("Delete a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolDeleteNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
@@ -141,7 +153,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 5. Rename Note
 	toolRenameNote := mcp.NewTool("note_rename",
 		mcp.WithDescription("Rename a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("oldPath", mcp.Required(), mcp.Description("Old note path")),
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New note path")),
 	)
@@ -149,6 +161,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
 
@@ -181,13 +196,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 1. Restore Note
 	toolRestoreNote := mcp.NewTool("note_restore",
 		mcp.WithDescription("Restore a deleted note from recycle bin"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolRestoreNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		note, err := noteSvc.Restore(ctx, uid, &dto.NoteRestoreRequest{
@@ -207,13 +225,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 2. Recycle Clear Note
 	toolRecycleClear := mcp.NewTool("note_recycle_clear",
 		mcp.WithDescription("Permanently delete a note from recycle bin (or all if path is empty)"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Description("Note path. If empty, potentially clear all (based on service logic)")),
 	)
 	srv.AddTool(toolRecycleClear, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		err := noteSvc.RecycleClear(ctx, uid, &dto.NoteRecycleClearRequest{
@@ -232,7 +253,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 3. Patch Frontmatter
 	toolPatchFrontmatter := mcp.NewTool("note_patch_frontmatter",
 		mcp.WithDescription("Patch (update or remove) frontmatter of a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("updates", mcp.Description("JSON string for fields to update (e.g. {\"tags\":[\"t1\"]})")),
 		mcp.WithString("remove", mcp.Description("JSON string array for fields to remove (e.g. [\"old_tag\"])")),
@@ -241,6 +262,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		updatesStr, _ := args["updates"].(string)
 		removeStr, _ := args["remove"].(string)
@@ -278,7 +302,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 4. Append
 	toolAppend := mcp.NewTool("note_append",
 		mcp.WithDescription("Append content to the end of a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to append")),
 	)
@@ -307,7 +331,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 5. Prepend
 	toolPrepend := mcp.NewTool("note_prepend",
 		mcp.WithDescription("Prepend content to the beginning of a note (after frontmatter)"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to prepend")),
 	)
@@ -336,7 +360,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 6. Replace
 	toolReplace := mcp.NewTool("note_replace",
 		mcp.WithDescription("Find and replace text in a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("find", mcp.Required(), mcp.Description("Content to find")),
 		mcp.WithString("replace", mcp.Required(), mcp.Description("Content to replace with")),
@@ -348,6 +372,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		find, _ := args["find"].(string)
 		replace, _ := args["replace"].(string)
@@ -386,7 +413,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 7. Move
 	toolMove := mcp.NewTool("note_move",
 		mcp.WithDescription("Move a note to a new path"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Current note path")),
 		mcp.WithString("destination", mcp.Required(), mcp.Description("Destination path")),
 		mcp.WithBoolean("overwrite", mcp.Description("Overwrite if destination exists (default false)")),
@@ -395,6 +422,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 		destination, _ := args["destination"].(string)
 		overwrite, okOverwrite := args["overwrite"].(bool)
@@ -421,7 +451,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 8. Get Backlinks
 	toolGetBacklinks := mcp.NewTool("note_get_backlinks",
 		mcp.WithDescription("Get backlinks to a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolGetBacklinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -451,7 +481,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 9. Get Outlinks
 	toolGetOutlinks := mcp.NewTool("note_get_outlinks",
 		mcp.WithDescription("Get outlinks from a note"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolGetOutlinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

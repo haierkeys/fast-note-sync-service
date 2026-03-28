@@ -222,13 +222,14 @@ FNS natively supports **MCP (Model Context Protocol)**.
 
 FNS provides the MCP interface via the **SSE protocol**, with the following general parameters:
 - **Endpoint URL**: `http://<your-server-ip-or-domain>:<port>/api/mcp/sse`
-- **Auth Header**: `token: <your-api-token>` (obtained from the "Copy API Configuration" in the WebGUI)
+- **Auth Header**: `Authorization: Bearer <your-api-token>` (obtained from the "Copy API Configuration" in the WebGUI)
+- **Optional Header**: `X-Default-Vault-Name: <VaultName>` (used to specify the default vault for MCP operations if the `vault` parameter is not provided in the tool call)
 
 
-#### Example: Cherry Studio
+#### Example: Cherry Studio / Cursor / Cline, etc.
 
-Add the following JSON node to the MCP Server configuration in Cherry Studio.
-*(Note: Replace `<ServerIP>`, `<Port>`, and `<Token>` with your actual information)*
+Please refer to the following configuration in your MCP client:
+*(Note: Replace `<ServerIP>`, `<Port>`, `<Token>`, and `<VaultName>` with your actual information)*
 
 ```json
 {
@@ -238,7 +239,8 @@ Add the following JSON node to the MCP Server configuration in Cherry Studio.
       "type": "sse",
       "headers": {
         "Content-Type": "application/json",
-        "Authorization": "Bearer <Token>"
+        "Authorization": "Bearer <Token>",
+        "X-Default-Vault-Name": "<VaultName>"
       }
     }
   }
