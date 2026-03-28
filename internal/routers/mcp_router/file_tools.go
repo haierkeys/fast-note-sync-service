@@ -21,13 +21,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 1. List Files
 	toolListFiles := mcp.NewTool("file_list",
 		mcp.WithDescription("List files in a vault"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 	)
 	srv.AddTool(toolListFiles, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		keyword, _ := args["keyword"].(string)
 
 		pager := &pkgapp.Pager{
@@ -53,13 +56,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 2. Get File Info
 	toolGetFileInfo := mcp.NewTool("file_get_info",
 		mcp.WithDescription("Get file metadata information"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolGetFileInfo, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.Get(ctx, uid, &dto.FileGetRequest{
@@ -79,13 +85,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 3. Get File Content (Read File)
 	toolGetContent := mcp.NewTool("file_read",
 		mcp.WithDescription("Read file content and return. Returned as base64 string because it might be binary."),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolGetContent, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		reader, _, _, _, err := fileSvc.GetContent(ctx, uid, &dto.FileGetRequest{
@@ -110,13 +119,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 4. Delete File
 	toolDeleteFile := mcp.NewTool("file_delete",
 		mcp.WithDescription("Delete a file"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolDeleteFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.Delete(ctx, uid, &dto.FileDeleteRequest{
@@ -136,7 +148,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 5. Rename File
 	toolRenameFile := mcp.NewTool("file_rename",
 		mcp.WithDescription("Rename a file"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("oldPath", mcp.Required(), mcp.Description("Old file path")),
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New file path")),
 	)
@@ -144,6 +156,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
 
@@ -176,13 +191,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 1. Restore File
 	toolRestoreFile := mcp.NewTool("file_restore",
 		mcp.WithDescription("Restore a deleted file from recycle bin"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolRestoreFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.Restore(ctx, uid, &dto.FileRestoreRequest{
@@ -202,13 +220,16 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 	// 2. Recycle Clear File
 	toolRecycleClearFile := mcp.NewTool("file_recycle_clear",
 		mcp.WithDescription("Permanently delete a file from recycle bin (or all if path is empty)"),
-		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
+		mcp.WithString("vault", mcp.Description("Vault name. Use default if not provided.")),
 		mcp.WithString("path", mcp.Description("File path. If empty, potentially clear all")),
 	)
 	srv.AddTool(toolRecycleClearFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
+		if vault == "" {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
 		path, _ := args["path"].(string)
 
 		err := fileSvc.RecycleClear(ctx, uid, &dto.FileRecycleClearRequest{

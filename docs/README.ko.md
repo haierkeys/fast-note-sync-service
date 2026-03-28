@@ -222,13 +222,14 @@ FNS는 **MCP (Model Context Protocol)** 를 네이티브로 지원합니다.
 
 FNS는 **SSE 프로토콜**을 통해 MCP 인터페이스를 제공합니다. 일반 파라미터는 다음과 같습니다:
 - **엔드포인트 URL**: `http://<서버 IP 또는 도메인>:<포트>/api/mcp/sse`
-- **인증 헤더**: `token: <API 토큰>` (WebGUI의 "API 설정 복사"에서 획득)
+- **인증 헤더**: `Authorization: Bearer <API 토큰>` (WebGUI의 "API 설정 복사"에서 획득)
+- **선택적 헤더**: `X-Default-Vault-Name: <VaultName>` (도구 호출 시 `vault` 파라미터가 제공되지 않을 경우 MCP 작업에 사용할 기본 저장소를 지정하는 데 사용됨)
 
 
-#### 예시: Cherry Studio
+#### 예시: Cherry Studio / Cursor / Cline 등
 
-Cherry Studio의 MCP Server 설정에 다음 JSON 노드를 추가하세요.
-*（참고: `<ServerIP>`, `<Port>`, `<Token>`을 실제 정보로 교체하세요）*
+MCP 클라이언트에서 다음 설정을 참고하세요:
+*（참고: `<ServerIP>`, `<Port>`, `<Token>`, `<VaultName>`을 실제 정보로 교체하세요）*
 
 ```json
 {
@@ -238,7 +239,8 @@ Cherry Studio의 MCP Server 설정에 다음 JSON 노드를 추가하세요.
       "type": "sse",
       "headers": {
         "Content-Type": "application/json",
-        "Authorization": "Bearer <Token>"
+        "Authorization": "Bearer <Token>",
+        "X-Default-Vault-Name": "<VaultName>"
       }
     }
   }
