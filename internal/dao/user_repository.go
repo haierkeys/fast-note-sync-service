@@ -35,7 +35,7 @@ func init() {
 
 // user 获取用户查询对象
 func (r *userRepository) user() *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "User")
 	}, "user#user")
 }

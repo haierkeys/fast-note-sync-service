@@ -26,7 +26,8 @@ type AppConfig struct {
 	Server    ServerConfig    `yaml:"server"`
 	App       AppSettings     `yaml:"app"`
 	Security  SecurityConfig  `yaml:"security"`
-	Database  DatabaseConfig  `yaml:"database"`
+	Database     DatabaseConfig `yaml:"database"`
+	UserDatabase DatabaseConfig `yaml:"user-database"`
 	Log       LogConfig       `yaml:"log"`
 	User      UserConfig      `yaml:"user"`
 	Tracer    TracerConfig    `yaml:"tracer"`
@@ -116,12 +117,11 @@ type SecurityConfig struct {
 // DatabaseConfig database configuration
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	// Type database type
 	// Type 数据库类型
-	Type string `yaml:"type" default:"sqlite"`
+	Type string `yaml:"type"`
 	// Path SQLite database file path
 	// Path SQLite 数据库文件路径
-	Path string `yaml:"path" default:"storage/database/db.sqlite3"`
+	Path string `yaml:"path"`
 	// UserName username
 	// UserName 用户名
 	UserName string `yaml:"username"`
@@ -131,9 +131,15 @@ type DatabaseConfig struct {
 	// Host host
 	// Host 主机
 	Host string `yaml:"host"`
+	// Port port
+	// Port 端口
+	Port int `yaml:"port"`
 	// Name database name
 	// Name 数据库名
 	Name string `yaml:"name"`
+	// SSLMode SSL mode
+	// SSLMode SSL 模式
+	SSLMode string `yaml:"ssl-mode"`
 	// TablePrefix table prefix
 	// TablePrefix 表前缀
 	TablePrefix string `yaml:"table-prefix"`

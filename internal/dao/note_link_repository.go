@@ -8,6 +8,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
+	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"gorm.io/gorm"
@@ -37,19 +38,12 @@ func init() {
 	})
 }
 
-// getDB gets the per-user database connection and ensures the table is migrated
-func (r *noteLinkRepository) getDB(uid int64) *gorm.DB {
+// noteLink 获取笔记链接查询对象
+func (r *noteLinkRepository) noteLink(uid int64) *query.Query {
 	key := r.GetKey(uid)
-	migrateKey := key + "#migrated"
-
-	db := r.dao.UserDB(uid)
-
-	// Ensure migration only happens once per user
-	if _, loaded := r.dao.onceKeys.LoadOrStore(migrateKey, true); !loaded {
-		model.AutoMigrate(db, "NoteLink")
-	}
-
-	return db
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
+		model.AutoMigrate(g, "NoteLink")
+	}, key+"#noteLink", key)
 }
 
 // toDomain converts database model to domain model
@@ -76,6 +70,7 @@ func (r *noteLinkRepository) CreateBatch(ctx context.Context, links []*domain.No
 	}
 
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		nl := r.noteLink(uid).NoteLink
 		var models []*model.NoteLink
 		now := timex.Now()
 		for _, link := range links {
@@ -90,25 +85,25 @@ func (r *noteLinkRepository) CreateBatch(ctx context.Context, links []*domain.No
 				CreatedAt:      now,
 			})
 		}
-		return r.getDB(uid).WithContext(ctx).CreateInBatches(models, 100).Error
+		return nl.WithContext(ctx).CreateInBatches(models, 100)
 	})
 }
 
 // DeleteBySourceNoteID deletes all links from a source note
 func (r *noteLinkRepository) DeleteBySourceNoteID(ctx context.Context, sourceNoteID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		return r.getDB(uid).WithContext(ctx).
-			Where("source_note_id = ?", sourceNoteID).
-			Delete(&model.NoteLink{}).Error
+		nl := r.noteLink(uid).NoteLink
+		_, err := nl.WithContext(ctx).Where(nl.SourceNoteID.Eq(sourceNoteID)).Delete()
+		return err
 	})
 }
 
 // GetBacklinks gets all notes that link to a target path
 func (r *noteLinkRepository) GetBacklinks(ctx context.Context, targetPathHash string, vaultID, uid int64) ([]*domain.NoteLink, error) {
-	var modelList []*model.NoteLink
-	err := r.getDB(uid).WithContext(ctx).
-		Where("target_path_hash = ? AND vault_id = ?", targetPathHash, vaultID).
-		Find(&modelList).Error
+	nl := r.noteLink(uid).NoteLink
+	modelList, err := nl.WithContext(ctx).
+		Where(nl.TargetPathHash.Eq(targetPathHash), nl.VaultID.Eq(vaultID)).
+		Find()
 	if err != nil {
 		return nil, err
 	}
@@ -128,10 +123,10 @@ func (r *noteLinkRepository) GetBacklinksByHashes(ctx context.Context, targetPat
 		return nil, nil
 	}
 
-	var modelList []*model.NoteLink
-	err := r.getDB(uid).WithContext(ctx).
-		Where("target_path_hash IN ? AND vault_id = ?", targetPathHashes, vaultID).
-		Find(&modelList).Error
+	nl := r.noteLink(uid).NoteLink
+	modelList, err := nl.WithContext(ctx).
+		Where(nl.TargetPathHash.In(targetPathHashes...), nl.VaultID.Eq(vaultID)).
+		Find()
 	if err != nil {
 		return nil, err
 	}
@@ -150,10 +145,10 @@ func (r *noteLinkRepository) GetBacklinksByHashes(ctx context.Context, targetPat
 
 // GetOutlinks gets all links from a source note
 func (r *noteLinkRepository) GetOutlinks(ctx context.Context, sourceNoteID, uid int64) ([]*domain.NoteLink, error) {
-	var modelList []*model.NoteLink
-	err := r.getDB(uid).WithContext(ctx).
-		Where("source_note_id = ?", sourceNoteID).
-		Find(&modelList).Error
+	nl := r.noteLink(uid).NoteLink
+	modelList, err := nl.WithContext(ctx).
+		Where(nl.SourceNoteID.Eq(sourceNoteID)).
+		Find()
 	if err != nil {
 		return nil, err
 	}

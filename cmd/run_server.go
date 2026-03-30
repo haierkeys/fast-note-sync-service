@@ -396,7 +396,9 @@ func initDatabaseWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) (*gorm.D
 		UserName:        cfg.Database.UserName,
 		Password:        cfg.Database.Password,
 		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
 		Name:            cfg.Database.Name,
+		SSLMode:         cfg.Database.SSLMode,
 		TablePrefix:     cfg.Database.TablePrefix,
 		AutoMigrate:     cfg.Database.AutoMigrate,
 		Charset:         cfg.Database.Charset,
@@ -408,7 +410,7 @@ func initDatabaseWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) (*gorm.D
 		RunMode:         cfg.Server.RunMode,
 	}
 
-	db, err := dao.NewDBEngineWithConfig(dbConfig, lg)
+	db, err := dao.NewEngine(dbConfig, lg)
 	if err != nil {
 		return nil, err
 	}
@@ -424,6 +426,11 @@ func initStorageWithConfig(cfg *internalApp.AppConfig) error {
 		cfg.App.TempPath,
 		cfg.Storage.LocalFS.SavePath,
 		filepath.Dir(cfg.Database.Path),
+	}
+
+	// 如果 UserDatabase 配置了独立的路径且为 sqlite，也需要初始化目录
+	if cfg.UserDatabase.Type == "sqlite" && cfg.UserDatabase.Path != "" {
+		dirs = append(dirs, filepath.Dir(cfg.UserDatabase.Path))
 	}
 
 	for _, dir := range dirs {

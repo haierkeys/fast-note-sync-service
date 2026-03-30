@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/haierkeys/gormTracing"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
@@ -38,8 +38,12 @@ type DatabaseConfig struct {
 	Password string
 	// Host 主机
 	Host string
+	// Port 端口
+	Port int
 	// Name 数据库名
 	Name string
+	// SSLMode SSL 模式 (仅限 postgres)
+	SSLMode string
 	// TablePrefix 表前缀
 	TablePrefix string
 	// AutoMigrate 是否启用自动迁移
@@ -75,6 +79,7 @@ type Dao struct {
 
 	// 注入的依赖
 	config        *DatabaseConfig
+	userConfig    *DatabaseConfig
 	logger        *zap.Logger
 	writeQueueMgr *writequeue.Manager
 }
@@ -86,6 +91,13 @@ type DaoOption func(*Dao)
 func WithConfig(cfg *DatabaseConfig) DaoOption {
 	return func(d *Dao) {
 		d.config = cfg
+	}
+}
+
+// WithUserConfig 设置用户数据库配置
+func WithUserConfig(cfg *DatabaseConfig) DaoOption {
+	return func(d *Dao) {
+		d.userConfig = cfg
 	}
 }
 
@@ -163,21 +175,8 @@ func (d *Dao) WriteQueueManager() *writequeue.Manager {
 	return d.writeQueueMgr
 }
 
-func (d *Dao) UseQueryWithFunc(f func(*gorm.DB), key ...string) *query.Query {
-	db := d.UseKey(key...)
-	if db == nil {
-		keyName := "default"
-		if len(key) > 0 {
-			keyName = key[0]
-		}
-		panic(fmt.Sprintf("数据库实例为 nil (key=%s),请检查数据库配置和连接", keyName))
-	}
-	f(db)
-	return query.Use(db)
-}
-
-func (d *Dao) UseQueryWithOnceFunc(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
-	db := d.UseKey(key...)
+func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
+	db := d.ResolveDB(key...)
 	if db == nil {
 		keyName := "default"
 		if len(key) > 0 {
@@ -187,18 +186,6 @@ func (d *Dao) UseQueryWithOnceFunc(f func(*gorm.DB), onceKey string, key ...stri
 	}
 	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
 		f(db)
-	}
-	return query.Use(db)
-}
-
-func (d *Dao) UseQuery(key ...string) *query.Query {
-	db := d.UseKey(key...)
-	if db == nil {
-		keyName := "default"
-		if len(key) > 0 {
-			keyName = key[0]
-		}
-		panic(fmt.Sprintf("数据库实例为 nil (key=%s),请检查数据库配置和连接", keyName))
 	}
 	return query.Use(db)
 }
@@ -219,28 +206,36 @@ func (d *Dao) CleanupConnections(maxIdle time.Duration) {
 	}
 }
 
-func (d *Dao) UseKey(key ...string) *gorm.DB {
+func (d *Dao) ResolveDB(key ...string) *gorm.DB {
 	if len(key) == 0 || key[0] == "" {
 		return d.Db
 	}
-	return d.UseDb(key[0])
+	return d.GetOrCreateDB(key[0])
 }
 
-func (d *Dao) UserDB(uid int64) *gorm.DB {
-	key := "user_" + strconv.FormatInt(uid, 10)
-	b := d.UseKey(key)
-	return b
-}
-
-// getDBConfig 获取数据库配置
-func (d *Dao) getDBConfig() DatabaseConfig {
-	if d.config != nil {
-		return *d.config
+// resolveConfig 获取数据库配置
+// key: 数据库标识，如果非空则尝试获取用户数据库配置
+func (d *Dao) resolveConfig(key string) DatabaseConfig {
+	var cfg DatabaseConfig
+	// 如果是针对特定 Key (通常为用户库) 且配置了独立的 UserDatabase 类型
+	if key != "" && d.userConfig != nil && d.userConfig.Type != "" {
+		cfg = *d.userConfig
+	} else if d.config != nil {
+		// 否则继承主数据库配置 (Fallback 模式)
+		cfg = *d.config
 	}
-	return DatabaseConfig{}
+
+	// 最终回退逻辑：如果全局均未配置类型，强制默认为 sqlite
+	if cfg.Type == "" {
+		cfg.Type = "sqlite"
+		if cfg.Path == "" {
+			cfg.Path = "storage/database/db.sqlite3"
+		}
+	}
+	return cfg
 }
 
-func (d *Dao) UseDb(key string) *gorm.DB {
+func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 	// 使用读锁检查是否已存在
 	d.mu.RLock()
 	if entry, ok := d.KeyDb[key]; ok {
@@ -251,10 +246,12 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 	d.mu.RUnlock()
 
 	// 获取配置
-	c := d.getDBConfig()
+	c := d.resolveConfig(key)
 
-	if c.Type == "mysql" {
-		c.Name = c.Name + "_" + key
+	if c.Type == "mysql" || c.Type == "postgres" {
+		if key != "" {
+			c.Name = c.Name + "_" + key
+		}
 	} else if c.Type == "sqlite" {
 		if key != "" {
 			ext := filepath.Ext(c.Path)
@@ -262,9 +259,9 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 		}
 	}
 
-	dbNew, err := NewDBEngineWithConfig(c, d.Logger())
+	dbNew, err := NewEngine(c, d.Logger())
 	if err != nil {
-		d.Logger().Error("UseDb failed", zap.String("key", key), zap.Error(err))
+		d.Logger().Error("GetOrCreateDB failed", zap.String("key", key), zap.Error(err))
 		return nil
 	}
 
@@ -309,8 +306,8 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 	return dbNew
 }
 
-// NewDBEngineWithConfig 创建数据库引擎（支持依赖注入）
-// 函数名: NewDBEngineWithConfig
+// NewEngine 创建数据库引擎（支持依赖注入）
+// 函数名: NewEngine
 // 函数使用说明: 根据配置创建并初始化 GORM 数据库引擎,配置连接池参数和日志模式。
 // 参数说明:
 //   - c DatabaseConfig: 数据库配置
@@ -319,12 +316,19 @@ func (d *Dao) UseDb(key string) *gorm.DB {
 // 返回值说明:
 //   - *gorm.DB: 数据库连接实例
 //   - error: 出错时返回错误
-func NewDBEngineWithConfig(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
+func NewEngine(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
+	// 如果没有指定类型，则默认为 sqlite
+	if c.Type == "" {
+		c.Type = "sqlite"
+		if c.Path == "" {
+			c.Path = "storage/database/db.sqlite3"
+		}
+	}
 
 	var db *gorm.DB
 	var err error
 
-	db, err = gorm.Open(useDiaWithConfig(c), &gorm.Config{
+	db, err = gorm.Open(getDialector(c), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   c.TablePrefix, // 表名前缀，`User` 的表名应该是 `t_users`
@@ -387,24 +391,44 @@ func NewDBEngineWithConfig(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, e
 
 }
 
-// useDiaWithConfig 获取数据库方言（支持依赖注入）
-// 函数名: useDiaWithConfig
+// getDialector 获取数据库方言（支持依赖注入）
+// 函数名: getDialector
 // 函数使用说明: 根据数据库配置返回对应的 GORM 方言(MySQL 或 SQLite)。
 // 参数说明:
 //   - c DatabaseConfig: 数据库配置
 //
 // 返回值说明:
 //   - gorm.Dialector: GORM 数据库方言
-func useDiaWithConfig(c DatabaseConfig) gorm.Dialector {
+func getDialector(c DatabaseConfig) gorm.Dialector {
 	if c.Type == "mysql" {
+		host := c.Host
+		if c.Port != 0 && !strings.Contains(host, ":") {
+			host = fmt.Sprintf("%s:%d", host, c.Port)
+		}
 		return mysql.Open(fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=%t&loc=Local",
 			c.UserName,
 			c.Password,
-			c.Host,
+			host,
 			c.Name,
 			c.Charset,
 			c.ParseTime,
 		))
+	} else if c.Type == "postgres" {
+		if c.Port == 0 {
+			c.Port = 5432
+		}
+		if c.SSLMode == "" {
+			c.SSLMode = "disable"
+		}
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=Asia/Shanghai",
+			c.Host,
+			c.UserName,
+			c.Password,
+			c.Name,
+			c.Port,
+			c.SSLMode,
+		)
+		return postgres.Open(dsn)
 	} else if c.Type == "sqlite" {
 
 		filepath.Dir(c.Path)
@@ -463,7 +487,7 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 	}
 
 	return d.writeQueueMgr.Execute(ctx, uid, func() error {
-		db := d.UseKey(r.GetKey(uid))
+		db := d.ResolveDB(r.GetKey(uid))
 		if db == nil {
 			return fmt.Errorf("database connection is nil (uid=%d)", uid)
 		}
@@ -478,7 +502,7 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 // fn: 读操作函数，接收用户数据库连接
 // 返回值: 读操作的错误
 func (d *Dao) ExecuteRead(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
-	db := d.UseKey(r.GetKey(uid))
+	db := d.ResolveDB(r.GetKey(uid))
 	if db == nil {
 		return fmt.Errorf("database connection is nil (uid=%d)", uid)
 	}
@@ -499,8 +523,8 @@ func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, r daoDBCusto
 	})
 }
 
-// getDbKeyByModel 根据模型名称获取对应的数据库连接 Key
-func (d *Dao) getDbKeyByModelName(uid int64, modelKey string) string {
+// getModelDBKey 根据模型名称获取对应的数据库连接 Key
+func (d *Dao) getModelDBKey(uid int64, modelKey string) string {
 	if uid <= 0 {
 		return "" // 主数据库
 	}
@@ -530,8 +554,8 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 		return nil
 	}
 
-	dbKey := d.getDbKeyByModelName(uid, modelKey)
-	b := d.UseKey(dbKey)
+	dbKey := d.getModelDBKey(uid, modelKey)
+	b := d.ResolveDB(dbKey)
 
 	if b == nil {
 		return fmt.Errorf("database connection is nil for model %s (uid=%d, dbKey=%s)", modelKey, uid, dbKey)
@@ -541,7 +565,7 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 
 // user 获取用户查询对象（内部方法）
 func (d *Dao) user() *query.Query {
-	return d.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return d.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "User")
 	}, "user#user")
 }

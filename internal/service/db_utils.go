@@ -63,27 +63,9 @@ func (u *DBUtils) ExposeAutoMigrate() error {
 // ExecuteSQL executes SQL interface
 // ExecuteSQL 执行 SQL 接口
 func (u *DBUtils) ExecuteSQL(sql string) error {
-	db := u.dao.UseKey()
+	db := u.dao.ResolveDB()
 	if db != nil {
 		db.Exec(sql)
-	}
-	return nil
-}
-
-// UserExecuteSQL user executes SQL interface
-// UserExecuteSQL 用户执行 SQL 接口
-func (u *DBUtils) UserExecuteSQL(sql string) error {
-	uids, err := u.dao.GetAllUserUIDs()
-	if err != nil {
-		return err
-	}
-	for _, uid := range uids {
-		// Ignore cleanup errors for individual users, continue with the next
-		// 忽略单个用户的清理错误，继续清理下一个
-		db := u.dao.UserDB(uid)
-		if db != nil {
-			db.Exec(sql)
-		}
 	}
 	return nil
 }
