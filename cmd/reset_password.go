@@ -88,7 +88,7 @@ func init() {
 				RunMode:         appConfig.Server.RunMode,
 			}
 
-			db, err := dao.NewDBEngineWithConfig(dbConfig, lg)
+			db, err := dao.NewEngine(dbConfig, lg)
 			if err != nil {
 				bootstrapLogger.Error("failed to init database", zap.Error(err))
 				os.Exit(1)

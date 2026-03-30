@@ -37,7 +37,7 @@ func init() {
 
 // storage 获取存储配置查询对象
 func (r *storageRepository) storage(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Storage")
 	}, r.GetKey(uid)+"#storage", r.GetKey(uid))
 }

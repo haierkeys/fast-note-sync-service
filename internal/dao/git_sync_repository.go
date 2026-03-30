@@ -42,7 +42,7 @@ func init() {
 }
 
 func (r *gitSyncRepository) gitSync(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		if err := model.AutoMigrate(g, "GitSyncConfig"); err != nil {
 			r.dao.Logger().Error("AutoMigrate GitSyncConfig failed", zap.Int64("uid", uid), zap.Error(err))
 		}

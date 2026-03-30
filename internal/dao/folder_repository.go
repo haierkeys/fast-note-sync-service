@@ -36,7 +36,7 @@ func init() {
 
 // folder returns the query with auto-migration
 func (r *folderRepository) folder(uid int64) *query.Query {
-	return r.Dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.Dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Folder")
 	}, r.GetKey(uid)+"#folder", r.GetKey(uid))
 }

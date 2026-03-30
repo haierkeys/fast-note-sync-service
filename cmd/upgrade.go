@@ -68,7 +68,7 @@ It is safe to run this command multiple times - already applied migrations will 
 			RunMode:         appConfig.Server.RunMode,
 		}
 
-		db, err := dao.NewDBEngineWithConfig(dbConfig, lg)
+		db, err := dao.NewEngine(dbConfig, lg)
 		if err != nil {
 			bootstrapLogger.Error("Failed to init database", zap.Error(err))
 			os.Exit(1)

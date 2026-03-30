@@ -40,7 +40,7 @@ func init() {
 }
 
 func (r *backupRepository) backup(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "BackupConfig")
 		model.AutoMigrate(g, "BackupHistory")
 	}, r.GetKey(uid)+"#backup", r.GetKey(uid))
