@@ -248,15 +248,13 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 	// 获取配置
 	c := d.resolveConfig(key)
 
-	if c.Type == "mysql" || c.Type == "postgres" {
-		if key != "" {
-			c.Name = c.Name + "_" + key
-		}
-	} else if c.Type == "sqlite" {
-		if key != "" {
-			ext := filepath.Ext(c.Path)
-			c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
-		}
+	if (c.Type == "mysql" || c.Type == "postgres") && key != "" {
+		// MySQL/Postgres: 相同数据库，通过表前缀区分不同租户
+		c.TablePrefix = key + "_" + c.TablePrefix
+	} else if c.Type == "sqlite" && key != "" {
+		// SQLite: 分配到不同的数据库文件
+		ext := filepath.Ext(c.Path)
+		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
 	}
 
 	dbNew, err := NewEngine(c, d.Logger())
