@@ -23,21 +23,20 @@ type AppConfig struct {
 	File string `yaml:"-"` // config file path, not serialized
 	// 配置文件路径, 不序列化
 
-	Server    config.ServerConfig    `yaml:"server"`
-	App       config.AppSettings     `yaml:"app"`
-	Security  config.SecurityConfig  `yaml:"security"`
-	Database     config.DatabaseConfig `yaml:"database"`
-	UserDatabase config.DatabaseConfig `yaml:"user-database"`
-	Log       config.LogConfig       `yaml:"log"`
-	User      config.UserConfig      `yaml:"user"`
-	Tracer    config.TracerConfig    `yaml:"tracer"`
-	ShortLink config.ShortLinkConfig `yaml:"short-link"`
-
-	Storage    config.StorageConfig `yaml:"storage"`
-	Git        config.GitConfig     `yaml:"git"`
-	WebGUI     config.WebGUIConfig         `yaml:"webgui"`
-	Ngrok      config.NgrokConfig          `yaml:"ngrok"`
-	Cloudflare config.CloudflareConfig     `yaml:"cloudflare"`
+	Server       config.ServerConfig     `yaml:"server"`
+	App          config.AppSettings      `yaml:"app"`
+	Security     config.SecurityConfig   `yaml:"security"`
+	Database     config.DatabaseConfig   `yaml:"database"`
+	UserDatabase config.DatabaseConfig   `yaml:"user-database"`
+	Log          config.LogConfig        `yaml:"log"`
+	User         config.UserConfig       `yaml:"user"`
+	Tracer       config.TracerConfig     `yaml:"tracer"`
+	ShortLink    config.ShortLinkConfig  `yaml:"short-link"`
+	Storage      config.StorageConfig    `yaml:"storage"`
+	Git          config.GitConfig        `yaml:"git"`
+	WebGUI       config.WebGUIConfig     `yaml:"webgui"`
+	Ngrok        config.NgrokConfig      `yaml:"ngrok"`
+	Cloudflare   config.CloudflareConfig `yaml:"cloudflare"`
 }
 
 // LoadConfig loads configuration from file

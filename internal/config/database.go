@@ -4,9 +4,9 @@ package config
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
 	// Type 数据库类型 (mysql, postgres, sqlite)
-	Type string `yaml:"type"`
+	Type string `yaml:"type" default:"sqlite"`
 	// Path SQLite 数据库 file path
-	Path string `yaml:"path"`
+	Path string `yaml:"path" default:"storage/database/db.sqlite3"`
 	// UserName 用户名
 	UserName string `yaml:"username"`
 	// Password 密码
@@ -35,6 +35,10 @@ type DatabaseConfig struct {
 	ConnMaxLifetime string `yaml:"conn-max-lifetime" default:"30m"`
 	// ConnMaxIdleTime 空闲连接最大生命周期
 	ConnMaxIdleTime string `yaml:"conn-max-idle-time" default:"10m"`
+	// EnableWriteQueue 是否启用写队列，默认值为真
+	EnableWriteQueue *bool `yaml:"enable-write-queue" default:"true"`
+	// MaxWriteConcurrency 当 EnableWriteQueue 为 false 时，最大并发写入数，0 或负数表示不限制
+	MaxWriteConcurrency int `yaml:"max-write-concurrency"`
 	// RunMode 运行模式 (从 dao 层整合)
 	RunMode string `yaml:"-"`
 }
