@@ -253,6 +253,8 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 		ConnMaxLifetime:     dbCfg.ConnMaxLifetime,
 		ConnMaxIdleTime:     dbCfg.ConnMaxIdleTime,
 		MaxWriteConcurrency: dbCfg.MaxWriteConcurrency,
+		Charset:             dbCfg.Charset,
+		ParseTime:           dbCfg.ParseTime,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -313,14 +315,8 @@ func (h *AdminControlHandler) UpdateUserDatabaseConfig(c *gin.Context) {
 	cfg.UserDatabase.ConnMaxLifetime = params.ConnMaxLifetime
 	cfg.UserDatabase.ConnMaxIdleTime = params.ConnMaxIdleTime
 	cfg.UserDatabase.MaxWriteConcurrency = params.MaxWriteConcurrency
-
-	// Apply hardcoded default rules
-	// 应用硬编码默认规则
-	cfg.UserDatabase.AutoMigrate = true
-	if params.Type == "mysql" {
-		cfg.UserDatabase.Charset = "utf8mb4"
-		cfg.UserDatabase.ParseTime = true
-	}
+	cfg.UserDatabase.Charset = params.Charset
+	cfg.UserDatabase.ParseTime = params.ParseTime
 	if params.Type == "sqlite" {
 		enableQueue := true
 		cfg.UserDatabase.EnableWriteQueue = &enableQueue
@@ -403,11 +399,8 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		ConnMaxIdleTime:     params.ConnMaxIdleTime,
 		EnableWriteQueue:    &enableQueue,
 		MaxWriteConcurrency: params.MaxWriteConcurrency,
-	}
-
-	if params.Type == "mysql" {
-		dbCfg.Charset = "utf8mb4"
-		dbCfg.ParseTime = true
+		Charset:             params.Charset,
+		ParseTime:           params.ParseTime,
 	}
 
 	// Use dao.NewEngine to test connection
