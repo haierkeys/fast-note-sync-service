@@ -33,8 +33,8 @@ type AdminConfig struct {
 // AdminUserDatabaseConfig 用户数据库配置结构
 type AdminUserDatabaseConfig struct {
 	Type                string `json:"type" form:"type" binding:"omitempty,oneof=mysql postgres sqlite"` // Database type (mysql, postgres, sqlite) // 数据库类型
-	Path                string `json:"path,omitempty" form:"path"`                                       // SQLite database file path // SQLite 数据库文件路径
-	UserName            string `json:"userName,omitempty" form:"userName"`                               // Username // 用户名
+	Path                string `json:"path" form:"path"`                                                 // SQLite database file path // SQLite 数据库文件路径
+	UserName            string `json:"userName" form:"userName"`                                         // Username // 用户名
 	Password            string `json:"password" form:"password"`                                         // Password // 密码
 	Host                string `json:"host" form:"host"`                                                 // Host // 主机
 	Port                int    `json:"port" form:"port"`                                                 // Port // 端口
