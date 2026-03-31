@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
@@ -257,6 +258,8 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 		ParseTime:           dbCfg.ParseTime,
 	}
 
+	dump.P(data)
+
 	response.ToResponse(code.Success.WithData(data))
 }
 
@@ -317,6 +320,14 @@ func (h *AdminControlHandler) UpdateUserDatabaseConfig(c *gin.Context) {
 	cfg.UserDatabase.MaxWriteConcurrency = params.MaxWriteConcurrency
 	cfg.UserDatabase.Charset = params.Charset
 	cfg.UserDatabase.ParseTime = params.ParseTime
+
+	// MySQL specific hardcoded defaults
+	// MySQL 的硬编码默认逻辑
+	if params.Type == "mysql" {
+		cfg.UserDatabase.Charset = "utf8mb4"
+		cfg.UserDatabase.ParseTime = true
+	}
+
 	if params.Type == "sqlite" {
 		enableQueue := true
 		cfg.UserDatabase.EnableWriteQueue = &enableQueue
@@ -401,6 +412,13 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		MaxWriteConcurrency: params.MaxWriteConcurrency,
 		Charset:             params.Charset,
 		ParseTime:           params.ParseTime,
+	}
+
+	// Apply hardcoded default rules for MySQL during validation
+	// 在测试连接时也应用 MySQL 的硬编码默认规则
+	if params.Type == "mysql" {
+		dbCfg.Charset = "utf8mb4"
+		dbCfg.ParseTime = true
 	}
 
 	// Use dao.NewEngine to test connection

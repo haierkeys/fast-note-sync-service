@@ -5823,11 +5823,15 @@ const docTemplate = `{
         "dto.AdminUserDatabaseConfig": {
             "type": "object",
             "properties": {
-                "conn-max-idle-time": {
+                "charset": {
+                    "description": "Charset // 字符集",
+                    "type": "string"
+                },
+                "connMaxIdleTime": {
                     "description": "Connection max idle time // 空闲连接最大生命周期",
                     "type": "string"
                 },
-                "conn-max-lifetime": {
+                "connMaxLifetime": {
                     "description": "Connection max lifetime // 连接最大生命周期",
                     "type": "string"
                 },
@@ -5835,21 +5839,25 @@ const docTemplate = `{
                     "description": "Host // 主机",
                     "type": "string"
                 },
-                "max-idle-conns": {
+                "maxIdleConns": {
                     "description": "Max idle connections // 最大闲置连接数",
                     "type": "integer"
                 },
-                "max-open-conns": {
+                "maxOpenConns": {
                     "description": "Max open connections // 最大打开连接数",
                     "type": "integer"
                 },
-                "max-write-concurrency": {
+                "maxWriteConcurrency": {
                     "description": "Max write concurrency // 最大并发写入数",
                     "type": "integer"
                 },
                 "name": {
                     "description": "Database name // 数据库名",
                     "type": "string"
+                },
+                "parseTime": {
+                    "description": "Parse time // 是否解析时间",
+                    "type": "boolean"
                 },
                 "password": {
                     "description": "Password // 密码",
@@ -5867,7 +5875,7 @@ const docTemplate = `{
                     "description": "Database schema (postgres only) // 数据库 Schema",
                     "type": "string"
                 },
-                "ssl-mode": {
+                "sslMode": {
                     "description": "SSL mode (postgres only) // SSL 模式",
                     "type": "string"
                 },
@@ -5880,7 +5888,7 @@ const docTemplate = `{
                         "sqlite"
                     ]
                 },
-                "username": {
+                "userName": {
                     "description": "Username // 用户名",
                     "type": "string"
                 }
