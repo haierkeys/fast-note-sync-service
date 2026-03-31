@@ -25,6 +25,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 )
 
 // DatabaseConfig 数据库配置（用于依赖注入）
@@ -42,6 +43,8 @@ type Dao struct {
 	ctx      context.Context
 	onceKeys sync.Map
 	mu       sync.RWMutex // 保护 KeyDb 的并发访问
+
+	poolSemaphores sync.Map // map[string]*semaphore.Weighted 针对不同配置的并发控制
 
 	// 注入的依赖
 	config        *config.DatabaseConfig
@@ -141,6 +144,18 @@ func (d *Dao) WriteQueueManager() *writequeue.Manager {
 	return d.writeQueueMgr
 }
 
+
+// QueryWithOnceInit 执行带有单次初始化逻辑的数据库查询
+// QueryWithOnceInit executes a database query with once-init logic.
+// 参数说明:
+//   - f func(*gorm.DB): 初始化函数，仅在 onceKey 首次出现时执行 (如 AutoMigrate)
+//   - onceKey string: 用于确保初始化逻辑仅执行一次的唯一标识
+//   - key ...string: 数据库连接标识（可变参数）。不传或为空时使用主数据库；传入时用于路由到特定租户/用户库
+//
+// Parameters:
+//   - f func(*gorm.DB): Initialization function, executed only the first time onceKey is encountered (e.g., AutoMigrate).
+//   - onceKey string: Unique identifier to ensure initialization logic runs only once.
+//   - key ...string: Database connection identifier (variadic). Uses main DB if omitted/empty; uses provided key for tenant/user DB routing.
 func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
 	db := d.ResolveDB(key...)
 	if db == nil {
@@ -446,17 +461,49 @@ func (d *Dao) WithRetry(fn func() error) error {
 // 返回值: 写操作的错误
 // 注意: 必须通过 WithWriteQueueManager 注入写队列管理器
 func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
-	if d.writeQueueMgr == nil {
-		return fmt.Errorf("writeQueueMgr is nil, must inject via WithWriteQueueManager")
+	dbKey := r.GetKey(uid)
+	cfg := d.resolveConfig(dbKey)
+
+	// 判断是否启用写队列
+	enableQueue := (cfg.EnableWriteQueue == nil || *cfg.EnableWriteQueue)
+
+	if enableQueue {
+		if d.writeQueueMgr == nil {
+			return fmt.Errorf("writeQueueMgr is nil, must inject via WithWriteQueueManager")
+		}
+		return d.writeQueueMgr.Execute(ctx, dbKey, func() error {
+			db := d.ResolveDB(dbKey)
+			if db == nil {
+				return fmt.Errorf("database connection is nil (uid=%d, dbKey=%s)", uid, dbKey)
+			}
+			return fn(db.WithContext(ctx))
+		})
 	}
 
-	return d.writeQueueMgr.Execute(ctx, uid, func() error {
-		db := d.ResolveDB(r.GetKey(uid))
-		if db == nil {
-			return fmt.Errorf("database connection is nil (uid=%d)", uid)
+	// 不使用写队列，检查并发限制
+	if cfg.MaxWriteConcurrency > 0 {
+		// 确定配置的分组标识（用于共享同一个限制器）
+		// 这里简单处理：主库和用户库各自拥有独立的并发限制池
+		groupKey := "main"
+		if dbKey != "" {
+			groupKey = "user"
 		}
-		return fn(db.WithContext(ctx))
-	})
+
+		actual, _ := d.poolSemaphores.LoadOrStore(groupKey, semaphore.NewWeighted(int64(cfg.MaxWriteConcurrency)))
+		sem := actual.(*semaphore.Weighted)
+
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return err
+		}
+		defer sem.Release(1)
+	}
+
+	// 执行写操作
+	db := d.ResolveDB(dbKey)
+	if db == nil {
+		return fmt.Errorf("database connection is nil (uid=%d)", uid)
+	}
+	return fn(db.WithContext(ctx))
 }
 
 // ExecuteRead 执行读操作（直接执行，不经过写队列）
