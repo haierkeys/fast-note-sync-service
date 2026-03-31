@@ -1,289 +1,343 @@
 server:
-  # 服务器运行模式 release | debug
-  # Server operating mode: release | debug
+  # 运行模式: release | debug
+  # Running mode: release | debug
   run-mode: release
-  # http-port
-  # 服务器端口 - 格式为 -ip:port(绑定特定 IP)或 :port(绑定所有 IPs)
-  # Server port - format: -ip:port (bind to a specific IP) or :port (bind to all IPs)
+  # HTTP 端口 (默认 :9000)。格式为 :port 或 IP:port
+  # HTTP Port (default :9000). Format: :port or IP:port
   http-port: :9000
-  # 读取超时时间(秒),请求超时前等待的最大时间
-  # Read timeout (seconds), maximum time to wait before request timeout
+  # 读取超时时间(秒)
+  # Read timeout duration (seconds)
   read-timeout: 60
-  # 写入超时时间(秒),写入超时前等待的最大时间
-  # Write timeout (seconds), maximum time to wait before write timeout
+  # 写入超时时间(秒)
+  # Write timeout duration (seconds)
   write-timeout: 60
-  # 性能监控接口(私有 HTTP 服务器), 格式为 :port, 留空则不开启
-  # Performance monitoring interface (private HTTP server), format: :port, leave blank to disable
+  # 私有 HTTP 监听地址，主要用于监控/度量。留空则不开启。格式: :port
+  # Private HTTP listen address, used for monitoring/metrics. Leave empty to disable. Format: :port
   private-http-listen: ""
 
 app:
-  # 默认每页显示的项目数(分页)
-  # Default number of items per page (pagination)
+  # 默认每页显示的项目数
+  # Default items per page
   default-page-size: 10
-  # 最大每页允许的项目数(分页)
-  # Maximum number of items allowed per page (pagination)
+  # 每页显示的最大项目数限制
+  # Maximum items limit per page
   max-page-size: 100
-  # 应用操作的默认超时时间(秒)
-  # Default timeout for application operations (seconds)
+  # 默认请求上下文超时时间(秒)
+  # Default request context timeout (seconds)
   default-context-timeout: 60
   # 临时文件存储路径
   # Temporary file storage path
   temp-path: storage/temp
-  # 上传保存路径设置
-  # Upload save path setting
-  upload-save-path: storage/uploads
-  # 是否返回成功消息
-  # Whether to return success messages
+  # 是否在响应中返回成功详情消息
+  # Whether to return success detail message in response
   is-return-sussess: false
-  # 软删除笔记保留时长(如:30d/12h/30m/30s,0表示不清理),建议设置足够长以确保离线设备能同步删除操作
-  # Soft delete note retention time (e.g., 30d/12h/30m/30s, 0 means no cleanup), recommended to set a long enough time to ensure offline devices can synchronize delete operations
+  # 软删除笔记保留时长。例如: 7d, 24h。0 表示永久保留。
+  # Retention duration for soft deleted notes. e.g., 7d, 24h. 0 means keep forever.
   soft-delete-retention-time: "7d"
-  # 文件上传会话超时时间(如:5m/30s,0表示不超时)
-  # File upload session timeout (e.g., 5m/30s, 0 means no timeout)
-  upload-session-timeout: "1d"
-  # 上传和下载的文件分块大小(如: 512KB / 1MB / 1024B / 1024 , 0 默认 512KB)
-  # File chunk size for upload and download (e.g., 512KB / 1MB / 1024B / 1024, 0 for default 512KB)
-  file-chunk-size: "512KB"
-  # 文件分片下载超时时间(如:1h/30m,0表示不超时)
-  # File chunk download session timeout (e.g., 1h/30m, 0 means no timeout)
-  download-session-timeout: "1h"
-  # 历史记录保留版本数，默认 100
-  # Number of history versions to keep, default 100
+  # 历史记录保留的最大版本数
+  # Maximum number of history versions to keep
   history-keep-versions: 100
-  # 历史记录保存延迟时间，支持格式：10s（秒）、1m（分钟），默认 10s
-  # History save delay time, supports formats: 10s (seconds), 1m (minutes), default 10s
+  # 历史记录保存延迟。支持格式: 10s, 1m。
+  # delay for saving history records. Supports: 10s, 1m.
   history-save-delay: "10s"
-  # Worker Pool 最大并发数，默认 100
-  # Worker Pool maximum concurrent workers, default 100
+  # 文件上传会话超时时长
+  # Timeout duration for file upload sessions
+  upload-session-timeout: "1d"
+  # 文件上传/下载的分块大小。例如: 512KB, 1MB
+  # Chunk size for file upload/download. e.g., 512KB, 1MB
+  file-chunk-size: "512KB"
+  # 文件分片下载超时时长
+  # Timeout duration for file chunk downloading
+  download-session-timeout: "1h"
+  # Worker Pool 最大工作协程数
+  # Worker Pool maximum number of worker goroutines
   worker-pool-max-workers: 100
-  # Worker Pool 任务队列大小，默认 1000
-  # Worker Pool task queue size, default 1000
+  # Worker Pool 任务队列大小
+  # Worker Pool task queue capacity
   worker-pool-queue-size: 1000
-  # 每用户写队列容量，默认 100
-  # Per-user write queue capacity, default 100
+  # 写入队列容量 (每个用户)
+  # Write queue capacity (per user)
   write-queue-capacity: 1000
-  # 写操作超时时间，默认 30s
-  # Write operation timeout, default 30s
+  # 写入队列操作超时时长
+  # Timeout duration for write queue operations
   write-queue-timeout: "30s"
-  # 空闲队列清理时间，默认 10m
-  # Idle queue cleanup time, default 10m
+  # 写入队列空闲清理时长
+  # Idle cleanup duration for write queue
   write-queue-idle-time: "10m"
-  # WebSocket 最大读取负载大小 (如: 128MB / 64MB / 1024KB, 默认 128MB)
-  # WebSocket maximum read payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
+  # WebSocket 读取最大负载大小。例如: 128MB
+  # WebSocket maximum read payload size. e.g., 128MB
   ws-read-max-payload-size: "128MB"
-  # WebSocket 最大写入负载大小 (如: 128MB / 64MB / 1024KB, default 128MB)
-  # WebSocket maximum write payload size (e.g., 128MB / 64MB / 1024KB, default 128MB)
+  # WebSocket 写入最大负载大小。例如: 128MB
+  # WebSocket maximum write payload size. e.g., 128MB
   ws-write-max-payload-size: "128MB"
-  # WebSocket 是否开启并行处理 (默认 true)
-  # Whether WebSocket enables parallel processing (default true)
+  # 是否开启 WebSocket 并行处理
+  # Whether to enable WebSocket parallel processing
   ws-parallel-enabled: true
-  # WebSocket 并行处理最大协程数 (默认 8)
-  # WebSocket maximum goroutines for parallel processing (default 8)
+  # WebSocket 并行处理的最大协程限制
+  # Maximum goroutine limit for WebSocket parallel processing
   ws-parallel-golimit: 8
-  # WebSocket 是否开启 UTF-8 校验 (默认 true)
-  # Whether WebSocket enables UTF-8 check (default true)
+  # 是否对 WebSocket 消息进行 UTF-8 校验
+  # Whether to perform UTF-8 validation on WebSocket messages
   ws-check-utf8-enabled: true
-  # WebSocket 是否开启压缩 (默认 true)
-  # Whether WebSocket enables compression (default true)
+  # 是否开启 WebSocket 消息压缩
+  # Whether to enable WebSocket message compression
   ws-compression-enabled: true
-  # WebSocket 压缩级别 (1-9, 默认 1)
-  # WebSocket compression level (1-9, default 1)
+  # WebSocket 压缩级别 (1-9)
+  # WebSocket compression level (1-9)
   ws-compression-level: 1
-  # WebSocket 开启压缩的阈值 (字节, 默认 512)
-  # WebSocket compression threshold (bytes, default 512)
+  # 触发 WebSocket 压缩的最小载荷大小(字节)
+  # Minimum payload size (bytes) to trigger WebSocket compression
   ws-compression-threshold: 512
-  # 数据拉取源：auto(自动检测) | github(强制GitHub) | cnb(强制CNB)
-  # Data pull source: auto(auto detect) | github(force GitHub) | cnb(force CNB)
+  # 日志保存路径
+  # Directory path for log output
+  log-save-fileurl: storage/logs/
+  # 日志文件名
+  # Log filename
+  log-file: log.log
+  # 数据拉取源设置: auto(自动检测) | github | cnb
+  # Data pull source setting: auto(detect) | github | cnb
   pull-source: auto
 
-# short-link
-# 短地址服务器设置
-# Short link server settings
-short-link:
-  # 短地址服务器地址
-  # Short link server base URL
-  base-url: "https://sink.cool"
-  # 短地址 API_KEY
-  # Short link API KEY
-  api-key: "SinkCool"
-  # 短地址访问密码，默认为空
-  # Short link access password, default is empty
-  password: ""
-  # 是否启用隐藏原始地址，默认为 false
-  # Whether to enable URL cloaking, default is false
-  cloaking: false
-# webgui
-# WebGUI 设置
-# WebGUI settings
-webgui:
-  # 字体设置 当留空不设置字体; 设置为 local 时使用本地字体; 设置为 字体链接 则可以让字体从网络加载
-  # Font Settings When left blank, no font is set; when set to local, use local font; when set to font link, the font can be loaded from the network
-  font-set: "local"
+security:
+  # 认证令牌加密混淆 Key
+  # Internal key for auth token encryption and obfuscation
+  auth-token-key: fast-note-sync-Auth-Token
+  # 认证令牌过期时间。例如: 365d, 7d, 24h
+  # Expiry duration for authentication tokens. e.g., 365d, 7d, 24h
+  token-expiry: "365d"
+  # 分享令牌加密混淆 Key
+  # Internal key for share token encryption and obfuscation
+  share-token-key: fns
+  # 分享令牌过期时间。例如: 30d, 7d
+  # Expiry duration for share tokens. e.g., 30d, 7d
+  share-token-expiry: "30d"
 
-user:
-  # 是否开启注册功能
-  # Whether to enable registration
-  register-is-enable: true
-  # 管理员 UID, 0 表示不显示设置访问
-  # Admin UID, 0 means not display setting access
-  admin-uid: 0
+# 主数据库配置
+# Main database configuration
+database:
+  # 数据库类型: sqlite | mysql | postgres
+  # Database type: sqlite | mysql | postgres
+  type: sqlite
+  # 数据库文件路径 (针对 sqlite)
+  # Database file path (for sqlite)
+  path: storage/database/db.sqlite3
+  # 数据库连接地址 (针对 mysql/postgres)
+  # Database host (for mysql/postgres)
+  host:
+  # 数据库端口 (针对 mysql/postgres)
+  # Database port (for mysql/postgres)
+  port:
+  # 数据库登录用户名
+  # Database login username
+  username:
+  # 数据库登录密码
+  # Database login password
+  password: ""
+  # 数据库名称
+  # Database name
+  name:
+  # SSL 模式 (仅限 postgres)
+  # SSL mode (postgres only)
+  ssl-mode:
+  # 数据库表前缀
+  # Prefix for all database tables
+  table-prefix: ""
+  # 数据库 Schema (仅限 postgres)
+  # Database schema (postgres only)
+  schema:
+  # 是否开启自动数据库迁移
+  # Whether to enable automatic database migration
+  auto-migrate: true
+  # 数据库字符集 (默认 utf8mb4)
+  # Database charset (default utf8mb4)
+  charset:
+  # 是否解析时间字段 (针对 mysql)
+  # Whether to parse time fields (for mysql)
+  parse-time: true
+  # 数据库连接池最大打开连接数
+  # Maximum number of open connections in the pool
+  max-open-conns: 100
+  # 数据库连接池最大空闲连接数
+  # Maximum number of idle connections in the pool
+  max-idle-conns: 10
+  # 连接最大可重用时长
+  # Maximum duration a connection can be reused
+  conn-max-lifetime: "30m"
+  # 连接处于空闲状态的最大时长
+  # Maximum duration a connection can remain idle
+  conn-max-idle-time: "10m"
+  # 是否启用数据库异步写入队列
+  # Whether to enable asynchronous database write queue
+  enable-write-queue: true
+  # 最大并发写入数限制 (当 enable-write-queue 为 false 时)
+  # Maximum concurrent write operations limit (when enable-write-queue is false)
+  max-write-concurrency: 0
+
+# 用户隔离数据库设置, 如果不设置(Type设置为空), 则使用主数据库
+# User isolation database settings, if not set(Type is empty), use the main database
+user-database:
+  # 数据库类型: sqlite | mysql | postgres
+  # Database type: sqlite | mysql | postgres
+  type:
+  # 数据库文件路径 (针对 sqlite)
+  # Database file path (for sqlite)
+  path:
+  # 数据库连接地址 (针对 mysql/postgres)
+  # Database host (for mysql/postgres)
+  host:
+  # 数据库端口 (针对 mysql/postgres)
+  # Database port (for mysql/postgres)
+  port:
+  # 数据库登录用户名
+  # Database login username
+  username:
+  # 数据库登录密码
+  # Database login password
+  password: ""
+  # 数据库名称
+  # Database name
+  name:
+  # SSL 模式 (仅限 postgres)
+  # SSL mode (postgres only)
+  ssl-mode:
+  # 数据库表前缀
+  # Prefix for all database tables
+  table-prefix: ""
+  # 数据库 Schema (仅限 postgres)
+  # Database schema (postgres only)
+  schema: public
+  # 是否开启自动数据库迁移
+  # Whether to enable automatic database migration
+  auto-migrate: true
+  # 数据库字符集 (默认 utf8mb4)
+  # Database charset (default utf8mb4)
+  charset:
+  # 是否解析时间字段 (针对 mysql)
+  # Whether to parse time fields (for mysql)
+  parse-time: true
+  # 数据库连接池最大打开连接数
+  # Maximum number of open connections in the pool
+  max-open-conns: 100
+  # 数据库连接池最大空闲连接数
+  # Maximum number of idle connections in the pool
+  max-idle-conns: 10
+  # 连接最大可重用时长
+  # Maximum duration a connection can be reused
+  conn-max-lifetime: "30m"
+  # 连接处于空闲状态的最大时长
+  # Maximum duration a connection can remain idle
+  conn-max-idle-time: "10m"
+  # 是否启用数据库异步写入队列
+  # Whether to enable asynchronous database write queue
+  enable-write-queue: true
+  # 最大并发写入数限制 (当 enable-write-queue 为 false 时)
+  # Maximum concurrent write operations limit (when enable-write-queue is false)
+  max-write-concurrency: 0
 
 log:
-  # 日志级别
-  # Log level
+  # 日志级别: debug | info | warn | error
+  # Log level: debug | info | warn | error
   level: warn
-  # 日志文件路径
-  # Log file path
+  # 日志输出文件路径
+  # File path for log output
   file: storage/logs/log.log
-  # 是否为生产环境
-  # Whether this is a production environment
+  # 是否为生产环境 (开启后使用 JSON 格式输出)
+  # Whether this is a production environment (uses JSON output if true)
   production: true
 
-security:
-  # 用户令牌加密混淆 Key
-  # User token encryption and obfuscation key
-  auth-token-key: fast-note-sync-Auth-Token
-  # Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 365d
-  # Token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 365d
-  token-expiry: "365d"
-  # 用户分享令牌加密混淆 Key
-  # User share token encryption and obfuscation key
-  share-token-key: fns
-  # 分享 Token 过期时间，支持格式：7d（天）、24h（小时）、30m（分钟），默认 30d
-  # Share token expiry time, supports formats: 7d (days), 24h (hours), 30m (minutes), default 30d
-  share-token-expiry: "30d"
-# database
-# 数据库配置
-# Database configuration
-database:
-  # 数据库类型 (sqlite)
-  # Database type (sqlite)
-  type: sqlite
-  # 数据库文件路径
-  # Database file path
-  path: storage/database/db.sqlite3
-  # 数据库表前缀
-  # Database table prefix
-  table-prefix:
-  # 是否开启自动迁移
-  # Whether to enable automatic migration
-  auto-migrate: true
-  # 最大打开连接数，默认 100
-  # Maximum number of open connections, default 100
-  max-open-conns: 100
-  # 最大空闲连接数，默认 10
-  # Maximum number of idle connections, default 10
-  max-idle-conns: 10
-  # 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
-  # Connection max lifetime, supports formats: 30m (minutes), 1h (hours), default 30m
-  conn-max-lifetime: "30m"
-  # 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
-  # Idle connection max lifetime, supports formats: 10m (minutes), 1h (hours), default 10m
-  conn-max-idle-time: "10m"
+user:
+  # 是否开启用户注册功能
+  # Whether to enable user registration
+  register-is-enable: true
+  # 管理员 UID。0 表示任何用户都不能作为超级管理员或是未指定。
+  # Administrator UID. 0 means no user is designated or restricted.
+  admin-uid: 0
 
-# tracer
-# 请求追踪配置
-# Request tracing configuration
 tracer:
-  # 是否启用追踪
-  # Whether to enable tracing
+  # 是否开启请求链路追踪
+  # Whether to enable request tracing
   enabled: true
-  # 追踪 ID 请求头名称
-  # Trace ID header name
+  # 请求头中的 Trace ID 字段名
+  # Header name for the Trace ID
   header: "X-Trace-ID"
 
-# git
-# Git 提交配置 (可选)
-# Git commit configuration (optional)
-git:
-  # Git 提交者名称
-  # Git committer name
-  name: "FNS Service"
-  # Git 提交者邮箱
-  # Git committer email
-  email: "fns@email.com"
+short-link:
+  # 短链服务的基础 URL
+  # Base URL of the short link service
+  base-url: "https://sink.cool"
+  # 短链服务的 API Key
+  # API Key for the short link service
+  api-key: "SinkCool"
+  # 短链服务的访问密码 (可选)
+  # Access password for the short link service (optional)
+  password: ""
+  # 是否开启短链隐藏重定向 (Cloaking)
+  # Whether to enable short link URL cloaking
+  cloaking: false
 
-# storage
-# 存储配置
-# Storage configuration
 storage:
-  # local-fs
-  # 本地文件系统存储
-  # Local file system storage
   local-fs:
-    # 是否全局启用本地文件系统存储
-    # Whether to globally enable local file system storage
+    # 是否启用本地文件系统存储
+    # Whether to enable local file system storage
     is-enable: false
-    # 是否启用 HTTP 文件服务（用于提供直接下载链接）
-    # Whether to enable HTTP file service
+    # 是否启用 HTTP 文件服务 (用于提供文件的 HTTP 直接访问)
+    # Whether to enable HTTP file server for direct access
     httpfs-is-enable: true
     # 文件保存路径
-    # File save path
+    # Directory path for saved files
     save-path: "storage/uploads"
-  # aliyun-oss
-  # 阿里云 OSS 存储
-  # Aliyun OSS storage
   aliyun-oss:
-    # 是否开启阿里云 OSS 存储
+    # 是否启用 阿里云 OSS 存储
     # Whether to enable Aliyun OSS storage
     is-enable: true
-
-  # aws-s3
-  # AWS S3 存储
-  # AWS S3 storage
   aws-s3:
-    # 是否开启 AWS S3 存储
+    # 是否启用 AWS S3 存储
     # Whether to enable AWS S3 storage
     is-enable: true
-
-  # cloudflare-r2
-  # Cloudflare R2 存储
-  # Cloudflare R2 storage
   cloudflare-r2:
-    # 是否开启 Cloudflare R2 存储
+    # 是否启用 Cloudflare R2 存储
     # Whether to enable Cloudflare R2 storage
     is-enable: true
-
-  # minio
-  # MinIO 存储
-  # MinIO storage
   minio:
-    # 是否开启 MinIO 存储
+    # 是否启用 MinIO 存储
     # Whether to enable MinIO storage
     is-enable: true
-
-  # webdav
-  # WebDAV 存储
-  # WebDAV storage
   webdav:
-    # 是否开启 WebDAV 存储
+    # 是否启用 WebDAV 存储
     # Whether to enable WebDAV storage
     is-enable: true
 
-# ngrok
-# ngrok 隧道配置
-# ngrok tunnel configuration
+git:
+  # Git 提交记录中的作者名称
+  # Author name used in git commits
+  name: "FNS Service"
+  # Git 提交记录中的作者邮箱
+  # Author email used in git commits
+  email: "fns@email.com"
+
+webgui:
+  # Web 界面字体设置。留空使用默认，"local" 使用本地字体，或填入字体链接。
+  # Web GUI font settings. Leave blank for default, "local" for local fonts, or a font URL.
+  font-set: "local"
+
 ngrok:
-  # 是否启用 ngrok 隧道
+  # 是否启用 ngrok 内网穿透隧道
   # Whether to enable ngrok tunnel
   enabled: false
-  # ngrok 认证令牌 (从 https://dashboard.ngrok.com/get-started/your-authtoken 获取)
-  # ngrok auth token (get it from https://dashboard.ngrok.com/get-started/your-authtoken)
+  # ngrok 认证令牌 (Authtoken)
+  # ngrok authentication token
   auth-token: ""
-  # 自定义域名 (可选, 需要 ngrok 付费账户或静态域名)
-  # Custom domain (optional, requires ngrok paid account or static domain)
+  # ngrok 自定义域名 (需付费计划支持)
+  # ngrok custom domain (restricted to paid plans)
   domain: ""
 
-# cloudflare
-# cloudflare 隧道配置
-# cloudflare tunnel configuration
 cloudflare:
-  # 是否启用 cloudflare 隧道
-  # Whether to enable cloudflare tunnel
+  # 是否启用 Cloudflare Tunnel (穿透)
+  # Whether to enable Cloudflare Tunnel
   enabled: false
-  # cloudflare 隧道令牌 (从 Cloudflare Dashboard 获取)
-  # cloudflare tunnel token (get it from Cloudflare Dashboard)
+  # Cloudflare Tunnel 访问令牌 (Token)
+  # Cloudflare Tunnel access token
   token: ""
-  # 是否开启 cloudflare 隧道日志 (存储于 storage/logs/cloudflared_tunnel.log)
-  # Whether to enable cloudflare tunnel logging
+  # 是否开启 Cloudflare 隧道相关的详细日志
+  # Whether to enable detailed logs for Cloudflare Tunnel
   log-enabled: false
