@@ -13,8 +13,8 @@ type Setting struct {
 	ID               int64      `gorm:"column:id;primaryKey;index:idx_setting_id_path,priority:1;index:idx_setting_id_updated_timestamp,priority:1;index:idx_setting_id_updated_at,priority:1;index:idx_setting_id_path_hash,priority:1" json:"id" form:"id"`
 	VaultID          int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action;default:''" json:"action" form:"action"`
-	Path             string     `gorm:"column:path;index:idx_setting_id_path,priority:2;default:''" json:"path" form:"path"`
-	PathHash         string     `gorm:"column:path_hash;index:idx_setting_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
+	Path             string     `gorm:"column:path;type:varchar(255);index:idx_setting_id_path,priority:2;default:''" json:"path" form:"path"`
+	PathHash         string     `gorm:"column:path_hash;type:varchar(255);index:idx_setting_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
 	Content          string     `gorm:"column:content;default:''" json:"content" form:"content"`
 	ContentHash      string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
 	Size             int64      `gorm:"column:size;default:0" json:"size" form:"size"`
