@@ -70,23 +70,8 @@ func init() {
 
 			// Initialize database
 			// 初始化数据库
-			dbConfig := dao.DatabaseConfig{
-				Type:            appConfig.Database.Type,
-				Path:            appConfig.Database.Path,
-				UserName:        appConfig.Database.UserName,
-				Password:        appConfig.Database.Password,
-				Host:            appConfig.Database.Host,
-				Name:            appConfig.Database.Name,
-				TablePrefix:     appConfig.Database.TablePrefix,
-				AutoMigrate:     appConfig.Database.AutoMigrate,
-				Charset:         appConfig.Database.Charset,
-				ParseTime:       appConfig.Database.ParseTime,
-				MaxIdleConns:    appConfig.Database.MaxIdleConns,
-				MaxOpenConns:    appConfig.Database.MaxOpenConns,
-				ConnMaxLifetime: appConfig.Database.ConnMaxLifetime,
-				ConnMaxIdleTime: appConfig.Database.ConnMaxIdleTime,
-				RunMode:         appConfig.Server.RunMode,
-			}
+			dbConfig := appConfig.Database
+			dbConfig.RunMode = appConfig.Server.RunMode
 
 			db, err := dao.NewEngine(dbConfig, lg)
 			if err != nil {

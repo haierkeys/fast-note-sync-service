@@ -15,6 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -45,144 +47,17 @@ func NewAdminControlHandler(a *app.App, wss *pkgapp.WebsocketServer) *AdminContr
 	}
 }
 
-// webGUIConfig WebGUI configuration response structure (public interface)
-// webGUIConfig WebGUI 配置响应结构（公开接口）
-type webGUIConfig struct {
-	FontSet          string `json:"fontSet"`          // Font set // 字体设置
-	RegisterIsEnable bool   `json:"registerIsEnable"` // Registration enablement // 是否开启注册
-	AdminUID         int    `json:"adminUid"`         // Admin UID // 管理员 UID
-}
-
-// adminConfig Admin configuration structure (admin interface)
-// adminConfig 管理员配置结构（管理员接口）
-type adminConfig struct {
-	FontSet                 string `json:"fontSet" form:"fontSet"`                                           // Font set // 字体设置
-	RegisterIsEnable        bool   `json:"registerIsEnable" form:"registerIsEnable"`                         // Registration enablement // 是否开启注册
-	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`                     // File chunk size // 文件分块大小
-	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"` // Soft delete retention time // 软删除保留时间
-	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`       // Upload session timeout // 上传会话超时时间
-	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`         // History versions to keep // 历史版本保留数
-	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`               // History save delay // 历史保存延迟
-	DefaultAPIFolder        string `json:"defaultApiFolder,omitempty" form:"defaultApiFolder"`               // Default API folder // 默认 API 目录
-	AdminUID                int    `json:"adminUid" form:"adminUid"`                                         // Admin UID // 管理员 UID
-	AuthTokenKey            string `json:"authTokenKey" form:"authTokenKey"`                                 // Auth token key // 认证 Token 密钥
-	TokenExpiry             string `json:"tokenExpiry" form:"tokenExpiry"`                                   // Token expiry // Token 有效期
-	ShareTokenKey           string `json:"shareTokenKey" form:"shareTokenKey"`                               // Share token key // 分享 Token 密钥
-	ShareTokenExpiry        string `json:"shareTokenExpiry" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
-	PullSource              string `json:"pullSource" form:"pullSource"`                                     // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
-}
-
-// ngrokConfig Ngrok tunnel configuration
-// ngrokConfig Ngrok 隧道配置
-type ngrokConfig struct {
-	Enabled   bool   `json:"enabled" form:"enabled"`     // Whether to enable ngrok tunnel // 是否启用 ngrok 隧道
-	AuthToken string `json:"authToken" form:"authToken"` // ngrok auth token // ngrok 认证令牌
-	Domain    string `json:"domain" form:"domain"`       // Custom domain // 自定义域名
-}
-
-// cloudflareConfig Cloudflare tunnel configuration
-// cloudflareConfig Cloudflare 隧道配置
-type cloudflareConfig struct {
-	Enabled    bool   `json:"enabled" form:"enabled"`       // Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道
-	Token      string `json:"token" form:"token"`           // cloudflare tunnel token // cloudflare 隧道令牌
-	LogEnabled bool   `json:"logEnabled" form:"logEnabled"` // Whether to enable cloudflare tunnel logging // 是否开启 cloudflare 隧道日志
-}
-
-// SystemInfo system information response structure
-// SystemInfo 系统信息响应结构
-type SystemInfo struct {
-	StartTime     time.Time   `json:"startTime"`     // Start time // 启动时间
-	Uptime        float64     `json:"uptime"`        // Uptime (seconds) // 运行时间（秒）
-	RuntimeStatus RuntimeInfo `json:"runtimeStatus"` // Go runtime status // Go 运行时状态
-	CPU           CPUInfo     `json:"cpu"`           // CPU information // CPU 信息
-	Memory        MemoryInfo  `json:"memory"`        // Memory information // 内存信息
-	Host          HostInfo    `json:"host"`          // Host information // 主机信息
-	Process       ProcessInfo `json:"process"`       // Process information // 进程信息
-}
-
-// CPUInfo CPU information
-// CPUInfo CPU 信息
-type CPUInfo struct {
-	ModelName     string    `json:"modelName"`     // Model name // 型号
-	PhysicalCores int       `json:"physicalCores"` // Physical cores // 物理核心数
-	LogicalCores  int       `json:"logicalCores"`  // Logical cores // 逻辑核心数
-	Percent       []float64 `json:"percent"`       // Usage percentage per core // 每个核心的使用率
-	LoadAvg       *LoadInfo `json:"loadAvg"`       // Load average // 平均负载
-}
-
-// LoadInfo system load information
-type LoadInfo struct {
-	Load1  float64 `json:"load1"`
-	Load5  float64 `json:"load5"`
-	Load15 float64 `json:"load15"`
-}
-
-// MemoryInfo memory information
-type MemoryInfo struct {
-	Total           uint64  `json:"total"`           // Total physical memory // 系统总内存
-	Available       uint64  `json:"available"`       // Available memory // 可用内存
-	Used            uint64  `json:"used"`            // Used memory // 已用内存
-	UsedPercent     float64 `json:"usedPercent"`     // Memory usage percentage // 内存使用率
-	SwapTotal       uint64  `json:"swapTotal"`       // Total swap space // 交换区总量
-	SwapUsed        uint64  `json:"swapUsed"`        // Used swap space // 交换区已用
-	SwapUsedPercent float64 `json:"swapUsedPercent"` // Swap usage percentage // 交换区使用率
-}
-
-// HostInfo host identification information
-type HostInfo struct {
-	Hostname       string    `json:"hostname"`       // Hostname // 主机名
-	OS             string    `json:"os"`             // Operating system // 操作系统
-	OSPretty       string    `json:"osPretty"`       // Detailed OS name // 详细操作系统名称
-	Platform       string    `json:"platform"`       // Platform name // 平台
-	Arch           string    `json:"arch"`           // Architecture // 架构
-	KernelVersion  string    `json:"kernelVersion"`  // Kernel version // 内核版本
-	Uptime         uint64    `json:"uptime"`         // System uptime // 系统运行时间
-	CurrentTime    time.Time `json:"currentTime"`    // Current system time // 当前系统时间
-	TimeZone       string    `json:"timezone"`       // Time zone name // 时区名称
-	TimeZoneOffset int       `json:"timezoneOffset"` // Time zone offset in seconds // 时区偏移（秒）
-}
-
-// ProcessInfo current process information
-type ProcessInfo struct {
-	PID           int32   `json:"pid"`           // Process ID
-	PPID          int32   `json:"ppid"`          // Parent Process ID
-	Name          string  `json:"name"`          // Process Name
-	CPUPercent    float64 `json:"cpuPercent"`    // CPU Usage percentage
-	MemoryPercent float32 `json:"memoryPercent"` // Memory Usage percentage
-}
-
-// RuntimeInfo Go runtime information
-// RuntimeInfo Go 运行时信息
-type RuntimeInfo struct {
-	NumGoroutine int    `json:"numGoroutine"` // Number of goroutines // Goroutine 数量
-	MemAlloc     uint64 `json:"memAlloc"`     // Allocated memory (bytes) // 已分配内存（字节）
-	MemTotal     uint64 `json:"memTotal"`     // Total memory allocated (bytes) // 累计分配内存（字节）
-	MemSys       uint64 `json:"memSys"`       // Memory obtained from system (bytes) // 从系统获取的内存（字节）
-	HeapSys      uint64 `json:"heapSys"`      // Memory obtained from system for heap (bytes) // 堆占用的系统内存
-	HeapIdle     uint64 `json:"heapIdle"`     // Memory in idle spans (bytes) // 空闲 Span 占用的内存
-	HeapInuse    uint64 `json:"heapInuse"`    // Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存
-	HeapReleased uint64 `json:"heapReleased"` // Memory released to OS (bytes) // 释放回操作系统的内存（字节）
-	StackSys     uint64 `json:"stackSys"`     // Memory obtained from system for stack (bytes) // 栈占用的系统内存
-	MSpanSys     uint64 `json:"mSpanSys"`     // Memory obtained from system for mspan (bytes) // mspan 占用的系统内存
-	MCacheSys    uint64 `json:"mCacheSys"`    // Memory obtained from system for mcache (bytes) // mcache 占用的系统内存
-	BuckHashSys  uint64 `json:"buckHashSys"`  // Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存
-	GCSys        uint64 `json:"gcSys"`        // Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存
-	OtherSys     uint64 `json:"otherSys"`     // Other system memory (bytes) // 其他系统内存
-	NextGC       uint64 `json:"nextGc"`       // Target heap size for the next GC cycle // 下次 GC 的目标堆大小
-	NumGC        uint32 `json:"numGc"`        // Number of completed GC cycles // GC 次数
-}
-
 // Config retrieves WebGUI configuration (public interface)
 // @Summary Get WebGUI basic config
 // @Description Get non-sensitive configuration required for frontend display, such as font settings, registration status, etc.
 // @Tags Config
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=webGUIConfig} "Success"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminWebGUIConfig} "Success"
 // @Router /api/webgui/config [get]
 func (h *AdminControlHandler) Config(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
-	data := webGUIConfig{
+	data := dto.AdminWebGUIConfig{
 		FontSet:          cfg.WebGUI.FontSet,
 		RegisterIsEnable: cfg.User.RegisterIsEnable,
 		AdminUID:         cfg.User.AdminUID,
@@ -197,7 +72,7 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=adminConfig} "Success"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config [get]
 func (h *AdminControlHandler) GetConfig(c *gin.Context) {
@@ -219,7 +94,7 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	data := &adminConfig{
+	data := &dto.AdminConfig{
 		FontSet:                 cfg.WebGUI.FontSet,
 		RegisterIsEnable:        cfg.User.RegisterIsEnable,
 		FileChunkSize:           cfg.App.FileChunkSize,
@@ -247,12 +122,12 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body adminConfig true "Config Parameters"
-// @Success 200 {object} pkgapp.Res{data=adminConfig} "Success"
+// @Param params body dto.AdminConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config [post]
 func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
-	params := &adminConfig{}
+	params := &dto.AdminConfig{}
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -333,6 +208,247 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(params))
 }
 
+// GetUserDatabaseConfig retrieves user database configuration (requires admin privileges)
+// @Summary Get user database config
+// @Description Get user database configuration information, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=dto.AdminUserDatabaseConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/user_database [get]
+func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.GetUserDatabaseConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Deny access if AdminUID is configured and current user is not an admin
+	// 当配置了管理员 UID 且当前用户不是管理员时，拒绝访问
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	dbCfg := cfg.UserDatabase
+	data := &dto.AdminUserDatabaseConfig{
+		Type:                dbCfg.Type,
+		Path:                dbCfg.Path,
+		UserName:            dbCfg.UserName,
+		Password:            dbCfg.Password,
+		Host:                dbCfg.Host,
+		Port:                dbCfg.Port,
+		Name:                dbCfg.Name,
+		SSLMode:             dbCfg.SSLMode,
+		Schema:              dbCfg.Schema,
+		MaxIdleConns:        dbCfg.MaxIdleConns,
+		MaxOpenConns:        dbCfg.MaxOpenConns,
+		ConnMaxLifetime:     dbCfg.ConnMaxLifetime,
+		ConnMaxIdleTime:     dbCfg.ConnMaxIdleTime,
+		MaxWriteConcurrency: dbCfg.MaxWriteConcurrency,
+	}
+
+	response.ToResponse(code.Success.WithData(data))
+}
+
+// UpdateUserDatabaseConfig updates user database configuration (requires admin privileges)
+// @Summary Update user database config
+// @Description Modify user database configuration information, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.AdminUserDatabaseConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminUserDatabaseConfig} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/config/user_database [post]
+func (h *AdminControlHandler) UpdateUserDatabaseConfig(c *gin.Context) {
+	params := &dto.AdminUserDatabaseConfig{}
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		logger.Error("apiRouter.AdminControl.UpdateUserDatabaseConfig.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.UpdateUserDatabaseConfig err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	// Deny access if AdminUID is configured and current user is not an admin
+	// 当配置了管理员 UID 且当前用户不是管理员时，拒绝访问
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	// Update configuration
+	// 更新配置
+	cfg.UserDatabase.Type = params.Type
+	cfg.UserDatabase.Path = params.Path
+	cfg.UserDatabase.UserName = params.UserName
+	cfg.UserDatabase.Password = params.Password
+	cfg.UserDatabase.Host = params.Host
+	cfg.UserDatabase.Port = params.Port
+	cfg.UserDatabase.Name = params.Name
+	cfg.UserDatabase.SSLMode = params.SSLMode
+	cfg.UserDatabase.Schema = params.Schema
+	cfg.UserDatabase.MaxIdleConns = params.MaxIdleConns
+	cfg.UserDatabase.MaxOpenConns = params.MaxOpenConns
+	cfg.UserDatabase.ConnMaxLifetime = params.ConnMaxLifetime
+	cfg.UserDatabase.ConnMaxIdleTime = params.ConnMaxIdleTime
+	cfg.UserDatabase.MaxWriteConcurrency = params.MaxWriteConcurrency
+
+	// Apply hardcoded default rules
+	// 应用硬编码默认规则
+	cfg.UserDatabase.AutoMigrate = true
+	if params.Type == "mysql" {
+		cfg.UserDatabase.Charset = "utf8mb4"
+		cfg.UserDatabase.ParseTime = true
+	}
+	if params.Type == "sqlite" {
+		enableQueue := true
+		cfg.UserDatabase.EnableWriteQueue = &enableQueue
+	} else if params.Type == "mysql" || params.Type == "postgres" {
+		enableQueue := false
+		cfg.UserDatabase.EnableWriteQueue = &enableQueue
+	}
+
+	// Save configuration to file
+	// 保存配置到文件
+	if err := cfg.Save(); err != nil {
+		logger.Error("apiRouter.AdminControl.UpdateUserDatabaseConfig.Save err", zap.Error(err))
+		response.ToResponse(code.ErrorConfigSaveFailed)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(params))
+}
+
+// ValidateUserDatabaseConfig tests user database connection (requires admin privileges)
+// @Summary Test user database connection
+// ValidateUserDatabaseConfig tests user database connection (requires admin privileges)
+// @Summary Test user database connection
+// @Description Test if the provided database configuration can connect successfully, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.AdminUserDatabaseConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Failure 400 {object} pkgapp.Res "Connection failed"
+// @Router /api/admin/config/user_database/test [post]
+func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
+	params := &dto.AdminUserDatabaseConfig{}
+	response := pkgapp.NewResponse(c)
+	logger := h.App.Logger()
+
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		logger.Error("apiRouter.AdminControl.ValidateUserDatabaseConfig.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	cfg := h.App.Config()
+	// Deny access if AdminUID is configured and current user is not an admin
+	// 当配置了管理员 UID 且当前用户不是管理员时，拒绝访问
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	// Map DTO to DatabaseConfig
+	// 将 DTO 映射到 DatabaseConfig
+	enableQueue := false
+	if params.Type == "sqlite" {
+		enableQueue = true
+	}
+	dbCfg := config.DatabaseConfig{
+		Type:                params.Type,
+		Path:                params.Path,
+		UserName:            params.UserName,
+		Password:            params.Password,
+		Host:                params.Host,
+		Port:                params.Port,
+		Name:                params.Name,
+		SSLMode:             params.SSLMode,
+		Schema:              params.Schema,
+		AutoMigrate:         true,
+		MaxIdleConns:        params.MaxIdleConns,
+		MaxOpenConns:        params.MaxOpenConns,
+		ConnMaxLifetime:     params.ConnMaxLifetime,
+		ConnMaxIdleTime:     params.ConnMaxIdleTime,
+		EnableWriteQueue:    &enableQueue,
+		MaxWriteConcurrency: params.MaxWriteConcurrency,
+	}
+
+	if params.Type == "mysql" {
+		dbCfg.Charset = "utf8mb4"
+		dbCfg.ParseTime = true
+	}
+
+	// Use dao.NewEngine to test connection
+	// 使用 dao.NewEngine 测试连接
+	db, err := dao.NewEngine(dbCfg, h.App.Logger())
+	if err != nil {
+		logger.Warn("Database connection test failed", zap.Error(err))
+		response.ToResponse(code.Failed.WithDetails("Connection failed: " + err.Error()))
+		return
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		response.ToResponse(code.Failed.WithDetails("Failed to get DB instance: " + err.Error()))
+		return
+	}
+	defer sqlDB.Close()
+
+	if err := sqlDB.Ping(); err != nil {
+		logger.Warn("Database ping failed", zap.Error(err))
+		response.ToResponse(code.Failed.WithDetails("Ping failed: " + err.Error()))
+		return
+	}
+
+	// For MySQL, verify CREATE DATABASE privilege
+	// 针对 MySQL，验证是否具有创建数据库的权限
+	if params.Type == "mysql" {
+		tempDBName := fmt.Sprintf("fn_perm_check_%d", time.Now().Unix())
+		if err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", tempDBName)).Error; err != nil {
+			logger.Warn("MySQL CREATE DATABASE permission test failed", zap.Error(err))
+			response.ToResponse(code.Failed.WithDetails("Missing CREATE DATABASE permission: " + err.Error()))
+			return
+		}
+		// Clean up immediately after successful verification
+		// 验证成功后立即清理
+		_ = db.Exec(fmt.Sprintf("DROP DATABASE %s", tempDBName))
+	}
+
+	response.ToResponse(code.Success.WithDetails("Database connection and permission verification successful"))
+}
+
 // GetNgrokConfig retrieves Ngrok tunnel configuration (requires admin privileges)
 // @Summary Get Ngrok config
 // @Description Get Ngrok tunnel configuration, requires admin privileges
@@ -340,7 +456,7 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=ngrokConfig} "Success"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminNgrokConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config/ngrok [get]
 func (h *AdminControlHandler) GetNgrokConfig(c *gin.Context) {
@@ -360,7 +476,7 @@ func (h *AdminControlHandler) GetNgrokConfig(c *gin.Context) {
 		return
 	}
 
-	data := &ngrokConfig{
+	data := &dto.AdminNgrokConfig{
 		Enabled:   cfg.Ngrok.Enabled,
 		AuthToken: cfg.Ngrok.AuthToken,
 		Domain:    cfg.Ngrok.Domain,
@@ -377,12 +493,12 @@ func (h *AdminControlHandler) GetNgrokConfig(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body ngrokConfig true "Config Parameters"
-// @Success 200 {object} pkgapp.Res{data=ngrokConfig} "Success"
+// @Param params body dto.AdminNgrokConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminNgrokConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config/ngrok [post]
 func (h *AdminControlHandler) UpdateNgrokConfig(c *gin.Context) {
-	params := &ngrokConfig{}
+	params := &dto.AdminNgrokConfig{}
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -426,7 +542,7 @@ func (h *AdminControlHandler) UpdateNgrokConfig(c *gin.Context) {
 // @Security UserAuthToken
 // @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=cloudflareConfig} "Success"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminCloudflareConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config/cloudflare [get]
 func (h *AdminControlHandler) GetCloudflareConfig(c *gin.Context) {
@@ -446,7 +562,7 @@ func (h *AdminControlHandler) GetCloudflareConfig(c *gin.Context) {
 		return
 	}
 
-	data := &cloudflareConfig{
+	data := &dto.AdminCloudflareConfig{
 		Enabled:    cfg.Cloudflare.Enabled,
 		Token:      cfg.Cloudflare.Token,
 		LogEnabled: cfg.Cloudflare.LogEnabled,
@@ -463,12 +579,12 @@ func (h *AdminControlHandler) GetCloudflareConfig(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body cloudflareConfig true "Config Parameters"
-// @Success 200 {object} pkgapp.Res{data=cloudflareConfig} "Success"
+// @Param params body dto.AdminCloudflareConfig true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.AdminCloudflareConfig} "Success"
 // @Failure 403 {object} pkgapp.Res "Insufficient privileges"
 // @Router /api/admin/config/cloudflare [post]
 func (h *AdminControlHandler) UpdateCloudflareConfig(c *gin.Context) {
-	params := &cloudflareConfig{}
+	params := &dto.AdminCloudflareConfig{}
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
 	logger := h.App.Logger()
@@ -505,16 +621,14 @@ func (h *AdminControlHandler) UpdateCloudflareConfig(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(params))
 }
 
-// GetSystemInfo retrieves system and runtime information (requires admin privileges)
-// @Summary Get system and runtime info
-// @Description Get system information and Go runtime data, requires admin privileges
+// GetSystemInfo retrieves system monitoring information (requires admin privileges)
+// @Summary Get system stats
+// @Description Get server runtime, CPU, memory, host and process info, requires admin privileges
 // @Tags System
-// @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=SystemInfo} "Success"
-// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
-// @Router /api/admin/systeminfo [get]
+// @Security UserAuthToken
+// @Success 200 {object} pkgapp.Res{data=dto.AdminSystemInfo} "Success"
+// @Router /api/admin/system/info [get]
 func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	cfg := h.App.Config()
@@ -561,10 +675,10 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	pCPU, _ := p.CPUPercent()
 	pMem, _ := p.MemoryPercent()
 
-	data := SystemInfo{
+	data := dto.AdminSystemInfo{
 		StartTime: h.App.StartTime,
 		Uptime:    time.Since(h.App.StartTime).Seconds(),
-		RuntimeStatus: RuntimeInfo{
+		RuntimeStatus: dto.AdminRuntimeInfo{
 			NumGoroutine: runtime.NumGoroutine(),
 			MemAlloc:     m.Alloc,
 			MemTotal:     m.TotalAlloc,
@@ -582,18 +696,18 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 			NextGC:       m.NextGC,
 			NumGC:        m.NumGC,
 		},
-		CPU: CPUInfo{
+		CPU: dto.AdminCPUInfo{
 			ModelName:     cpuModel,
 			PhysicalCores: physCores,
 			LogicalCores:  logicCores,
 			Percent:       cpuPercents,
-			LoadAvg: &LoadInfo{
+			LoadAvg: &dto.AdminLoadInfo{
 				Load1:  loadStat.Load1,
 				Load5:  loadStat.Load5,
 				Load15: loadStat.Load15,
 			},
 		},
-		Memory: MemoryInfo{
+		Memory: dto.AdminMemoryInfo{
 			Total:           vMem.Total,
 			Available:       vMem.Available,
 			Used:            vMem.Used,
@@ -602,7 +716,7 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 			SwapUsed:        swapMem.Used,
 			SwapUsedPercent: swapMem.UsedPercent,
 		},
-		Host: HostInfo{
+		Host: dto.AdminHostInfo{
 			Hostname:      hInfo.Hostname,
 			OS:            hInfo.OS,
 			OSPretty:      util.GetOSPrettyName(),
@@ -617,7 +731,7 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 				return offset
 			}(),
 		},
-		Process: ProcessInfo{
+		Process: dto.AdminProcessInfo{
 			PID:           p.Pid,
 			PPID:          pPPid,
 			Name:          pName,

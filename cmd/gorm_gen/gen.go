@@ -102,29 +102,44 @@ func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 		dbType := strings.ToLower(col.DatabaseTypeName())
 		defaultValue, ok := col.DefaultValue()
 
-		// 如果数据库中已经有默认值，则使用数据库的默认值
-		if ok && defaultValue != "" {
-			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+		// 获取 GORM tag 配置，并在这里注入额外逻辑
+		opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
+			// 1. 处理默认值逻辑 (保留原逻辑)
+			if ok && defaultValue != "" {
 				tag.Set("default", defaultValue)
-				return tag
-			}))
-			continue
-		}
+			} else {
+				if dbType == "integer" || dbType == "int" || dbType == "bigint" {
+					tag.Set("default", "0")
+				} else if dbType == "text" || strings.Contains(dbType, "char") {
+					tag.Set("default", "''")
+				}
+			}
 
-		// 根据类型自动注入默认值（主要解决 SQLite Add Column 时 NOT NULL 冲突）
-		var autoDefault string
-		if dbType == "integer" || dbType == "int" || dbType == "bigint" {
-			autoDefault = "0"
-		} else if dbType == "text" || strings.Contains(dbType, "char") {
-			autoDefault = "''"
-		}
+			// 2. 处理时间类型兼容性 (移除 type 让 GORM 自动决定)
+			if strings.Contains(dbType, "datetime") || strings.Contains(dbType, "timestamp") {
+				tag.Remove("type")
+			}
 
-		if autoDefault != "" {
-			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-				tag.Set("default", autoDefault)
-				return tag
-			}))
-		}
+			// 3. 处理 MySQL 索引长度限制 (Error 1071)
+			// 注意：GormTag 可能为 map[string][]string 或 map[string]string。
+			// 这里通过 key 检查判断索引。
+			isIndexed := false
+			indexKeys := []string{"index", "uniqueIndex", "unique_index"}
+			for _, k := range indexKeys {
+				if v, exists := tag[k]; exists {
+					if len(v) > 0 {
+						isIndexed = true
+						break
+					}
+				}
+			}
+
+			if isIndexed && (strings.ToUpper(dbType) == "TEXT" || strings.ToUpper(dbType) == "LONGTEXT" || dbType == "text") {
+				tag.Set("type", "varchar(255)")
+			}
+
+			return tag
+		}))
 	}
 
 	return opts
@@ -189,18 +204,15 @@ func main() {
 		//gen.FieldType("mtime", "timex.Time"),
 		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("autoCreateTime", "false")
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("autoUpdateTime", "false")
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),
