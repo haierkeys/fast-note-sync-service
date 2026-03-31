@@ -213,6 +213,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			// 管理员配置接口
 			auth.GET("/admin/config", adminControlHandler.GetConfig)
 			auth.POST("/admin/config", adminControlHandler.UpdateConfig)
+			auth.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)
+			auth.POST("/admin/config/user_database", adminControlHandler.UpdateUserDatabaseConfig)
+			auth.POST("/admin/config/user_database/test", adminControlHandler.ValidateUserDatabaseConfig)
 			auth.GET("/admin/config/ngrok", adminControlHandler.GetNgrokConfig)
 			auth.POST("/admin/config/ngrok", adminControlHandler.UpdateNgrokConfig)
 			auth.GET("/admin/config/cloudflare", adminControlHandler.GetCloudflareConfig)
