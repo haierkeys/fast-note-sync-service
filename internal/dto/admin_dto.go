@@ -32,22 +32,22 @@ type AdminConfig struct {
 // AdminUserDatabaseConfig User database configuration structure
 // AdminUserDatabaseConfig 用户数据库配置结构
 type AdminUserDatabaseConfig struct {
-	Type                string `json:"type,omitempty" form:"type" binding:"omitempty,oneof=mysql postgres sqlite"` // Database type (mysql, postgres, sqlite) // 数据库类型
-	Path                string `json:"path,omitempty" form:"path"`                                 // SQLite database file path // SQLite 数据库文件路径
-	UserName            string `json:"username,omitempty" form:"username"`                         // Username // 用户名
-	Password            string `json:"password,omitempty" form:"password"`                         // Password // 密码
-	Host                string `json:"host,omitempty" form:"host"`                                 // Host // 主机
-	Port                int    `json:"port,omitempty" form:"port"`                                 // Port // 端口
-	Name                string `json:"name,omitempty" form:"name"`                                 // Database name // 数据库名
-	SSLMode             string `json:"ssl-mode,omitempty" form:"ssl-mode"`                         // SSL mode (postgres only) // SSL 模式
-	Schema              string `json:"schema,omitempty" form:"schema"`                             // Database schema (postgres only) // 数据库 Schema
-	MaxIdleConns        int    `json:"max-idle-conns,omitempty" form:"max-idle-conns"`                 // Max idle connections // 最大闲置连接数
-	MaxOpenConns        int    `json:"max-open-conns,omitempty" form:"max-open-conns"`                 // Max open connections // 最大打开连接数
-	ConnMaxLifetime     string `json:"conn-max-lifetime,omitempty" form:"conn-max-lifetime"`       // Connection max lifetime // 连接最大生命周期
-	ConnMaxIdleTime     string `json:"conn-max-idle-time,omitempty" form:"conn-max-idle-time"`       // Connection max idle time // 空闲连接最大生命周期
-	MaxWriteConcurrency int    `json:"max-write-concurrency,omitempty" form:"max-write-concurrency"` // Max write concurrency // 最大并发写入数
-	Charset             string `json:"charset,omitempty" form:"charset"`                         // Charset // 字符集
-	ParseTime           bool   `json:"parseTime,omitempty" form:"parseTime"`                     // Parse time // 是否解析时间
+	Type                string `json:"type" form:"type" binding:"omitempty,oneof=mysql postgres sqlite"` // Database type (mysql, postgres, sqlite) // 数据库类型
+	Path                string `json:"path,omitempty" form:"path"`                                       // SQLite database file path // SQLite 数据库文件路径
+	UserName            string `json:"userName,omitempty" form:"userName"`                               // Username // 用户名
+	Password            string `json:"password" form:"password"`                                         // Password // 密码
+	Host                string `json:"host" form:"host"`                                                 // Host // 主机
+	Port                int    `json:"port" form:"port"`                                                 // Port // 端口
+	Name                string `json:"name" form:"name"`                                                 // Database name // 数据库名
+	SSLMode             string `json:"sslMode" form:"sslMode"`                                           // SSL mode (postgres only) // SSL 模式
+	Schema              string `json:"schema" form:"schema"`                                             // Database schema (postgres only) // 数据库 Schema
+	MaxIdleConns        int    `json:"maxIdleConns" form:"maxIdleConns"`                                 // Max idle connections // 最大闲置连接数
+	MaxOpenConns        int    `json:"maxOpenConns" form:"maxOpenConns"`                                 // Max open connections // 最大打开连接数
+	ConnMaxLifetime     string `json:"connMaxLifetime" form:"connMaxLifetime"`                           // Connection max lifetime // 连接最大生命周期
+	ConnMaxIdleTime     string `json:"connMaxIdleTime" form:"connMaxIdleTime"`                           // Connection max idle time // 空闲连接最大生命周期
+	MaxWriteConcurrency int    `json:"maxWriteConcurrency" form:"maxWriteConcurrency"`                   // Max write concurrency // 最大并发写入数
+	Charset             string `json:"charset" form:"charset"`                                           // Charset // 字符集
+	ParseTime           bool   `json:"parseTime" form:"parseTime"`                                       // Parse time // 是否解析时间
 }
 
 // AdminNgrokConfig Ngrok tunnel configuration
@@ -81,10 +81,10 @@ type AdminSystemInfo struct {
 // AdminCPUInfo CPU information
 // AdminCPUInfo CPU 信息
 type AdminCPUInfo struct {
-	ModelName     string        `json:"modelName"`     // Model name // 型号
-	PhysicalCores int           `json:"physicalCores"` // Physical cores // 物理核心数
-	LogicalCores  int           `json:"logicalCores"`  // Logical cores // 逻辑核心数
-	Percent       []float64     `json:"percent"`       // Usage percentage per core // 每个核心的使用率
+	ModelName     string         `json:"modelName"`     // Model name // 型号
+	PhysicalCores int            `json:"physicalCores"` // Physical cores // 物理核心数
+	LogicalCores  int            `json:"logicalCores"`  // Logical cores // 逻辑核心数
+	Percent       []float64      `json:"percent"`       // Usage percentage per core // 每个核心的使用率
 	LoadAvg       *AdminLoadInfo `json:"loadAvg"`       // Load average // 平均负载
 }
 

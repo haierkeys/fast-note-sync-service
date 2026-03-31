@@ -514,8 +514,8 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 		})
 	}
 
-	// 不使用写队列，检查并发限制
-	if cfg.MaxWriteConcurrency > 0 {
+	// 不使用写队列且配置了并发控制时，检查并发限制
+	if !enableQueue && cfg.MaxWriteConcurrency > 0 {
 		// 确定配置的分组标识（用于共享同一个限制器）
 		// 这里简单处理：主库和用户库各自拥有独立的并发限制池
 		groupKey := "main"
