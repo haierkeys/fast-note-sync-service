@@ -12,10 +12,10 @@ const TableNameNote = "note"
 type Note struct {
 	ID                      int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	VaultID                 int64      `gorm:"column:vault_id;not null;index:idx_vault_id_path,priority:1;index:idx_vault_id_updated_timestamp,priority:1;index:idx_vault_id_updated_at,priority:1;index:idx_vault_id_rename,priority:1;index:idx_vault_id_action_rename,priority:1;index:idx_vault_id_action_fid,priority:1;default:0" json:"vaultId" form:"vaultId"`
-	Action                  string     `gorm:"column:action;index:idx_vault_id_action_rename,priority:2;index:idx_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
+	Action                  string     `gorm:"column:action;type:varchar(255);index:idx_vault_id_action_rename,priority:2;index:idx_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
 	Rename                  int64      `gorm:"column:rename;index:idx_vault_id_rename,priority:2;index:idx_vault_id_action_rename,priority:3;default:0" json:"rename" form:"rename"`
 	FID                     int64      `gorm:"column:fid;index:idx_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
-	Path                    string     `gorm:"column:path;type:TEXT;index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	Path                    string     `gorm:"column:path;type:varchar(255);index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash                string     `gorm:"column:path_hash;default:''" json:"pathHash" form:"pathHash"`
 	Content                 string     `gorm:"column:content;default:''" json:"content" form:"content"`
 	ContentHash             string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
@@ -27,8 +27,8 @@ type Note struct {
 	Ctime                   int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime                   int64      `gorm:"column:mtime;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp        int64      `gorm:"column:updated_timestamp;index:idx_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
-	CreatedAt               timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt               timex.Time `gorm:"column:updated_at;type:datetime;index:idx_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt               timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt               timex.Time `gorm:"column:updated_at;index:idx_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName Note's table name

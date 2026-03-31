@@ -78,7 +78,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.adminConfig"
+                                            "$ref": "#/definitions/dto.AdminConfig"
                                         }
                                     }
                                 }
@@ -124,7 +124,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api_router.adminConfig"
+                            "$ref": "#/definitions/dto.AdminConfig"
                         }
                     }
                 ],
@@ -140,7 +140,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.adminConfig"
+                                            "$ref": "#/definitions/dto.AdminConfig"
                                         }
                                     }
                                 }
@@ -192,7 +192,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.cloudflareConfig"
+                                            "$ref": "#/definitions/dto.AdminCloudflareConfig"
                                         }
                                     }
                                 }
@@ -238,7 +238,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api_router.cloudflareConfig"
+                            "$ref": "#/definitions/dto.AdminCloudflareConfig"
                         }
                     }
                 ],
@@ -254,7 +254,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.cloudflareConfig"
+                                            "$ref": "#/definitions/dto.AdminCloudflareConfig"
                                         }
                                     }
                                 }
@@ -306,7 +306,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.ngrokConfig"
+                                            "$ref": "#/definitions/dto.AdminNgrokConfig"
                                         }
                                     }
                                 }
@@ -352,7 +352,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api_router.ngrokConfig"
+                            "$ref": "#/definitions/dto.AdminNgrokConfig"
                         }
                     }
                 ],
@@ -368,7 +368,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.ngrokConfig"
+                                            "$ref": "#/definitions/dto.AdminNgrokConfig"
                                         }
                                     }
                                 }
@@ -377,6 +377,172 @@
                     },
                     "403": {
                         "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/config/user_database": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get user database configuration information, requires admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Get user database config",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AdminUserDatabaseConfig"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Modify user database configuration information, requires admin privileges",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Update user database config",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Config Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AdminUserDatabaseConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AdminUserDatabaseConfig"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/config/user_database/test": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Test if the provided database configuration can connect successfully, requires admin privileges",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Test user database connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Config Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AdminUserDatabaseConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "400": {
+                        "description": "Connection failed",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -440,30 +606,21 @@
                 }
             }
         },
-        "/api/admin/systeminfo": {
+        "/api/admin/system/info": {
             "get": {
                 "security": [
                     {
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Get system information and Go runtime data, requires admin privileges",
+                "description": "Get server runtime, CPU, memory, host and process info, requires admin privileges",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "System"
                 ],
-                "summary": "Get system and runtime info",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
+                "summary": "Get system stats",
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -476,17 +633,11 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.SystemInfo"
+                                            "$ref": "#/definitions/dto.AdminSystemInfo"
                                         }
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient privileges",
-                        "schema": {
-                            "$ref": "#/definitions/app.Res"
                         }
                     }
                 }
@@ -3548,6 +3699,58 @@
                 }
             }
         },
+        "/api/notes/share-paths": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "tags": [
+                    "Share"
+                ],
+                "summary": "Get active shared note paths",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "vault",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/setting": {
             "get": {
                 "security": [
@@ -5103,7 +5306,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/api_router.webGUIConfig"
+                                            "$ref": "#/definitions/dto.AdminWebGUIConfig"
                                         }
                                     }
                                 }
@@ -5115,38 +5318,6 @@
         }
     },
     "definitions": {
-        "api_router.CPUInfo": {
-            "type": "object",
-            "properties": {
-                "loadAvg": {
-                    "description": "Load average // 平均负载",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.LoadInfo"
-                        }
-                    ]
-                },
-                "logicalCores": {
-                    "description": "Logical cores // 逻辑核心数",
-                    "type": "integer"
-                },
-                "modelName": {
-                    "description": "Model name // 型号",
-                    "type": "string"
-                },
-                "percent": {
-                    "description": "Usage percentage per core // 每个核心的使用率",
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "physicalCores": {
-                    "description": "Physical cores // 物理核心数",
-                    "type": "integer"
-                }
-            }
-        },
         "api_router.HealthResponse": {
             "type": "object",
             "properties": {
@@ -5165,357 +5336,6 @@
                 "version": {
                     "description": "Service version number // 服务版本号",
                     "type": "string"
-                }
-            }
-        },
-        "api_router.HostInfo": {
-            "type": "object",
-            "properties": {
-                "arch": {
-                    "description": "Architecture // 架构",
-                    "type": "string"
-                },
-                "currentTime": {
-                    "description": "Current system time // 当前系统时间",
-                    "type": "string"
-                },
-                "hostname": {
-                    "description": "Hostname // 主机名",
-                    "type": "string"
-                },
-                "kernelVersion": {
-                    "description": "Kernel version // 内核版本",
-                    "type": "string"
-                },
-                "os": {
-                    "description": "Operating system // 操作系统",
-                    "type": "string"
-                },
-                "osPretty": {
-                    "description": "Detailed OS name // 详细操作系统名称",
-                    "type": "string"
-                },
-                "platform": {
-                    "description": "Platform name // 平台",
-                    "type": "string"
-                },
-                "timezone": {
-                    "description": "Time zone name // 时区名称",
-                    "type": "string"
-                },
-                "timezoneOffset": {
-                    "description": "Time zone offset in seconds // 时区偏移（秒）",
-                    "type": "integer"
-                },
-                "uptime": {
-                    "description": "System uptime // 系统运行时间",
-                    "type": "integer"
-                }
-            }
-        },
-        "api_router.LoadInfo": {
-            "type": "object",
-            "properties": {
-                "load1": {
-                    "type": "number"
-                },
-                "load15": {
-                    "type": "number"
-                },
-                "load5": {
-                    "type": "number"
-                }
-            }
-        },
-        "api_router.MemoryInfo": {
-            "type": "object",
-            "properties": {
-                "available": {
-                    "description": "Available memory // 可用内存",
-                    "type": "integer"
-                },
-                "swapTotal": {
-                    "description": "Total swap space // 交换区总量",
-                    "type": "integer"
-                },
-                "swapUsed": {
-                    "description": "Used swap space // 交换区已用",
-                    "type": "integer"
-                },
-                "swapUsedPercent": {
-                    "description": "Swap usage percentage // 交换区使用率",
-                    "type": "number"
-                },
-                "total": {
-                    "description": "Total physical memory // 系统总内存",
-                    "type": "integer"
-                },
-                "used": {
-                    "description": "Used memory // 已用内存",
-                    "type": "integer"
-                },
-                "usedPercent": {
-                    "description": "Memory usage percentage // 内存使用率",
-                    "type": "number"
-                }
-            }
-        },
-        "api_router.ProcessInfo": {
-            "type": "object",
-            "properties": {
-                "cpuPercent": {
-                    "description": "CPU Usage percentage",
-                    "type": "number"
-                },
-                "memoryPercent": {
-                    "description": "Memory Usage percentage",
-                    "type": "number"
-                },
-                "name": {
-                    "description": "Process Name",
-                    "type": "string"
-                },
-                "pid": {
-                    "description": "Process ID",
-                    "type": "integer"
-                },
-                "ppid": {
-                    "description": "Parent Process ID",
-                    "type": "integer"
-                }
-            }
-        },
-        "api_router.RuntimeInfo": {
-            "type": "object",
-            "properties": {
-                "buckHashSys": {
-                    "description": "Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存",
-                    "type": "integer"
-                },
-                "gcSys": {
-                    "description": "Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存",
-                    "type": "integer"
-                },
-                "heapIdle": {
-                    "description": "Memory in idle spans (bytes) // 空闲 Span 占用的内存",
-                    "type": "integer"
-                },
-                "heapInuse": {
-                    "description": "Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存",
-                    "type": "integer"
-                },
-                "heapReleased": {
-                    "description": "Memory released to OS (bytes) // 释放回操作系统的内存（字节）",
-                    "type": "integer"
-                },
-                "heapSys": {
-                    "description": "Memory obtained from system for heap (bytes) // 堆占用的系统内存",
-                    "type": "integer"
-                },
-                "mCacheSys": {
-                    "description": "Memory obtained from system for mcache (bytes) // mcache 占用的系统内存",
-                    "type": "integer"
-                },
-                "mSpanSys": {
-                    "description": "Memory obtained from system for mspan (bytes) // mspan 占用的系统内存",
-                    "type": "integer"
-                },
-                "memAlloc": {
-                    "description": "Allocated memory (bytes) // 已分配内存（字节）",
-                    "type": "integer"
-                },
-                "memSys": {
-                    "description": "Memory obtained from system (bytes) // 从系统获取的内存（字节）",
-                    "type": "integer"
-                },
-                "memTotal": {
-                    "description": "Total memory allocated (bytes) // 累计分配内存（字节）",
-                    "type": "integer"
-                },
-                "nextGc": {
-                    "description": "Target heap size for the next GC cycle // 下次 GC 的目标堆大小",
-                    "type": "integer"
-                },
-                "numGc": {
-                    "description": "Number of completed GC cycles // GC 次数",
-                    "type": "integer"
-                },
-                "numGoroutine": {
-                    "description": "Number of goroutines // Goroutine 数量",
-                    "type": "integer"
-                },
-                "otherSys": {
-                    "description": "Other system memory (bytes) // 其他系统内存",
-                    "type": "integer"
-                },
-                "stackSys": {
-                    "description": "Memory obtained from system for stack (bytes) // 栈占用的系统内存",
-                    "type": "integer"
-                }
-            }
-        },
-        "api_router.SystemInfo": {
-            "type": "object",
-            "properties": {
-                "cpu": {
-                    "description": "CPU information // CPU 信息",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.CPUInfo"
-                        }
-                    ]
-                },
-                "host": {
-                    "description": "Host information // 主机信息",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.HostInfo"
-                        }
-                    ]
-                },
-                "memory": {
-                    "description": "Memory information // 内存信息",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.MemoryInfo"
-                        }
-                    ]
-                },
-                "process": {
-                    "description": "Process information // 进程信息",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.ProcessInfo"
-                        }
-                    ]
-                },
-                "runtimeStatus": {
-                    "description": "Go runtime status // Go 运行时状态",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api_router.RuntimeInfo"
-                        }
-                    ]
-                },
-                "startTime": {
-                    "description": "Start time // 启动时间",
-                    "type": "string"
-                },
-                "uptime": {
-                    "description": "Uptime (seconds) // 运行时间（秒）",
-                    "type": "number"
-                }
-            }
-        },
-        "api_router.adminConfig": {
-            "type": "object",
-            "properties": {
-                "adminUid": {
-                    "description": "Admin UID // 管理员 UID",
-                    "type": "integer"
-                },
-                "authTokenKey": {
-                    "description": "Auth token key // 认证 Token 密钥",
-                    "type": "string"
-                },
-                "defaultApiFolder": {
-                    "description": "Default API folder // 默认 API 目录",
-                    "type": "string"
-                },
-                "fileChunkSize": {
-                    "description": "File chunk size // 文件分块大小",
-                    "type": "string"
-                },
-                "fontSet": {
-                    "description": "Font set // 字体设置",
-                    "type": "string"
-                },
-                "historyKeepVersions": {
-                    "description": "History versions to keep // 历史版本保留数",
-                    "type": "integer"
-                },
-                "historySaveDelay": {
-                    "description": "History save delay // 历史保存延迟",
-                    "type": "string"
-                },
-                "pullSource": {
-                    "description": "Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb",
-                    "type": "string"
-                },
-                "registerIsEnable": {
-                    "description": "Registration enablement // 是否开启注册",
-                    "type": "boolean"
-                },
-                "shareTokenExpiry": {
-                    "description": "Share token expiry // 分享 Token 有效期",
-                    "type": "string"
-                },
-                "shareTokenKey": {
-                    "description": "Share token key // 分享 Token 密钥",
-                    "type": "string"
-                },
-                "softDeleteRetentionTime": {
-                    "description": "Soft delete retention time // 软删除保留时间",
-                    "type": "string"
-                },
-                "tokenExpiry": {
-                    "description": "Token expiry // Token 有效期",
-                    "type": "string"
-                },
-                "uploadSessionTimeout": {
-                    "description": "Upload session timeout // 上传会话超时时间",
-                    "type": "string"
-                }
-            }
-        },
-        "api_router.cloudflareConfig": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "description": "Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道",
-                    "type": "boolean"
-                },
-                "logEnabled": {
-                    "description": "Whether to enable cloudflare tunnel logging // 是否开启 cloudflare 隧道日志",
-                    "type": "boolean"
-                },
-                "token": {
-                    "description": "cloudflare tunnel token // cloudflare 隧道令牌",
-                    "type": "string"
-                }
-            }
-        },
-        "api_router.ngrokConfig": {
-            "type": "object",
-            "properties": {
-                "authToken": {
-                    "description": "ngrok auth token // ngrok 认证令牌",
-                    "type": "string"
-                },
-                "domain": {
-                    "description": "Custom domain // 自定义域名",
-                    "type": "string"
-                },
-                "enabled": {
-                    "description": "Whether to enable ngrok tunnel // 是否启用 ngrok 隧道",
-                    "type": "boolean"
-                }
-            }
-        },
-        "api_router.webGUIConfig": {
-            "type": "object",
-            "properties": {
-                "adminUid": {
-                    "description": "Admin UID // 管理员 UID",
-                    "type": "integer"
-                },
-                "fontSet": {
-                    "description": "Font set // 字体设置",
-                    "type": "string"
-                },
-                "registerIsEnable": {
-                    "description": "Registration enablement // 是否开启注册",
-                    "type": "boolean"
                 }
             }
         },
@@ -5627,6 +5447,455 @@
                 "DiffInsert",
                 "DiffEqual"
             ]
+        },
+        "dto.AdminCPUInfo": {
+            "type": "object",
+            "properties": {
+                "loadAvg": {
+                    "description": "Load average // 平均负载",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminLoadInfo"
+                        }
+                    ]
+                },
+                "logicalCores": {
+                    "description": "Logical cores // 逻辑核心数",
+                    "type": "integer"
+                },
+                "modelName": {
+                    "description": "Model name // 型号",
+                    "type": "string"
+                },
+                "percent": {
+                    "description": "Usage percentage per core // 每个核心的使用率",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "physicalCores": {
+                    "description": "Physical cores // 物理核心数",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AdminCloudflareConfig": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "description": "Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道",
+                    "type": "boolean"
+                },
+                "logEnabled": {
+                    "description": "Whether to enable cloudflare tunnel logging // 是否开启 cloudflare 隧道日志",
+                    "type": "boolean"
+                },
+                "token": {
+                    "description": "cloudflare tunnel token // cloudflare 隧道令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AdminConfig": {
+            "type": "object",
+            "properties": {
+                "adminUid": {
+                    "description": "Admin UID // 管理员 UID",
+                    "type": "integer"
+                },
+                "authTokenKey": {
+                    "description": "Auth token key // 认证 Token 密钥",
+                    "type": "string"
+                },
+                "defaultApiFolder": {
+                    "description": "Default API folder // 默认 API 目录",
+                    "type": "string"
+                },
+                "fileChunkSize": {
+                    "description": "File chunk size // 文件分块大小",
+                    "type": "string"
+                },
+                "fontSet": {
+                    "description": "Font set // 字体设置",
+                    "type": "string"
+                },
+                "historyKeepVersions": {
+                    "description": "History versions to keep // 历史版本保留数",
+                    "type": "integer"
+                },
+                "historySaveDelay": {
+                    "description": "History save delay // 历史保存延迟",
+                    "type": "string"
+                },
+                "pullSource": {
+                    "description": "Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb",
+                    "type": "string"
+                },
+                "registerIsEnable": {
+                    "description": "Registration enablement // 是否开启注册",
+                    "type": "boolean"
+                },
+                "shareTokenExpiry": {
+                    "description": "Share token expiry // 分享 Token 有效期",
+                    "type": "string"
+                },
+                "shareTokenKey": {
+                    "description": "Share token key // 分享 Token 密钥",
+                    "type": "string"
+                },
+                "softDeleteRetentionTime": {
+                    "description": "Soft delete retention time // 软删除保留时间",
+                    "type": "string"
+                },
+                "tokenExpiry": {
+                    "description": "Token expiry // Token 有效期",
+                    "type": "string"
+                },
+                "uploadSessionTimeout": {
+                    "description": "Upload session timeout // 上传会话超时时间",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AdminHostInfo": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "description": "Architecture // 架构",
+                    "type": "string"
+                },
+                "currentTime": {
+                    "description": "Current system time // 当前系统时间",
+                    "type": "string"
+                },
+                "hostname": {
+                    "description": "Hostname // 主机名",
+                    "type": "string"
+                },
+                "kernelVersion": {
+                    "description": "Kernel version // 内核版本",
+                    "type": "string"
+                },
+                "os": {
+                    "description": "Operating system // 操作系统",
+                    "type": "string"
+                },
+                "osPretty": {
+                    "description": "Detailed OS name // 详细操作系统名称",
+                    "type": "string"
+                },
+                "platform": {
+                    "description": "Platform name // 平台",
+                    "type": "string"
+                },
+                "timezone": {
+                    "description": "Time zone name // 时区名称",
+                    "type": "string"
+                },
+                "timezoneOffset": {
+                    "description": "Time zone offset in seconds // 时区偏移（秒）",
+                    "type": "integer"
+                },
+                "uptime": {
+                    "description": "System uptime // 系统运行时间",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AdminLoadInfo": {
+            "type": "object",
+            "properties": {
+                "load1": {
+                    "type": "number"
+                },
+                "load15": {
+                    "type": "number"
+                },
+                "load5": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.AdminMemoryInfo": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "description": "Available memory // 可用内存",
+                    "type": "integer"
+                },
+                "swapTotal": {
+                    "description": "Total swap space // 交换区总量",
+                    "type": "integer"
+                },
+                "swapUsed": {
+                    "description": "Used swap space // 交换区已用",
+                    "type": "integer"
+                },
+                "swapUsedPercent": {
+                    "description": "Swap usage percentage // 交换区使用率",
+                    "type": "number"
+                },
+                "total": {
+                    "description": "Total physical memory // 系统总内存",
+                    "type": "integer"
+                },
+                "used": {
+                    "description": "Used memory // 已用内存",
+                    "type": "integer"
+                },
+                "usedPercent": {
+                    "description": "Memory usage percentage // 内存使用率",
+                    "type": "number"
+                }
+            }
+        },
+        "dto.AdminNgrokConfig": {
+            "type": "object",
+            "properties": {
+                "authToken": {
+                    "description": "ngrok auth token // ngrok 认证令牌",
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "Custom domain // 自定义域名",
+                    "type": "string"
+                },
+                "enabled": {
+                    "description": "Whether to enable ngrok tunnel // 是否启用 ngrok 隧道",
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.AdminProcessInfo": {
+            "type": "object",
+            "properties": {
+                "cpuPercent": {
+                    "description": "CPU Usage percentage",
+                    "type": "number"
+                },
+                "memoryPercent": {
+                    "description": "Memory Usage percentage",
+                    "type": "number"
+                },
+                "name": {
+                    "description": "Process Name",
+                    "type": "string"
+                },
+                "pid": {
+                    "description": "Process ID",
+                    "type": "integer"
+                },
+                "ppid": {
+                    "description": "Parent Process ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AdminRuntimeInfo": {
+            "type": "object",
+            "properties": {
+                "buckHashSys": {
+                    "description": "Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存",
+                    "type": "integer"
+                },
+                "gcSys": {
+                    "description": "Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存",
+                    "type": "integer"
+                },
+                "heapIdle": {
+                    "description": "Memory in idle spans (bytes) // 空闲 Span 占用的内存",
+                    "type": "integer"
+                },
+                "heapInuse": {
+                    "description": "Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存",
+                    "type": "integer"
+                },
+                "heapReleased": {
+                    "description": "Memory released to OS (bytes) // 释放回操作系统的内存（字节）",
+                    "type": "integer"
+                },
+                "heapSys": {
+                    "description": "Memory obtained from system for heap (bytes) // 堆占用的系统内存",
+                    "type": "integer"
+                },
+                "mCacheSys": {
+                    "description": "Memory obtained from system for mcache (bytes) // mcache 占用的系统内存",
+                    "type": "integer"
+                },
+                "mSpanSys": {
+                    "description": "Memory obtained from system for mspan (bytes) // mspan 占用的系统内存",
+                    "type": "integer"
+                },
+                "memAlloc": {
+                    "description": "Allocated memory (bytes) // 已分配内存（字节）",
+                    "type": "integer"
+                },
+                "memSys": {
+                    "description": "Memory obtained from system (bytes) // 从系统获取的内存（字节）",
+                    "type": "integer"
+                },
+                "memTotal": {
+                    "description": "Total memory allocated (bytes) // 累计分配内存（字节）",
+                    "type": "integer"
+                },
+                "nextGc": {
+                    "description": "Target heap size for the next GC cycle // 下次 GC 的目标堆大小",
+                    "type": "integer"
+                },
+                "numGc": {
+                    "description": "Number of completed GC cycles // GC 次数",
+                    "type": "integer"
+                },
+                "numGoroutine": {
+                    "description": "Number of goroutines // Goroutine 数量",
+                    "type": "integer"
+                },
+                "otherSys": {
+                    "description": "Other system memory (bytes) // 其他系统内存",
+                    "type": "integer"
+                },
+                "stackSys": {
+                    "description": "Memory obtained from system for stack (bytes) // 栈占用的系统内存",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AdminSystemInfo": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "description": "CPU information // CPU 信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminCPUInfo"
+                        }
+                    ]
+                },
+                "host": {
+                    "description": "Host information // 主机信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminHostInfo"
+                        }
+                    ]
+                },
+                "memory": {
+                    "description": "Memory information // 内存信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminMemoryInfo"
+                        }
+                    ]
+                },
+                "process": {
+                    "description": "Process information // 进程信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminProcessInfo"
+                        }
+                    ]
+                },
+                "runtimeStatus": {
+                    "description": "Go runtime status // Go 运行时状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.AdminRuntimeInfo"
+                        }
+                    ]
+                },
+                "startTime": {
+                    "description": "Start time // 启动时间",
+                    "type": "string"
+                },
+                "uptime": {
+                    "description": "Uptime (seconds) // 运行时间（秒）",
+                    "type": "number"
+                }
+            }
+        },
+        "dto.AdminUserDatabaseConfig": {
+            "type": "object",
+            "properties": {
+                "conn-max-idle-time": {
+                    "description": "Connection max idle time // 空闲连接最大生命周期",
+                    "type": "string"
+                },
+                "conn-max-lifetime": {
+                    "description": "Connection max lifetime // 连接最大生命周期",
+                    "type": "string"
+                },
+                "host": {
+                    "description": "Host // 主机",
+                    "type": "string"
+                },
+                "max-idle-conns": {
+                    "description": "Max idle connections // 最大闲置连接数",
+                    "type": "integer"
+                },
+                "max-open-conns": {
+                    "description": "Max open connections // 最大打开连接数",
+                    "type": "integer"
+                },
+                "max-write-concurrency": {
+                    "description": "Max write concurrency // 最大并发写入数",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Database name // 数据库名",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "Password // 密码",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "SQLite database file path // SQLite 数据库文件路径",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Port // 端口",
+                    "type": "integer"
+                },
+                "schema": {
+                    "description": "Database schema (postgres only) // 数据库 Schema",
+                    "type": "string"
+                },
+                "ssl-mode": {
+                    "description": "SSL mode (postgres only) // SSL 模式",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Database type (mysql, postgres, sqlite) // 数据库类型",
+                    "type": "string",
+                    "enum": [
+                        "mysql",
+                        "postgres",
+                        "sqlite"
+                    ]
+                },
+                "username": {
+                    "description": "Username // 用户名",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AdminWebGUIConfig": {
+            "type": "object",
+            "properties": {
+                "adminUid": {
+                    "description": "Admin UID // 管理员 UID",
+                    "type": "integer"
+                },
+                "fontSet": {
+                    "description": "Font set // 字体设置",
+                    "type": "string"
+                },
+                "registerIsEnable": {
+                    "description": "Registration enablement // 是否开启注册",
+                    "type": "boolean"
+                }
+            }
         },
         "dto.BackupConfigDTO": {
             "type": "object",
@@ -7088,6 +7357,10 @@
                     "description": "Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)",
                     "type": "string"
                 },
+                "vaultName": {
+                    "description": "Vault name where the note belongs // 笔记所属仓库名",
+                    "type": "string"
+                },
                 "viewCount": {
                     "description": "View count // 访问次数",
                     "type": "integer"
@@ -7146,6 +7419,11 @@
                     "description": "Path hash // 路径哈希",
                     "type": "string",
                     "example": "..."
+                },
+                "url": {
+                    "description": "Full share URL from client; if provided, used directly without regenerating token // 客户端传入的完整分享链接，非空时直接使用，不重新生成 token",
+                    "type": "string",
+                    "example": "https://example.com/share/129/CNmkmQlq0s-4elT3NuZG2w"
                 },
                 "vault": {
                     "description": "Vault name // 库名",

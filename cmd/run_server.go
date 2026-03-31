@@ -151,8 +151,8 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		db,
 		s.logger,
 		internalApp.Version,
-		appConfig.Database.Path,
-		appConfig.Database.Type,
+		&appConfig.Database,
+		&appConfig.UserDatabase,
 	); err != nil {
 		return nil, fmt.Errorf("upgrade.Execute: %w", err)
 	}
@@ -385,30 +385,11 @@ func initValidatorWithLogger(lg *zap.Logger) (*ut.UniversalTranslator, error) {
 	return uni, nil
 }
 
-// initDatabaseWithConfig initializes database (using injected config)
-// initDatabaseWithConfig 初始化数据库（使用注入的配置）
 func initDatabaseWithConfig(cfg *internalApp.AppConfig, lg *zap.Logger) (*gorm.DB, error) {
-	// Convert AppConfig.DatabaseConfig to dao.DatabaseConfig
-	// 转换 AppConfig.DatabaseConfig 为 dao.DatabaseConfig
-	dbConfig := dao.DatabaseConfig{
-		Type:            cfg.Database.Type,
-		Path:            cfg.Database.Path,
-		UserName:        cfg.Database.UserName,
-		Password:        cfg.Database.Password,
-		Host:            cfg.Database.Host,
-		Port:            cfg.Database.Port,
-		Name:            cfg.Database.Name,
-		SSLMode:         cfg.Database.SSLMode,
-		TablePrefix:     cfg.Database.TablePrefix,
-		AutoMigrate:     cfg.Database.AutoMigrate,
-		Charset:         cfg.Database.Charset,
-		ParseTime:       cfg.Database.ParseTime,
-		MaxIdleConns:    cfg.Database.MaxIdleConns,
-		MaxOpenConns:    cfg.Database.MaxOpenConns,
-		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
-		RunMode:         cfg.Server.RunMode,
-	}
+	// Convert AppConfig.DatabaseConfig to config.DatabaseConfig
+	// 转换 AppConfig.DatabaseConfig 为 config.DatabaseConfig
+	dbConfig := cfg.Database
+	dbConfig.RunMode = cfg.Server.RunMode
 
 	db, err := dao.NewEngine(dbConfig, lg)
 	if err != nil {

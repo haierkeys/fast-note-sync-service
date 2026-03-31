@@ -235,7 +235,7 @@ func (a *App) IsPullFromGitHub() bool {
 // fn: write operation function
 // fn: 写操作函数
 func (a *App) ExecuteWrite(ctx context.Context, uid int64, fn func() error) error {
-	return a.writeQueueMgr.Execute(ctx, uid, fn)
+	return a.writeQueueMgr.Execute(ctx, strconv.FormatInt(uid, 10), fn)
 }
 
 // WorkerPool gets Worker Pool (for advanced operations)

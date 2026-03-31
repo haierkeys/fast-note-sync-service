@@ -24,11 +24,11 @@ type GitSyncConfig struct {
 	IsEnabled     int64      `gorm:"column:is_enabled;type:INTEGER;default:0" json:"isEnabled" form:"isEnabled"`
 	Delay         int64      `gorm:"column:delay;type:INTEGER;default:0" json:"delay" form:"delay"`
 	RetentionDays int64      `gorm:"column:retention_days;type:INTEGER;default:0" json:"retentionDays" form:"retentionDays"`
-	LastSyncTime  time.Time  `gorm:"column:last_sync_time;type:datetime" json:"lastSyncTime" form:"lastSyncTime"`
+	LastSyncTime  time.Time  `gorm:"column:last_sync_time" json:"lastSyncTime" form:"lastSyncTime"`
 	LastStatus    int64      `gorm:"column:last_status;type:INTEGER;default:0" json:"lastStatus" form:"lastStatus"`
 	LastMessage   string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
-	CreatedAt     timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt     timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt     timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName GitSyncConfig's table name

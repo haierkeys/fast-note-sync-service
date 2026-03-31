@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
@@ -24,45 +26,11 @@ import (
 	"gorm.io/gorm/schema"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 )
 
 // DatabaseConfig 数据库配置（用于依赖注入）
-type DatabaseConfig struct {
-	// Type 数据库类型
-	Type string
-	// Path SQLite 数据库文件路径
-	Path string
-	// UserName 用户名
-	UserName string
-	// Password 密码
-	Password string
-	// Host 主机
-	Host string
-	// Port 端口
-	Port int
-	// Name 数据库名
-	Name string
-	// SSLMode SSL 模式 (仅限 postgres)
-	SSLMode string
-	// TablePrefix 表前缀
-	TablePrefix string
-	// AutoMigrate 是否启用自动迁移
-	AutoMigrate bool
-	// Charset 字符集
-	Charset string
-	// ParseTime 是否解析时间
-	ParseTime bool
-	// MaxIdleConns 最大闲置连接数，默认 10
-	MaxIdleConns int
-	// MaxOpenConns 最大打开连接数，默认 100
-	MaxOpenConns int
-	// ConnMaxLifetime 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
-	ConnMaxLifetime string
-	// ConnMaxIdleTime 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
-	ConnMaxIdleTime string
-	// RunMode 运行模式（用于日志级别控制）
-	RunMode string
-}
+// DatabaseConfig is now imported from internal/config
 
 type dbEntry struct {
 	db       *gorm.DB
@@ -77,9 +45,11 @@ type Dao struct {
 	onceKeys sync.Map
 	mu       sync.RWMutex // 保护 KeyDb 的并发访问
 
+	poolSemaphores sync.Map // map[string]*semaphore.Weighted 针对不同配置的并发控制
+
 	// 注入的依赖
-	config        *DatabaseConfig
-	userConfig    *DatabaseConfig
+	config        *config.DatabaseConfig
+	userConfig    *config.DatabaseConfig
 	logger        *zap.Logger
 	writeQueueMgr *writequeue.Manager
 }
@@ -88,14 +58,14 @@ type Dao struct {
 type DaoOption func(*Dao)
 
 // WithConfig 设置数据库配置
-func WithConfig(cfg *DatabaseConfig) DaoOption {
+func WithConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
 		d.config = cfg
 	}
 }
 
-// WithUserConfig 设置用户数据库配置
-func WithUserConfig(cfg *DatabaseConfig) DaoOption {
+// WithUserDatabaseConfig 设置用户数据库配置
+func WithUserDatabaseConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
 		d.userConfig = cfg
 	}
@@ -166,7 +136,7 @@ func (d *Dao) Logger() *zap.Logger {
 }
 
 // Config 获取数据库配置
-func (d *Dao) Config() *DatabaseConfig {
+func (d *Dao) Config() *config.DatabaseConfig {
 	return d.config
 }
 
@@ -175,6 +145,17 @@ func (d *Dao) WriteQueueManager() *writequeue.Manager {
 	return d.writeQueueMgr
 }
 
+// QueryWithOnceInit 执行带有单次初始化逻辑的数据库查询
+// QueryWithOnceInit executes a database query with once-init logic.
+// 参数说明:
+//   - f func(*gorm.DB): 初始化函数，仅在 onceKey 首次出现时执行 (如 AutoMigrate)
+//   - onceKey string: 用于确保初始化逻辑仅执行一次的唯一标识
+//   - key ...string: 数据库连接标识（可变参数）。不传或为空时使用主数据库；传入时用于路由到特定租户/用户库
+//
+// Parameters:
+//   - f func(*gorm.DB): Initialization function, executed only the first time onceKey is encountered (e.g., AutoMigrate).
+//   - onceKey string: Unique identifier to ensure initialization logic runs only once.
+//   - key ...string: Database connection identifier (variadic). Uses main DB if omitted/empty; uses provided key for tenant/user DB routing.
 func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string) *query.Query {
 	db := d.ResolveDB(key...)
 	if db == nil {
@@ -184,7 +165,15 @@ func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string)
 		}
 		panic(fmt.Sprintf("数据库实例为 nil (key=%s, onceKey=%s),请检查数据库配置和连接", keyName, onceKey))
 	}
-	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
+
+	// 构造库级唯一的初始化 Key
+	// 如果提供了 key，说明是租户库，需附加 key 以保证每个租户库独立初始化
+	actualOnceKey := onceKey
+	if len(key) > 0 && key[0] != "" {
+		actualOnceKey = onceKey + "@" + key[0]
+	}
+
+	if _, loaded := d.onceKeys.LoadOrStore(actualOnceKey, true); !loaded {
 		f(db)
 	}
 	return query.Use(db)
@@ -215,8 +204,8 @@ func (d *Dao) ResolveDB(key ...string) *gorm.DB {
 
 // resolveConfig 获取数据库配置
 // key: 数据库标识，如果非空则尝试获取用户数据库配置
-func (d *Dao) resolveConfig(key string) DatabaseConfig {
-	var cfg DatabaseConfig
+func (d *Dao) resolveConfig(key string) config.DatabaseConfig {
+	var cfg config.DatabaseConfig
 	// 如果是针对特定 Key (通常为用户库) 且配置了独立的 UserDatabase 类型
 	if key != "" && d.userConfig != nil && d.userConfig.Type != "" {
 		cfg = *d.userConfig
@@ -248,11 +237,34 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 	// 获取配置
 	c := d.resolveConfig(key)
 
-	if (c.Type == "mysql" || c.Type == "postgres") && key != "" {
-		// MySQL/Postgres: 相同数据库，通过表前缀区分不同租户
-		c.TablePrefix = key + "_" + c.TablePrefix
+	if (c.Type == "postgres") && key != "" {
+		// PostgreSQL: 统一映射到 user_<uid> Schema，忽略具体的 Repo 前缀
+		schemaName, ok := d.extractUserSchema(key)
+		if !ok {
+			schemaName = key // 回退逻辑，如果无法解析则使用原始 key
+		}
+
+		if err := d.ensurePostgresSchema(schemaName); err != nil {
+			d.Logger().Error("ensurePostgresSchema failed", zap.String("schema", schemaName), zap.Error(err))
+			return nil
+		}
+		c.Schema = schemaName
+		c.TablePrefix = "" // PostgreSQL 下清空前缀，改用 Schema
+	} else if (c.Type == "mysql") && key != "" {
+		// MySQL: 统一映射到 user_<uid> 数据库，实现租户级库隔离
+		dbName, ok := d.extractUserSchema(key)
+		if !ok {
+			dbName = key // 回退逻辑，如果无法解析则使用原始 key
+		}
+
+		if err := d.ensureMysqlDatabase(dbName); err != nil {
+			d.Logger().Error("ensureMysqlDatabase failed", zap.String("db", dbName), zap.Error(err))
+			return nil
+		}
+		c.Name = dbName
+		c.TablePrefix = "" // MySQL 下清空前缀，改用库路由
 	} else if c.Type == "sqlite" && key != "" {
-		// SQLite: 分配到不同的数据库文件
+		// SQLite: 维持多文件隔离模式 (使用完整的 key 作为文件名后缀)
 		ext := filepath.Ext(c.Path)
 		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
 	}
@@ -314,7 +326,7 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 // 返回值说明:
 //   - *gorm.DB: 数据库连接实例
 //   - error: 出错时返回错误
-func NewEngine(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
+func NewEngine(c config.DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
 	// 如果没有指定类型，则默认为 sqlite
 	if c.Type == "" {
 		c.Type = "sqlite"
@@ -397,7 +409,7 @@ func NewEngine(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
 //
 // 返回值说明:
 //   - gorm.Dialector: GORM 数据库方言
-func getDialector(c DatabaseConfig) gorm.Dialector {
+func getDialector(c config.DatabaseConfig) gorm.Dialector {
 	if c.Type == "mysql" {
 		host := c.Host
 		if c.Port != 0 && !strings.Contains(host, ":") {
@@ -426,6 +438,9 @@ func getDialector(c DatabaseConfig) gorm.Dialector {
 			c.Port,
 			c.SSLMode,
 		)
+		if c.Schema != "" {
+			dsn = fmt.Sprintf("%s search_path=%s", dsn, c.Schema)
+		}
 		return postgres.Open(dsn)
 	} else if c.Type == "sqlite" {
 
@@ -480,17 +495,49 @@ func (d *Dao) WithRetry(fn func() error) error {
 // 返回值: 写操作的错误
 // 注意: 必须通过 WithWriteQueueManager 注入写队列管理器
 func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
-	if d.writeQueueMgr == nil {
-		return fmt.Errorf("writeQueueMgr is nil, must inject via WithWriteQueueManager")
+	dbKey := r.GetKey(uid)
+	cfg := d.resolveConfig(dbKey)
+
+	// 判断是否启用写队列
+	enableQueue := (cfg.EnableWriteQueue == nil || *cfg.EnableWriteQueue)
+
+	if enableQueue {
+		if d.writeQueueMgr == nil {
+			return fmt.Errorf("writeQueueMgr is nil, must inject via WithWriteQueueManager")
+		}
+		return d.writeQueueMgr.Execute(ctx, dbKey, func() error {
+			db := d.ResolveDB(dbKey)
+			if db == nil {
+				return fmt.Errorf("database connection is nil (uid=%d, dbKey=%s)", uid, dbKey)
+			}
+			return fn(db.WithContext(ctx))
+		})
 	}
 
-	return d.writeQueueMgr.Execute(ctx, uid, func() error {
-		db := d.ResolveDB(r.GetKey(uid))
-		if db == nil {
-			return fmt.Errorf("database connection is nil (uid=%d)", uid)
+	// 不使用写队列，检查并发限制
+	if cfg.MaxWriteConcurrency > 0 {
+		// 确定配置的分组标识（用于共享同一个限制器）
+		// 这里简单处理：主库和用户库各自拥有独立的并发限制池
+		groupKey := "main"
+		if dbKey != "" {
+			groupKey = "user"
 		}
-		return fn(db.WithContext(ctx))
-	})
+
+		actual, _ := d.poolSemaphores.LoadOrStore(groupKey, semaphore.NewWeighted(int64(cfg.MaxWriteConcurrency)))
+		sem := actual.(*semaphore.Weighted)
+
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return err
+		}
+		defer sem.Release(1)
+	}
+
+	// 执行写操作
+	db := d.ResolveDB(dbKey)
+	if db == nil {
+		return fmt.Errorf("database connection is nil (uid=%d)", uid)
+	}
+	return fn(db.WithContext(ctx))
 }
 
 // ExecuteRead 执行读操作（直接执行，不经过写队列）
@@ -553,6 +600,13 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	}
 
 	dbKey := d.getModelDBKey(uid, modelKey)
+	cfg := d.resolveConfig(dbKey)
+
+	// 2. 校验配置中的 AutoMigrate 标志
+	if !cfg.AutoMigrate {
+		return nil
+	}
+
 	b := d.ResolveDB(dbKey)
 
 	if b == nil {
@@ -581,3 +635,80 @@ func (d *Dao) GetAllUserUIDs() ([]int64, error) {
 	}
 	return uids, nil
 }
+
+// ensurePostgresSchema 确保 PostgreSQL 中指定的 Schema 存在
+func (d *Dao) ensurePostgresSchema(schemaName string) error {
+	if d.userConfig == nil || d.userConfig.Type != "postgres" {
+		return nil
+	}
+
+	// 构造不带 schema 的基础连接 DSN
+	cfg := *d.userConfig
+	cfg.Schema = ""
+
+	// 使用基础连接来创建新的 Schema
+	db, err := NewEngine(cfg, d.Logger())
+	if err != nil {
+		return fmt.Errorf("failed to open root postgres connection: %w", err)
+	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	}()
+
+	// 执行创建 Schema 语句
+	err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schemaName)).Error
+	if err != nil {
+		return fmt.Errorf("failed to create schema %s: %w", schemaName, err)
+	}
+
+	return nil
+}
+
+// extractUserSchema 从连接 Key (如 user_vault_1) 中提取统一的用户 Schema 名 (如 user_1)
+func (d *Dao) extractUserSchema(key string) (string, bool) {
+	// 查找最后一个下划线，尝试提取 UID
+	lastUnder := strings.LastIndex(key, "_")
+	if lastUnder == -1 {
+		return "", false
+	}
+	uidStr := key[lastUnder+1:]
+	// 如果最后一部分是纯数字，我们认为它是 UID，并映射到统一的 Schema: user_<uid>
+	if _, err := strconv.ParseInt(uidStr, 10, 64); err == nil {
+		return "user_" + uidStr, true
+	}
+	return "", false
+}
+
+// ensureMysqlDatabase 确保 MySQL 中指定的数据库存在
+func (d *Dao) ensureMysqlDatabase(dbName string) error {
+	if d.userConfig == nil || d.userConfig.Type != "mysql" {
+		return nil
+	}
+
+	// 构造不带数据库名的基础连接配置
+	cfg := *d.userConfig
+	cfg.Name = ""
+
+	// 使用基础连接连接到 MySQL 服务
+	db, err := NewEngine(cfg, d.Logger())
+	if err != nil {
+		return fmt.Errorf("failed to open root mysql connection: %w", err)
+	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	}()
+
+	// 执行创建数据库语句
+	// 注意：MySQL 库名不能包含特殊字符，user_<uid> 是安全的
+	err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci", dbName)).Error
+	if err != nil {
+		return fmt.Errorf("failed to create database %s: %w", dbName, err)
+	}
+
+	return nil
+}
+
