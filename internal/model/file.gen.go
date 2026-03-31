@@ -12,10 +12,10 @@ const TableNameFile = "file"
 type File struct {
 	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	VaultID          int64      `gorm:"column:vault_id;not null;index:idx_file_vault_id_path,priority:1;index:idx_file_vault_id_updated_timestamp,priority:1;index:idx_file_vault_id_updated_at,priority:1;index:idx_file_vault_id_rename,priority:1;index:idx_file_vault_id_action_rename,priority:1;index:idx_file_vault_id_path_hash,priority:1;index:idx_file_vault_id_action_fid,priority:1;default:0" json:"vaultId" form:"vaultId"`
-	Action           string     `gorm:"column:action;index:idx_file_vault_id_action_rename,priority:2;index:idx_file_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
+	Action           string     `gorm:"column:action;type:varchar(255);index:idx_file_vault_id_action_rename,priority:2;index:idx_file_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
 	FID              int64      `gorm:"column:fid;index:idx_file_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
-	Path             string     `gorm:"column:path;type:TEXT;index:idx_file_vault_id_path,priority:2;default:''" json:"path" form:"path"`
-	PathHash         string     `gorm:"column:path_hash;index:idx_file_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
+	Path             string     `gorm:"column:path;type:varchar(255);index:idx_file_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	PathHash         string     `gorm:"column:path_hash;type:varchar(255);index:idx_file_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
 	ContentHash      string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
 	SavePath         string     `gorm:"column:save_path;default:''" json:"savePath" form:"savePath"`
 	Rename           int64      `gorm:"column:rename;index:idx_file_vault_id_rename,priority:2;index:idx_file_vault_id_action_rename,priority:3;default:0" json:"rename" form:"rename"`
@@ -23,8 +23,8 @@ type File struct {
 	Ctime            int64      `gorm:"column:ctime;not null;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_file_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
-	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_file_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt        timex.Time `gorm:"column:updated_at;index:idx_file_vault_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName File's table name

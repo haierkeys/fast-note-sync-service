@@ -21,8 +21,8 @@ type GitSyncHistory struct {
 	EndTime   time.Time  `gorm:"column:end_time" json:"endTime" form:"endTime"`
 	Status    int64      `gorm:"column:status;default:0" json:"status" form:"status"`
 	Message   string     `gorm:"column:message;type:TEXT;default:''" json:"message" form:"message"`
-	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;index:idx_git_sync_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt timex.Time `gorm:"column:created_at;index:idx_git_sync_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName GitSyncHistory's table name

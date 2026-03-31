@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 
@@ -46,9 +47,9 @@ type MigrationContext struct {
 type MigrationManager struct {
 	db         *gorm.DB
 	logger     *zap.Logger
-	version    string // 当前运行版本
-	dbPath     string // 数据库路径
-	dbType     string // 数据库类型
+	version    string                  // 当前运行版本
+	config     *config.DatabaseConfig  // 主数据库配置
+	userConfig *config.DatabaseConfig  // 用户数据库配置
 	migrations []Migration
 }
 
@@ -58,16 +59,14 @@ type MigrationManager struct {
 // version: 当前运行版本（必须）
 // dbPath: 数据库文件路径（SQLite 需要）
 // dbType: 数据库类型
-func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version, dbPath, dbType string) *MigrationManager {
+func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version string, cfg, userCfg *config.DatabaseConfig) *MigrationManager {
 	return &MigrationManager{
-		db:      db,
-		logger:  logger,
-		version: version,
-		dbPath:  dbPath,
-		dbType:  dbType,
+		db:         db,
+		logger:     logger,
+		version:    version,
+		config:     cfg,
+		userConfig: userCfg,
 		migrations: []Migration{
-			// 在这里注册所有的升级脚本
-			&VaultMigrate{},
 			&NoteHistoryRenameMigrate{},
 		},
 	}
@@ -77,13 +76,12 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version, dbPath, dbTyp
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
 
-	// 创建数据库配置，用于 UseDb 创建用户数据库
-	dbConfig := &dao.DatabaseConfig{
-		Type: m.dbType,
-		Path: m.dbPath,
-	}
-
-	dbUtils := service.NewDBUtils(m.db, ctx, dao.WithConfig(dbConfig), dao.WithLogger(m.logger))
+	// 使用提供的主配置和用户配置初始化 DBUtils
+	dbUtils := service.NewDBUtils(m.db, ctx, 
+		dao.WithConfig(m.config), 
+		dao.WithUserDatabaseConfig(m.userConfig),
+		dao.WithLogger(m.logger),
+	)
 	err := dbUtils.ExposeAutoMigrate()
 	if err != nil {
 		return fmt.Errorf("dbUtils.ExposeAutoMigrate: %w", err)
@@ -164,8 +162,8 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 			// 创建迁移上下文
 			mc := &MigrationContext{
 				Logger:       m.logger,
-				DatabasePath: m.dbPath,
-				DatabaseType: m.dbType,
+				DatabasePath: m.config.Path,
+				DatabaseType: m.config.Type,
 			}
 			// 执行升级脚本
 			if err := migration.Up(tx, context.Background(), mc); err != nil {
@@ -261,7 +259,7 @@ func (m *MigrationManager) saveReferenceVersion(version string) error {
 // version: 当前运行版本
 // dbPath: 数据库文件路径
 // dbType: 数据库类型
-func Execute(db *gorm.DB, logger *zap.Logger, version, dbPath, dbType string) error {
+func Execute(db *gorm.DB, logger *zap.Logger, version string, cfg, userCfg *config.DatabaseConfig) error {
 	if db == nil {
 		return fmt.Errorf("database not initialized")
 	}
@@ -269,6 +267,6 @@ func Execute(db *gorm.DB, logger *zap.Logger, version, dbPath, dbType string) er
 		return fmt.Errorf("logger not initialized")
 	}
 
-	manager := NewMigrationManager(db, logger, version, dbPath, dbType)
+	manager := NewMigrationManager(db, logger, version, cfg, userCfg)
 	return manager.Run(context.Background())
 }

@@ -39,7 +39,7 @@ func init() {
 
 // vault 获取保险库查询对象
 func (r *vaultRepository) vault(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Vault")
 	}, r.GetKey(uid)+"#vault", r.GetKey(uid))
 }

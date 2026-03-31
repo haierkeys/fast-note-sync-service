@@ -17,8 +17,8 @@ type Vault struct {
 	FileCount int64      `gorm:"column:file_count;default:0" json:"fileCount" form:"fileCount"`
 	FileSize  int64      `gorm:"column:file_size;default:0" json:"fileSize" form:"fileSize"`
 	IsDeleted int64      `gorm:"column:is_deleted;default:0" json:"isDeleted" form:"isDeleted"`
-	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName Vault's table name

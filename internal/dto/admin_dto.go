@@ -1,0 +1,149 @@
+package dto
+
+import "time"
+
+// AdminWebGUIConfig WebGUI configuration response structure (public interface)
+// AdminWebGUIConfig WebGUI 配置响应结构（公开接口）
+type AdminWebGUIConfig struct {
+	FontSet          string `json:"fontSet"`          // Font set // 字体设置
+	RegisterIsEnable bool   `json:"registerIsEnable"` // Registration enablement // 是否开启注册
+	AdminUID         int    `json:"adminUid"`         // Admin UID // 管理员 UID
+}
+
+// AdminConfig Admin configuration structure (admin interface)
+// AdminConfig 管理员配置结构（管理员接口）
+type AdminConfig struct {
+	FontSet                 string `json:"fontSet" form:"fontSet"`                                           // Font set // 字体设置
+	RegisterIsEnable        bool   `json:"registerIsEnable" form:"registerIsEnable"`                         // Registration enablement // 是否开启注册
+	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`                     // File chunk size // 文件分块大小
+	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"` // Soft delete retention time // 软删除保留时间
+	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`       // Upload session timeout // 上传会话超时时间
+	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`         // History versions to keep // 历史版本保留数
+	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`               // History save delay // 历史保存延迟
+	DefaultAPIFolder        string `json:"defaultApiFolder,omitempty" form:"defaultApiFolder"`               // Default API folder // 默认 API 目录
+	AdminUID                int    `json:"adminUid" form:"adminUid"`                                         // Admin UID // 管理员 UID
+	AuthTokenKey            string `json:"authTokenKey" form:"authTokenKey"`                                 // Auth token key // 认证 Token 密钥
+	TokenExpiry             string `json:"tokenExpiry" form:"tokenExpiry"`                                   // Token expiry // Token 有效期
+	ShareTokenKey           string `json:"shareTokenKey" form:"shareTokenKey"`                               // Share token key // 分享 Token 密钥
+	ShareTokenExpiry        string `json:"shareTokenExpiry" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
+	PullSource              string `json:"pullSource" form:"pullSource"`                                     // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
+}
+
+// AdminUserDatabaseConfig User database configuration structure
+// AdminUserDatabaseConfig 用户数据库配置结构
+type AdminUserDatabaseConfig struct {
+	Type                string `json:"type" form:"type" binding:"oneof=mysql postgres sqlite"` // Database type (mysql, postgres, sqlite) // 数据库类型
+	Path                string `json:"path" form:"path"`                                 // SQLite database file path // SQLite 数据库文件路径
+	UserName            string `json:"username" form:"username"`                         // Username // 用户名
+	Password            string `json:"password" form:"password"`                         // Password // 密码
+	Host                string `json:"host" form:"host"`                                 // Host // 主机
+	Port                int    `json:"port" form:"port"`                                 // Port // 端口
+	Name                string `json:"name" form:"name"`                                 // Database name // 数据库名
+	SSLMode             string `json:"ssl-mode" form:"ssl-mode"`                         // SSL mode (postgres only) // SSL 模式
+	Schema              string `json:"schema" form:"schema"`                             // Database schema (postgres only) // 数据库 Schema
+	MaxIdleConns        int    `json:"max-idle-conns" form:"max-idle-conns"`                 // Max idle connections // 最大闲置连接数
+	MaxOpenConns        int    `json:"max-open-conns" form:"max-open-conns"`                 // Max open connections // 最大打开连接数
+	ConnMaxLifetime     string `json:"conn-max-lifetime" form:"conn-max-lifetime"`       // Connection max lifetime // 连接最大生命周期
+	ConnMaxIdleTime     string `json:"conn-max-idle-time" form:"conn-max-idle-time"`       // Connection max idle time // 空闲连接最大生命周期
+	MaxWriteConcurrency int    `json:"max-write-concurrency" form:"max-write-concurrency"` // Max write concurrency // 最大并发写入数
+}
+
+// AdminNgrokConfig Ngrok tunnel configuration
+// AdminNgrokConfig Ngrok 隧道配置
+type AdminNgrokConfig struct {
+	Enabled   bool   `json:"enabled" form:"enabled"`     // Whether to enable ngrok tunnel // 是否启用 ngrok 隧道
+	AuthToken string `json:"authToken" form:"authToken"` // ngrok auth token // ngrok 认证令牌
+	Domain    string `json:"domain" form:"domain"`       // Custom domain // 自定义域名
+}
+
+// AdminCloudflareConfig Cloudflare tunnel configuration
+// AdminCloudflareConfig Cloudflare 隧道配置
+type AdminCloudflareConfig struct {
+	Enabled    bool   `json:"enabled" form:"enabled"`       // Whether to enable cloudflare tunnel // 是否启用 cloudflare 隧道
+	Token      string `json:"token" form:"token"`           // cloudflare tunnel token // cloudflare 隧道令牌
+	LogEnabled bool   `json:"logEnabled" form:"logEnabled"` // Whether to enable cloudflare tunnel logging // 是否开启 cloudflare 隧道日志
+}
+
+// AdminSystemInfo system information response structure
+// AdminSystemInfo 系统信息响应结构
+type AdminSystemInfo struct {
+	StartTime     time.Time        `json:"startTime"`     // Start time // 启动时间
+	Uptime        float64          `json:"uptime"`        // Uptime (seconds) // 运行时间（秒）
+	RuntimeStatus AdminRuntimeInfo `json:"runtimeStatus"` // Go runtime status // Go 运行时状态
+	CPU           AdminCPUInfo     `json:"cpu"`           // CPU information // CPU 信息
+	Memory        AdminMemoryInfo  `json:"memory"`        // Memory information // 内存信息
+	Host          AdminHostInfo    `json:"host"`          // Host information // 主机信息
+	Process       AdminProcessInfo `json:"process"`       // Process information // 进程信息
+}
+
+// AdminCPUInfo CPU information
+// AdminCPUInfo CPU 信息
+type AdminCPUInfo struct {
+	ModelName     string        `json:"modelName"`     // Model name // 型号
+	PhysicalCores int           `json:"physicalCores"` // Physical cores // 物理核心数
+	LogicalCores  int           `json:"logicalCores"`  // Logical cores // 逻辑核心数
+	Percent       []float64     `json:"percent"`       // Usage percentage per core // 每个核心的使用率
+	LoadAvg       *AdminLoadInfo `json:"loadAvg"`       // Load average // 平均负载
+}
+
+// AdminLoadInfo system load information
+type AdminLoadInfo struct {
+	Load1  float64 `json:"load1"`
+	Load5  float64 `json:"load5"`
+	Load15 float64 `json:"load15"`
+}
+
+// AdminMemoryInfo memory information
+type AdminMemoryInfo struct {
+	Total           uint64  `json:"total"`           // Total physical memory // 系统总内存
+	Available       uint64  `json:"available"`       // Available memory // 可用内存
+	Used            uint64  `json:"used"`            // Used memory // 已用内存
+	UsedPercent     float64 `json:"usedPercent"`     // Memory usage percentage // 内存使用率
+	SwapTotal       uint64  `json:"swapTotal"`       // Total swap space // 交换区总量
+	SwapUsed        uint64  `json:"swapUsed"`        // Used swap space // 交换区已用
+	SwapUsedPercent float64 `json:"swapUsedPercent"` // Swap usage percentage // 交换区使用率
+}
+
+// AdminHostInfo host identification information
+type AdminHostInfo struct {
+	Hostname       string    `json:"hostname"`       // Hostname // 主机名
+	OS             string    `json:"os"`             // Operating system // 操作系统
+	OSPretty       string    `json:"osPretty"`       // Detailed OS name // 详细操作系统名称
+	Platform       string    `json:"platform"`       // Platform name // 平台
+	Arch           string    `json:"arch"`           // Architecture // 架构
+	KernelVersion  string    `json:"kernelVersion"`  // Kernel version // 内核版本
+	Uptime         uint64    `json:"uptime"`         // System uptime // 系统运行时间
+	CurrentTime    time.Time `json:"currentTime"`    // Current system time // 当前系统时间
+	TimeZone       string    `json:"timezone"`       // Time zone name // 时区名称
+	TimeZoneOffset int       `json:"timezoneOffset"` // Time zone offset in seconds // 时区偏移（秒）
+}
+
+// AdminProcessInfo current process information
+type AdminProcessInfo struct {
+	PID           int32   `json:"pid"`           // Process ID
+	PPID          int32   `json:"ppid"`          // Parent Process ID
+	Name          string  `json:"name"`          // Process Name
+	CPUPercent    float64 `json:"cpuPercent"`    // CPU Usage percentage
+	MemoryPercent float32 `json:"memoryPercent"` // Memory Usage percentage
+}
+
+// AdminRuntimeInfo Go runtime information
+// AdminRuntimeInfo Go 运行时信息
+type AdminRuntimeInfo struct {
+	NumGoroutine int    `json:"numGoroutine"` // Number of goroutines // Goroutine 数量
+	MemAlloc     uint64 `json:"memAlloc"`     // Allocated memory (bytes) // 已分配内存（字节）
+	MemTotal     uint64 `json:"memTotal"`     // Total memory allocated (bytes) // 累计分配内存（字节）
+	MemSys       uint64 `json:"memSys"`       // Memory obtained from system (bytes) // 从系统获取的内存（字节）
+	HeapSys      uint64 `json:"heapSys"`      // Memory obtained from system for heap (bytes) // 堆占用的系统内存
+	HeapIdle     uint64 `json:"heapIdle"`     // Memory in idle spans (bytes) // 空闲 Span 占用的内存
+	HeapInuse    uint64 `json:"heapInuse"`    // Memory in in-use spans (bytes) // 正在使用的 Span 占用的内存
+	HeapReleased uint64 `json:"heapReleased"` // Memory released to OS (bytes) // 释放回操作系统的内存（字节）
+	StackSys     uint64 `json:"stackSys"`     // Memory obtained from system for stack (bytes) // 栈占用的系统内存
+	MSpanSys     uint64 `json:"mSpanSys"`     // Memory obtained from system for mspan (bytes) // mspan 占用的系统内存
+	MCacheSys    uint64 `json:"mCacheSys"`    // Memory obtained from system for mcache (bytes) // mcache 占用的系统内存
+	BuckHashSys  uint64 `json:"buckHashSys"`  // Memory obtained from system for profiling bucket hash table (bytes) // 分析桶哈希表占用的系统内存
+	GCSys        uint64 `json:"gcSys"`        // Memory obtained from system for metadata for GC (bytes) // GC 元数据占用的系统内存
+	OtherSys     uint64 `json:"otherSys"`     // Other system memory (bytes) // 其他系统内存
+	NextGC       uint64 `json:"nextGc"`       // Target heap size for the next GC cycle // 下次 GC 的目标堆大小
+	NumGC        uint32 `json:"numGc"`        // Number of completed GC cycles // GC 次数
+}
