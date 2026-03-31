@@ -165,7 +165,15 @@ func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string)
 		}
 		panic(fmt.Sprintf("数据库实例为 nil (key=%s, onceKey=%s),请检查数据库配置和连接", keyName, onceKey))
 	}
-	if _, loaded := d.onceKeys.LoadOrStore(onceKey, true); !loaded {
+
+	// 构造库级唯一的初始化 Key
+	// 如果提供了 key，说明是租户库，需附加 key 以保证每个租户库独立初始化
+	actualOnceKey := onceKey
+	if len(key) > 0 && key[0] != "" {
+		actualOnceKey = onceKey + "@" + key[0]
+	}
+
+	if _, loaded := d.onceKeys.LoadOrStore(actualOnceKey, true); !loaded {
 		f(db)
 	}
 	return query.Use(db)
@@ -243,8 +251,18 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 		c.Schema = schemaName
 		c.TablePrefix = "" // PostgreSQL 下清空前缀，改用 Schema
 	} else if (c.Type == "mysql") && key != "" {
-		// MySQL: 继续使用表前缀区分不同租户
-		c.TablePrefix = key + "_" + c.TablePrefix
+		// MySQL: 统一映射到 user_<uid> 数据库，实现租户级库隔离
+		dbName, ok := d.extractUserSchema(key)
+		if !ok {
+			dbName = key // 回退逻辑，如果无法解析则使用原始 key
+		}
+
+		if err := d.ensureMysqlDatabase(dbName); err != nil {
+			d.Logger().Error("ensureMysqlDatabase failed", zap.String("db", dbName), zap.Error(err))
+			return nil
+		}
+		c.Name = dbName
+		c.TablePrefix = "" // MySQL 下清空前缀，改用库路由
 	} else if c.Type == "sqlite" && key != "" {
 		// SQLite: 维持多文件隔离模式 (使用完整的 key 作为文件名后缀)
 		ext := filepath.Ext(c.Path)
@@ -661,5 +679,36 @@ func (d *Dao) extractUserSchema(key string) (string, bool) {
 		return "user_" + uidStr, true
 	}
 	return "", false
+}
+
+// ensureMysqlDatabase 确保 MySQL 中指定的数据库存在
+func (d *Dao) ensureMysqlDatabase(dbName string) error {
+	if d.userConfig == nil || d.userConfig.Type != "mysql" {
+		return nil
+	}
+
+	// 构造不带数据库名的基础连接配置
+	cfg := *d.userConfig
+	cfg.Name = ""
+
+	// 使用基础连接连接到 MySQL 服务
+	db, err := NewEngine(cfg, d.Logger())
+	if err != nil {
+		return fmt.Errorf("failed to open root mysql connection: %w", err)
+	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	}()
+
+	// 执行创建数据库语句
+	// 注意：MySQL 库名不能包含特殊字符，user_<uid> 是安全的
+	err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci", dbName)).Error
+	if err != nil {
+		return fmt.Errorf("failed to create database %s: %w", dbName, err)
+	}
+
+	return nil
 }
 
