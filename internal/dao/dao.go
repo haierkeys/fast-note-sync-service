@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -144,7 +145,6 @@ func (d *Dao) WriteQueueManager() *writequeue.Manager {
 	return d.writeQueueMgr
 }
 
-
 // QueryWithOnceInit 执行带有单次初始化逻辑的数据库查询
 // QueryWithOnceInit executes a database query with once-init logic.
 // 参数说明:
@@ -229,11 +229,24 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 	// 获取配置
 	c := d.resolveConfig(key)
 
-	if (c.Type == "mysql" || c.Type == "postgres") && key != "" {
-		// MySQL/Postgres: 相同数据库，通过表前缀区分不同租户
+	if (c.Type == "postgres") && key != "" {
+		// PostgreSQL: 统一映射到 user_<uid> Schema，忽略具体的 Repo 前缀
+		schemaName, ok := d.extractUserSchema(key)
+		if !ok {
+			schemaName = key // 回退逻辑，如果无法解析则使用原始 key
+		}
+
+		if err := d.ensurePostgresSchema(schemaName); err != nil {
+			d.Logger().Error("ensurePostgresSchema failed", zap.String("schema", schemaName), zap.Error(err))
+			return nil
+		}
+		c.Schema = schemaName
+		c.TablePrefix = "" // PostgreSQL 下清空前缀，改用 Schema
+	} else if (c.Type == "mysql") && key != "" {
+		// MySQL: 继续使用表前缀区分不同租户
 		c.TablePrefix = key + "_" + c.TablePrefix
 	} else if c.Type == "sqlite" && key != "" {
-		// SQLite: 分配到不同的数据库文件
+		// SQLite: 维持多文件隔离模式 (使用完整的 key 作为文件名后缀)
 		ext := filepath.Ext(c.Path)
 		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
 	}
@@ -407,6 +420,9 @@ func getDialector(c config.DatabaseConfig) gorm.Dialector {
 			c.Port,
 			c.SSLMode,
 		)
+		if c.Schema != "" {
+			dsn = fmt.Sprintf("%s search_path=%s", dsn, c.Schema)
+		}
 		return postgres.Open(dsn)
 	} else if c.Type == "sqlite" {
 
@@ -601,3 +617,49 @@ func (d *Dao) GetAllUserUIDs() ([]int64, error) {
 	}
 	return uids, nil
 }
+
+// ensurePostgresSchema 确保 PostgreSQL 中指定的 Schema 存在
+func (d *Dao) ensurePostgresSchema(schemaName string) error {
+	if d.userConfig == nil || d.userConfig.Type != "postgres" {
+		return nil
+	}
+
+	// 构造不带 schema 的基础连接 DSN
+	cfg := *d.userConfig
+	cfg.Schema = ""
+
+	// 使用基础连接来创建新的 Schema
+	db, err := NewEngine(cfg, d.Logger())
+	if err != nil {
+		return fmt.Errorf("failed to open root postgres connection: %w", err)
+	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	}()
+
+	// 执行创建 Schema 语句
+	err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schemaName)).Error
+	if err != nil {
+		return fmt.Errorf("failed to create schema %s: %w", schemaName, err)
+	}
+
+	return nil
+}
+
+// extractUserSchema 从连接 Key (如 user_vault_1) 中提取统一的用户 Schema 名 (如 user_1)
+func (d *Dao) extractUserSchema(key string) (string, bool) {
+	// 查找最后一个下划线，尝试提取 UID
+	lastUnder := strings.LastIndex(key, "_")
+	if lastUnder == -1 {
+		return "", false
+	}
+	uidStr := key[lastUnder+1:]
+	// 如果最后一部分是纯数字，我们认为它是 UID，并映射到统一的 Schema: user_<uid>
+	if _, err := strconv.ParseInt(uidStr, 10, 64); err == nil {
+		return "user_" + uidStr, true
+	}
+	return "", false
+}
+

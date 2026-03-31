@@ -21,6 +21,8 @@ type DatabaseConfig struct {
 	SSLMode string `yaml:"ssl-mode"`
 	// TablePrefix 表前缀
 	TablePrefix string `yaml:"table-prefix"`
+	// Schema 数据库 Schema (仅限 postgres)
+	Schema string `yaml:"schema"`
 	// AutoMigrate 是否启用自动迁移
 	AutoMigrate bool `yaml:"auto-migrate"`
 	// Charset 字符集
