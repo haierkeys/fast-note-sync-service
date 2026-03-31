@@ -151,8 +151,8 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 		db,
 		s.logger,
 		internalApp.Version,
-		appConfig.Database.Path,
-		appConfig.Database.Type,
+		&appConfig.Database,
+		&appConfig.UserDatabase,
 	); err != nil {
 		return nil, fmt.Errorf("upgrade.Execute: %w", err)
 	}

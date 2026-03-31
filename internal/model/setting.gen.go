@@ -21,8 +21,8 @@ type Setting struct {
 	Ctime            int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;index:idx_setting_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
-	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;index:idx_setting_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt        timex.Time `gorm:"column:updated_at;index:idx_setting_id_updated_at,priority:2;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName Setting's table name

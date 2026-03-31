@@ -67,8 +67,8 @@ It is safe to run this command multiple times - already applied migrations will 
 			db,
 			lg,
 			internalApp.Version,
-			appConfig.Database.Path,
-			appConfig.Database.Type,
+			&appConfig.Database,
+			&appConfig.UserDatabase,
 		); err != nil {
 			bootstrapLogger.Error("Upgrade failed", zap.Error(err))
 			os.Exit(1)

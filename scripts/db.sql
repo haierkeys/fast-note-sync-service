@@ -69,8 +69,6 @@ CREATE INDEX "idx_vault_id_action_rename" ON "note" ("vault_id", "action", "rena
 
 CREATE INDEX "idx_vault_id_rename" ON "note" ("vault_id", "rename" DESC);
 
-CREATE INDEX "idx_vault_id_action_rename" ON "note" ("vault_id", "action", "rename" DESC);
-
 CREATE INDEX "idx_vault_id_updated_at" ON "note" ("vault_id", "updated_at" DESC);
 
 CREATE INDEX "idx_vault_id_updated_timestamp" ON "note" ("vault_id", "updated_timestamp" DESC);
@@ -128,7 +126,6 @@ CREATE INDEX "idx_file_vault_id_action_rename" ON "file" ("vault_id", "action", 
 
 CREATE INDEX "idx_file_vault_id_rename" ON "file" ("vault_id", "rename" DESC);
 
-CREATE INDEX "idx_file_vault_id_action_rename" ON "file" ("vault_id", "action", "rename" DESC);
 
 CREATE INDEX "idx_file_vault_id_updated_at" ON "file" ("vault_id", "updated_at" DESC);
 

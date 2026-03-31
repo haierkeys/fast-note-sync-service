@@ -25,9 +25,9 @@ type Storage struct {
 	Password        string     `gorm:"column:password;default:''" json:"password" form:"password"`
 	IsEnabled       int64      `gorm:"column:is_enabled;not null;default:0" json:"isEnabled" form:"isEnabled"`
 	IsDeleted       int64      `gorm:"column:is_deleted;not null;default:0" json:"isDeleted" form:"isDeleted"`
-	CreatedAt       timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt       timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
-	DeletedAt       timex.Time `gorm:"column:deleted_at;type:datetime;default:NULL" json:"deletedAt" form:"deletedAt"`
+	CreatedAt       timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt       timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	DeletedAt       timex.Time `gorm:"column:deleted_at;default:NULL" json:"deletedAt" form:"deletedAt"`
 }
 
 // TableName Storage's table name

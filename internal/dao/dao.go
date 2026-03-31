@@ -566,6 +566,13 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	}
 
 	dbKey := d.getModelDBKey(uid, modelKey)
+	cfg := d.resolveConfig(dbKey)
+
+	// 2. 校验配置中的 AutoMigrate 标志
+	if !cfg.AutoMigrate {
+		return nil
+	}
+
 	b := d.ResolveDB(dbKey)
 
 	if b == nil {
