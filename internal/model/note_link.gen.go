@@ -18,7 +18,7 @@ type NoteLink struct {
 	IsEmbed        int64      `gorm:"column:is_embed;default:0" json:"isEmbed" form:"isEmbed"`
 	VaultID        int64      `gorm:"column:vault_id;not null;index:idx_target_path_hash,priority:2;default:0" json:"vaultId" form:"vaultId"`
 	UID            int64      `gorm:"column:uid;not null;index:idx_target_path_hash,priority:3;default:0" json:"uid" form:"uid"`
-	CreatedAt      timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	CreatedAt      timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 }
 
 // TableName NoteLink's table name

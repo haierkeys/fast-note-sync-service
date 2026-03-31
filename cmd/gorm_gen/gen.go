@@ -106,6 +106,9 @@ func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 		if ok && defaultValue != "" {
 			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
 				tag.Set("default", defaultValue)
+				if strings.Contains(dbType, "datetime") || strings.Contains(dbType, "timestamp") {
+					tag.Remove("type")
+				}
 				return tag
 			}))
 			continue
@@ -119,9 +122,14 @@ func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 			autoDefault = "''"
 		}
 
-		if autoDefault != "" {
+		if autoDefault != "" || strings.Contains(dbType, "datetime") || strings.Contains(dbType, "timestamp") {
 			opts = append(opts, gen.FieldGORMTag(fieldName, func(tag field.GormTag) field.GormTag {
-				tag.Set("default", autoDefault)
+				if autoDefault != "" {
+					tag.Set("default", autoDefault)
+				}
+				if strings.Contains(dbType, "datetime") || strings.Contains(dbType, "timestamp") {
+					tag.Remove("type")
+				}
 				return tag
 			}))
 		}
@@ -189,18 +197,15 @@ func main() {
 		//gen.FieldType("mtime", "timex.Time"),
 		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("autoCreateTime", "false")
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
 			tag.Set("autoUpdateTime", "false")
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),
 		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
-			tag.Set("type", "datetime")
 			tag.Set("default", "NULL")
 			return tag
 		}),

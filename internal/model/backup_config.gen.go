@@ -24,12 +24,12 @@ type BackupConfig struct {
 	CronExpression   string     `gorm:"column:cron_expression;type:TEXT;default:''" json:"cronExpression" form:"cronExpression"`
 	IncludeVaultName int64      `gorm:"column:include_vault_name;default:0" json:"includeVaultName" form:"includeVaultName"`
 	RetentionDays    int64      `gorm:"column:retention_days;type:INTEGER;default:0" json:"retentionDays" form:"retentionDays"`
-	LastRunTime      time.Time  `gorm:"column:last_run_time;type:datetime" json:"lastRunTime" form:"lastRunTime"`
+	LastRunTime      time.Time  `gorm:"column:last_run_time" json:"lastRunTime" form:"lastRunTime"`
 	NextRunTime      time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
 	LastStatus       int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
 	LastMessage      string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
-	CreatedAt        timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt        timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName BackupConfig's table name

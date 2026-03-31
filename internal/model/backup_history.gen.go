@@ -19,15 +19,15 @@ type BackupHistory struct {
 	ConfigID  int64      `gorm:"column:config_id;not null;index:idx_backup_history_config_id,priority:1;default:0" json:"configId" form:"configId"`
 	StorageID int64      `gorm:"column:storage_id;not null;default:0" json:"storageId" form:"storageId"`
 	Type      string     `gorm:"column:type;default:''" json:"type" form:"type"`
-	StartTime time.Time  `gorm:"column:start_time;type:datetime" json:"startTime" form:"startTime"`
+	StartTime time.Time  `gorm:"column:start_time" json:"startTime" form:"startTime"`
 	EndTime   time.Time  `gorm:"column:end_time" json:"endTime" form:"endTime"`
 	Status    int64      `gorm:"column:status;default:0" json:"status" form:"status"`
 	FileSize  int64      `gorm:"column:file_size;type:INTEGER;default:0" json:"fileSize" form:"fileSize"`
 	FileCount int64      `gorm:"column:file_count;type:INTEGER;default:0" json:"fileCount" form:"fileCount"`
 	Message   string     `gorm:"column:message;default:''" json:"message" form:"message"`
 	FilePath  string     `gorm:"column:file_path;default:''" json:"filePath" form:"filePath"`
-	CreatedAt timex.Time `gorm:"column:created_at;type:datetime;index:idx_backup_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt timex.Time `gorm:"column:created_at;index:idx_backup_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName BackupHistory's table name

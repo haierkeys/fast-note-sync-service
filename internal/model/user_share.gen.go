@@ -21,12 +21,12 @@ type UserShare struct {
 	Res          string     `gorm:"column:res;type:TEXT;default:''" json:"res" form:"res"`
 	Status       int64      `gorm:"column:status;type:INTEGER;default:0" json:"status" form:"status"`
 	ViewCount    int64      `gorm:"column:view_count;type:INTEGER;default:0" json:"viewCount" form:"viewCount"`
-	LastViewedAt time.Time  `gorm:"column:last_viewed_at;type:datetime" json:"lastViewedAt" form:"lastViewedAt"`
+	LastViewedAt time.Time  `gorm:"column:last_viewed_at" json:"lastViewedAt" form:"lastViewedAt"`
 	ExpiresAt    time.Time  `gorm:"column:expires_at" json:"expiresAt" form:"expiresAt"`
 	Password     string     `gorm:"column:password;default:''" json:"password" form:"password"`
 	ShortLink    string     `gorm:"column:short_link;default:''" json:"shortLink" form:"shortLink"`
-	CreatedAt    timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt    timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt    timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt    timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName UserShare's table name
