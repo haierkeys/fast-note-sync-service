@@ -1,7 +1,7 @@
 // Package writequeue provides Per-User Write Queue implementation
 // Package writequeue 提供 Per-User Write Queue 实现
-// Used to serialize SQLite write operations for the same user to solve "database is locked" issue
-// 用于串行化同一用户的 SQLite 写操作，解决 "database is locked" 问题
+// Used to serialize SQLite write operations for the same identifier to solve "database is locked" issue
+// 用于串行化同一标识的 SQLite 写操作，解决 "database is locked" 问题
 package writequeue
 
 import (
@@ -17,8 +17,8 @@ import (
 // Error definitions
 // 错误定义
 var (
-	// ErrWriteQueueFull returned when user write queue is full
-	// ErrWriteQueueFull 当用户写队列已满时返回
+	// ErrWriteQueueFull returned when write queue is full
+	// ErrWriteQueueFull 当写队列已满时返回
 	ErrWriteQueueFull = errors.New("write queue is full")
 	// ErrWriteQueueClosed returned when write queue manager is closed
 	// ErrWriteQueueClosed 当写队列管理器已关闭时返回
@@ -31,8 +31,8 @@ var (
 // Config write queue configuration
 // Config 写队列配置
 type Config struct {
-	// QueueCapacity per-user queue capacity, default 100
-	// QueueCapacity 每用户队列容量，默认 100
+	// QueueCapacity per-queue capacity, default 100
+	// QueueCapacity 每队列容量，默认 100
 	QueueCapacity int
 	// WriteTimeout write operation timeout, default 30 seconds
 	// WriteTimeout 写操作超时时间，默认 30 秒
@@ -60,10 +60,10 @@ type writeOp struct {
 	result chan error
 }
 
-// userWriteQueue single user write queue
-// userWriteQueue 单用户写队列
+// userWriteQueue single write queue
+// userWriteQueue 单标识写队列
 type userWriteQueue struct {
-	uid      int64
+	key      string
 	ch       chan writeOp
 	lastUsed atomic.Int64
 	closed   atomic.Bool
@@ -74,13 +74,13 @@ type userWriteQueue struct {
 	stopCh chan struct{}
 }
 
-// Manager manages write queues for all users
-// Manager 管理所有用户的写队列
+// Manager manages write queues for all identifiers
+// Manager 管理所有标识的写队列
 type Manager struct {
 	config Config
 	logger *zap.Logger
 
-	queues sync.Map // map[int64]*userWriteQueue
+	queues sync.Map // map[string]*userWriteQueue
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -147,10 +147,10 @@ func New(cfg *Config, logger *zap.Logger) *Manager {
 }
 
 // Execute executes write operation
-// Write operations will be executed serially, same user's write operations are processed in FIFO order
+// Write operations will be executed serially, same identifier's write operations are processed in FIFO order
 // Execute 执行写操作
-// 写操作会被串行化执行，同一用户的写操作按 FIFO 顺序处理
-func (m *Manager) Execute(ctx context.Context, uid int64, fn func() error) error {
+// 写操作会被串行化执行，同一标识的写操作按 FIFO 顺序处理
+func (m *Manager) Execute(ctx context.Context, key string, fn func() error) error {
 	m.mu.RLock()
 	if m.closed {
 		m.mu.RUnlock()
@@ -158,9 +158,9 @@ func (m *Manager) Execute(ctx context.Context, uid int64, fn func() error) error
 	}
 	m.mu.RUnlock()
 
-	// Get or create user queue
-	// 获取或创建用户队列
-	queue := m.getOrCreateQueue(uid)
+	// Get or create write queue
+	// 获取或创建写队列
+	queue := m.getOrCreateQueue(key)
 	if queue == nil {
 		return ErrWriteQueueClosed
 	}
@@ -208,12 +208,12 @@ func (m *Manager) Execute(ctx context.Context, uid int64, fn func() error) error
 	}
 }
 
-// getOrCreateQueue gets or creates user write queue (lazy loading)
-// getOrCreateQueue 获取或创建用户写队列（懒加载）
-func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
+// getOrCreateQueue gets or creates write queue (lazy loading)
+// getOrCreateQueue 获取或创建写队列（懒加载）
+func (m *Manager) getOrCreateQueue(key string) *userWriteQueue {
 	// Try to get existing queue first
 	// 先尝试获取已存在的队列
-	if v, ok := m.queues.Load(uid); ok {
+	if v, ok := m.queues.Load(key); ok {
 		queue := v.(*userWriteQueue)
 		if !queue.closed.Load() {
 			queue.lastUsed.Store(time.Now().UnixNano())
@@ -233,7 +233,7 @@ func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 	// Create new queue
 	// 创建新队列
 	queue := &userWriteQueue{
-		uid:    uid,
+		key:    key,
 		ch:     make(chan writeOp, m.config.QueueCapacity),
 		stopCh: make(chan struct{}),
 	}
@@ -241,7 +241,7 @@ func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 
 	// Use LoadOrStore to ensure only one queue is created
 	// 使用 LoadOrStore 确保只有一个队列被创建
-	actual, loaded := m.queues.LoadOrStore(uid, queue)
+	actual, loaded := m.queues.LoadOrStore(key, queue)
 	if loaded {
 		existingQueue := actual.(*userWriteQueue)
 		if !existingQueue.closed.Load() {
@@ -253,7 +253,7 @@ func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 		}
 		// Existing queue is closed, need to replace
 		// 已存在的队列已关闭，需要替换
-		m.queues.Store(uid, queue)
+		m.queues.Store(key, queue)
 	}
 
 	// Start worker goroutine (lazy loading)
@@ -261,21 +261,21 @@ func (m *Manager) getOrCreateQueue(uid int64) *userWriteQueue {
 	queue.workerWg.Add(1)
 	go m.worker(queue)
 
-	m.logger.Debug("created write queue for user",
-		zap.Int64("uid", uid),
+	m.logger.Debug("created write queue for identifier",
+		zap.String("key", key),
 		zap.Int("capacity", m.config.QueueCapacity))
 
 	return queue
 }
 
-// worker worker goroutine handling single user write queue
-// worker 处理单用户写队列的 worker goroutine
+// worker worker goroutine handling single write queue
+// worker 处理单队列的 worker goroutine
 func (m *Manager) worker(queue *userWriteQueue) {
 	defer queue.workerWg.Done()
 	defer func() {
 		queue.closed.Store(true)
 		m.logger.Debug("write queue worker stopped",
-			zap.Int64("uid", queue.uid))
+			zap.String("key", queue.key))
 	}()
 
 	for {
@@ -369,8 +369,8 @@ func (m *Manager) doCleanup() {
 	now := time.Now().UnixNano()
 	idleThreshold := m.config.IdleTimeout.Nanoseconds()
 
-	m.queues.Range(func(key, value interface{}) bool {
-		uid := key.(int64)
+	m.queues.Range(func(keyObj, value interface{}) bool {
+		key := keyObj.(string)
 		queue := value.(*userWriteQueue)
 
 		// Check if idle timeout
@@ -381,7 +381,7 @@ func (m *Manager) doCleanup() {
 			// 检查队列是否为空
 			if len(queue.ch) == 0 && !queue.closed.Load() {
 				m.logger.Debug("cleaning up idle write queue",
-					zap.Int64("uid", uid),
+					zap.String("key", key),
 					zap.Duration("idleTime", time.Duration(now-lastUsed)))
 
 				// Mark closed and notify worker to stop
@@ -391,7 +391,7 @@ func (m *Manager) doCleanup() {
 
 				// Delete from map
 				// 从 map 中删除
-				m.queues.Delete(uid)
+				m.queues.Delete(key)
 			}
 		}
 		return true
@@ -479,10 +479,10 @@ func (m *Manager) QueueCount() int {
 	return count
 }
 
-// QueuedCount returns number of operations waiting in specific user queue
-// QueuedCount 返回指定用户队列中等待的操作数
-func (m *Manager) QueuedCount(uid int64) int {
-	if v, ok := m.queues.Load(uid); ok {
+// QueuedCount returns number of operations waiting in specific queue
+// QueuedCount 返回指定队列中等待的操作数
+func (m *Manager) QueuedCount(key string) int {
+	if v, ok := m.queues.Load(key); ok {
 		queue := v.(*userWriteQueue)
 		return len(queue.ch)
 	}

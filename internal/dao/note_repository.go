@@ -44,7 +44,7 @@ func init() {
 
 // note 获取笔记查询对象
 func (r *noteRepository) note(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Note")
 		// 初始化 FTS5 全文搜索表并检查是否需要重建索引
 		_ = model.CreateNoteFTSTable(g)

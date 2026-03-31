@@ -13,12 +13,12 @@ type NoteLink struct {
 	ID             int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	SourceNoteID   int64      `gorm:"column:source_note_id;not null;index:idx_source_note,priority:1;default:0" json:"sourceNoteId" form:"sourceNoteId"`
 	TargetPath     string     `gorm:"column:target_path;not null;default:''" json:"targetPath" form:"targetPath"`
-	TargetPathHash string     `gorm:"column:target_path_hash;not null;index:idx_target_path_hash,priority:1;default:''" json:"targetPathHash" form:"targetPathHash"`
+	TargetPathHash string     `gorm:"column:target_path_hash;type:varchar(255);not null;index:idx_target_path_hash,priority:1;default:''" json:"targetPathHash" form:"targetPathHash"`
 	LinkText       string     `gorm:"column:link_text;default:''" json:"linkText" form:"linkText"`
 	IsEmbed        int64      `gorm:"column:is_embed;default:0" json:"isEmbed" form:"isEmbed"`
 	VaultID        int64      `gorm:"column:vault_id;not null;index:idx_target_path_hash,priority:2;default:0" json:"vaultId" form:"vaultId"`
 	UID            int64      `gorm:"column:uid;not null;index:idx_target_path_hash,priority:3;default:0" json:"uid" form:"uid"`
-	CreatedAt      timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	CreatedAt      timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 }
 
 // TableName NoteLink's table name

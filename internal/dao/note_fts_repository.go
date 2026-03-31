@@ -41,7 +41,7 @@ func (r *noteFTSRepository) GetKey(uid int64) string {
 // ensureFTSTable 确保 FTS 表存在
 func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 	key := r.GetKey(uid)
-	db := r.dao.UseKey(key)
+	db := r.dao.ResolveDB(key)
 	if db == nil {
 		return nil
 	}

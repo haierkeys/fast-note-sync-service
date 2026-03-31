@@ -15,12 +15,12 @@ type NoteHistory struct {
 	VaultID     int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
 	Path        string     `gorm:"column:path;default:''" json:"path" form:"path"`
 	Content     string     `gorm:"column:content;default:''" json:"content" form:"content"`
-	ContentHash string     `gorm:"column:content_hash;not null;index:idx_note_history_content_hash,priority:2;default:''" json:"contentHash" form:"contentHash"`
+	ContentHash string     `gorm:"column:content_hash;type:varchar(255);not null;index:idx_note_history_content_hash,priority:2;default:''" json:"contentHash" form:"contentHash"`
 	DiffPatch   string     `gorm:"column:diff_patch;default:''" json:"diffPatch" form:"diffPatch"`
 	ClientName  string     `gorm:"column:client_name;default:''" json:"clientName" form:"clientName"`
 	Version     int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:0" json:"version" form:"version"`
-	CreatedAt   timex.Time `gorm:"column:created_at;type:datetime;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt   timex.Time `gorm:"column:updated_at;type:datetime;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	CreatedAt   timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt   timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName NoteHistory's table name

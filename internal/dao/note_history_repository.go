@@ -44,7 +44,7 @@ func init() {
 
 // noteHistory 获取笔记历史查询对象
 func (r *noteHistoryRepository) noteHistory(uid int64) *query.Query {
-	return r.dao.UseQueryWithOnceFunc(func(g *gorm.DB) {
+	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "NoteHistory")
 	}, r.GetKey(uid)+"#noteHistory", r.GetKey(uid))
 }
