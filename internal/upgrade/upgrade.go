@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 
@@ -76,7 +77,7 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
 
 	// 创建数据库配置，用于 GetOrCreateDB 创建用户数据库
-	dbConfig := &dao.DatabaseConfig{
+	dbConfig := &config.DatabaseConfig{
 		Type: m.dbType,
 		Path: m.dbPath,
 	}

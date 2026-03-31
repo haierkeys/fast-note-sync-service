@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
@@ -27,42 +28,7 @@ import (
 )
 
 // DatabaseConfig 数据库配置（用于依赖注入）
-type DatabaseConfig struct {
-	// Type 数据库类型
-	Type string
-	// Path SQLite 数据库文件路径
-	Path string
-	// UserName 用户名
-	UserName string
-	// Password 密码
-	Password string
-	// Host 主机
-	Host string
-	// Port 端口
-	Port int
-	// Name 数据库名
-	Name string
-	// SSLMode SSL 模式 (仅限 postgres)
-	SSLMode string
-	// TablePrefix 表前缀
-	TablePrefix string
-	// AutoMigrate 是否启用自动迁移
-	AutoMigrate bool
-	// Charset 字符集
-	Charset string
-	// ParseTime 是否解析时间
-	ParseTime bool
-	// MaxIdleConns 最大闲置连接数，默认 10
-	MaxIdleConns int
-	// MaxOpenConns 最大打开连接数，默认 100
-	MaxOpenConns int
-	// ConnMaxLifetime 连接最大生命周期，支持格式：30m（分钟）、1h（小时），默认 30m
-	ConnMaxLifetime string
-	// ConnMaxIdleTime 空闲连接最大生命周期，支持格式：10m（分钟）、1h（小时），默认 10m
-	ConnMaxIdleTime string
-	// RunMode 运行模式（用于日志级别控制）
-	RunMode string
-}
+// DatabaseConfig is now imported from internal/config
 
 type dbEntry struct {
 	db       *gorm.DB
@@ -78,8 +44,8 @@ type Dao struct {
 	mu       sync.RWMutex // 保护 KeyDb 的并发访问
 
 	// 注入的依赖
-	config        *DatabaseConfig
-	userConfig    *DatabaseConfig
+	config        *config.DatabaseConfig
+	userConfig    *config.DatabaseConfig
 	logger        *zap.Logger
 	writeQueueMgr *writequeue.Manager
 }
@@ -88,14 +54,14 @@ type Dao struct {
 type DaoOption func(*Dao)
 
 // WithConfig 设置数据库配置
-func WithConfig(cfg *DatabaseConfig) DaoOption {
+func WithConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
 		d.config = cfg
 	}
 }
 
-// WithUserConfig 设置用户数据库配置
-func WithUserConfig(cfg *DatabaseConfig) DaoOption {
+// WithUserDatabaseConfig 设置用户数据库配置
+func WithUserDatabaseConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
 		d.userConfig = cfg
 	}
@@ -166,7 +132,7 @@ func (d *Dao) Logger() *zap.Logger {
 }
 
 // Config 获取数据库配置
-func (d *Dao) Config() *DatabaseConfig {
+func (d *Dao) Config() *config.DatabaseConfig {
 	return d.config
 }
 
@@ -215,8 +181,8 @@ func (d *Dao) ResolveDB(key ...string) *gorm.DB {
 
 // resolveConfig 获取数据库配置
 // key: 数据库标识，如果非空则尝试获取用户数据库配置
-func (d *Dao) resolveConfig(key string) DatabaseConfig {
-	var cfg DatabaseConfig
+func (d *Dao) resolveConfig(key string) config.DatabaseConfig {
+	var cfg config.DatabaseConfig
 	// 如果是针对特定 Key (通常为用户库) 且配置了独立的 UserDatabase 类型
 	if key != "" && d.userConfig != nil && d.userConfig.Type != "" {
 		cfg = *d.userConfig
@@ -314,7 +280,7 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 // 返回值说明:
 //   - *gorm.DB: 数据库连接实例
 //   - error: 出错时返回错误
-func NewEngine(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
+func NewEngine(c config.DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
 	// 如果没有指定类型，则默认为 sqlite
 	if c.Type == "" {
 		c.Type = "sqlite"
@@ -397,7 +363,7 @@ func NewEngine(c DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error) {
 //
 // 返回值说明:
 //   - gorm.Dialector: GORM 数据库方言
-func getDialector(c DatabaseConfig) gorm.Dialector {
+func getDialector(c config.DatabaseConfig) gorm.Dialector {
 	if c.Type == "mysql" {
 		host := c.Host
 		if c.Port != 0 && !strings.Contains(host, ":") {

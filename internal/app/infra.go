@@ -42,47 +42,16 @@ func initInfra(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*Infra, error) 
 	infra.writeQueueMgr = writequeue.New(&wqConfig, logger)
 
 	// DAO
-	dbConfig := &dao.DatabaseConfig{
-		Type:            cfg.Database.Type,
-		Path:            cfg.Database.Path,
-		UserName:        cfg.Database.UserName,
-		Password:        cfg.Database.Password,
-		Host:            cfg.Database.Host,
-		Port:            cfg.Database.Port,
-		Name:            cfg.Database.Name,
-		SSLMode:         cfg.Database.SSLMode,
-		TablePrefix:     cfg.Database.TablePrefix,
-		AutoMigrate:     cfg.Database.AutoMigrate,
-		Charset:         cfg.Database.Charset,
-		ParseTime:       cfg.Database.ParseTime,
-		MaxIdleConns:    cfg.Database.MaxIdleConns,
-		MaxOpenConns:    cfg.Database.MaxOpenConns,
-		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
-		RunMode:         cfg.Server.RunMode,
-	}
-	userDbConfig := &dao.DatabaseConfig{
-		Type:            cfg.UserDatabase.Type,
-		Path:            cfg.UserDatabase.Path,
-		UserName:        cfg.UserDatabase.UserName,
-		Password:        cfg.UserDatabase.Password,
-		Host:            cfg.UserDatabase.Host,
-		Port:            cfg.UserDatabase.Port,
-		Name:            cfg.UserDatabase.Name,
-		SSLMode:         cfg.UserDatabase.SSLMode,
-		TablePrefix:     cfg.UserDatabase.TablePrefix,
-		AutoMigrate:     cfg.UserDatabase.AutoMigrate,
-		Charset:         cfg.UserDatabase.Charset,
-		ParseTime:       cfg.UserDatabase.ParseTime,
-		MaxIdleConns:    cfg.UserDatabase.MaxIdleConns,
-		MaxOpenConns:    cfg.UserDatabase.MaxOpenConns,
-		ConnMaxLifetime: cfg.UserDatabase.ConnMaxLifetime,
-		ConnMaxIdleTime: cfg.UserDatabase.ConnMaxIdleTime,
-		RunMode:         cfg.Server.RunMode,
-	}
+	// DAO
+	dbCfg := cfg.Database
+	dbCfg.RunMode = cfg.Server.RunMode
+
+	userDbCfg := cfg.UserDatabase
+	userDbCfg.RunMode = cfg.Server.RunMode
+
 	infra.Dao = dao.New(db, context.Background(),
-		dao.WithConfig(dbConfig),
-		dao.WithUserConfig(userDbConfig),
+		dao.WithConfig(&dbCfg),
+		dao.WithUserDatabaseConfig(&userDbCfg),
 		dao.WithLogger(logger),
 		dao.WithWriteQueueManager(infra.writeQueueMgr),
 	)
