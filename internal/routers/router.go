@@ -327,7 +327,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	})
 
 	// Read swagger files from embedded FS
-	swaggerJSON, _ := frontendFiles.ReadFile("docs/openapi3.json")
+	swaggerJSON, _ := frontendFiles.ReadFile("docs/swagger.yaml")
 	r.GET("/openapi/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/openapi.json")
 	})
