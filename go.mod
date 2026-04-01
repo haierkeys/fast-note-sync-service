@@ -35,6 +35,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/spf13/cobra v1.10.2
+	github.com/stretchr/testify v1.11.1
 	github.com/studio-b12/gowebdav v0.12.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
@@ -148,6 +149,7 @@ require (
 	github.com/skeema/knownhosts v1.3.2 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
