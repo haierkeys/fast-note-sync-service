@@ -726,24 +726,29 @@ func (s *shareService) GetNoteShareChangesByVault(ctx context.Context, uid int64
 		LastTime: time.Now().UnixMilli(),
 	}
 
-	// 步骤2：批量查询 notes，按 vault 过滤，填充路径
-	// Step 2: batch query notes filtered by vault to get paths
-	if len(activeIDs) > 0 {
-		notes, err := s.noteRepo.ListByIDs(ctx, activeIDs, uid)
-		if err == nil {
-			for _, n := range notes {
-				if n.VaultID == vault.ID && n.Action != domain.NoteActionDelete {
-					result.Added = append(result.Added, n.Path)
-				}
-			}
-		}
-	}
+	// 步骤2：合并 ID 列表，一次批量查询 notes，按 vault 过滤后按来源分拆
+	// Step 2: merge ID lists, single batch query for notes, filter by vault and split by source
+	allIDs := make([]int64, 0, len(activeIDs)+len(revokedIDs))
+	allIDs = append(allIDs, activeIDs...)
+	allIDs = append(allIDs, revokedIDs...)
 
-	if len(revokedIDs) > 0 {
-		notes, err := s.noteRepo.ListByIDs(ctx, revokedIDs, uid)
+	if len(allIDs) > 0 {
+		activeSet := make(map[int64]struct{}, len(activeIDs))
+		for _, id := range activeIDs {
+			activeSet[id] = struct{}{}
+		}
+
+		notes, err := s.noteRepo.ListByIDs(ctx, allIDs, uid)
 		if err == nil {
 			for _, n := range notes {
-				if n.VaultID == vault.ID {
+				if n.VaultID != vault.ID {
+					continue
+				}
+				if _, ok := activeSet[n.ID]; ok {
+					if n.Action != domain.NoteActionDelete {
+						result.Added = append(result.Added, n.Path)
+					}
+				} else {
 					result.Removed = append(result.Removed, n.Path)
 				}
 			}
