@@ -162,7 +162,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		noteHistoryHandler := api_router.NewNoteHistoryHandler(appContainer, wss)
 		versionHandler := api_router.NewVersionHandler(appContainer)
 		adminControlHandler := api_router.NewAdminControlHandler(appContainer, wss)
-		shareHandler := api_router.NewShareHandler(appContainer)
+		shareHandler := api_router.NewShareHandler(appContainer, wss)
 		storageHandler := api_router.NewStorageHandler(appContainer)
 		backupHandler := api_router.NewBackupHandler(appContainer)
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
@@ -241,7 +241,6 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/notes", noteHandler.List)
 			auth.DELETE("/note/recycle-clear", noteHandler.RecycleClear)
 			auth.GET("/notes/share-paths", shareHandler.NoteSharePaths)
-			auth.GET("/notes/share-changes", shareHandler.NoteShareChanges)
 
 			auth.GET("/folder", folderHandler.Get)
 			auth.POST("/folder", folderHandler.Create)
