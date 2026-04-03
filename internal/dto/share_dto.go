@@ -104,19 +104,3 @@ type ShareListItem struct {
 type ShareListResponse struct {
 	Items []*ShareListItem `json:"items"` // Share list // 分享列表
 }
-
-// ShareChangesRequest 获取分享变更请求
-// ShareChangesRequest request parameters for fetching share changes
-type ShareChangesRequest struct {
-	Vault string `json:"vault" form:"vault" binding:"required"` // Vault name // 保险库名称
-	Since int64  `json:"since" form:"since"`                    // Unix timestamp (ms); 0 means full refresh required // Unix 毫秒时间戳；0 表示需要全量拉取
-}
-
-// ShareChangesData 分享路径变更响应数据
-// ShareChangesData response payload for share path changes
-type ShareChangesData struct {
-	Added               []string `json:"added"`               // Newly shared note paths since Since // Since 之后新增的分享路径
-	Removed             []string `json:"removed"`             // Cancelled share paths since Since // Since 之后取消的分享路径
-	LastTime            int64    `json:"lastTime"`            // Timestamp to use as Since in next request // 下次请求使用的时间戳
-	FullRefreshRequired bool     `json:"fullRefreshRequired"` // Client must call /share-paths for full refresh // 客户端需调用 /share-paths 做全量刷新
-}

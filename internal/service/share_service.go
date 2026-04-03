@@ -84,10 +84,6 @@ type ShareService interface {
 	// GetActiveNotePathsByVault 返回指定 vault 下所有有效分享的笔记路径列表
 	GetActiveNotePathsByVault(ctx context.Context, uid int64, vaultName string) ([]string, error)
 
-	// GetNoteShareChangesByVault returns share path changes since sinceMs for a vault
-	// GetNoteShareChangesByVault 返回指定 vault 下 sinceMs 之后的分享路径变更
-	GetNoteShareChangesByVault(ctx context.Context, uid int64, vaultName string, sinceMs int64) (*dto.ShareChangesData, error)
-
 	// Shutdown shuts down the service and flushes remaining data
 	// Shutdown 关闭服务并同步最后的数据
 	Shutdown(ctx context.Context) error
@@ -691,71 +687,6 @@ func (s *shareService) GetActiveNotePathsByVault(ctx context.Context, uid int64,
 		}
 	}
 	return paths, nil
-}
-
-// GetNoteShareChangesByVault 返回指定 vault 下 sinceMs 之后的分享路径变更（两步查询，避免跨库 JOIN）
-// GetNoteShareChangesByVault returns note share path changes since sinceMs for a vault (two-step query, no cross-DB JOIN)
-func (s *shareService) GetNoteShareChangesByVault(ctx context.Context, uid int64, vaultName string, sinceMs int64) (*dto.ShareChangesData, error) {
-	// since=0 表示客户端无本地缓存，需要全量刷新 / since=0 means client has no cache, require full refresh
-	if sinceMs == 0 {
-		return &dto.ShareChangesData{
-			FullRefreshRequired: true,
-			Added:               []string{},
-			Removed:             []string{},
-			LastTime:            time.Now().UnixMilli(),
-		}, nil
-	}
-
-	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
-	if err != nil || vault == nil {
-		return nil, code.ErrorVaultNotFound
-	}
-
-	since := time.UnixMilli(sinceMs)
-
-	// 步骤1：查询 user_shares 中变更的 note res_id（无跨库 JOIN）
-	// Step 1: query changed note res_ids from user_shares (no cross-DB JOIN)
-	activeIDs, revokedIDs, err := s.repo.ListChangedNoteResIDs(ctx, uid, since)
-	if err != nil {
-		return nil, err
-	}
-
-	result := &dto.ShareChangesData{
-		Added:    []string{},
-		Removed:  []string{},
-		LastTime: time.Now().UnixMilli(),
-	}
-
-	// 步骤2：合并 ID 列表，一次批量查询 notes，按 vault 过滤后按来源分拆
-	// Step 2: merge ID lists, single batch query for notes, filter by vault and split by source
-	allIDs := make([]int64, 0, len(activeIDs)+len(revokedIDs))
-	allIDs = append(allIDs, activeIDs...)
-	allIDs = append(allIDs, revokedIDs...)
-
-	if len(allIDs) > 0 {
-		activeSet := make(map[int64]struct{}, len(activeIDs))
-		for _, id := range activeIDs {
-			activeSet[id] = struct{}{}
-		}
-
-		notes, err := s.noteRepo.ListByIDs(ctx, allIDs, uid)
-		if err == nil {
-			for _, n := range notes {
-				if n.VaultID != vault.ID {
-					continue
-				}
-				if _, ok := activeSet[n.ID]; ok {
-					if n.Action != domain.NoteActionDelete {
-						result.Added = append(result.Added, n.Path)
-					}
-				} else {
-					result.Removed = append(result.Removed, n.Path)
-				}
-			}
-		}
-	}
-
-	return result, nil
 }
 
 // GetSharedNote retrieves specific shared note details

@@ -23,11 +23,11 @@ type ShareHandler struct {
 	*Handler
 }
 
-// NewShareHandler creates ShareHandler instance
-// NewShareHandler 创建 ShareHandler 实例
-func NewShareHandler(app *app.App) *ShareHandler {
+// NewShareHandler creates ShareHandler instance with WebSocket server
+// NewShareHandler 创建带 WebSocket 服务的 ShareHandler 实例
+func NewShareHandler(app *app.App, wss *pkgapp.WebsocketServer) *ShareHandler {
 	return &ShareHandler{
-		Handler: &Handler{App: app},
+		Handler: NewHandlerWithWSS(app, wss),
 	}
 }
 
@@ -70,9 +70,8 @@ func (h *ShareHandler) Create(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(shareRes))
+	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
 }
-
-// GetShared retrieves shared note details
 // @Summary Get shared note details
 // @Description Get specific note content (restricted read-only access) via share token
 // @Tags Share
@@ -283,6 +282,7 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success)
+	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
 }
 
 // UpdatePassword updates share password
@@ -437,39 +437,6 @@ func (h *ShareHandler) NoteSharePaths(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(paths))
-}
-
-// NoteShareChanges returns share path changes since a given timestamp for a vault
-// NoteShareChanges 返回指定 vault 下 since 时间戳之后的分享路径变更，供客户端增量同步
-// @Summary Get share path changes since timestamp
-// @Tags Share
-// @Security UserAuthToken
-// @Param token header string true "Auth Token"
-// @Param params query dto.ShareChangesRequest true "Query Parameters"
-// @Success 200 {object} pkgapp.Res{data=dto.ShareChangesData} "Success"
-// @Router /api/notes/share-changes [get]
-func (h *ShareHandler) NoteShareChanges(c *gin.Context) {
-	response := pkgapp.NewResponse(c)
-	params := &dto.ShareChangesRequest{}
-	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
-		return
-	}
-
-	uid := pkgapp.GetUID(c)
-	ctx := c.Request.Context()
-
-	data, err := h.App.ShareService.GetNoteShareChangesByVault(ctx, uid, params.Vault, params.Since)
-	if err != nil {
-		if cObj, ok := err.(*code.Code); ok {
-			response.ToResponse(cObj)
-		} else {
-			response.ToResponse(code.Failed.WithDetails(err.Error()))
-		}
-		return
-	}
-
-	response.ToResponse(code.Success.WithData(data))
 }
 
 // logError records error log, including Trace ID
