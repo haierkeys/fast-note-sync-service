@@ -38,53 +38,56 @@ For users in mainland China, we recommend using the Tencent `cnb.cool` mirror: [
 
 ---
 
-## ✨ Core Features
+## 🎯 Core Features
 
 * **🧰 MCP (Model Context Protocol) Native Support**:
   * `FNS` can serve as an MCP server, connecting to compatible AI clients such as `Cherry Studio` and `Cursor`, enabling AI to read and write private notes and attachments, with all changes synced to all devices in real time via WebSocket.
 * **🚀 REST API Support**:
-    * Provides standard REST API interfaces, supporting programmatic access (e.g., automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
-    * See the [RESTful API Documentation](/docs/REST_API.md) or [OpenAPI Documentation](/docs/swagger.yaml).
+  * Provides standard REST API interfaces, supporting programmatic access (e.g., automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
+  * See the [RESTful API Documentation](/docs/REST_API.md) or [OpenAPI Documentation](/docs/swagger.yaml).
 * **💻 Web Management Panel**:
   * Built-in modern management interface to easily create users, generate plugin configurations, manage vaults, and note content.
 * **🔄 Multi-device Note Sync**:
-    * Supports automatic **Vault** creation.
-    * Supports note management (add, delete, update, query), with changes distributed in real-time to all online devices within milliseconds.
+  * Supports automatic **Vault** creation.
+  * Supports note management (add, delete, update, query), with changes distributed in real-time to all online devices within milliseconds.
 * **🖼️ Attachment Sync Support**:
-    * Full support for syncing non-note files such as images.
-    * Supports chunked upload/download for large attachments, with configurable chunk sizes for improved sync efficiency.
+  * Full support for syncing non-note files such as images.
+  * Supports chunked upload/download for large attachments, with configurable chunk sizes for improved sync efficiency.
 * **⚙️ Config Sync**:
-    * Supports synchronization of `.obsidian` configuration files.
-    * Supports `PDF` reading progress synchronization.
+  * Supports synchronization of `.obsidian` configuration files.
+  * Supports `PDF` reading progress synchronization.
 * **📝 Note History**:
-    * View the historical revision versions of each note on the web page and the plugin side.
-    * (Requires server v1.2+)
+  * View the historical revision versions of each note on the web page and the plugin side.
+  * (Requires server v1.1+)
 * **🗑️ Recycle Bin**:
-    * Supports automatic movement of deleted notes to the recycle bin.
-    * Supports restoring notes from the recycle bin. (Attachment recovery will be added in subsequent updates)
+  * Supports automatic movement of deleted notes to the recycle bin.
+  * Supports restoring notes from the recycle bin. (Attachment recovery will be added in subsequent updates)
 
 * **🚫 Offline Sync Strategy**:
-    * Supports automatic merging of notes edited offline. (Requires plugin-side settings)
-    * Offline deletions are automatically supplemented or synced upon reconnection. (Requires plugin-side settings)
+  * Supports automatic merging of notes edited offline. (Requires plugin-side settings)
+  * Offline deletions are automatically supplemented or synced upon reconnection. (Requires plugin-side settings)
 
 * **🔗 Sharing Feature**:
-    * Create/cancel note sharing.
-    * Automatically resolves referenced images, audio, video, and other attachments in shared notes.
-    * Provides sharing access statistics.
-    * Supports setting an access password for shared notes.
-    * Supports generating short links for shared notes.
+  * Create/cancel note sharing.
+  * Automatically resolves referenced images, audio, video, and other attachments in shared notes.
+  * Provides sharing access statistics.
+  * Supports setting an access password for shared notes.
+  * Supports generating short links for shared notes.
 * **📂 Directory Sync**:
-    * Supports folder create/rename/move/delete synchronization.
+  * Supports folder create/rename/move/delete synchronization.
 
 * **🌳 Git Automation**:
-    * Automatically updates and pushes to a remote Git repository when attachments and notes change.
-    * Automatically releases system memory after tasks complete.
+  * Automatically updates and pushes to a remote Git repository when attachments and notes change.
+  * Automatically releases system memory after tasks complete.
 
 * **☁️ Multi-storage Backup & Unidirectional Mirror Sync**:
-    * Compatible with multiple storage protocols: S3/OSS/R2/WebDAV/Local.
-    * Supports full/incremental ZIP scheduled archive backups.
-    * Supports unidirectional mirror sync of Vault resources to remote storage.
-    * Automatic cleanup of expired backups with configurable retention days.
+  * Compatible with multiple storage protocols: S3/OSS/R2/WebDAV/Local.
+  * Supports full/incremental ZIP scheduled archive backups.
+  * Supports unidirectional mirror sync of Vault resources to remote storage.
+  * Automatic cleanup of expired backups with configurable retention days.
+
+* **🗄️ Multi-database Support**:
+  * Native support for SQLite, MySQL, PostgreSQL, and other mainstream databases to meet different deployment needs from individuals to teams.
 
 ## ☕ Sponsorship & Support
 
@@ -104,11 +107,19 @@ For users in mainland China, we recommend using the Tencent `cnb.cool` mirror: [
 
 ## 🗺️ Roadmap
 
+- [ ] Add **Mock** testing covering all levels.
+- [ ] Support WebSocket **Protobuf** transmission format to enhance synchronization efficiency.
+- [ ] Backend support for querying various operational logs, such as sync logs and operation logs.
+- [ ] Isolate and optimize the existing authorization mechanism to improve overall security.
+- [ ] Enable real-time note updates in the Web GUI.
+- [ ] Add client-to-client point-to-point messaging (non-note/attachment, similar to LocalSend; no client-side storage, server-side storage optional).
+- [ ] Improve various help documents.
+- [ ] Support more intranet penetration (relay gateway) solutions.
+- [ ] Quick deployment plan
+  * Deploy FNS server by only providing the server address (public), username, and password.
+- [ ] Optimize the existing offline note merging plan and add a conflict resolution mechanism.
+
 We are continuously improving. Here are our future development plans:
-
-
-- [ ] **More database type support**
-
 
 > **If you have suggestions for improvements or new ideas, feel free to share them by opening an issue — we will carefully evaluate and adopt suitable proposals.**
 
