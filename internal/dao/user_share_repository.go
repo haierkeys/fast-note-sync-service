@@ -137,6 +137,18 @@ func (r *userShareRepository) GetByRes(ctx context.Context, uid int64, resType s
 	return r.toDomain(m), nil
 }
 
+func (r *userShareRepository) UpdateResources(ctx context.Context, uid int64, id int64, resources map[string][]string) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		resBytes, err := json.Marshal(resources)
+		if err != nil {
+			return err
+		}
+		_, err = us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.Res, string(resBytes))
+		return err
+	})
+}
+
 func (r *userShareRepository) UpdateStatus(ctx context.Context, uid int64, id int64, status int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		us := r.userShare(uid).UserShare
