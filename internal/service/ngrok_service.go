@@ -67,8 +67,6 @@ func (s *ngrokService) Start(ctx context.Context, addr string) error {
 
 	if u, ok := ln.(interface{ URL() *url.URL }); ok {
 		s.url = u.URL().String()
-	} else if u, ok := ln.(interface{ URL() string }); ok {
-		s.url = u.URL()
 	} else {
 		s.url = ln.Addr().String()
 	}
