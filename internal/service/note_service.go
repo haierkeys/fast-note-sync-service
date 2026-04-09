@@ -786,7 +786,8 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 	if s.shareRepo != nil {
 		if shareErr := s.shareRepo.MigrateResID(ctx, uid, oldNoteID, newNoteID); shareErr != nil {
 			// Log but don't fail the rename operation
-			s.logger.Warn("Migrate: failed to migrate share records",
+			zap.L().Warn("Migrate: failed to migrate share records",
+				zap.Int64(logger.FieldUID, uid),
 				zap.Int64("oldNoteID", oldNoteID),
 				zap.Int64("newNoteID", newNoteID),
 				zap.Error(shareErr))

@@ -294,7 +294,7 @@ func (r *userShareRepository) MigrateResID(ctx context.Context, uid int64, oldRe
 			}
 
 			changed := false
-			for key, ids := range res {
+			for _, ids := range res {
 				for i, id := range ids {
 					if id == oldIDStr {
 						ids[i] = newIDStr
