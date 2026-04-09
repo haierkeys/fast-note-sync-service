@@ -238,26 +238,4 @@ func (r *userShareRepository) ListActiveNoteResIDs(ctx context.Context, uid int6
 	return ids, nil
 }
 
-// ListChangedNoteResIDs 返回 updated_at > since 的 note 分享记录，按状态分组
-// ListChangedNoteResIDs returns note share res_ids changed after since, grouped by status
-func (r *userShareRepository) ListChangedNoteResIDs(ctx context.Context, uid int64, since time.Time) ([]int64, []int64, error) {
-	us := r.userShare(uid).UserShare
-	ms, err := us.WithContext(ctx).
-		Where(us.UID.Eq(uid), us.ResType.Eq("note"), us.UpdatedAt.Gt(timex.Time(since))).
-		Find()
-	if err != nil {
-		return nil, nil, err
-	}
-	var active, revoked []int64
-	for _, m := range ms {
-		switch m.Status {
-		case domain.UserShareStatusActive:
-			active = append(active, m.ResID)
-		case domain.UserShareStatusRevoked:
-			revoked = append(revoked, m.ResID)
-		}
-	}
-	return active, revoked, nil
-}
-
 var _ domain.UserShareRepository = (*userShareRepository)(nil)

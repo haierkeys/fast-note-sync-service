@@ -175,6 +175,12 @@ const (
 	// SettingSyncClear sync clear all settings
 	// SettingSyncClear 同步清理所有设置
 	SettingSyncClear WebSocketSendAction = "SettingSyncClear"
+
+	// ---------------- Share ----------------
+
+	// ShareSyncRefresh notify clients to refresh share state
+	// ShareSyncRefresh 通知客户端刷新分享状态
+	ShareSyncRefresh WebSocketSendAction = "ShareSyncRefresh"
 )
 
 // WSQueuedMessage represents a message item to be sent
