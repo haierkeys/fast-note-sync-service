@@ -51,4 +51,13 @@ type UserShareRepository interface {
 	// ListActiveNoteResIDs returns note res_ids for all active shares of a user
 	// ListActiveNoteResIDs 返回该用户所有有效分享中 res_type='note' 的 res_id 列表
 	ListActiveNoteResIDs(ctx context.Context, uid int64) ([]int64, error)
+
+	// ListChangedNoteResIDs returns res_ids of note shares whose status changed after since,
+	// split into active (added) and revoked (removed) slices.
+	// ListChangedNoteResIDs 返回 updated_at > since 的 note 分享记录的 res_id，
+	// 按状态分为 active（新增）和 revoked（取消）两组。
+	ListChangedNoteResIDs(ctx context.Context, uid int64, since time.Time) (active []int64, revoked []int64, err error)
+	// MigrateResID updates res_id and resources JSON for a share when a note/file is renamed.
+	// MigrateResID 在笔记/文件重命名时更新分享记录的资源 ID 和资源列表。
+	MigrateResID(ctx context.Context, uid int64, oldResID int64, newResID int64) error
 }

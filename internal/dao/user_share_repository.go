@@ -238,4 +238,84 @@ func (r *userShareRepository) ListActiveNoteResIDs(ctx context.Context, uid int6
 	return ids, nil
 }
 
+// ListChangedNoteResIDs 返回 updated_at > since 的 note 分享记录，按状态分组
+// ListChangedNoteResIDs returns note share res_ids changed after since, grouped by status
+func (r *userShareRepository) ListChangedNoteResIDs(ctx context.Context, uid int64, since time.Time) ([]int64, []int64, error) {
+	us := r.userShare(uid).UserShare
+	ms, err := us.WithContext(ctx).
+		Where(us.UID.Eq(uid), us.ResType.Eq("note"), us.UpdatedAt.Gt(timex.Time(since))).
+		Find()
+	if err != nil {
+		return nil, nil, err
+	}
+	var active, revoked []int64
+	for _, m := range ms {
+		switch m.Status {
+		case domain.UserShareStatusActive:
+			active = append(active, m.ResID)
+		case domain.UserShareStatusRevoked:
+			revoked = append(revoked, m.ResID)
+		}
+	}
+	return active, revoked, nil
+}
+
+// MigrateResID updates res_id and resources JSON when a note/file is renamed (old ID → new ID).
+// MigrateResID 在笔记/文件重命名时更新分享记录的资源 ID 和资源列表（旧 ID → 新 ID）。
+func (r *userShareRepository) MigrateResID(ctx context.Context, uid int64, oldResID int64, newResID int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+
+		// 1. Update res_id for all active shares pointing to oldResID
+		// 1. 更新所有指向旧 ID 的有效分享的 res_id
+		_, err := us.WithContext(ctx).
+			Where(us.UID.Eq(uid), us.ResID.Eq(oldResID), us.Status.Eq(domain.UserShareStatusActive)).
+			Update(us.ResID, newResID)
+		if err != nil {
+			return err
+		}
+
+		// 2. Update resources JSON: replace oldResID with newResID in all note/file arrays
+		// 2. 更新资源 JSON：在 note/file 数组中将旧 ID 替换为新 ID
+		oldIDStr := strconv.FormatInt(oldResID, 10)
+		newIDStr := strconv.FormatInt(newResID, 10)
+
+		shares, err := us.WithContext(ctx).
+			Where(us.UID.Eq(uid), us.Status.Eq(domain.UserShareStatusActive)).
+			Find()
+		if err != nil {
+			return err
+		}
+
+		for _, share := range shares {
+			var res map[string][]string
+			if err := json.Unmarshal([]byte(share.Res), &res); err != nil {
+				continue
+			}
+
+			changed := false
+			for _, ids := range res {
+				for i, id := range ids {
+					if id == oldIDStr {
+						ids[i] = newIDStr
+						changed = true
+					}
+				}
+			}
+
+			if changed {
+				resBytes, _ := json.Marshal(res)
+				_, err := us.WithContext(ctx).
+					Where(us.ID.Eq(share.ID)).
+					Update(us.Res, string(resBytes))
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
 var _ domain.UserShareRepository = (*userShareRepository)(nil)
