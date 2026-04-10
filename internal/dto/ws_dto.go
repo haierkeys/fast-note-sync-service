@@ -154,6 +154,12 @@ const (
 	// FileSyncChunkDownload file chunk download for sync
 	// FileSyncChunkDownload 同步时的文件块下载
 	FileSyncChunkDownload WebSocketSendAction = "FileSyncChunkDownload"
+	// FileRenameAck file rename operation ack
+	// FileRenameAck 文件重命名操作 ack
+	FileRenameAck WebSocketSendAction = "FileRenameAck"
+	// FileUploadAck file upload complete ack
+	// FileUploadAck 文件上传完成 ack
+	FileUploadAck WebSocketSendAction = "FileUploadAck"
 
 	// ---------------- Setting ----------------
 
