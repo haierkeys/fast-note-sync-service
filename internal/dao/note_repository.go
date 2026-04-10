@@ -940,6 +940,18 @@ func (r *noteRepository) RecycleClear(ctx context.Context, path, pathHash string
 	})
 }
 
+// UpdateFID 仅更新笔记的文件夹关联 ID，不更新 updated_timestamp
+// 用于 SyncResourceFID 内部整理，避免污染增量同步时间戳
+// Only updates the folder ID (FID) without touching updated_timestamp
+// Used by SyncResourceFID to avoid polluting incremental sync timestamps
+func (r *noteRepository) UpdateFID(ctx context.Context, id, fid, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(u.FID.Value(fid))
+		return err
+	})
+}
+
 // 确保 noteRepository 实现了 domain.NoteRepository 接口
 var _ domain.NoteRepository = (*noteRepository)(nil)
 
