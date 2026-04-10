@@ -781,6 +781,19 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	// Migrate share records: update res_id and resources from old note ID to new note ID
+	// 迁移分享记录：将旧笔记 ID 的分享指向新笔记 ID
+	if s.shareRepo != nil {
+		if shareErr := s.shareRepo.MigrateResID(ctx, uid, oldNoteID, newNoteID); shareErr != nil {
+			// Log but don't fail the rename operation
+			zap.L().Warn("Migrate: failed to migrate share records",
+				zap.Int64(logger.FieldUID, uid),
+				zap.Int64("oldNoteID", oldNoteID),
+				zap.Int64("newNoteID", newNoteID),
+				zap.Error(shareErr))
+		}
+	}
+
 	go s.CountSizeSum(context.Background(), oldNote.VaultID, uid)
 	return nil
 }
