@@ -14,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -46,9 +47,9 @@ func init() {
 func (r *noteRepository) note(uid int64) *query.Query {
 	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
 		model.AutoMigrate(g, "Note")
-		// 初始化 FTS5 全文搜索表并检查是否需要重建索引
+		// 初始化通用全文搜索表
 		_ = model.CreateNoteFTSTable(g)
-	}, r.GetKey(uid)+"#note", r.GetKey(uid))
+	}, r.GetKey(uid)+"#note_v3", r.GetKey(uid))
 }
 
 // ListByIDs 根据ID列表获取笔记列表
@@ -86,9 +87,9 @@ func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
 		// 确保 FTS 表存在（会自动检查版本并重建）
 		_ = model.CreateNoteFTSTable(db)
 
-		// 检查 FTS 表是否为空
+		// 检查 FTS 索引是否为空
 		var ftsCount int64
-		db.Raw("SELECT COUNT(*) FROM note_fts").Scan(&ftsCount)
+		db.Model(&model.NoteFTSToken{}).Count(&ftsCount)
 		if ftsCount > 0 {
 			return nil // 已有索引
 		}
@@ -589,12 +590,13 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	} else if keyword != "" {
 		// 内容搜索模式：使用 FTS5 全文搜索
 		if searchMode == "content" {
-			db := q.UnderlyingDB()
+			// 使用干净的 DB 连接执行 FTS 查询，避免继承 note 表上下文导致 JOIN 二义性
+			ftsDB := r.dao.ResolveDB(r.GetKey(uid))
 
 			// 确保 FTS 索引存在
 			r.EnsureFTSIndex(ctx, uid)
 
-			noteIDs, ftsErr := r.searchFTS(db, keyword, vaultID, isRecycle, sortBy, sortOrder, pageSize, app.GetPageOffset(page, pageSize))
+			noteIDs, ftsErr := r.searchFTS(ftsDB, keyword, vaultID, isRecycle, sortBy, sortOrder, pageSize, app.GetPageOffset(page, pageSize))
 			if ftsErr != nil {
 				return nil, ftsErr
 			}
@@ -604,7 +606,7 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 			}
 
 			// 根据 FTS 返回的 ID 查询完整笔记，保持 FTS 返回的顺序
-			err = db.Where("id IN ?", noteIDs).Order(orderClause).Find(&modelList).Error
+			err = q.UnderlyingDB().Where("id IN ?", noteIDs).Order(orderClause).Find(&modelList).Error
 		} else {
 			// 路径搜索或正则搜索：使用 LIKE
 			key := "%" + keyword + "%"
@@ -714,8 +716,9 @@ func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 	} else if keyword != "" {
 		// 内容搜索模式：使用 FTS5 全文搜索
 		if searchMode == "content" {
-			db := q.UnderlyingDB()
-			count, err = r.searchFTSCount(db, keyword, vaultID, isRecycle)
+			// 使用干净的 DB 连接，避免二义性
+			ftsDB := r.dao.ResolveDB(r.GetKey(uid))
+			count, err = r.searchFTSCount(ftsDB, keyword, vaultID, isRecycle)
 		} else {
 			// 路径搜索或正则搜索：使用 LIKE
 			var whereClause string
@@ -945,189 +948,86 @@ var _ domain.NoteRepository = (*noteRepository)(nil)
 
 // upsertFTS 更新 FTS 索引
 func (r *noteRepository) upsertFTS(db *gorm.DB, noteID int64, path, content string) {
-	// 先删除旧记录
-	_ = db.Exec("DELETE FROM note_fts WHERE note_id = ?", noteID).Error
-	// 插入新记录
-	_ = db.Exec("INSERT INTO note_fts (note_id, path, content) VALUES (?, ?, ?)", noteID, path, content).Error
+	// 1. 更新快照表
+	db.Save(&model.NoteFTS{NoteID: noteID, Path: path, Content: content})
+
+	// 2. 更新倒排索引
+	db.Where("note_id = ?", noteID).Delete(&model.NoteFTSToken{})
+	tokens := util.Tokenize(path + " " + content)
+	if len(tokens) == 0 {
+		return
+	}
+	var tokenModels []model.NoteFTSToken
+	for _, t := range tokens {
+		tokenModels = append(tokenModels, model.NoteFTSToken{NoteID: noteID, Token: t})
+	}
+	db.CreateInBatches(tokenModels, 500)
 }
 
 // deleteFTS 删除 FTS 索引
 func (r *noteRepository) deleteFTS(db *gorm.DB, noteID int64) {
-	_ = db.Exec("DELETE FROM note_fts WHERE note_id = ?", noteID).Error
+	db.Where("note_id = ?", noteID).Delete(&model.NoteFTS{})
+	db.Where("note_id = ?", noteID).Delete(&model.NoteFTSToken{})
 }
 
-// searchFTS 使用 FTS5 MATCH 搜索内容，返回匹配的 note_id 列表
+// searchFTS 使用倒排索引搜索内容，返回匹配的 note_id 列表
 func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, isRecycle bool, sortBy, sortOrder string, limit, offset int) ([]int64, error) {
+	tokens := util.Tokenize(keyword)
+	if len(tokens) == 0 {
+		return nil, nil
+	}
+
 	var noteIDs []int64
 
 	// 构建 action 条件
-	actionCond := "n.action != 'delete'"
+	actionCond := "note.action != 'delete'"
 	if isRecycle {
-		actionCond = "n.action = 'delete' AND n.rename = 0"
-	}
-
-	// 构建 FTS5 搜索词
-	searchTerm := buildFTSSearchTerm(keyword)
-
-	// 构建排序语句
-	orderClause := "n." + buildOrderClause(sortBy, sortOrder)
-
-	// 使用 FTS5 MATCH 查询
-	sql := `
-		SELECT f.note_id
-		FROM note_fts f
-		INNER JOIN note n ON f.note_id = n.id
-		WHERE note_fts MATCH ?
-		AND n.vault_id = ?
-		AND ` + actionCond + `
-		ORDER BY ` + orderClause + `
-		LIMIT ? OFFSET ?
-	`
-
-	err := db.Raw(sql, searchTerm, vaultID, limit, offset).Scan(&noteIDs).Error
-
-	// 如果 FTS 查询失败或无结果，降级到 LIKE 查询
-	if err != nil || len(noteIDs) == 0 {
-		return r.searchFTSFallback(db, keyword, vaultID, isRecycle, sortBy, sortOrder, limit, offset)
-	}
-
-	return noteIDs, nil
-}
-
-// searchFTSFallback LIKE 降级查询
-func (r *noteRepository) searchFTSFallback(db *gorm.DB, keyword string, vaultID int64, isRecycle bool, sortBy, sortOrder string, limit, offset int) ([]int64, error) {
-	var noteIDs []int64
-
-	actionCond := "n.action != 'delete'"
-	if isRecycle {
-		actionCond = "n.action = 'delete' AND n.rename = 0"
+		actionCond = "note.action = 'delete' AND note.rename = 0"
 	}
 
 	// 构建排序语句
-	orderClause := "n." + buildOrderClause(sortBy, sortOrder)
+	orderClause := "note." + buildOrderClause(sortBy, sortOrder)
 
-	sql := `
-		SELECT f.note_id
-		FROM note_fts f
-		INNER JOIN note n ON f.note_id = n.id
-		WHERE (f.content LIKE ? OR f.path LIKE ?)
-		AND n.vault_id = ?
-		AND ` + actionCond + `
-		ORDER BY ` + orderClause + `
-		LIMIT ? OFFSET ?
-	`
+	// 使用新的倒排索引查询
+	query := db.Table("note_fts_token AS t").
+		Select("t.note_id").
+		Joins("INNER JOIN note ON t.note_id = note.id").
+		Where("t.token IN ?", tokens).
+		Where("note.vault_id = ?", vaultID).
+		Where(actionCond).
+		Group("t.note_id").
+		Having("COUNT(DISTINCT t.token) = ?", len(tokens)).
+		Order(orderClause).
+		Limit(limit).
+		Offset(offset)
 
-	likeKeyword := "%" + keyword + "%"
-	err := db.Raw(sql, likeKeyword, likeKeyword, vaultID, limit, offset).Scan(&noteIDs).Error
+	err := query.Scan(&noteIDs).Error
 	return noteIDs, err
 }
 
-// searchFTSCount 使用 FTS5 MATCH 搜索计数
+// searchFTSCount 使用倒排索引搜索计数
 func (r *noteRepository) searchFTSCount(db *gorm.DB, keyword string, vaultID int64, isRecycle bool) (int64, error) {
+	tokens := util.Tokenize(keyword)
+	if len(tokens) == 0 {
+		return 0, nil
+	}
+
 	var count int64
-
-	actionCond := "n.action != 'delete'"
+	actionCond := "note.action != 'delete'"
 	if isRecycle {
-		actionCond = "n.action = 'delete' AND n.rename = 0"
+		actionCond = "note.action = 'delete' AND note.rename = 0"
 	}
 
-	searchTerm := buildFTSSearchTerm(keyword)
+	subQuery := db.Table("note_fts_token AS t").
+		Select("t.note_id").
+		Joins("INNER JOIN note ON t.note_id = note.id").
+		Where("t.token IN ?", tokens).
+		Where("note.vault_id = ?", vaultID).
+		Where(actionCond).
+		Group("t.note_id").
+		Having("COUNT(DISTINCT t.token) = ?", len(tokens))
 
-	sql := `
-		SELECT COUNT(*)
-		FROM note_fts f
-		INNER JOIN note n ON f.note_id = n.id
-		WHERE note_fts MATCH ?
-		AND n.vault_id = ?
-		AND ` + actionCond
-
-	err := db.Raw(sql, searchTerm, vaultID).Scan(&count).Error
-
-	// 如果 FTS 查询失败，降级到 LIKE 查询
-	if err != nil || count == 0 {
-		return r.searchFTSCountFallback(db, keyword, vaultID, isRecycle)
-	}
-
-	return count, nil
-}
-
-// searchFTSCountFallback LIKE 降级计数
-func (r *noteRepository) searchFTSCountFallback(db *gorm.DB, keyword string, vaultID int64, isRecycle bool) (int64, error) {
-	var count int64
-
-	actionCond := "n.action != 'delete'"
-	if isRecycle {
-		actionCond = "n.action = 'delete' AND n.rename = 0"
-	}
-
-	sql := `
-		SELECT COUNT(*)
-		FROM note_fts f
-		INNER JOIN note n ON f.note_id = n.id
-		WHERE (f.content LIKE ? OR f.path LIKE ?)
-		AND n.vault_id = ?
-		AND ` + actionCond
-
-	likeKeyword := "%" + keyword + "%"
-	err := db.Raw(sql, likeKeyword, likeKeyword, vaultID).Scan(&count).Error
+	err := db.Table("(?) AS sub", subQuery).Count(&count).Error
 	return count, err
 }
 
-// buildFTSSearchTerm 构建 FTS5 搜索词
-// 对于中文，将每个字符用空格分隔，使用 AND 连接
-// 对于英文，直接使用原词加通配符
-func buildFTSSearchTerm(keyword string) string {
-	if keyword == "" {
-		return ""
-	}
-
-	// 转义 FTS5 特殊字符
-	keyword = escapeFTSSpecialChars(keyword)
-
-	// 检查是否包含中文字符
-	hasChinese := false
-	for _, r := range keyword {
-		if r >= 0x4E00 && r <= 0x9FFF {
-			hasChinese = true
-			break
-		}
-	}
-
-	if hasChinese {
-		// 中文：将每个字符作为独立 token，用 AND 连接
-		var terms []string
-		for _, r := range keyword {
-			if r != ' ' {
-				terms = append(terms, string(r))
-			}
-		}
-		if len(terms) == 0 {
-			return ""
-		}
-		// 使用 content: 前缀限定搜索内容字段
-		result := "content:" + terms[0]
-		for i := 1; i < len(terms); i++ {
-			result += " AND content:" + terms[i]
-		}
-		return result
-	}
-
-	// 英文：使用前缀匹配
-	return "content:" + keyword + "*"
-}
-
-// escapeFTSSpecialChars 转义 FTS5 特殊字符
-func escapeFTSSpecialChars(s string) string {
-	// FTS5 特殊字符：" * - + ( ) : ^ 需要转义或避免
-	result := ""
-	for _, r := range s {
-		switch r {
-		case '"', '*', '-', '+', '(', ')', ':', '^':
-			// 跳过特殊字符
-			continue
-		default:
-			result += string(r)
-		}
-	}
-	return result
-}
