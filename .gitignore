@@ -83,3 +83,6 @@ Icon
 /config/lastVersion
 
 docs/*_打赏 链接小票单记录*.csv
+# Claude Code
+CLAUDE.md
+.claude/
