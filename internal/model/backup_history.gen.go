@@ -22,8 +22,8 @@ type BackupHistory struct {
 	StartTime time.Time  `gorm:"column:start_time" json:"startTime" form:"startTime"`
 	EndTime   time.Time  `gorm:"column:end_time" json:"endTime" form:"endTime"`
 	Status    int64      `gorm:"column:status;default:0" json:"status" form:"status"`
-	FileSize  int64      `gorm:"column:file_size;type:INTEGER;default:0" json:"fileSize" form:"fileSize"`
-	FileCount int64      `gorm:"column:file_count;type:INTEGER;default:0" json:"fileCount" form:"fileCount"`
+	FileSize  int64      `gorm:"column:file_size;default:0" json:"fileSize" form:"fileSize"`
+	FileCount int64      `gorm:"column:file_count;default:0" json:"fileCount" form:"fileCount"`
 	Message   string     `gorm:"column:message;default:''" json:"message" form:"message"`
 	FilePath  string     `gorm:"column:file_path;default:''" json:"filePath" form:"filePath"`
 	CreatedAt timex.Time `gorm:"column:created_at;index:idx_backup_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`

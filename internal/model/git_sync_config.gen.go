@@ -21,11 +21,11 @@ type GitSyncConfig struct {
 	Username      string     `gorm:"column:username;type:TEXT;default:''" json:"username" form:"username"`
 	Password      string     `gorm:"column:password;type:TEXT;default:''" json:"password" form:"password"`
 	Branch        string     `gorm:"column:branch;type:TEXT;default:''" json:"branch" form:"branch"`
-	IsEnabled     int64      `gorm:"column:is_enabled;type:INTEGER;default:0" json:"isEnabled" form:"isEnabled"`
-	Delay         int64      `gorm:"column:delay;type:INTEGER;default:0" json:"delay" form:"delay"`
-	RetentionDays int64      `gorm:"column:retention_days;type:INTEGER;default:0" json:"retentionDays" form:"retentionDays"`
+	IsEnabled     int64      `gorm:"column:is_enabled;default:0" json:"isEnabled" form:"isEnabled"`
+	Delay         int64      `gorm:"column:delay;default:0" json:"delay" form:"delay"`
+	RetentionDays int64      `gorm:"column:retention_days;default:0" json:"retentionDays" form:"retentionDays"`
 	LastSyncTime  time.Time  `gorm:"column:last_sync_time" json:"lastSyncTime" form:"lastSyncTime"`
-	LastStatus    int64      `gorm:"column:last_status;type:INTEGER;default:0" json:"lastStatus" form:"lastStatus"`
+	LastStatus    int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
 	LastMessage   string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
 	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt     timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`

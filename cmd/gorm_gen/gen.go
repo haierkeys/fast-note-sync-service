@@ -120,6 +120,12 @@ func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 				tag.Remove("type")
 			}
 
+			// 3. 处理整数类型兼容性 (移除 type 让 GORM 根据 Go 类型自动决定)
+			// 特别是处理 SQLite 中大写 INTEGER 导致的冗余 tag，防止 MySQL/PG 识别为 32位 INT
+			if dbType == "integer" || dbType == "int" || dbType == "bigint" {
+				tag.Remove("type")
+			}
+
 			// 3. 处理 MySQL 索引长度限制 (Error 1071)
 			// 注意：GormTag 可能为 map[string][]string 或 map[string]string。
 			// 这里通过 key 检查判断索引。
