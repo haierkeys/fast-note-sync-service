@@ -17,10 +17,10 @@ type UserShare struct {
 	ID           int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	UID          int64      `gorm:"column:uid;not null;index:idx_user_share_uid,priority:1;default:0" json:"uid" form:"uid"`
 	ResType      string     `gorm:"column:res_type;type:varchar(255);not null;index:idx_user_share_res_type_id,priority:1;default:''" json:"resType" form:"resType"`
-	ResID        int64      `gorm:"column:res_id;type:INTEGER;index:idx_user_share_res_type_id,priority:2;default:0" json:"resId" form:"resId"`
+	ResID        int64      `gorm:"column:res_id;index:idx_user_share_res_type_id,priority:2;default:0" json:"resId" form:"resId"`
 	Res          string     `gorm:"column:res;type:TEXT;default:''" json:"res" form:"res"`
-	Status       int64      `gorm:"column:status;type:INTEGER;default:0" json:"status" form:"status"`
-	ViewCount    int64      `gorm:"column:view_count;type:INTEGER;default:0" json:"viewCount" form:"viewCount"`
+	Status       int64      `gorm:"column:status;default:0" json:"status" form:"status"`
+	ViewCount    int64      `gorm:"column:view_count;default:0" json:"viewCount" form:"viewCount"`
 	LastViewedAt time.Time  `gorm:"column:last_viewed_at" json:"lastViewedAt" form:"lastViewedAt"`
 	ExpiresAt    time.Time  `gorm:"column:expires_at" json:"expiresAt" form:"expiresAt"`
 	Password     string     `gorm:"column:password;default:''" json:"password" form:"password"`

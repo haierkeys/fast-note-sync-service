@@ -16,8 +16,8 @@ type Folder struct {
 	Path             string     `gorm:"column:path;type:varchar(255);index:idx_folder_vault_id_level_path,priority:3;index:idx_folder_vault_id_fid_path,priority:3;index:idx_folder_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;type:varchar(255);index:idx_folder_vault_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
 	Level            int64      `gorm:"column:level;index:idx_folder_vault_id_level_path,priority:2;default:0" json:"level" form:"level"`
-	FID              int64      `gorm:"column:fid;type:INTEGER;index:idx_folder_vault_id_fid_path,priority:2;default:0" json:"fid" form:"fid"`
-	Ctime            int64      `gorm:"column:ctime;type:INTEGER;default:0" json:"ctime" form:"ctime"`
+	FID              int64      `gorm:"column:fid;index:idx_folder_vault_id_fid_path,priority:2;default:0" json:"fid" form:"fid"`
+	Ctime            int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;not null;index:idx_folder_vault_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
 	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
