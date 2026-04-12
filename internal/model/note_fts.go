@@ -6,12 +6,11 @@ import (
 )
 
 // FTS 表版本号，修改此值会触发重建索引
-const NoteFTSVersion = 2
+const NoteFTSVersion = 3
 
-// NoteFTS FTS5 全文搜索虚拟表
-// 注意：这不是普通的 GORM 模型，需要手动创建 FTS5 虚拟表
+// NoteFTS 存储笔记全文搜索的快照数据
 type NoteFTS struct {
-	NoteID  int64  `gorm:"column:note_id" json:"noteId"`
+	NoteID  int64  `gorm:"column:note_id;primaryKey" json:"noteId"`
 	Path    string `gorm:"column:path" json:"path"`
 	Content string `gorm:"column:content" json:"content"`
 }
@@ -19,6 +18,17 @@ type NoteFTS struct {
 // TableName 返回表名
 func (*NoteFTS) TableName() string {
 	return "note_fts"
+}
+
+// NoteFTSToken 倒排索引表，支持多数据库全文搜索
+type NoteFTSToken struct {
+	ID     int64  `gorm:"column:id;primaryKey;autoIncrement"`
+	NoteID int64  `gorm:"column:note_id;index:idx_fts_note_id;index:idx_fts_token_note_id,priority:2"`
+	Token  string `gorm:"column:token;type:varchar(255);index:idx_fts_token;index:idx_fts_token_note_id,priority:1"`
+}
+
+func (*NoteFTSToken) TableName() string {
+	return "note_fts_token"
 }
 
 // NoteFTSMeta FTS 元数据表，用于存储版本信息
@@ -31,11 +41,12 @@ func (*NoteFTSMeta) TableName() string {
 	return "note_fts_meta"
 }
 
-// CreateNoteFTSTable 创建 FTS5 虚拟表
-// FTS5 是 SQLite 的全文搜索扩展，专门用于高效的文本搜索
+// CreateNoteFTSTable 创建搜索相关的标准数据库表
 func CreateNoteFTSTable(db *gorm.DB) error {
 	// 创建元数据表
-	db.Exec(`CREATE TABLE IF NOT EXISTS note_fts_meta (key TEXT PRIMARY KEY, value TEXT)`)
+	if err := db.AutoMigrate(&NoteFTSMeta{}); err != nil {
+		return err
+	}
 
 	// 检查版本
 	var meta NoteFTSMeta
@@ -47,34 +58,20 @@ func CreateNoteFTSTable(db *gorm.DB) error {
 		_ = DropNoteFTSTable(db)
 	}
 
-	// 检查 FTS 表是否已存在
-	var count int64
-	db.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='note_fts'").Scan(&count)
-	if count > 0 {
-		return nil
-	}
-
-	// 创建 FTS5 虚拟表
-	// tokenize='unicode61 remove_diacritics 2' 支持 Unicode 字符分词
-	sql := `
-		CREATE VIRTUAL TABLE IF NOT EXISTS note_fts USING fts5(
-			note_id UNINDEXED,
-			path,
-			content,
-			tokenize='unicode61 remove_diacritics 2'
-		)
-	`
-	if err := db.Exec(sql).Error; err != nil {
+	// 执行自动迁移
+	if err := db.AutoMigrate(&NoteFTS{}, &NoteFTSToken{}); err != nil {
 		return err
 	}
 
 	// 更新版本号
-	db.Exec(`INSERT OR REPLACE INTO note_fts_meta (key, value) VALUES ('version', ?)`, string(rune(NoteFTSVersion+'0')))
+	db.Save(&NoteFTSMeta{Key: "version", Value: string(rune(NoteFTSVersion+'0'))})
 
 	return nil
 }
 
-// DropNoteFTSTable 删除 FTS5 表（用于重建索引）
+// DropNoteFTSTable 删除全文搜索相关的表
 func DropNoteFTSTable(db *gorm.DB) error {
-	return db.Exec("DROP TABLE IF EXISTS note_fts").Error
+	_ = db.Migrator().DropTable(&NoteFTS{})
+	_ = db.Migrator().DropTable(&NoteFTSToken{})
+	return nil
 }
