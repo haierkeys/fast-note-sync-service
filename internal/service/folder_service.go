@@ -526,16 +526,18 @@ func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultI
 			path := strings.Trim(n.Path, "/")
 			if !strings.Contains(path, "/") {
 				if n.FID != 0 {
-					n.FID = 0
-					_, _ = s.noteRepo.Update(ctx, n, uid)
+					// 仅更新 FID，不更新 updated_timestamp，避免污染增量同步时间戳
+					// Only update FID without touching updated_timestamp to avoid polluting incremental sync timestamps
+					_ = s.noteRepo.UpdateFID(ctx, n.ID, 0, uid)
 				}
 				continue
 			}
 			parentPath := path[:strings.LastIndex(path, "/")]
 			fid, err := s.EnsurePathFID(ctx, uid, vaultID, parentPath)
 			if err == nil && n.FID != fid {
-				n.FID = fid
-				_, _ = s.noteRepo.Update(ctx, n, uid)
+				// 仅更新 FID，不更新 updated_timestamp，避免污染增量同步时间戳
+				// Only update FID without touching updated_timestamp to avoid polluting incremental sync timestamps
+				_ = s.noteRepo.UpdateFID(ctx, n.ID, fid, uid)
 			}
 		}
 	}
@@ -557,16 +559,18 @@ func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultI
 			path := strings.Trim(f.Path, "/")
 			if !strings.Contains(path, "/") {
 				if f.FID != 0 {
-					f.FID = 0
-					_, _ = s.fileRepo.Update(ctx, f, uid)
+					// 仅更新 FID，不更新 updated_timestamp，避免污染增量同步时间戳
+					// Only update FID without touching updated_timestamp to avoid polluting incremental sync timestamps
+					_ = s.fileRepo.UpdateFID(ctx, f.ID, 0, uid)
 				}
 				continue
 			}
 			parentPath := f.Path[:strings.LastIndex(f.Path, "/")]
 			fid, err := s.EnsurePathFID(ctx, uid, vaultID, parentPath)
 			if err == nil && f.FID != fid {
-				f.FID = fid
-				_, _ = s.fileRepo.Update(ctx, f, uid)
+				// 仅更新 FID，不更新 updated_timestamp，避免污染增量同步时间戳
+				// Only update FID without touching updated_timestamp to avoid polluting incremental sync timestamps
+				_ = s.fileRepo.UpdateFID(ctx, f.ID, fid, uid)
 			}
 		}
 	}

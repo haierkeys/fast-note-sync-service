@@ -352,7 +352,12 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			return
 		}
 
-		c.ToResponse(code.Success)
+		// Reply to sender with ack carrying server timestamp, so client can update lastFileSyncTime
+		// 回复发送方携带服务端时间戳的 ack，让客户端可以更新 lastFileSyncTime
+		c.ToResponse(code.Success.WithData(dto.FileUploadAckMessage{
+			LastTime: fileSvc.UpdatedTimestamp,
+			Path:     session.Path,
+		}), string(dto.FileUploadAck))
 
 		// Mark as completed and remove from global server
 		// 标记为已完成并从全局服务器移除
@@ -437,7 +442,11 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	c.ToResponse(code.Success)
+	// Reply to sender with ack carrying server timestamp, so client can update lastFileSyncTime
+	// 回复发送方携带服务端时间戳的 ack，让客户端可以更新 lastFileSyncTime
+	c.ToResponse(code.Success.WithData(dto.FileRenameAckMessage{
+		LastTime: newFile.UpdatedTimestamp,
+	}), string(dto.FileRenameAck))
 
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FileSyncRenameMessage{
@@ -701,9 +710,8 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			continue
 		}
 
-		if file.UpdatedTimestamp >= lastTime {
-			lastTime = file.UpdatedTimestamp
-		}
+		// lastTime is set after the loop via timex.Now(), do not update here
+		// lastTime 在循环后统一由 timex.Now() 赋值，此处不更新
 
 		if file.Action == "delete" {
 			// Server already deleted, notify client to delete (regardless of whether client has it)
@@ -811,9 +819,11 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
-	if list == nil {
-		lastTime = timex.Now().UnixMilli()
-	}
+	// Use current time as lastTime regardless of whether list is empty,
+	// ensuring lastTime > all returned files' updated_timestamp (mirrors FolderSync design)
+	// 无论 list 是否为空，均取当前时间作为 lastTime，
+	// 确保 lastTime > 所有返回文件的 updated_timestamp（与 FolderSync 保持一致）
+	lastTime = timex.Now().UnixMilli()
 	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {

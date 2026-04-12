@@ -795,9 +795,8 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			continue
 		}
 
-		if note.UpdatedTimestamp >= lastTime {
-			lastTime = note.UpdatedTimestamp
-		}
+		// lastTime is set after the loop via timex.Now(), do not update here
+		// lastTime 在循环后统一由 timex.Now() 赋值，此处不更新
 		if note.Action == "delete" {
 			// Server already deleted, notify client to delete (regardless of whether client has it)
 			// 服务端已经删除, 通知客户端删除（不再检查客户端是否存在）
@@ -939,9 +938,11 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
-	if list == nil {
-		lastTime = timex.Now().UnixMilli()
-	}
+	// Use current time as lastTime regardless of whether list is empty,
+	// ensuring lastTime > all returned notes' updated_timestamp (mirrors FolderSync design)
+	// 无论 list 是否为空，均取当前时间作为 lastTime，
+	// 确保 lastTime > 所有返回笔记的 updated_timestamp（与 FolderSync 保持一致）
+	lastTime = timex.Now().UnixMilli()
 	if len(cNotesKeys) > 0 {
 		for pathHash := range cNotesKeys {
 			note := cNotes[pathHash]

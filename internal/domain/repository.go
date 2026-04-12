@@ -38,6 +38,12 @@ type NoteRepository interface {
 	// UpdateActionMtime 更新笔记类型并修改时间
 	UpdateActionMtime(ctx context.Context, action NoteAction, mtime int64, id, uid int64) error
 
+	// UpdateFID 仅更新笔记的文件夹关联 ID，不更新 updated_timestamp
+	// 用于 SyncResourceFID 内部整理，避免污染增量同步时间戳
+	// Only updates the folder ID (FID), does not update updated_timestamp
+	// Used by SyncResourceFID to avoid polluting incremental sync timestamps
+	UpdateFID(ctx context.Context, id, fid, uid int64) error
+
 	// UpdateSnapshot 更新笔记快照
 	UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error
 
@@ -200,6 +206,12 @@ type FileRepository interface {
 
 	// UpdateActionMtime 更新文件类型并修改时间
 	UpdateActionMtime(ctx context.Context, action FileAction, mtime int64, id, uid int64) error
+
+	// UpdateFID 仅更新文件的文件夹关联 ID，不更新 updated_timestamp
+	// 用于 SyncResourceFID 内部整理，避免污染增量同步时间戳
+	// Only updates the folder ID (FID), does not update updated_timestamp
+	// Used by SyncResourceFID to avoid polluting incremental sync timestamps
+	UpdateFID(ctx context.Context, id, fid, uid int64) error
 
 	// Delete 物理删除文件
 	Delete(ctx context.Context, id, uid int64) error
