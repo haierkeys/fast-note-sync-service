@@ -608,7 +608,7 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 			// 根据 FTS 返回的 ID 查询完整笔记，保持 FTS 返回的顺序
 			err = q.UnderlyingDB().Where("id IN ?", noteIDs).Order(orderClause).Find(&modelList).Error
 		} else {
-			// 路径搜索或正则搜索：使用 LIKE
+			// 路径搜索：使用 LIKE
 			key := "%" + keyword + "%"
 			err = q.UnderlyingDB().Where("path LIKE ?", key).
 				Order(orderClause).
@@ -663,12 +663,21 @@ func (r *noteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string
 	return res, nil
 }
 
+// getSortField 映射排序字段
+func getSortField(sortBy string) string {
+	switch sortBy {
+	case "ctime":
+		return "ctime"
+	case "path":
+		return "path"
+	default:
+		return "mtime"
+	}
+}
+
 // buildOrderClause 构建排序语句
 func buildOrderClause(sortBy, sortOrder string) string {
 	// 默认值
-	if sortBy == "" {
-		sortBy = "mtime"
-	}
 	if sortOrder == "" {
 		sortOrder = "desc"
 	}
@@ -678,20 +687,7 @@ func buildOrderClause(sortBy, sortOrder string) string {
 		sortOrder = "desc"
 	}
 
-	// 映射排序字段
-	var field string
-	switch sortBy {
-	case "ctime":
-		field = "ctime"
-	case "path":
-		field = "path"
-	case "mtime":
-		fallthrough
-	default:
-		field = "mtime"
-	}
-
-	return field + " " + sortOrder
+	return getSortField(sortBy) + " " + sortOrder
 }
 
 // ListCount 获取笔记数量
@@ -720,21 +716,9 @@ func (r *noteRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 			ftsDB := r.dao.ResolveDB(r.GetKey(uid))
 			count, err = r.searchFTSCount(ftsDB, keyword, vaultID, isRecycle)
 		} else {
-			// 路径搜索或正则搜索：使用 LIKE
-			var whereClause string
-			var args []interface{}
-
-			switch searchMode {
-			case "regex":
-				key := "%" + keyword + "%"
-				whereClause = "path LIKE ?"
-				args = []interface{}{key}
-			default:
-				key := "%" + keyword + "%"
-				whereClause = "path LIKE ?"
-				args = []interface{}{key}
-			}
-			err = q.UnderlyingDB().Where(whereClause, args...).Count(&count).Error
+			// 路径搜索：使用 LIKE
+			key := "%" + keyword + "%"
+			err = q.UnderlyingDB().Where("path LIKE ?", key).Count(&count).Error
 		}
 	} else {
 		count, err = q.Order(u.CreatedAt).Count()
@@ -997,8 +981,11 @@ func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, i
 		actionCond = "note.action = 'delete' AND note.rename = 0"
 	}
 
+	// 映射排序字段
+	sortField := getSortField(sortBy)
+
 	// 构建排序语句
-	orderClause := "note." + buildOrderClause(sortBy, sortOrder)
+	orderClause := "note." + sortField + " " + sortOrder
 
 	// 使用新的倒排索引查询
 	query := db.Table("note_fts_token AS t").
@@ -1007,8 +994,7 @@ func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, i
 		Where("t.token IN ?", tokens).
 		Where("note.vault_id = ?", vaultID).
 		Where(actionCond).
-		Group("t.note_id").
-		Having("COUNT(DISTINCT t.token) = ?", len(tokens)).
+		Group("t.note_id, note."+sortField).
 		Order(orderClause).
 		Limit(limit).
 		Offset(offset)
