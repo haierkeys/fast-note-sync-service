@@ -187,7 +187,7 @@ type NoteListRequest struct {
 	Vault         string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Keyword       string `json:"keyword" form:"keyword" example:"todo"`                   // Search keyword // 搜索关键词
 	IsRecycle     bool   `json:"isRecycle" form:"isRecycle" example:"false"`              // Is in recycle bin // 是否在回收站
-	SearchMode    string `json:"searchMode" form:"searchMode" example:"content"`          // Search mode (path, content, regex) // 搜索模式（路径、内容、正则）
+	SearchMode    string `json:"searchMode" form:"searchMode" example:"content"`          // Search mode (path, content) // 搜索模式（路径、内容）
 	SearchContent bool   `json:"searchContent" form:"searchContent" example:"true"`       // Whether to search content // 是否搜索内容
 	SortBy        string `json:"sortBy" form:"sortBy" example:"mtime"`                    // Sort by field // 排序字段
 	SortOrder     string `json:"sortOrder" form:"sortOrder" example:"desc"`               // Sort order // 排序顺序

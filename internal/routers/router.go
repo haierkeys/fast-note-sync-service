@@ -146,8 +146,18 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		api.Use(middleware.TraceMiddlewareWithConfig(cfg.Tracer.Enabled, cfg.Tracer.Header)) // Trace ID middleware
 		// Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))
-		api.Use(middleware.ContextTimeout(time.Duration(cfg.App.DefaultContextTimeout) * time.Second))
 
+		// MCP routes (No Timeout)
+		// MCP 路由 (无超时限制)
+		mcpHandler := mcp_router.NewMCPHandler(appContainer, wss)
+		mcpGroup := api.Group("/mcp")
+		mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
+		{
+			mcpGroup.GET("/sse", mcpHandler.HandleSSE)
+			mcpGroup.POST("/message", mcpHandler.HandleMessage)
+		}
+
+		api.Use(middleware.ContextTimeout(time.Duration(cfg.App.DefaultContextTimeout) * time.Second))
 		api.Use(middleware.LangWithTranslator(uni))
 		api.Use(middleware.AccessLogWithLogger(appContainer.Logger()))
 		api.Use(middleware.RecoveryWithLogger(appContainer.Logger()))
@@ -167,7 +177,6 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		backupHandler := api_router.NewBackupHandler(appContainer)
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
 		settingHandler := api_router.NewSettingHandler(appContainer, wss)
-		mcpHandler := mcp_router.NewMCPHandler(appContainer, wss)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -302,9 +311,6 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/setting/rename", settingHandler.Rename)
 			auth.GET("/settings", settingHandler.List)
 
-			// MCP SSE
-			auth.GET("/mcp/sse", mcpHandler.HandleSSE)
-			auth.POST("/mcp/message", mcpHandler.HandleMessage)
 		}
 
 	}
