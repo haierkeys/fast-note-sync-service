@@ -64,7 +64,7 @@ func CreateNoteFTSTable(db *gorm.DB) error {
 	}
 
 	// 更新版本号
-	db.Save(&NoteFTSMeta{Key: "version", Value: string(rune(NoteFTSVersion+'0'))})
+	db.Save(&NoteFTSMeta{Key: "version", Value: string(rune(NoteFTSVersion + '0'))})
 
 	return nil
 }

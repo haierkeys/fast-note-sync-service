@@ -994,7 +994,7 @@ func (r *noteRepository) searchFTS(db *gorm.DB, keyword string, vaultID int64, i
 		Where("t.token IN ?", tokens).
 		Where("note.vault_id = ?", vaultID).
 		Where(actionCond).
-		Group("t.note_id, note."+sortField).
+		Group("t.note_id, note." + sortField).
 		Order(orderClause).
 		Limit(limit).
 		Offset(offset)
@@ -1028,4 +1028,3 @@ func (r *noteRepository) searchFTSCount(db *gorm.DB, keyword string, vaultID int
 	err := db.Table("(?) AS sub", subQuery).Count(&count).Error
 	return count, err
 }
-

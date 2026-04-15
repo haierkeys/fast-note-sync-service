@@ -694,16 +694,16 @@ func (s *backupService) exportArchiveFiles(ctx context.Context, uid, vaultID int
 			}
 		} else {
 			if err := util.CopyFile(localPath, destPath); err != nil {
-			// Skip missing files instead of failing the entire backup.
-			// This can happen when the DB record exists but the file
-			// has been manually deleted or lost due to data inconsistency.
-			if os.IsNotExist(err) {
-				s.logger.Warn("Skipping backup of missing file",
-					zap.String("path", path),
-					zap.String("localPath", localPath))
-				return nil
-			}
-			return err
+				// Skip missing files instead of failing the entire backup.
+				// This can happen when the DB record exists but the file
+				// has been manually deleted or lost due to data inconsistency.
+				if os.IsNotExist(err) {
+					s.logger.Warn("Skipping backup of missing file",
+						zap.String("path", path),
+						zap.String("localPath", localPath))
+					return nil
+				}
+				return err
 			}
 		}
 		totalCount++
