@@ -711,4 +711,3 @@ func (d *Dao) ensureMysqlDatabase(dbName string) error {
 
 	return nil
 }
-

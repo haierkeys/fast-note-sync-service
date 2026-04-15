@@ -18,4 +18,7 @@ type ServerConfig struct {
 	// PrivateHttpListen private HTTP listen address
 	// PrivateHttpListen 私有 HTTP 监听地址
 	PrivateHttpListen string `yaml:"private-http-listen"`
+	// MCPSSEPingInterval MCP SSE ping interval (seconds)
+	// MCPSSEPingInterval MCP SSE 保活心跳间隔（秒）
+	MCPSSEPingInterval int `yaml:"mcp-sse-ping-interval" default:"30"`
 }

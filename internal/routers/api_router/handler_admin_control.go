@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
@@ -257,9 +256,6 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 		Charset:             dbCfg.Charset,
 		ParseTime:           dbCfg.ParseTime,
 	}
-
-	dump.P(data)
-
 	response.ToResponse(code.Success.WithData(data))
 }
 

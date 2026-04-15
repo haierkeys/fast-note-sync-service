@@ -47,9 +47,9 @@ type MigrationContext struct {
 type MigrationManager struct {
 	db         *gorm.DB
 	logger     *zap.Logger
-	version    string                  // 当前运行版本
-	config     *config.DatabaseConfig  // 主数据库配置
-	userConfig *config.DatabaseConfig  // 用户数据库配置
+	version    string                 // 当前运行版本
+	config     *config.DatabaseConfig // 主数据库配置
+	userConfig *config.DatabaseConfig // 用户数据库配置
 	migrations []Migration
 }
 
@@ -77,8 +77,8 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
 
 	// 使用提供的主配置和用户配置初始化 DBUtils
-	dbUtils := service.NewDBUtils(m.db, ctx, 
-		dao.WithConfig(m.config), 
+	dbUtils := service.NewDBUtils(m.db, ctx,
+		dao.WithConfig(m.config),
 		dao.WithUserDatabaseConfig(m.userConfig),
 		dao.WithLogger(m.logger),
 	)

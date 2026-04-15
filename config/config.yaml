@@ -14,6 +14,9 @@ server:
   # 私有 HTTP 监听地址，主要用于监控/度量。留空则不开启。格式: :port
   # Private HTTP listen address, used for monitoring/metrics. Leave empty to disable. Format: :port
   private-http-listen: ""
+  # SSE 保活心跳间隔（秒）
+  # MCP SSE ping interval (seconds)
+  mcp-sse-ping-interval: 30
 
 app:
   # 默认每页显示的项目数

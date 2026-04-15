@@ -72,6 +72,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(shareRes))
 	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
 }
+
 // @Summary Get shared note details
 // @Description Get specific note content (restricted read-only access) via share token
 // @Tags Share
