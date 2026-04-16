@@ -83,7 +83,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 
 	// Parse ![[ ]] tags in content
 	// 解析内容中的 ![[ ]] 标签
-	fileLinks, err := h.App.FileService.ResolveEmbedLinks(ctx, uid, params.Vault, note.Content)
+	fileLinks, err := h.App.FileService.ResolveEmbedLinks(ctx, uid, params.Vault, note.Path, note.Content)
 	if err != nil {
 		h.App.Logger().Error("NoteHandler.Get FileResolveEmbedLinks err", zap.Error(err))
 	}
