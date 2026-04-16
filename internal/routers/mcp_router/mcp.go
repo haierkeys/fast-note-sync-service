@@ -2,11 +2,12 @@ package mcp_router
 
 import (
 	"context"
-	"fmt"
+
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -27,15 +28,19 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 
 	srv := NewMCPServer(appContainer, wss)
 
-	sseSrv := mcpserver.NewSSEServer(srv, mcpserver.WithMessageEndpoint("/api/mcp/message"), mcpserver.WithSSEContextFunc(func(ctx context.Context, r *http.Request) context.Context {
-		if val := r.Context().Value("uid"); val != nil {
-			ctx = context.WithValue(ctx, "uid", val)
-		}
-		if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
-			ctx = context.WithValue(ctx, "default_vault_name", vaultName)
-		}
-		return ctx
-	}))
+	sseSrv := mcpserver.NewSSEServer(srv,
+		mcpserver.WithMessageEndpoint("/api/mcp/message"),
+		mcpserver.WithKeepAlive(true),
+		mcpserver.WithKeepAliveInterval(pingInterval),
+		mcpserver.WithSSEContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+			if val := r.Context().Value("uid"); val != nil {
+				ctx = context.WithValue(ctx, "uid", val)
+			}
+			if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
+				ctx = context.WithValue(ctx, "default_vault_name", vaultName)
+			}
+			return ctx
+		}))
 
 	return &MCPHandler{
 		mcpServer:       srv,
@@ -51,28 +56,17 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 		ctx = context.WithValue(ctx, "default_vault_name", vaultName)
 	}
 
-	// 创建可取消的 context，用于控制心跳 goroutine
-	// Create cancellable context for heartbeat goroutine lifecycle
-	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
-	defer cancelHeartbeat()
+	// Set SSE headers
+	// 设置 SSE 响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Proxy-Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no") // Disable proxy buffering / 禁用代理缓冲
 
-	// 启动心跳 goroutine，每 30 秒发送 SSE 注释行保持连接活跃
-	// Start heartbeat goroutine to send SSE comment every 30s to keep connection alive
-	go func() {
-		ticker := time.NewTicker(h.ssePingInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-heartbeatCtx.Done():
-				return
-			case <-ticker.C:
-				// SSE comment line, MCP clients ignore this
-				// SSE 注释行，MCP 客户端忽略此内容
-				_, _ = fmt.Fprint(c.Writer, ":\n\n")
-				c.Writer.Flush()
-			}
-		}
-	}()
+	// Flush headers immediately
+	// 立即发送响应头
+	c.Writer.Flush()
 
 	// Let SSEServer handle the SSE connection
 	h.sseServer.SSEHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
