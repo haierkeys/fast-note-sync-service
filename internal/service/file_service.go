@@ -10,7 +10,6 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -74,9 +73,9 @@ type FileService interface {
 	// CleanupByTime 按截止时间清理所有用户的过期软删除文件
 	CleanupByTime(ctx context.Context, cutoffTime int64) error
 
-	// ResolveEmbedLinks resolves embedded links in content
-	// ResolveEmbedLinks 解析内容中的嵌入链接
-	ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, content string) (map[string]string, error)
+	// ResolveEmbedLinks resolves local file links in note content
+	// ResolveEmbedLinks 解析笔记内容中的本地文件链接
+	ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, notePath string, content string) (map[string]string, error)
 
 	// GetContent retrieves raw content of note or attachment file
 	// GetContent 获取笔记或附件文件的原始内容
@@ -632,9 +631,9 @@ func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto
 	return "", "", 0, "", "", code.ErrorNoteNotFound
 }
 
-// ResolveEmbedLinks resolves embedded links in content
-// ResolveEmbedLinks 解析内容中的嵌入链接
-func (s *fileService) ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, content string) (map[string]string, error) {
+// ResolveEmbedLinks resolves local file links in note content
+// ResolveEmbedLinks 解析笔记内容中的本地文件链接
+func (s *fileService) ResolveEmbedLinks(ctx context.Context, uid int64, vaultName string, notePath string, content string) (map[string]string, error) {
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, vaultName)
@@ -642,45 +641,43 @@ func (s *fileService) ResolveEmbedLinks(ctx context.Context, uid int64, vaultNam
 		return nil, err
 	}
 
-	// Regex match ![[path|options]] or ![[path#anchor]]
-	// 正则匹配 ![[path|options]] 或 ![[path#anchor]]
-	re := regexp.MustCompile(`!\[\[(.*?)\]\]`)
-	matches := re.FindAllStringSubmatch(content, -1)
-
-	resultMap := make(map[string]string)
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
+	rawRefs := extractSharedNoteFileRefs(content)
+	resultMap := make(map[string]string, len(rawRefs))
+	for _, rawRef := range rawRefs {
+		file, err := s.resolveNoteFileReference(ctx, uid, vaultID, notePath, rawRef)
+		if err != nil {
+			return nil, err
 		}
-		inner := match[1] // Tag internal content, e.g., mm.jpg|100 // 标签内部内容，如 mm.jpg|100
-
-		// Extract resource path (remove parts after size | and anchor #)
-		// 提取资源路径（移除尺寸 | 和锚点 # 之后的部分）
-		resourcePath := inner
-		if idx := strings.IndexAny(inner, "|#"); idx != -1 {
-			resourcePath = inner[:idx]
-		}
-		resourcePath = strings.TrimSpace(resourcePath)
-
-		if resourcePath == "" {
-			continue
-		}
-
-		// Skip if this path has already been processed
-		// 如果已经处理过这个路径，跳过
-		if _, ok := resultMap[resourcePath]; ok {
-			continue
-		}
-
-		// Search file (LIKE right matching)
-		// 搜索文件（LIKE 右匹配）
-		file, err := s.fileRepo.GetByPathLike(ctx, resourcePath, vaultID, uid)
-		if err == nil && file != nil {
-			resultMap[resourcePath] = file.Path
+		if file != nil {
+			resultMap[rawRef] = file.Path
 		}
 	}
 
 	return resultMap, nil
+}
+
+func (s *fileService) resolveNoteFileReference(ctx context.Context, uid int64, vaultID int64, notePath string, rawRef string) (*domain.File, error) {
+	ref := strings.TrimSpace(rawRef)
+	if !isLocalSharePath(ref) {
+		return nil, nil
+	}
+
+	for _, candidate := range buildSharePathCandidates(notePath, ref) {
+		file, err := s.fileRepo.GetByPath(ctx, candidate, vaultID, uid)
+		if err == nil && file != nil && file.Action != domain.FileActionDelete {
+			return file, nil
+		}
+	}
+
+	normalizedRef := normalizeShareVaultPath(ref)
+	if normalizedRef != "" && !strings.Contains(normalizedRef, "/") {
+		file, err := s.fileRepo.GetByPathLike(ctx, normalizedRef, vaultID, uid)
+		if err == nil && file != nil && file.Action != domain.FileActionDelete {
+			return file, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // Sync syncs files (alias for ListByLastTime, used for WebSocket sync)
