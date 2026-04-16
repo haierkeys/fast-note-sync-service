@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
@@ -352,7 +352,7 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 
 	// Step 1: JSON deserialization (can be replaced by other formats)
 	// Step 1: JSON 反序列化（可替换成其他格式）
-	if err := sonic.Unmarshal(data, obj); err != nil {
+	if err := json.Unmarshal(data, obj); err != nil {
 		// Decoding error handling
 		// 解码错误处理
 		errs = append(errs, &ValidError{
@@ -468,7 +468,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 		content.Context = code.Context()
 	}
 
-	responseBytes, _ = sonic.Marshal(content)
+	responseBytes, _ = json.Marshal(content)
 
 	if actionType != "" {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
@@ -525,7 +525,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		content.Context = code.Context()
 	}
 
-	responseBytes, _ = sonic.Marshal(content)
+	responseBytes, _ = json.Marshal(content)
 
 	if actionType != "" {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
@@ -829,7 +829,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
 	var info ClientInfoMessage
-	if err := sonic.Unmarshal(msg.Data, &info); err != nil {
+	if err := json.Unmarshal(msg.Data, &info); err != nil {
 		log(LogError, "WS ClientInfo Unmarshal FAILD", zap.Error(err))
 		c.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
 		return
@@ -1138,7 +1138,7 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 		content.Vault = code.Vault()
 	}
 
-	responseBytes, _ = sonic.Marshal(content)
+	responseBytes, _ = json.Marshal(content)
 
 	if action != "" {
 		responseBytes = []byte(fmt.Sprintf(`%s|%s`, action, string(responseBytes)))

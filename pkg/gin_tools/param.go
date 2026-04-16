@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/bytedance/sonic"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,7 +42,7 @@ func RequestParams(c *gin.Context) (map[string]interface{}, error) {
 		// @see gin@v1.7.7/binding/json.go ==> func (jsonBinding) Bind(req *httpclient.Request, obj interface{})
 		if c.Request != nil && c.Request.Body != nil {
 			//if err := json.NewDecoder(c.Request.Body).Decode(&postMap); err != nil {
-			var dec = sonic.ConfigDefault.NewDecoder(c.Request.Body)
+			var dec = json.ConfigDefault.NewDecoder(c.Request.Body)
 			if err := dec.Decode(&postMap); err != nil {
 				return nil, err
 			}

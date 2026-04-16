@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bytedance/sonic"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 )
@@ -113,8 +113,8 @@ func StructAssign(src any, dst any) any {
  * @return []string{}
  */
 func StructToMap(param any, data map[string]interface{}) error {
-	str, _ := sonic.Marshal(param)
-	error := sonic.Unmarshal(str, &data)
+	str, _ := json.Marshal(param)
+	error := json.Unmarshal(str, &data)
 	if error != nil {
 		return error
 	} else {

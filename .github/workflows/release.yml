@@ -170,11 +170,19 @@ jobs:
         run: |
           # 为所有平台创建 tar.gz 包
           # Create tar.gz packages for all platforms
-          declare -a PLATFORMS=("darwin_amd64" "darwin_arm64" "linux_amd64" "linux_arm64" "windows_amd64")
+          declare -a PLATFORMS=("darwin_amd64" "darwin_arm64" "linux_amd64" "linux_arm64" "linux_arm" "windows_amd64")
           for PLATFORM in "${PLATFORMS[@]}"; do
             GOOS=$(echo "$PLATFORM" | cut -d'_' -f1)
             GOARCH=$(echo "$PLATFORM" | cut -d'_' -f2)
-            ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${GOARCH}.tar.gz"
+
+            # 这里的重命名逻辑：如果是 linux_arm，则将后缀改为 armv7l
+            # Rename linux_arm to linux-armv7l for easier identification
+            TARGET_ARCH=$GOARCH
+            if [ "$PLATFORM" == "linux_arm" ]; then
+                TARGET_ARCH="armv7l"
+            fi
+
+            ARCHIVE_NAME="${RELEASE_BASENAME}-${GOOS}-${TARGET_ARCH}.tar.gz"
             echo "Creating archive: ${ARCHIVE_NAME}"
             tar -czvf "./build/${ARCHIVE_NAME}" ./config -C "./build/${PLATFORM}/" .
           done
@@ -243,7 +251,7 @@ jobs:
           name: ${{ github.actor }}/${{ env.NAME }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           registry: ghcr.io
           snapshot: false
           tags: "${{ env.IMAGE_TAG }}"
@@ -259,7 +267,7 @@ jobs:
           name: ${{ github.actor }}/${{ env.NAME }}
           username: ${{ github.actor }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           snapshot: false
           tags: "${{ env.IMAGE_TAG }}"
           buildargs: |
@@ -274,7 +282,7 @@ jobs:
           name: haierkeys/${{ env.NAME }}
           username: ${{ secrets.CNB_USERNAME }}
           password: ${{ secrets.CNB_TOKEN }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           registry: docker.cnb.cool
           snapshot: false
           tags: "${{ env.IMAGE_TAG }}"
