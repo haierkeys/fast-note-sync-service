@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/bytedance/sonic"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 )
 
 // EnableDecoderUseNumber is used to call the UseNumber method on the JSON
@@ -42,7 +42,7 @@ func decodeJSON(r io.Reader, obj any) error {
 
 	// decoder := json.NewDecoder(r)
 	// if err := decoder.Decode(obj); err != nil {
-	var dec = sonic.ConfigDefault.NewDecoder(r)
+	var dec = json.ConfigDefault.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
 		return err
 	}

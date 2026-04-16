@@ -46,7 +46,7 @@ buildDir = $(rootDir)/build
 .PHONY: all  build-all run test clean \
         push-online push-dev \
         build-macos-amd64 build-macos-arm64 build-linux-amd64 \
-        build-linux-arm64 build-windows-amd64 gox-linux gox-all \
+        build-linux-arm64 build-linux-arm build-windows-amd64 gox-linux gox-all \
 		docs fmt update air dev ver gen sup
 
 # 默认目标
@@ -110,6 +110,7 @@ build-all:
 	$(MAKE) build-macos-arm64
 	$(MAKE) build-linux-amd64
 	$(MAKE) build-linux-arm64
+	$(MAKE) build-linux-arm
 	$(MAKE) build-windows-amd64
 
 # macOS
@@ -127,6 +128,9 @@ build-linux-amd64:
 build-linux-arm64:
 	$(CGO) GOOS=linux GOARCH=arm64 $(gob) -o $(buildDir)/linux_arm64/${P_BIN} -v $(rootDir)
 
+build-linux-arm:
+	$(CGO) GOOS=linux GOARCH=arm GOARM=7 $(gob) -o $(buildDir)/linux_arm/${P_BIN} -v $(rootDir)
+
 # Windows
 build-windows-amd64:
 # CGO_ENABLED=0 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC="x86_64-w64-mingw32-gcc -fno-stack-protector -D_FORTIFY_SOURCE=0 -lssp" $(gob) -o $(bin).exe -v $(rootDir)
@@ -134,10 +138,10 @@ build-windows-amd64:
 
 # gox 辅助
 gox-linux:
-	$(CGO) gox ${LDFLAGS} -osarch="linux/amd64 linux/arm64" -output="$(buildDir)/{{.OS}}_{{.Arch}}/${P_BIN}"
+	$(CGO) GOARM=7 gox ${LDFLAGS} -osarch="linux/amd64 linux/arm64 linux/arm" -output="$(buildDir)/{{.OS}}_{{.Arch}}/${P_BIN}"
 
 gox-all:
-	$(CGO) gox ${LDFLAGS} -osarch="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64" -output="$(buildDir)/{{.OS}}_{{.Arch}}/${P_BIN}"
+	$(CGO) GOARM=7 gox ${LDFLAGS} -osarch="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 linux/arm windows/amd64" -output="$(buildDir)/{{.OS}}_{{.Arch}}/${P_BIN}"
 
 
 # -------------------------

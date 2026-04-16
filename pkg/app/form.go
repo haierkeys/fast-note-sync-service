@@ -3,7 +3,7 @@ package app
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -61,7 +61,7 @@ func (v ValidErrors) Maps() []map[string]string {
 
 func (v ValidErrors) MapsToString() string {
 	maps := v.Maps()
-	re, _ := sonic.Marshal(maps)
+	re, _ := json.Marshal(maps)
 	return string(re)
 }
 
