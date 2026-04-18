@@ -116,6 +116,9 @@ type NoteService interface {
 
 	// RecycleClear 清理回收站
 	RecycleClear(ctx context.Context, uid int64, params *dto.NoteRecycleClearRequest) error
+
+	// CleanDuplicateNotes 清理重复的笔记记录
+	CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error
 }
 
 // noteService implementation of NoteService interface
@@ -133,7 +136,7 @@ type noteService struct {
 	config         *ServiceConfig             // Service configuration // 服务配置
 	backupService  BackupService              // Backup service // 备份服务
 	gitSyncService GitSyncService             // Git sync service // Git 同步服务
-	countTimers    sync.Map                   // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	countTimers    *sync.Map                  // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewNoteService creates NoteService instance
@@ -150,7 +153,7 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 		gitSyncService: gitSyncSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
-		countTimers:    sync.Map{},
+		countTimers:    &sync.Map{},
 	}
 }
 
@@ -286,117 +289,131 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 // ModifyOrCreate creates or modifies a note
 // ModifyOrCreate 创建或修改笔记
 func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error) {
-	var isNew bool
-
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return isNew, nil, err
+		return false, nil, err
 	}
 
-	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
+	type result struct {
+		isNew bool
+		dto   *dto.NoteDTO
+	}
 
-	if note != nil {
-		isNew = false
+	val, err, _ := s.sf.Do(key, func() (any, error) {
+		var isNew bool
+		note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 
-		// If createOnly is set and note exists (not deleted), return error
-		if note.Action != domain.NoteActionDelete && params.CreateOnly {
-			return false, nil, code.ErrorNoteExist
-		}
+		if note != nil {
+			isNew = false
 
-		// Check if content is consistent, excluding notes marked as deleted
-		if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
-			return isNew, nil, nil
-		}
-		// If content is consistent but modification time is different, only update modification time
-		// 检查内容是否一致但修改时间不同，则只更新修改时间
-		if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
-			err := s.noteRepo.UpdateActionMtime(ctx, domain.NoteActionModify, params.Mtime, note.ID, uid)
-			if err != nil {
-				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+			// If createOnly is set and note exists (not deleted), return error
+			if note.Action != domain.NoteActionDelete && params.CreateOnly {
+				return nil, code.ErrorNoteExist
 			}
+
+			// Check if content is consistent, excluding notes marked as deleted
+			if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
+				return &result{isNew: isNew, dto: nil}, nil
+			}
+			// If content is consistent but modification time is different, only update modification time
+			// 检查内容是否一致但修改时间不同，则只更新修改时间
+			if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
+				err := s.noteRepo.UpdateActionMtime(ctx, domain.NoteActionModify, params.Mtime, note.ID, uid)
+				if err != nil {
+					return nil, code.ErrorDBQuery.WithDetails(err.Error())
+				}
+				note.Mtime = params.Mtime
+				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
+			}
+
+			// Set action
+			// 设置 action
+			var action domain.NoteAction
+			if note.Action == domain.NoteActionDelete {
+				action = domain.NoteActionCreate
+			} else {
+				action = domain.NoteActionModify
+			}
+
+			// Update note
+			// 更新笔记
+			note.VaultID = vaultID
+			note.Path = params.Path
+			note.PathHash = params.PathHash
+			note.Content = params.Content
+			note.ContentHash = params.ContentHash
+			note.ClientName = s.clientName
+			note.Size = int64(len(params.Content))
 			note.Mtime = params.Mtime
-			return isNew, s.domainToDTO(note), nil
+			note.Ctime = params.Ctime
+			note.Action = action
+			note.Rename = 0
+			note.Version++ // Increment version on content change // 内容变更时递增版本号
+
+			updated, err := s.noteRepo.Update(ctx, note, uid)
+			if err != nil {
+				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+
+			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
+			go s.CountSizeSum(context.Background(), vaultID, uid)
+			go s.UpdateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
+			NoteHistoryDelayPush(updated.ID, uid)
+
+			if s.backupService != nil {
+				go s.backupService.NotifyUpdated(uid)
+			}
+			if s.gitSyncService != nil {
+				go s.gitSyncService.NotifyUpdated(uid, vaultID)
+			}
+
+			return &result{isNew: isNew, dto: s.domainToDTO(updated)}, nil
 		}
 
-		// Set action
-		// 设置 action
-		var action domain.NoteAction
-		if note.Action == domain.NoteActionDelete {
-			action = domain.NoteActionCreate
-		} else {
-			action = domain.NoteActionModify
+		// Create new note
+		isNew = true
+		newNote := &domain.Note{
+			VaultID:     vaultID,
+			Path:        params.Path,
+			PathHash:    params.PathHash,
+			Content:     params.Content,
+			ContentHash: params.ContentHash,
+			ClientName:  s.clientName,
+			Size:        int64(len(params.Content)),
+			Mtime:       params.Mtime,
+			Ctime:       params.Ctime,
+			Action:      domain.NoteActionCreate,
 		}
 
-		// Update note
-		// 更新笔记
-		note.VaultID = vaultID
-		note.Path = params.Path
-		note.PathHash = params.PathHash
-		note.Content = params.Content
-		note.ContentHash = params.ContentHash
-		note.ClientName = s.clientName
-		note.Size = int64(len(params.Content))
-		note.Mtime = params.Mtime
-		note.Ctime = params.Ctime
-		note.Action = action
-		note.Rename = 0
-		note.Version++ // Increment version on content change // 内容变更时递增版本号
-
-		updated, err := s.noteRepo.Update(ctx, note, uid)
+		created, err := s.noteRepo.Create(ctx, newNote, uid)
 		if err != nil {
-			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
-		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
 		go s.CountSizeSum(context.Background(), vaultID, uid)
-		go s.UpdateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
-		NoteHistoryDelayPush(updated.ID, uid)
-
+		go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
+		NoteHistoryDelayPush(created.ID, uid)
 		if s.backupService != nil {
 			go s.backupService.NotifyUpdated(uid)
 		}
+
 		if s.gitSyncService != nil {
 			go s.gitSyncService.NotifyUpdated(uid, vaultID)
 		}
 
-		return isNew, s.domainToDTO(updated), nil
-	}
+		return &result{isNew: isNew, dto: s.domainToDTO(created)}, nil
+	})
 
-	// Create new note
-	isNew = true
-	newNote := &domain.Note{
-		VaultID:     vaultID,
-		Path:        params.Path,
-		PathHash:    params.PathHash,
-		Content:     params.Content,
-		ContentHash: params.ContentHash,
-		ClientName:  s.clientName,
-		Size:        int64(len(params.Content)),
-		Mtime:       params.Mtime,
-		Ctime:       params.Ctime,
-		Action:      domain.NoteActionCreate,
-	}
-
-	created, err := s.noteRepo.Create(ctx, newNote, uid)
 	if err != nil {
-		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return false, nil, err
 	}
 
-	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
-	go s.CountSizeSum(context.Background(), vaultID, uid)
-	go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
-	NoteHistoryDelayPush(created.ID, uid)
-	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
-	}
-
-	if s.gitSyncService != nil {
-		go s.gitSyncService.NotifyUpdated(uid, vaultID)
-	}
-
-	return isNew, s.domainToDTO(created), nil
+	res := val.(*result)
+	return res.isNew, res.dto, nil
 }
 
 // Delete deletes a note
@@ -521,91 +538,106 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		newPathHash = util.EncodeHash32(newPath)
 	}
 
-	// 1. 判断目标路径是否存在有效笔记
-	existNote, _ := s.noteRepo.GetAllByPathHash(ctx, newPathHash, vaultID, uid)
-	if existNote != nil && existNote.Action != domain.NoteActionDelete {
-		return nil, nil, code.ErrorNoteExist
+	key := fmt.Sprintf("rename_%d_%d_%s_%s", uid, vaultID, params.OldPathHash, newPathHash)
+	type result struct {
+		oldNote *dto.NoteDTO
+		newNote *dto.NoteDTO
 	}
 
-	oldPath := strings.Trim(params.OldPath, "/")
-	oldPathHash := params.OldPathHash
-	if oldPathHash == "" {
-		oldPathHash = util.EncodeHash32(oldPath)
-	}
+	val, err, _ := s.sf.Do(key, func() (any, error) {
+		// 1. 判断目标路径是否存在有效笔记
+		existNote, _ := s.noteRepo.GetAllByPathHash(ctx, newPathHash, vaultID, uid)
+		if existNote != nil && existNote.Action != domain.NoteActionDelete {
+			return nil, code.ErrorNoteExist
+		}
 
-	// 2. 获取旧笔记
-	n, err := s.noteRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+		oldPath := strings.Trim(params.OldPath, "/")
+		oldPathHash := params.OldPathHash
+		if oldPathHash == "" {
+			oldPathHash = util.EncodeHash32(oldPath)
+		}
+
+		// 2. 获取旧笔记
+		n, err := s.noteRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, code.ErrorNoteNotFound
+			}
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// 3. 标记旧笔记删除
+		n.Action = domain.NoteActionDelete
+		n.UpdatedTimestamp = timex.Now().UnixMilli()
+		oldNote, err := s.noteRepo.Update(ctx, n, uid)
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// 4. 新建或复用笔记记录
+		var newNoteCreated *domain.Note
+		if existNote != nil {
+			// 复用已删除的记录
+			existNote.Action = domain.NoteActionCreate
+			existNote.Path = newPath
+			existNote.PathHash = newPathHash
+			newPathDir := ""
+			if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+				newPathDir = newPath[:idx]
+			}
+			existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
+			existNote.Content = n.Content
+			existNote.ContentHash = n.ContentHash
+			existNote.Version = n.Version
+			existNote.Mtime = timex.Now().UnixMilli()
+			existNote.UpdatedTimestamp = timex.Now().UnixMilli()
+			newNoteCreated, err = s.noteRepo.Update(ctx, existNote, uid)
+		} else {
+			// 创建新记录
+			newNote := &domain.Note{
+				VaultID:          vaultID,
+				Action:           domain.NoteActionCreate,
+				Path:             newPath,
+				PathHash:         newPathHash,
+				FID:              n.FID,
+				Ctime:            n.Ctime,
+				Mtime:            timex.Now().UnixMilli(),
+				UpdatedTimestamp: timex.Now().UnixMilli(),
+				Content:          n.Content,
+				ContentHash:      n.ContentHash,
+				Version:          n.Version,
+			}
+			newPathDir := ""
+			if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+				newPathDir = newPath[:idx]
+			}
+			// 确保 FID 正确
+			newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
+			newNoteCreated, err = s.noteRepo.Create(ctx, newNote, uid)
+		}
+
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
+		go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
+		if s.backupService != nil {
+			go s.backupService.NotifyUpdated(uid)
+		}
+		if s.gitSyncService != nil {
+			go s.gitSyncService.NotifyUpdated(uid, vaultID)
+		}
+
+		return &result{oldNote: s.domainToDTO(oldNote), newNote: s.domainToDTO(newNoteCreated)}, nil
+	})
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, code.ErrorNoteNotFound
-		}
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, err
 	}
 
-	// 3. 标记旧笔记删除
-	n.Action = domain.NoteActionDelete
-	n.UpdatedTimestamp = timex.Now().UnixMilli()
-	oldNote, err := s.noteRepo.Update(ctx, n, uid)
-	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	// 4. 新建或复用笔记记录
-	var newNoteCreated *domain.Note
-	if existNote != nil {
-		// 复用已删除的记录
-		existNote.Action = domain.NoteActionCreate
-		existNote.Path = newPath
-		existNote.PathHash = newPathHash
-		newPathDir := ""
-		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
-			newPathDir = newPath[:idx]
-		}
-		existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
-		existNote.Content = n.Content
-		existNote.ContentHash = n.ContentHash
-		existNote.Version = n.Version
-		existNote.Mtime = timex.Now().UnixMilli()
-		existNote.UpdatedTimestamp = timex.Now().UnixMilli()
-		newNoteCreated, err = s.noteRepo.Update(ctx, existNote, uid)
-	} else {
-		// 创建新记录
-		newNote := &domain.Note{
-			VaultID:          vaultID,
-			Action:           domain.NoteActionCreate,
-			Path:             newPath,
-			PathHash:         newPathHash,
-			FID:              n.FID,
-			Ctime:            n.Ctime,
-			Mtime:            timex.Now().UnixMilli(),
-			UpdatedTimestamp: timex.Now().UnixMilli(),
-			Content:          n.Content,
-			ContentHash:      n.ContentHash,
-			Version:          n.Version,
-		}
-		newPathDir := ""
-		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
-			newPathDir = newPath[:idx]
-		}
-		// 确保 FID 正确
-		newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
-		newNoteCreated, err = s.noteRepo.Create(ctx, newNote, uid)
-	}
-
-	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
-	go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
-	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
-	}
-	if s.gitSyncService != nil {
-		go s.gitSyncService.NotifyUpdated(uid, vaultID)
-	}
-
-	return s.domainToDTO(oldNote), s.domainToDTO(newNoteCreated), nil
+	res := val.(*result)
+	return res.oldNote, res.newNote, nil
 }
 
 // List retrieves note list
@@ -1185,6 +1217,69 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
+	return nil
+}
+
+// CleanDuplicateNotes 清理重复的笔记记录
+func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
+	// 获取所有笔记（包含已删除，以便全局去重）
+	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 按 PathHash 分组
+	grouped := make(map[string][]*domain.Note)
+	for _, n := range notes {
+		grouped[n.PathHash] = append(grouped[n.PathHash], n)
+	}
+
+	for pathHash, list := range grouped {
+		if len(list) <= 1 {
+			continue
+		}
+
+		//保留规则：
+		// 1. 优先保留 Action != delete 的记录
+		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
+		// 3. 如果时间戳一致，保留 ID 最大的记录
+
+		var bestNote *domain.Note
+		for _, n := range list {
+			if bestNote == nil {
+				bestNote = n
+				continue
+			}
+
+			// 比较逻辑
+			isBetter := false
+			if n.Action != domain.NoteActionDelete && bestNote.Action == domain.NoteActionDelete {
+				isBetter = true
+			} else if n.Action == bestNote.Action {
+				if n.UpdatedTimestamp > bestNote.UpdatedTimestamp {
+					isBetter = true
+				} else if n.UpdatedTimestamp == bestNote.UpdatedTimestamp && n.ID > bestNote.ID {
+					isBetter = true
+				}
+			}
+
+			if isBetter {
+				bestNote = n
+			}
+		}
+
+		// 删除非 bestNote 的所有记录
+		for _, n := range list {
+			if n.ID != bestNote.ID {
+				// 清除 singleflight 缓存，防止残留
+				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
+				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash)) // 虽然 rename key 不同，但以防万一
+				
+				_ = s.noteRepo.Delete(ctx, n.ID, uid)
+			}
+		}
+	}
+
 	return nil
 }
 

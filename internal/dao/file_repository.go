@@ -146,6 +146,23 @@ func (r *fileRepository) GetByPathHash(ctx context.Context, pathHash string, vau
 	return r.toDomain(m, uid), nil
 }
 
+// ListByPathHash 根据路径哈希获取文件列表（处理重复记录）
+func (r *fileRepository) ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*domain.File, error) {
+	u := r.file(uid).File
+	mList, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.Eq(pathHash),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	var list []*domain.File
+	for _, m := range mList {
+		list = append(list, r.toDomain(m, uid))
+	}
+	return list, nil
+}
+
 // GetByPath 根据路径获取文件
 func (r *fileRepository) GetByPath(ctx context.Context, path string, vaultID, uid int64) (*domain.File, error) {
 	u := r.file(uid).File

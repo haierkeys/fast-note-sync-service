@@ -96,6 +96,9 @@ type FileService interface {
 
 	// RecycleClear 清理回收站
 	RecycleClear(ctx context.Context, uid int64, params *dto.FileRecycleClearRequest) error
+
+	// CleanDuplicateFiles 清理重复的文件记录
+	CleanDuplicateFiles(ctx context.Context, uid int64, vaultID int64) error
 }
 
 // fileService implementation of FileService interface
@@ -111,7 +114,7 @@ type fileService struct {
 	config         *ServiceConfig        // Service configuration // 服务配置
 	backupService  BackupService         // Backup service // 备份服务
 	gitSyncService GitSyncService        // Git sync service // Git 同步服务
-	countTimers    sync.Map              // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	countTimers    *sync.Map             // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewFileService creates FileService instance
@@ -126,7 +129,7 @@ func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteReposito
 		gitSyncService: gitSyncSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
-		countTimers:    sync.Map{},
+		countTimers:    &sync.Map{},
 	}
 }
 
@@ -219,109 +222,123 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 // UpdateOrCreate creates or modifies a file
 // UpdateOrCreate 创建或修改文件
 func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *dto.FileDTO, error) {
-	var isNew bool
-
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
-		return isNew, nil, err
+		return false, nil, err
 	}
 
-	file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	key := fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
+	type result struct {
+		isNew bool
+		dto   *dto.FileDTO
+	}
 
-	if file != nil {
-		isNew = false
-		// Check if content is consistent, excluding files marked as deleted
-		// 检查内容是否一致,排除掉已被标记删除的文件
-		if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
-			return isNew, s.domainToDTO(file), nil
-		}
+	val, err, _ := s.sf.Do(key, func() (any, error) {
+		var isNew bool
+		file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 
-		// If content is consistent but modification time is different, only update modification time
-		// 检查内容是否一致但修改时间不同，则只更新修改时间
-		if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
-			err := s.fileRepo.UpdateActionMtime(ctx, domain.FileActionModify, params.Mtime, file.ID, uid)
-			if err != nil {
-				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		if file != nil {
+			isNew = false
+			// Check if content is consistent, excluding files marked as deleted
+			// 检查内容是否一致,排除掉已被标记删除的文件
+			if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
+				return &result{isNew: isNew, dto: s.domainToDTO(file)}, nil
 			}
+
+			// If content is consistent but modification time is different, only update modification time
+			// 检查内容是否一致但修改时间不同，则只更新修改时间
+			if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
+				err := s.fileRepo.UpdateActionMtime(ctx, domain.FileActionModify, params.Mtime, file.ID, uid)
+				if err != nil {
+					return nil, code.ErrorDBQuery.WithDetails(err.Error())
+				}
+				file.Mtime = params.Mtime
+				if s.backupService != nil {
+					go s.backupService.NotifyUpdated(uid)
+				}
+				if s.gitSyncService != nil {
+					go s.gitSyncService.NotifyUpdated(uid, vaultID)
+				}
+				return &result{isNew: isNew, dto: s.domainToDTO(file)}, nil
+			}
+
+			// Set action
+			// 设置 action
+			var action domain.FileAction
+			if file.Action == domain.FileActionDelete {
+				action = domain.FileActionCreate
+			} else {
+				action = domain.FileActionModify
+			}
+
+			// Update file
+			// 更新文件
+			file.VaultID = vaultID
+			file.Path = params.Path
+			file.PathHash = params.PathHash
+			file.ContentHash = params.ContentHash
+			file.SavePath = params.SavePath
+			file.Size = params.Size
 			file.Mtime = params.Mtime
+			file.Ctime = params.Ctime
+			file.Action = action
+			file.Rename = 0
+
+			updated, err := s.fileRepo.Update(ctx, file, uid)
+			if err != nil {
+				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+
+			go s.CountSizeSum(context.Background(), vaultID, uid)
+			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
 			if s.backupService != nil {
 				go s.backupService.NotifyUpdated(uid)
 			}
 			if s.gitSyncService != nil {
 				go s.gitSyncService.NotifyUpdated(uid, vaultID)
 			}
-			return isNew, s.domainToDTO(file), nil
+			return &result{isNew: isNew, dto: s.domainToDTO(updated)}, nil
 		}
 
-		// Set action
-		// 设置 action
-		var action domain.FileAction
-		if file.Action == domain.FileActionDelete {
-			action = domain.FileActionCreate
-		} else {
-			action = domain.FileActionModify
+		// Create new file
+		// 创建新文件
+		isNew = true
+		newFile := &domain.File{
+			VaultID:     vaultID,
+			Path:        params.Path,
+			PathHash:    params.PathHash,
+			ContentHash: params.ContentHash,
+			SavePath:    params.SavePath,
+			Size:        params.Size,
+			Mtime:       params.Mtime,
+			Ctime:       params.Ctime,
+			Action:      domain.FileActionCreate,
 		}
 
-		// Update file
-		// 更新文件
-		file.VaultID = vaultID
-		file.Path = params.Path
-		file.PathHash = params.PathHash
-		file.ContentHash = params.ContentHash
-		file.SavePath = params.SavePath
-		file.Size = params.Size
-		file.Mtime = params.Mtime
-		file.Ctime = params.Ctime
-		file.Action = action
-		file.Rename = 0
-
-		updated, err := s.fileRepo.Update(ctx, file, uid)
+		created, err := s.fileRepo.Create(ctx, newFile, uid)
 		if err != nil {
-			return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
-		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
 		if s.backupService != nil {
 			go s.backupService.NotifyUpdated(uid)
 		}
 		if s.gitSyncService != nil {
 			go s.gitSyncService.NotifyUpdated(uid, vaultID)
 		}
-		return isNew, s.domainToDTO(updated), nil
-	}
+		return &result{isNew: isNew, dto: s.domainToDTO(created)}, nil
+	})
 
-	// Create new file
-	// 创建新文件
-	isNew = true
-	newFile := &domain.File{
-		VaultID:     vaultID,
-		Path:        params.Path,
-		PathHash:    params.PathHash,
-		ContentHash: params.ContentHash,
-		SavePath:    params.SavePath,
-		Size:        params.Size,
-		Mtime:       params.Mtime,
-		Ctime:       params.Ctime,
-		Action:      domain.FileActionCreate,
-	}
-
-	created, err := s.fileRepo.Create(ctx, newFile, uid)
 	if err != nil {
-		return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return false, nil, err
 	}
 
-	go s.CountSizeSum(context.Background(), vaultID, uid)
-	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
-	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
-	}
-	if s.gitSyncService != nil {
-		go s.gitSyncService.NotifyUpdated(uid, vaultID)
-	}
-	return isNew, s.domainToDTO(created), nil
+	res := val.(*result)
+	return res.isNew, res.dto, nil
 }
 
 // Delete deletes a file
@@ -712,93 +729,108 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		newPathHash = util.EncodeHash32(newPath)
 	}
 
-	// 1. 判断目标路径是否存在有效文件
-	existFile, _ := s.fileRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
-	if existFile != nil && existFile.Action != domain.FileActionDelete {
-		return nil, nil, code.ErrorFileExist
-	}
-
 	oldPath := strings.Trim(params.OldPath, "/")
 	oldPathHash := params.OldPathHash
 	if oldPathHash == "" {
 		oldPathHash = util.EncodeHash32(oldPath)
 	}
 
-	// 2. 获取旧文件
-	f, err := s.fileRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+	key := fmt.Sprintf("rename_%d_%d_%s_%s", uid, vaultID, oldPathHash, newPathHash)
+	type result struct {
+		oldFile *dto.FileDTO
+		newFile *dto.FileDTO
+	}
+
+	val, err, _ := s.sf.Do(key, func() (any, error) {
+		// 1. 判断目标路径是否存在有效文件
+		existFile, _ := s.fileRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
+		if existFile != nil && existFile.Action != domain.FileActionDelete {
+			return nil, code.ErrorFileExist
+		}
+
+		// 2. 获取旧文件
+		f, err := s.fileRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, code.ErrorFileNotFound
+			}
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// 3. 标记旧文件删除
+		f.Action = domain.FileActionDelete
+		f.Rename = 1
+		f.UpdatedTimestamp = timex.Now().UnixMilli()
+		oldFile, err := s.fileRepo.Update(ctx, f, uid)
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// 4. 新建或复用文件记录
+		var newFileCreated *domain.File
+		if existFile != nil {
+			// 复用已删除的记录
+			existFile.Action = domain.FileActionCreate
+			existFile.Path = newPath
+			existFile.PathHash = newPathHash
+			newPathDir := ""
+			if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+				newPathDir = newPath[:idx]
+			}
+			existFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
+			existFile.ContentHash = f.ContentHash
+			existFile.SavePath = f.SavePath
+			existFile.Size = f.Size
+			existFile.Mtime = timex.Now().UnixMilli()
+			existFile.UpdatedTimestamp = timex.Now().UnixMilli()
+			newFileCreated, err = s.fileRepo.Update(ctx, existFile, uid)
+		} else {
+			// 创建新记录
+			newFile := &domain.File{
+				VaultID:          vaultID,
+				Action:           domain.FileActionCreate,
+				Path:             newPath,
+				PathHash:         newPathHash,
+				FID:              f.FID,
+				Ctime:            f.Ctime,
+				Mtime:            timex.Now().UnixMilli(),
+				UpdatedTimestamp: timex.Now().UnixMilli(),
+				ContentHash:      f.ContentHash,
+				SavePath:         f.SavePath,
+				Size:             f.Size,
+			}
+			newPathDir := ""
+			if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
+				newPathDir = newPath[:idx]
+			}
+			// 确保 FID 正确
+			newFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
+			newFileCreated, err = s.fileRepo.Create(ctx, newFile, uid)
+		}
+
+		if err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// 修正目录FID
+		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
+
+		if s.backupService != nil {
+			go s.backupService.NotifyUpdated(uid)
+		}
+		if s.gitSyncService != nil {
+			go s.gitSyncService.NotifyUpdated(uid, vaultID)
+		}
+
+		return &result{oldFile: s.domainToDTO(oldFile), newFile: s.domainToDTO(newFileCreated)}, nil
+	})
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, code.ErrorFileNotFound
-		}
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return nil, nil, err
 	}
 
-	// 3. 标记旧文件删除
-	f.Action = domain.FileActionDelete
-	f.Rename = 1
-	f.UpdatedTimestamp = timex.Now().UnixMilli()
-	oldFile, err := s.fileRepo.Update(ctx, f, uid)
-	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	// 4. 新建或复用文件记录
-	var newFileCreated *domain.File
-	if existFile != nil {
-		// 复用已删除的记录
-		existFile.Action = domain.FileActionCreate
-		existFile.Path = newPath
-		existFile.PathHash = newPathHash
-		newPathDir := ""
-		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
-			newPathDir = newPath[:idx]
-		}
-		existFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
-		existFile.ContentHash = f.ContentHash
-		existFile.SavePath = f.SavePath
-		existFile.Size = f.Size
-		existFile.Mtime = timex.Now().UnixMilli()
-		existFile.UpdatedTimestamp = timex.Now().UnixMilli()
-		newFileCreated, err = s.fileRepo.Update(ctx, existFile, uid)
-	} else {
-		// 创建新记录
-		newFile := &domain.File{
-			VaultID:          vaultID,
-			Action:           domain.FileActionCreate,
-			Path:             newPath,
-			PathHash:         newPathHash,
-			FID:              f.FID,
-			Ctime:            f.Ctime,
-			Mtime:            timex.Now().UnixMilli(),
-			UpdatedTimestamp: timex.Now().UnixMilli(),
-			ContentHash:      f.ContentHash,
-			SavePath:         f.SavePath,
-			Size:             f.Size,
-		}
-		newPathDir := ""
-		if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
-			newPathDir = newPath[:idx]
-		}
-		// 确保 FID 正确
-		newFile.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
-		newFileCreated, err = s.fileRepo.Create(ctx, newFile, uid)
-	}
-
-	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	// 修正目录FID
-	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
-
-	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
-	}
-	if s.gitSyncService != nil {
-		go s.gitSyncService.NotifyUpdated(uid, vaultID)
-	}
-
-	return s.domainToDTO(oldFile), s.domainToDTO(newFileCreated), nil
+	res := val.(*result)
+	return res.oldFile, res.newFile, nil
 }
 
 // WithClient sets client info, returns new FileService instance
@@ -839,6 +871,69 @@ func (s *fileService) RecycleClear(ctx context.Context, uid int64, params *dto.F
 	return nil
 }
 
+// CleanDuplicateFiles 清理重复的文件记录
+func (s *fileService) CleanDuplicateFiles(ctx context.Context, uid int64, vaultID int64) error {
+	// 获取所有文件（包含已删除，以便全局去重）
+	files, err := s.fileRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 按 PathHash 分组
+	grouped := make(map[string][]*domain.File)
+	for _, f := range files {
+		grouped[f.PathHash] = append(grouped[f.PathHash], f)
+	}
+
+	for pathHash, list := range grouped {
+		if len(list) <= 1 {
+			continue
+		}
+
+		//保留规则：
+		// 1. 优先保留 Action != delete 的记录
+		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
+		// 3. 如果时间戳一致，保留 ID 最大的记录
+
+		var bestFile *domain.File
+		for _, f := range list {
+			if bestFile == nil {
+				bestFile = f
+				continue
+			}
+
+			// 比较逻辑
+			isBetter := false
+			if f.Action != domain.FileActionDelete && bestFile.Action == domain.FileActionDelete {
+				isBetter = true
+			} else if f.Action == bestFile.Action {
+				if f.UpdatedTimestamp > bestFile.UpdatedTimestamp {
+					isBetter = true
+				} else if f.UpdatedTimestamp == bestFile.UpdatedTimestamp && f.ID > bestFile.ID {
+					isBetter = true
+				}
+			}
+
+			if isBetter {
+				bestFile = f
+			}
+		}
+
+		// 删除非 bestFile 的所有记录
+		for _, f := range list {
+			if f.ID != bestFile.ID {
+				// 清除 singleflight 缓存，防止残留
+				s.sf.Forget(fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, pathHash))
+				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash))
+				
+				_ = s.fileRepo.Delete(ctx, f.ID, uid)
+			}
+		}
+	}
+
+	return nil
+}
+
 // Verify fileService implements FileService interface
-// 确保 fileService 实现了 FileService 接口
+// 确保 fileService 实现了 FileService interface
 var _ FileService = (*fileService)(nil)

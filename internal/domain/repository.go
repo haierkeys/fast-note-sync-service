@@ -20,6 +20,9 @@ type NoteRepository interface {
 	// GetAllByPathHash 根据路径哈希获取笔记（包含所有状态）
 	GetAllByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*Note, error)
 
+	// ListByPathHash 根据路径哈希获取笔记列表（处理重复记录）
+	ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*Note, error)
+
 	// GetByPath 根据路径获取笔记
 	GetByPath(ctx context.Context, path string, vaultID, uid int64) (*Note, error)
 
@@ -189,6 +192,9 @@ type FileRepository interface {
 	// GetByPathHash 根据路径哈希获取文件
 	GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*File, error)
 
+	// ListByPathHash 根据路径哈希获取文件列表（处理重复记录）
+	ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*File, error)
+
 	// GetByPath 根据路径获取文件
 	GetByPath(ctx context.Context, path string, vaultID, uid int64) (*File, error)
 
@@ -266,6 +272,9 @@ type FileRepository interface {
 type SettingRepository interface {
 	// GetByPathHash 根据路径哈希获取配置
 	GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*Setting, error)
+
+	// ListByPathHash 根据路径哈希获取配置列表（处理重复记录）
+	ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*Setting, error)
 
 	// Create 创建配置
 	Create(ctx context.Context, setting *Setting, uid int64) (*Setting, error)

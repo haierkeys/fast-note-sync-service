@@ -292,6 +292,27 @@ func (r *noteRepository) GetAllByPathHash(ctx context.Context, pathHash string, 
 	return r.toDomain(m, uid)
 }
 
+// ListByPathHash 根据路径哈希获取笔记列表（处理重复记录）
+func (r *noteRepository) ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.Eq(pathHash),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	var res []*domain.Note
+	for _, m := range ms {
+		note, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, note)
+	}
+	return res, nil
+}
+
 // GetByPath 根据路径获取笔记
 func (r *noteRepository) GetByPath(ctx context.Context, path string, vaultID, uid int64) (*domain.Note, error) {
 	u := r.note(uid).Note

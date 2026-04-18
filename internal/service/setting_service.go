@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -49,6 +50,9 @@ type SettingService interface {
 	// ListByLastTime retrieves configurations updated after lastTime
 	// ListByLastTime 获取在 lastTime 之后更新的配置
 	ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
+
+	// CleanDuplicateSettings 清理重复的配置记录
+	CleanDuplicateSettings(ctx context.Context, uid int64, vaultID int64) error
 
 	// Sync synchronizes configuration (alias for ListByLastTime)
 	// Sync 同步配置（ListByLastTime 的别名）
@@ -179,73 +183,89 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 		return false, nil, err
 	}
 
-	setting, _ := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-	if setting != nil {
-		// Check if content is consistent, excluding settings marked as deleted
-		// 检查内容是否一致,排除掉已被标记删除的设置
-		if mtimeCheck && setting.Action != domain.SettingActionDelete && setting.Mtime == params.Mtime && setting.ContentHash == params.ContentHash {
-			return false, nil, nil
-		}
-		// If content is consistent but modification time is different, only update modification time
-		// 检查内容是否一致但修改时间不同，则只更新修改时间
-		if mtimeCheck && setting.Mtime < params.Mtime && setting.ContentHash == params.ContentHash {
-			err := s.settingRepo.UpdateActionMtime(ctx, domain.SettingActionModify, params.Mtime, setting.ID, uid)
-			if err != nil {
-				return false, nil, code.ErrorDBQuery.WithDetails(err.Error())
+	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
+	type result struct {
+		isNew bool
+		dto   *dto.SettingDTO
+	}
+
+	val, err, _ := s.sf.Do(key, func() (any, error) {
+		setting, _ := s.settingRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+
+		if setting != nil {
+			// Check if content is consistent, excluding settings marked as deleted
+			// 检查内容是否一致,排除掉已被标记删除的设置
+			if mtimeCheck && setting.Action != domain.SettingActionDelete && setting.Mtime == params.Mtime && setting.ContentHash == params.ContentHash {
+				return &result{isNew: false, dto: s.domainToDTO(setting)}, nil
 			}
+			// If content is consistent but modification time is different, only update modification time
+			// 检查内容是否一致但修改时间不同，则只更新修改时间
+			if mtimeCheck && setting.Mtime < params.Mtime && setting.ContentHash == params.ContentHash {
+				err := s.settingRepo.UpdateActionMtime(ctx, domain.SettingActionModify, params.Mtime, setting.ID, uid)
+				if err != nil {
+					return nil, code.ErrorDBQuery.WithDetails(err.Error())
+				}
+				setting.Mtime = params.Mtime
+				return &result{isNew: false, dto: s.domainToDTO(setting)}, nil
+			}
+
+			// Set action
+			// 设置 action
+			var action domain.SettingAction
+			if setting.Action == domain.SettingActionDelete {
+				action = domain.SettingActionCreate
+			} else {
+				action = domain.SettingActionModify
+			}
+
+			// Update configuration
+			// 更新配置
+			setting.VaultID = vaultID
+			setting.Path = params.Path
+			setting.PathHash = params.PathHash
+			setting.Content = params.Content
+			setting.ContentHash = params.ContentHash
+			setting.Size = int64(len(params.Content))
 			setting.Mtime = params.Mtime
-			return false, s.domainToDTO(setting), nil
+			setting.Ctime = params.Ctime
+			setting.Action = action
+
+			updated, err := s.settingRepo.Update(ctx, setting, uid)
+			if err != nil {
+				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+
+			return &result{isNew: false, dto: s.domainToDTO(updated)}, nil
 		}
 
-		// Set action
-		// 设置 action
-		var action domain.SettingAction
-		if setting.Action == domain.SettingActionDelete {
-			action = domain.SettingActionCreate
-		} else {
-			action = domain.SettingActionModify
+		// Create new configuration
+		// 创建新配置
+		newSetting := &domain.Setting{
+			VaultID:     vaultID,
+			Path:        params.Path,
+			PathHash:    params.PathHash,
+			Content:     params.Content,
+			ContentHash: params.ContentHash,
+			Size:        int64(len(params.Content)),
+			Mtime:       params.Mtime,
+			Ctime:       params.Ctime,
+			Action:      domain.SettingActionCreate,
 		}
 
-		// Update configuration
-		// 更新配置
-		setting.VaultID = vaultID
-		setting.Path = params.Path
-		setting.PathHash = params.PathHash
-		setting.Content = params.Content
-		setting.ContentHash = params.ContentHash
-		setting.Size = int64(len(params.Content))
-		setting.Mtime = params.Mtime
-		setting.Ctime = params.Ctime
-		setting.Action = action
-
-		updated, err := s.settingRepo.Update(ctx, setting, uid)
+		created, err := s.settingRepo.Create(ctx, newSetting, uid)
 		if err != nil {
-			return false, nil, code.ErrorDBQuery.WithDetails(err.Error())
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
-		return false, s.domainToDTO(updated), nil
-	}
+		return &result{isNew: true, dto: s.domainToDTO(created)}, nil
+	})
 
-	// Create new configuration
-	// 创建新配置
-	newSetting := &domain.Setting{
-		VaultID:     vaultID,
-		Path:        params.Path,
-		PathHash:    params.PathHash,
-		Content:     params.Content,
-		ContentHash: params.ContentHash,
-		Size:        int64(len(params.Content)),
-		Mtime:       params.Mtime,
-		Ctime:       params.Ctime,
-		Action:      domain.SettingActionCreate,
-	}
-
-	created, err := s.settingRepo.Create(ctx, newSetting, uid)
 	if err != nil {
-		return true, nil, code.ErrorDBQuery.WithDetails(err.Error())
+		return false, nil, err
 	}
 
-	return true, s.domainToDTO(created), nil
+	res := val.(*result)
+	return res.isNew, res.dto, nil
 }
 
 // Modify modifies configuration (alias for ModifyOrCreate)
@@ -445,6 +465,68 @@ func (s *settingService) ClearByVault(ctx context.Context, uid int64, vaultName 
 		return err
 	}
 	return s.settingRepo.DeleteByVault(ctx, vaultID, uid)
+}
+
+// CleanDuplicateSettings 清理重复的配置记录
+func (s *settingService) CleanDuplicateSettings(ctx context.Context, uid int64, vaultID int64) error {
+	// 获取所有配置（包含已删除，以便全局去重）
+	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	if err != nil {
+		return err
+	}
+
+	// 按 PathHash 分组
+	grouped := make(map[string][]*domain.Setting)
+	for _, s_ := range settings {
+		grouped[s_.PathHash] = append(grouped[s_.PathHash], s_)
+	}
+
+	for pathHash, list := range grouped {
+		if len(list) <= 1 {
+			continue
+		}
+
+		//保留规则：
+		// 1. 优先保留 Action != delete 的记录
+		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
+		// 3. 如果时间戳一致，保留 ID 最大的记录
+
+		var bestSetting *domain.Setting
+		for _, s_ := range list {
+			if bestSetting == nil {
+				bestSetting = s_
+				continue
+			}
+
+			// 比较逻辑
+			isBetter := false
+			if s_.Action != domain.SettingActionDelete && bestSetting.Action == domain.SettingActionDelete {
+				isBetter = true
+			} else if s_.Action == bestSetting.Action {
+				if s_.UpdatedTimestamp > bestSetting.UpdatedTimestamp {
+					isBetter = true
+				} else if s_.UpdatedTimestamp == bestSetting.UpdatedTimestamp && s_.ID > bestSetting.ID {
+					isBetter = true
+				}
+			}
+
+			if isBetter {
+				bestSetting = s_
+			}
+		}
+
+		// 删除非 bestSetting 的所有记录
+		for _, s_ := range list {
+			if s_.ID != bestSetting.ID {
+				// 清除 singleflight 缓存，防止残留
+				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
+				
+				_ = s.settingRepo.Delete(ctx, s_.ID, uid)
+			}
+		}
+	}
+
+	return nil
 }
 
 // Verify settingService implements SettingService interface
