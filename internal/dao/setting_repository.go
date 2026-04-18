@@ -117,6 +117,27 @@ func (r *settingRepository) GetByPathHash(ctx context.Context, pathHash string, 
 	return r.toDomain(m, uid)
 }
 
+// ListByPathHash 根据路径哈希获取配置列表（处理重复记录）
+func (r *settingRepository) ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*domain.Setting, error) {
+	u := r.setting(uid).Setting
+	mList, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.Eq(pathHash),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	var results []*domain.Setting
+	for _, m := range mList {
+		s, err := r.toDomain(m, uid)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, s)
+	}
+	return results, nil
+}
+
 // Create 创建配置
 func (r *settingRepository) Create(ctx context.Context, setting *domain.Setting, uid int64) (*domain.Setting, error) {
 	var result *domain.Setting
@@ -251,8 +272,19 @@ func (r *settingRepository) UpdateActionMtime(ctx context.Context, action domain
 
 // Delete 物理删除配置
 func (r *settingRepository) Delete(ctx context.Context, id, uid int64) error {
-	// 暂不实现物理删除单条记录
-	return nil
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.setting(uid).Setting
+		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除物理文件
+		folder := r.dao.GetSettingFolderPath(uid, id)
+		_ = r.dao.RemoveContentFolder(folder)
+
+		return nil
+	})
 }
 
 // DeletePhysicalByTime 根据时间物理删除已标记删除的配置
