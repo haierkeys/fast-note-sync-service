@@ -3623,7 +3623,7 @@
                     {
                         "type": "string",
                         "example": "content",
-                        "description": "Search mode (path, content, regex) // 搜索模式（路径、内容、正则）",
+                        "description": "Search mode (path, content) // 搜索模式（路径、内容）",
                         "name": "searchMode",
                         "in": "query"
                     },
@@ -6840,7 +6840,48 @@
             }
         },
         "dto.NotePatchFrontmatterRequest": {
-            "type": "object"
+            "type": "object",
+            "required": [
+                "path",
+                "vault"
+            ],
+            "properties": {
+                "path": {
+                    "description": "Note path // 笔记路径",
+                    "type": "string",
+                    "example": "ReadMe.md"
+                },
+                "pathHash": {
+                    "description": "Path hash // 路径哈希",
+                    "type": "string",
+                    "example": "hash123"
+                },
+                "remove": {
+                    "description": "Fields to remove // 待移除字段",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "old_tag"
+                    ]
+                },
+                "updates": {
+                    "description": "Fields to update // 待更新字段",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "vault": {
+                    "description": "Vault name // 保险库名称",
+                    "type": "string",
+                    "example": "MyVault"
+                }
+            }
         },
         "dto.NotePrependRequest": {
             "type": "object",

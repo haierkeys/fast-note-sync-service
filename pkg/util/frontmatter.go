@@ -19,28 +19,49 @@ func ParseFrontmatter(content string) (yamlData map[string]interface{}, body str
 		return nil, content, false
 	}
 
-	// Check if content starts with frontmatter delimiter
-	// 检查内容是否以 frontmatter 分隔符开头
-	if !strings.HasPrefix(content, frontmatterDelimiter+"\n") {
+	// Check if content starts with frontmatter delimiter followed by newline or carriage return
+	// 检查内容是否以 frontmatter 分隔符开头，后跟换行或回车
+	var startOffset int
+	if strings.HasPrefix(content, frontmatterDelimiter+"\n") {
+		startOffset = len(frontmatterDelimiter) + 1
+	} else if strings.HasPrefix(content, frontmatterDelimiter+"\r\n") {
+		startOffset = len(frontmatterDelimiter) + 2
+	} else {
 		return nil, content, false
 	}
 
-	// Find the closing delimiter
-	// 查找结束分隔符
-	rest := content[len(frontmatterDelimiter)+1:]
+	// Find the closing delimiter preceded by a newline
+	// 查找前面带有换行符的结束分隔符
+	rest := content[startOffset:]
 	endIndex := strings.Index(rest, "\n"+frontmatterDelimiter)
 	if endIndex == -1 {
 		return nil, content, false
 	}
 
-	// Extract frontmatter YAML
-	// 提取 frontmatter YAML
-	yamlContent := rest[:endIndex]
-	body = rest[endIndex+len("\n"+frontmatterDelimiter):]
+	// Identify the actual end of YAML content, stripping trailing \r if present
+	// 识别 YAML 内容的实际结束位置，如果存在则剥离末尾的 \r
+	yamlEndIndex := endIndex
+	if endIndex > 0 && rest[endIndex-1] == '\r' {
+		yamlEndIndex = endIndex - 1
+	}
 
-	// Remove leading newline from body if present
-	// 如果 body 以换行符开头，将其移除
-	body = strings.TrimPrefix(body, "\n")
+	yamlContent := rest[:yamlEndIndex]
+
+	// Determine the start of the body content
+	// 确定正文内容的开始位置
+	delimiterEnd := endIndex + len("\n"+frontmatterDelimiter)
+	postDelimiter := rest[delimiterEnd:]
+
+	var bodyOffset int
+	if strings.HasPrefix(postDelimiter, "\r\n") {
+		bodyOffset = 2
+	} else if strings.HasPrefix(postDelimiter, "\n") {
+		bodyOffset = 1
+	} else {
+		bodyOffset = 0
+	}
+
+	body = rest[delimiterEnd+bodyOffset:]
 
 	// Parse YAML
 	// 解析 YAML

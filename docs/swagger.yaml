@@ -1099,6 +1099,36 @@ definitions:
         type: integer
     type: object
   dto.NotePatchFrontmatterRequest:
+    properties:
+      path:
+        description: Note path // 笔记路径
+        example: ReadMe.md
+        type: string
+      pathHash:
+        description: Path hash // 路径哈希
+        example: hash123
+        type: string
+      remove:
+        description: Fields to remove // 待移除字段
+        example:
+        - old_tag
+        items:
+          type: string
+        type: array
+      updates:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: Fields to update // 待更新字段
+        type: object
+      vault:
+        description: Vault name // 保险库名称
+        example: MyVault
+        type: string
+    required:
+    - path
+    - vault
     type: object
   dto.NotePrependRequest:
     properties:
@@ -4014,7 +4044,7 @@ paths:
         in: query
         name: searchContent
         type: boolean
-      - description: Search mode (path, content, regex) // 搜索模式（路径、内容、正则）
+      - description: Search mode (path, content) // 搜索模式（路径、内容）
         example: content
         in: query
         name: searchMode
