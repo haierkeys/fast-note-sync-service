@@ -414,7 +414,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 // @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
-// @Param params body dto.NotePatchFrontmatterRequest true "Frontmatter Modification Parameters"
+// @Param params body dto.NotePatchFrontmatterRequest  true "Frontmatter Modification Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.NoteDTO} "Success"
 // @Router /api/note/frontmatter [patch]
 func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {

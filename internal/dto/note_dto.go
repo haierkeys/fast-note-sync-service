@@ -71,11 +71,11 @@ type NoteRecycleClearRequest struct {
 // NotePatchFrontmatterRequest parameters for patching note frontmatter
 // NotePatchFrontmatterRequest 修改笔记 Frontmatter 请求参数
 type NotePatchFrontmatterRequest struct {
-	Vault    string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
-	Path     string                 `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
-	PathHash string                 `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
-	Updates  map[string]interface{} `json:"updates" example:"{\"tags\": [\"work\", \"important\"]}"` // Fields to update // 待更新字段
-	Remove   []string               `json:"remove" example:"[\"old_tag\"]"`                          // Fields to remove // 待移除字段
+	Vault    string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"`                                               // Vault name // 保险库名称
+	Path     string                 `json:"path" form:"path" binding:"required" example:"ReadMe.md"`                                               // Note path // 笔记路径
+	PathHash string                 `json:"pathHash" form:"pathHash" example:"hash123"`                                                            // Path hash // 路径哈希
+	Updates  map[string]interface{} `json:"updates" form:"updates" swaggertype:"object,array,string" `                                             // Fields to update // 待更新字段
+	Remove   []string               `json:"remove" form:"remove" swaggertype:"array,string" swagexample:"[\"item1\",\"item2\"]" example:"old_tag"` // Fields to remove // 待移除字段
 }
 
 // NoteAppendRequest parameters for appending content to a note
