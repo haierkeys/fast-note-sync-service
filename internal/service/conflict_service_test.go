@@ -1,3 +1,5 @@
+// Package service implements the business logic layer.
+// Package service 实现业务逻辑层。
 package service
 
 import (
@@ -8,20 +10,22 @@ import (
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"github.com/stretchr/testify/assert"
 )
 
-// 验证冲突文件路径格式正确
-
-func TestProperty6_ConflictFilePathFormat(t *testing.T) {
+// TestProperty_ConflictFilePathFormat uses property-based testing to validate that
+// the conflict path format is always correct regardless of input.
+// TestProperty_ConflictFilePathFormat 使用基于属性的测试验证，无论输入如何，冲突路径格式始终正确。
+func TestProperty_ConflictFilePathFormat(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 100
 
 	properties := gopter.NewProperties(parameters)
 
-	// 冲突文件路径格式验证
+	// Property: generated conflict path must match {base}.conflict.{14-digit-timestamp}{ext}
+	// 属性：生成的冲突路径必须符合 {base}.conflict.{14位时间戳}{ext} 格式
 	properties.Property("conflict path matches expected format", prop.ForAll(
 		func(dir, filename, ext string) bool {
-			// 构造原始路径
 			var originalPath string
 			if dir != "" {
 				originalPath = dir + "/" + filename + ext
@@ -29,36 +33,29 @@ func TestProperty6_ConflictFilePathFormat(t *testing.T) {
 				originalPath = filename + ext
 			}
 
-			// 使用 conflictService 的路径生成逻辑
 			svc := &conflictService{}
 			conflictPath := svc.generateConflictPath(originalPath)
 
-			// 验证格式: {baseName}.conflict.{timestamp}{ext}
-			// timestamp 格式: 20060102150405 (14位数字)
+			// Pattern: {baseName}.conflict.{14-digit-timestamp}{ext}
+			// 格式: {基础名}.conflict.{14位数字时间戳}{扩展名}
 			pattern := regexp.MustCompile(`^(.+)\.conflict\.(\d{14})(\.[^.]+)?$`)
 			matches := pattern.FindStringSubmatch(conflictPath)
-
 			if matches == nil {
-				t.Logf("Path doesn't match pattern: %s", conflictPath)
 				return false
 			}
 
-			// 验证基础名称保留
+			// Base name must be preserved.
+			// 基础名称必须被保留。
 			baseName := matches[1]
 			expectedBase := strings.TrimSuffix(originalPath, ext)
 			if baseName != expectedBase {
-				t.Logf("Base name mismatch: got %s, want %s", baseName, expectedBase)
 				return false
 			}
 
-			// 验证扩展名保留
+			// Extension must be preserved.
+			// 扩展名必须被保留。
 			gotExt := matches[3]
-			if gotExt != ext {
-				t.Logf("Extension mismatch: got %s, want %s", gotExt, ext)
-				return false
-			}
-
-			return true
+			return gotExt == ext
 		},
 		gen.AlphaString().SuchThat(func(s string) bool {
 			return !strings.Contains(s, ".") && !strings.Contains(s, "/")
@@ -72,15 +69,16 @@ func TestProperty6_ConflictFilePathFormat(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-// 单元测试: 冲突文件路径生成
+// TestGenerateConflictPath verifies that generateConflictPath produces correctly formatted paths.
+// TestGenerateConflictPath 验证 generateConflictPath 生成格式正确的路径。
 func TestGenerateConflictPath(t *testing.T) {
 	svc := &conflictService{}
 
 	tests := []struct {
-		name         string
-		originalPath string
-		wantContains string
-		wantSuffix   string
+		name         string // test case name / 测试用例名称
+		originalPath string // input path / 输入路径
+		wantContains string // expected substring / 期望包含的子字符串
+		wantSuffix   string // expected suffix / 期望的后缀
 	}{
 		{
 			name:         "markdown file",
@@ -112,19 +110,17 @@ func TestGenerateConflictPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := svc.generateConflictPath(tt.originalPath)
 
-			if !strings.Contains(got, tt.wantContains) {
-				t.Errorf("generateConflictPath() = %v, want contains %v", got, tt.wantContains)
+			assert.Contains(t, got, tt.wantContains, "path should contain expected base")
+
+			if tt.wantSuffix != "" {
+				assert.True(t, strings.HasSuffix(got, tt.wantSuffix),
+					"expected suffix %q but got %q", tt.wantSuffix, got)
 			}
 
-			if tt.wantSuffix != "" && !strings.HasSuffix(got, tt.wantSuffix) {
-				t.Errorf("generateConflictPath() = %v, want suffix %v", got, tt.wantSuffix)
-			}
-
-			// 验证时间戳格式 (14位数字)
+			// Timestamp must be a 14-digit number.
+			// 时间戳必须是 14 位数字。
 			pattern := regexp.MustCompile(`\.conflict\.(\d{14})`)
-			if !pattern.MatchString(got) {
-				t.Errorf("generateConflictPath() = %v, timestamp format invalid", got)
-			}
+			assert.Regexp(t, pattern, got, "conflict path should contain 14-digit timestamp")
 		})
 	}
 }
