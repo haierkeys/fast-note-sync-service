@@ -68,6 +68,12 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	// 立即发送响应头
 	c.Writer.Flush()
 
+	// If it's a HEAD request, we've sent the headers, so we can return
+	// 如果是 HEAD 请求，我们已经发送了响应头，可以直接返回
+	if c.Request.Method == http.MethodHead {
+		return
+	}
+
 	// Let SSEServer handle the SSE connection
 	h.sseServer.SSEHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
