@@ -63,7 +63,7 @@ sup:
 sup-md:
 	node scripts/gen_support_md.js
 test:
-	@echo ${REPO}
+	go test ./...
 
 dev:
 	air -c ./scripts/.air.toml

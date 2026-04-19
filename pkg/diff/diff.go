@@ -28,27 +28,27 @@ type insertInfo struct {
 // MergeTexts 三方合并文本
 // 重构后保留删除操作，检测删除-修改冲突
 func MergeTexts(base, pc1, pc2 string, pc1First bool) (MergeResult, error) {
-	// 方法内不做 业务内容判断。。避免导致一端直接覆盖另外一端
-	// if pc1 == pc2 {
-	// 	return MergeResult{
-	// 		Content:     pc1,
-	// 		HasConflict: false,
-	// 	}, nil
-	// }
+	// 快速路径：解决当两端执行完全相同修改时，dmp PatchApply 因为二次应用导致失败的问题。
+	if pc1 == pc2 {
+		return MergeResult{
+			Content:     pc1,
+			HasConflict: false,
+		}, nil
+	}
 
-	// // 快速路径：如果一端没有修改，直接返回另一端
-	// if pc1 == base {
-	// 	return MergeResult{
-	// 		Content:     pc2,
-	// 		HasConflict: false,
-	// 	}, nil
-	// }
-	// if pc2 == base {
-	// 	return MergeResult{
-	// 		Content:     pc1,
-	// 		HasConflict: false,
-	// 	}, nil
-	// }
+	// 快速路径：如果一端没有修改，直接返回另一端
+	if pc1 == base {
+		return MergeResult{
+			Content:     pc2,
+			HasConflict: false,
+		}, nil
+	}
+	if pc2 == base {
+		return MergeResult{
+			Content:     pc1,
+			HasConflict: false,
+		}, nil
+	}
 
 	dmp := diffmatchpatch.New()
 
