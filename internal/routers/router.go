@@ -153,7 +153,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		mcpGroup := api.Group("/mcp")
 		mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
 		{
-			mcpGroup.GET("/sse", mcpHandler.HandleSSE)
+			mcpGroup.Match([]string{http.MethodGet, http.MethodHead}, "/sse", mcpHandler.HandleSSE)
 			mcpGroup.POST("/message", mcpHandler.HandleMessage)
 		}
 
