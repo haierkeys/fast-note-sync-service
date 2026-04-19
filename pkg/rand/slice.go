@@ -25,7 +25,7 @@ func GetRandString(length int) string {
 	char := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	charArr := strings.Split(char, "")
 	charlen := len(charArr)
-	ran := rand.New(rand.NewSource(time.Now().Unix()))
+	ran := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	rchar := make([]string, 0, length)
 	for i := 1; i <= length; i++ {
