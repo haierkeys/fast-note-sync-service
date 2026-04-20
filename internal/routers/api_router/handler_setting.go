@@ -13,13 +13,11 @@ import (
 
 type SettingHandler struct {
 	*Handler
-	appContainer *app.App
 }
 
 func NewSettingHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *SettingHandler {
 	return &SettingHandler{
-		appContainer: appContainer,
-		Handler:      NewHandlerWithWSS(appContainer, wss),
+		Handler: NewHandlerWithWSS(appContainer, wss),
 	}
 }
 
@@ -37,13 +35,13 @@ func (h *SettingHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.SettingGetRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("SettingHandler.Get.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("SettingHandler.Get.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.SettingService.Get(c.Request.Context(), uid, params)
+	res, err := h.App.GetSettingService(h.getClientInfo(c)).Get(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -67,7 +65,7 @@ func (h *SettingHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.SettingListRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("SettingHandler.List.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("SettingHandler.List.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -75,7 +73,7 @@ func (h *SettingHandler) List(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	pager := pkgapp.NewPager(c)
 
-	res, count, err := h.appContainer.SettingService.List(c.Request.Context(), uid, params, pager)
+	res, count, err := h.App.GetSettingService(h.getClientInfo(c)).List(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -99,7 +97,7 @@ func (h *SettingHandler) CreateOrUpdate(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.SettingModifyOrCreateRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("SettingHandler.CreateOrUpdate.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("SettingHandler.CreateOrUpdate.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -108,7 +106,7 @@ func (h *SettingHandler) CreateOrUpdate(c *gin.Context) {
 	params.Ctime = timex.Now().UnixMilli()
 
 	uid := pkgapp.GetUID(c)
-	_, res, err := h.appContainer.SettingService.ModifyOrCreate(c.Request.Context(), uid, params, false)
+	_, res, err := h.App.GetSettingService(h.getClientInfo(c)).ModifyOrCreate(c.Request.Context(), uid, params, false)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -142,13 +140,13 @@ func (h *SettingHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.SettingDeleteRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("SettingHandler.Delete.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("SettingHandler.Delete.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.SettingService.Delete(c.Request.Context(), uid, params)
+	res, err := h.App.GetSettingService(h.getClientInfo(c)).Delete(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -179,13 +177,13 @@ func (h *SettingHandler) Rename(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.SettingRenameRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("SettingHandler.Rename.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("SettingHandler.Rename.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.SettingService.Rename(c.Request.Context(), uid, params)
+	res, err := h.App.GetSettingService(h.getClientInfo(c)).Rename(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return

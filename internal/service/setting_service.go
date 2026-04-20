@@ -78,6 +78,10 @@ type SettingService interface {
 	// ClearByVault clears all settings for a specific vault of a user
 	// ClearByVault 清除用户指定笔记本的所有配置
 	ClearByVault(ctx context.Context, uid int64, vaultName string) error
+
+	// WithClient sets client info
+	// WithClient 设置客户端信息
+	WithClient(name, version string) SettingService
 }
 
 // settingService implementation of SettingService interface
@@ -87,6 +91,8 @@ type settingService struct {
 	vaultService   VaultService             // Vault service // 仓库服务
 	syncLogService SyncLogService           // Sync log service // 同步日志服务
 	sf             *singleflight.Group      // Singleflight group // 并发请求合并组
+	clientName     string                   // Client name // 客户端名称
+	clientVer      string                   // Client version // 客户端版本
 	config         *ServiceConfig           // Service configuration // 服务配置
 }
 
@@ -99,6 +105,20 @@ func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultServi
 		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
+	}
+}
+
+// WithClient sets client info, returns new SettingService instance
+// WithClient 设置客户端信息，返回新 SettingService 实例
+func (s *settingService) WithClient(name, version string) SettingService {
+	return &settingService{
+		settingRepo:    s.settingRepo,
+		vaultService:   s.vaultService,
+		syncLogService: s.syncLogService,
+		sf:             s.sf,
+		clientName:     name,
+		clientVer:      version,
+		config:         s.config,
 	}
 }
 
@@ -211,7 +231,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 				setting.Mtime = params.Mtime
 				// Log mtime-only update // 记录仅 mtime 变更日志
 				if s.syncLogService != nil {
-					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "mtime", setting.Path, setting.PathHash, "", int64(len(setting.Content)))
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "mtime", setting.Path, setting.PathHash, s.clientName, int64(len(setting.Content)))
 				}
 				return &result{isNew: false, dto: s.domainToDTO(setting)}, nil
 			}
@@ -244,7 +264,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 
 			// Log content modify // 记录内容变更日志
 			if s.syncLogService != nil {
-				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, "", updated.Size)
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientName, updated.Size)
 			}
 
 			return &result{isNew: false, dto: s.domainToDTO(updated)}, nil
@@ -271,7 +291,7 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 
 		// Log create // 记录新建日志
 		if s.syncLogService != nil {
-			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionCreate, "", created.Path, created.PathHash, "", created.Size)
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientName, created.Size)
 		}
 
 		return &result{isNew: true, dto: s.domainToDTO(created)}, nil
@@ -323,7 +343,7 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 
 	// Log soft delete // 记录软删除日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionSoftDelete, "", setting.Path, setting.PathHash, "", 0)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionSoftDelete, "", setting.Path, setting.PathHash, s.clientName, 0)
 	}
 
 	return s.domainToDTO(updated), nil
@@ -446,7 +466,7 @@ func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.Sett
 
 	// Log rename // 记录重命名日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionRename, "path", updated.Path, updated.PathHash, "", updated.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionRename, "path", updated.Path, updated.PathHash, s.clientName, updated.Size)
 	}
 
 	return s.domainToDTO(updated), nil

@@ -73,7 +73,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	note, err := noteSvc.Get(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Get", err)
@@ -143,7 +143,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	pager := pkgapp.NewPager(c)
 
 	notes, count, err := noteSvc.List(ctx, uid, params, pager)
@@ -219,7 +219,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 
 	// Check update
 	// 检查更新
@@ -299,7 +299,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 
 	// Check if note exists
 	// 检查笔记是否存在
@@ -373,7 +373,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 
 	// Check if note exists in trash
 	// 检查笔记是否存在于回收站
@@ -454,7 +454,7 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	note, err := noteSvc.PatchFrontmatter(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.PatchFrontmatter", err)
@@ -514,7 +514,7 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	note, err := noteSvc.AppendContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Append", err)
@@ -574,7 +574,7 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	note, err := noteSvc.PrependContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Prepend", err)
@@ -634,7 +634,7 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	result, err := noteSvc.ReplaceContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Replace", err)
@@ -703,7 +703,7 @@ func (h *NoteHandler) Move(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 
 	// Get old note for broadcasting deletion event
 	// 获取旧笔记用于广播删除事件
@@ -781,7 +781,7 @@ func (h *NoteHandler) Rename(c *gin.Context) {
 	// 获取请求上下文
 	ctx := c.Request.Context()
 
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 
 	oldNote, newNote, err := noteSvc.Rename(ctx, uid, params)
 	if err != nil {
@@ -960,7 +960,7 @@ func (h *NoteHandler) RecycleClear(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	noteSvc := h.App.GetNoteService(app.WebClientName, "")
+	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	if err := noteSvc.RecycleClear(ctx, uid, params); err != nil {
 		h.logError(ctx, "NoteHandler.RecycleClear", err)
 		apperrors.ErrorResponse(c, err)
