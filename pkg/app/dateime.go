@@ -16,10 +16,10 @@ func (t *Datetime) UnmarshalJSON(data []byte) error {
 	}
 	var err error
 	// Time string received from frontend
-	// 前端接收的时间字符串
+	// Datetime 前端接收的时间字符串
 	str := string(data)
 	// Remove leading/trailing extra quotes from received str
-	// 去除接收的str收尾多余的"
+	// 去除接收到的字符串首尾多余的引号
 	timeStr := strings.Trim(str, "\"")
 	t1, err := time.Parse("2006-01-02 15:04:05", timeStr)
 	*t = Datetime(t1)

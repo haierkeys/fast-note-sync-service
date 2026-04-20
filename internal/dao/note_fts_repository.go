@@ -1,3 +1,4 @@
+// Package dao implements the data access layer
 // Package dao 实现数据访问层
 package dao
 
@@ -10,26 +11,34 @@ import (
 	"gorm.io/gorm"
 )
 
+// NoteFTSRepository FTS full-text search repository interface
 // NoteFTSRepository FTS 全文搜索仓库接口
 type NoteFTSRepository interface {
+	// Upsert inserts or updates FTS index
 	// Upsert 插入或更新 FTS 索引
 	Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error
+	// Delete deletes FTS index
 	// Delete 删除 FTS 索引
 	Delete(ctx context.Context, noteID int64, uid int64) error
+	// Search full-text search, returns list of matching note_id
 	// Search 全文搜索，返回匹配的 note_id 列表
 	Search(ctx context.Context, keyword string, vaultID, uid int64, limit, offset int) ([]int64, error)
+	// SearchCount full-text search count
 	// SearchCount 全文搜索计数
 	SearchCount(ctx context.Context, keyword string, vaultID, uid int64) (int64, error)
+	// RebuildIndex rebuilds index (reads all note content from file system)
 	// RebuildIndex 重建索引（从文件系统读取所有笔记内容）
 	RebuildIndex(ctx context.Context, uid int64) error
 }
 
+// noteFTSRepository implements NoteFTSRepository interface
 // noteFTSRepository 实现 NoteFTSRepository 接口
 type noteFTSRepository struct {
 	dao             *Dao
 	customPrefixKey string
 }
 
+// NewNoteFTSRepository creates NoteFTSRepository instance
 // NewNoteFTSRepository 创建 NoteFTSRepository 实例
 func NewNoteFTSRepository(dao *Dao) NoteFTSRepository {
 	return &noteFTSRepository{dao: dao, customPrefixKey: "user_note_history_"}
@@ -39,6 +48,7 @@ func (r *noteFTSRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
+// ensureFTSTable ensures FTS related tables exist
 // ensureFTSTable 确保 FTS 相关表存在
 func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 	key := r.GetKey(uid)
@@ -47,6 +57,7 @@ func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 		return nil
 	}
 
+	// Use onceKeys to ensure it is created only once
 	// 使用 onceKeys 确保只创建一次
 	onceKey := key + "#note_fts_v3"
 	if _, loaded := r.dao.onceKeys.LoadOrStore(onceKey, true); !loaded {
@@ -56,12 +67,15 @@ func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 	return db
 }
 
+// Upsert inserts or updates FTS index
 // Upsert 插入或更新 FTS 索引
 func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		// Ensure table exists
 		// 确保表存在
 		_ = model.CreateNoteFTSTable(db)
 
+		// 1. Update snapshot table
 		// 1. 更新快照表
 		noteFTS := model.NoteFTS{
 			NoteID:  noteID,
@@ -72,18 +86,22 @@ func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, cont
 			return err
 		}
 
+		// 2. Update inverted index table
 		// 2. 更新倒排索引表
+		// First delete old index
 		// 先删除旧索引
 		if err := db.Where("note_id = ?", noteID).Delete(&model.NoteFTSToken{}).Error; err != nil {
 			return err
 		}
 
+		// Tokenization
 		// 分词
 		tokens := util.Tokenize(path + " " + content)
 		if len(tokens) == 0 {
 			return nil
 		}
 
+		// Batch insert new index
 		// 批量插入新索引
 		var tokenModels []model.NoteFTSToken
 		for _, t := range tokens {
@@ -105,6 +123,7 @@ func (r *noteFTSRepository) Delete(ctx context.Context, noteID int64, uid int64)
 	})
 }
 
+// Search full-text search
 // Search 全文搜索
 func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID, uid int64, limit, offset int) ([]int64, error) {
 	db := r.ensureFTSTable(uid)
@@ -119,7 +138,9 @@ func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID,
 
 	var noteIDs []int64
 
+	// Build search SQL: find NoteID containing all Token in NoteFTSToken table
 	// 构建搜索 SQL：在 NoteFTSToken 表中查找包含所有 Token 的 NoteID
+	// And associate Note table to filter VaultID and Action
 	// 并关联 Note 表以过滤 VaultID 和 Action
 	query := db.Table("note_fts_token AS t").
 		Select("t.note_id").
@@ -129,7 +150,7 @@ func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID,
 		Where("note.action != ?", "delete").
 		Group("t.note_id").
 		Having("COUNT(DISTINCT t.token) = ?", len(tokens)).
-		Order("COUNT(t.id) DESC") // 简单的排名：出现频率越高排名越前
+		Order("COUNT(t.id) DESC") // Simple ranking: the higher the frequency, the higher the ranking // 简单的排名：出现频率越高排名越前
 
 	err := query.WithContext(ctx).Limit(limit).Offset(offset).Scan(&noteIDs).Error
 	if err != nil {
@@ -170,9 +191,11 @@ func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vau
 	return count, nil
 }
 
+// RebuildIndex rebuilds index
 // RebuildIndex 重建索引
 func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		// Drop and rebuild table
 		// 删除并重建表
 		if err := model.DropNoteFTSTable(db); err != nil {
 			return err
@@ -181,12 +204,14 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 			return err
 		}
 
+		// Get all notes
 		// 获取所有笔记
 		var notes []model.Note
 		if err := db.Where("action != ?", "delete").Find(&notes).Error; err != nil {
 			return err
 		}
 
+		// Re-index
 		// 重新索引
 		for _, note := range notes {
 			folder := r.dao.GetNoteFolderPath(uid, note.ID)
@@ -198,6 +223,7 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 				content = ""
 			}
 
+			// Part that manually calls Upsert logic (since already in transaction)
 			// 手动调用 Upsert 逻辑的部分（因为已经在事务里）
 			noteFTS := model.NoteFTS{NoteID: note.ID, Path: note.Path, Content: content}
 			db.Save(&noteFTS)
@@ -218,5 +244,6 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 	})
 }
 
+// Ensure noteFTSRepository implements NoteFTSRepository interface
 // 确保 noteFTSRepository 实现了 NoteFTSRepository 接口
 var _ NoteFTSRepository = (*noteFTSRepository)(nil)

@@ -33,7 +33,8 @@ func (p *LocalFS) getSavePath() string {
 	return fileurl.PathSuffixCheckAdd(fullPath, string(os.PathSeparator))
 }
 
-// SendFile  上传文件
+// SendFile upload file
+// SendFile 上传文件
 func (p *LocalFS) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 	if !p.IsCheckSave {
 		if err := p.CheckSave(); err != nil {

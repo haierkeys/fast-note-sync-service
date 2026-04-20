@@ -432,6 +432,7 @@ func (s *noteHistoryService) CleanupByTime(ctx context.Context, cutoffTime int64
 
 	var totalCleaned int64
 	for i, uid := range uids {
+		// Add staggered delay to avoid triggering a large number of write transactions at once
 		// 增加错峰延迟，避免瞬间触发大量写事务
 		if i > 0 {
 			time.Sleep(500 * time.Millisecond)

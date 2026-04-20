@@ -1,3 +1,4 @@
+// Package dao implements the data access layer
 // Package dao 实现数据访问层
 package dao
 
@@ -18,12 +19,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// fileRepository implements domain.FileRepository interface
 // fileRepository 实现 domain.FileRepository 接口
 type fileRepository struct {
 	dao             *Dao
 	customPrefixKey string
 }
 
+// NewFileRepository creates FileRepository instance
 // NewFileRepository 创建 FileRepository 实例
 func NewFileRepository(dao *Dao) domain.FileRepository {
 	return &fileRepository{dao: dao, customPrefixKey: "user_file_"}
@@ -42,6 +45,7 @@ func init() {
 	})
 }
 
+// file gets the file query object
 // file 获取文件查询对象
 func (r *fileRepository) file(uid int64) *query.Query {
 	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
@@ -49,6 +53,7 @@ func (r *fileRepository) file(uid int64) *query.Query {
 	}, r.GetKey(uid)+"#file", r.GetKey(uid))
 }
 
+// toDomain converts database model to domain model
 // toDomain 将数据库模型转换为领域模型
 func (r *fileRepository) toDomain(m *model.File, uid int64) *domain.File {
 	if m == nil {
@@ -75,6 +80,7 @@ func (r *fileRepository) toDomain(m *model.File, uid int64) *domain.File {
 	return file
 }
 
+// toModel converts domain model to database model
 // toModel 将领域模型转换为数据库模型
 func (r *fileRepository) toModel(file *domain.File) *model.File {
 	if file == nil {
@@ -99,6 +105,7 @@ func (r *fileRepository) toModel(file *domain.File) *model.File {
 	}
 }
 
+// fillFilePath fills file SavePath and handles old file migration
 // fillFilePath 填充文件的保存路径并处理旧文件迁移
 func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 	if f == nil {
@@ -107,12 +114,15 @@ func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 	folderPath := r.dao.GetFileFolderPath(uid, f.ID)
 	standardPath := filepath.Join(folderPath, "file.dat")
 
+	// Record original SavePath for migration check
 	// 记录原始 SavePath 以便进行迁移检查
 	oldSavePath := f.SavePath
 
+	// Update to standard path
 	// 更新为标准路径
 	f.SavePath = standardPath
 
+	// Migrate only if standard path doesn't exist, old path is provided, and old file exists on disk
 	// 仅在标准路径不存在，且明确给出了旧路径，且旧文件确实存在磁盘上时才执行迁移
 	if _, err := os.Stat(standardPath); os.IsNotExist(err) && oldSavePath != "" && oldSavePath != standardPath {
 		if _, errOld := os.Stat(oldSavePath); errOld == nil {
@@ -123,6 +133,7 @@ func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 	}
 }
 
+// GetByID retrieves file by ID
 // GetByID 根据 ID 获取文件
 func (r *fileRepository) GetByID(ctx context.Context, id, uid int64) (*domain.File, error) {
 	u := r.file(uid).File
@@ -133,6 +144,7 @@ func (r *fileRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Fi
 	return r.toDomain(m, uid), nil
 }
 
+// GetByPathHash retrieves file by path hash
 // GetByPathHash 根据路径哈希获取文件
 func (r *fileRepository) GetByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) (*domain.File, error) {
 	u := r.file(uid).File
@@ -146,6 +158,7 @@ func (r *fileRepository) GetByPathHash(ctx context.Context, pathHash string, vau
 	return r.toDomain(m, uid), nil
 }
 
+// ListByPathHash retrieves file list by path hash (handling duplicate records)
 // ListByPathHash 根据路径哈希获取文件列表（处理重复记录）
 func (r *fileRepository) ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*domain.File, error) {
 	u := r.file(uid).File
@@ -163,6 +176,7 @@ func (r *fileRepository) ListByPathHash(ctx context.Context, pathHash string, va
 	return list, nil
 }
 
+// GetByPath retrieves file by path
 // GetByPath 根据路径获取文件
 func (r *fileRepository) GetByPath(ctx context.Context, path string, vaultID, uid int64) (*domain.File, error) {
 	u := r.file(uid).File
@@ -176,6 +190,7 @@ func (r *fileRepository) GetByPath(ctx context.Context, path string, vaultID, ui
 	return r.toDomain(m, uid), nil
 }
 
+// GetByPathLike retrieves file by path suffix
 // GetByPathLike 根据路径后缀获取文件
 func (r *fileRepository) GetByPathLike(ctx context.Context, path string, vaultID, uid int64) (*domain.File, error) {
 	u := r.file(uid).File
@@ -190,6 +205,7 @@ func (r *fileRepository) GetByPathLike(ctx context.Context, path string, vaultID
 	return r.toDomain(m, uid), nil
 }
 
+// Create creates a file
 // Create 创建文件
 func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int64) (*domain.File, error) {
 	var result *domain.File
@@ -211,6 +227,7 @@ func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int6
 			return createErr
 		}
 
+		// Move file to Vault directory, fixed naming as file.dat
 		// 移动文件到 Vault 目录，固定命名为 file.dat
 		if tempSavePath != "" {
 			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
@@ -232,6 +249,7 @@ func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int6
 	return result, createErr
 }
 
+// Update updates a file
 // Update 更新文件
 func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int64) (*domain.File, error) {
 	var result *domain.File
@@ -247,6 +265,7 @@ func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int6
 		tempSavePath := m.SavePath
 		m.SavePath = "" // 不在数据库中更新路径
 
+		// If a new temporary path is provided, move it to the fixed file.dat
 		// 如果提供了新的临时路径，则移动到固定的 file.dat
 		if tempSavePath != "" {
 			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
@@ -272,6 +291,7 @@ func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int6
 	return result, updateErr
 }
 
+// UpdateMtime updates file modification time
 // UpdateMtime 更新文件修改时间
 func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -288,6 +308,7 @@ func (r *fileRepository) UpdateMtime(ctx context.Context, mtime int64, id, uid i
 	})
 }
 
+// UpdateActionMtime updates file action and modification time
 // UpdateActionMtime 更新文件类型并修改时间
 func (r *fileRepository) UpdateActionMtime(ctx context.Context, action domain.FileAction, mtime int64, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -305,6 +326,7 @@ func (r *fileRepository) UpdateActionMtime(ctx context.Context, action domain.Fi
 	})
 }
 
+// Delete physically deletes a file
 // Delete 物理删除文件
 func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -314,6 +336,7 @@ func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
 			return err
 		}
 
+		// Delete physical file
 		// 删除物理文件
 		folderPath := r.dao.GetFileFolderPath(uid, id)
 		_ = r.dao.RemoveContentFolder(folderPath)
@@ -322,11 +345,13 @@ func (r *fileRepository) Delete(ctx context.Context, id, uid int64) error {
 	})
 }
 
+// DeletePhysicalByTime physically deletes files marked as deleted by time
 // DeletePhysicalByTime 根据时间物理删除已标记删除的文件
 func (r *fileRepository) DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.file(uid).File
 
+		// Find records to be deleted to remove folders in the file system
 		// 查找待删除的记录，以便删除文件系统中的文件夹
 		mList, err := u.WithContext(ctx).Where(
 			u.Action.Eq("delete"),
@@ -348,14 +373,17 @@ func (r *fileRepository) DeletePhysicalByTime(ctx context.Context, timestamp, ui
 	})
 }
 
+// DeletePhysicalByTimeAll physically deletes files marked as deleted for all users by time
 // DeletePhysicalByTimeAll 根据时间物理删除所有用户的已标记删除的文件
 func (r *fileRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp int64) error {
+	// Get all user UIDs
 	// 获取所有用户 UID
 	uids, err := r.dao.GetAllUserUIDs()
 	if err != nil {
 		return err
 	}
 
+	// Execute cleanup user by user
 	// 逐用户执行清理
 	for _, uid := range uids {
 		if err := r.DeletePhysicalByTime(ctx, timestamp, uid); err != nil {
@@ -366,6 +394,7 @@ func (r *fileRepository) DeletePhysicalByTimeAll(ctx context.Context, timestamp 
 	return nil
 }
 
+// List retrieves file list by page
 // List 分页获取文件列表
 func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize int, uid int64, keyword string, isRecycle bool, sortBy string, sortOrder string) ([]*domain.File, error) {
 	u := r.file(uid).File
@@ -383,6 +412,7 @@ func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize
 		q = q.Where(u.Path.Like("%" + keyword + "%"))
 	}
 
+	// Sorting
 	// 排序
 	var sortField field.OrderExpr
 	switch sortBy {
@@ -424,6 +454,7 @@ func (r *fileRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	return list, nil
 }
 
+// ListCount retrieves file count
 // ListCount 获取文件数量
 func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64, keyword string, isRecycle bool) (int64, error) {
 	u := r.file(uid).File
@@ -449,11 +480,13 @@ func (r *fileRepository) ListCount(ctx context.Context, vaultID, uid int64, keyw
 	return count, nil
 }
 
+// ListByUpdatedTimestamp retrieves file list by updated timestamp
 // ListByUpdatedTimestamp 根据更新时间戳获取文件列表
 func (r *fileRepository) ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.File, error) {
 	return r.ListByUpdatedTimestampPage(ctx, timestamp, vaultID, uid, 0, 0)
 }
 
+// ListByUpdatedTimestampPage retrieves file list by updated timestamp by page
 // ListByUpdatedTimestampPage 根据更新时间戳分页获取文件列表
 func (r *fileRepository) ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.File, error) {
 	u := r.file(uid).File
@@ -481,6 +514,7 @@ func (r *fileRepository) ListByUpdatedTimestampPage(ctx context.Context, timesta
 	return list, nil
 }
 
+// ListByMtime retrieves file list by modification timestamp
 // ListByMtime 根据修改时间戳获取文件列表
 func (r *fileRepository) ListByMtime(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.File, error) {
 	u := r.file(uid).File
@@ -501,6 +535,7 @@ func (r *fileRepository) ListByMtime(ctx context.Context, timestamp, vaultID, ui
 	return list, nil
 }
 
+// CountSizeSum retrieves total file count and size sum
 // CountSizeSum 获取文件数量和大小总和
 func (r *fileRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (*domain.CountSizeResult, error) {
 	u := r.file(uid).File
@@ -526,6 +561,7 @@ func (r *fileRepository) CountSizeSum(ctx context.Context, vaultID, uid int64) (
 	}, nil
 }
 
+// ListByFID retrieves file list by folder ID
 // ListByFID 根据文件夹ID获取文件列表
 func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64, page, pageSize int, sortBy, sortOrder string) ([]*domain.File, error) {
 	u := r.file(uid).File
@@ -535,6 +571,7 @@ func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 		u.Action.Neq(string(domain.FileActionDelete)),
 	)
 
+	// Build order clause
 	// 构建排序语句
 	orderClause := buildFileOrderClause(sortBy, sortOrder)
 
@@ -556,6 +593,7 @@ func (r *fileRepository) ListByFID(ctx context.Context, fid, vaultID, uid int64,
 	return list, nil
 }
 
+// ListByFIDCount retrieves file count by folder ID
 // ListByFIDCount 根据文件夹ID获取文件数量
 func (r *fileRepository) ListByFIDCount(ctx context.Context, fid, vaultID, uid int64) (int64, error) {
 	u := r.file(uid).File
@@ -607,6 +645,7 @@ func (r *fileRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaul
 	return q.Count()
 }
 
+// ListByIDs retrieves file list by ID list
 // ListByIDs 根据ID列表获取文件列表
 func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.File, error) {
 	if len(ids) == 0 {
@@ -624,6 +663,7 @@ func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) 
 	return res, nil
 }
 
+// RecycleClear cleans up the recycle bin
 // RecycleClear 清理回收站
 func (r *fileRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -653,11 +693,13 @@ func (r *fileRepository) UpdateFID(ctx context.Context, id, fid, uid int64) erro
 	})
 }
 
+// Ensure fileRepository implements domain.FileRepository interface
 // 确保 fileRepository 实现了 domain.FileRepository 接口
 var _ domain.FileRepository = (*fileRepository)(nil)
 
 func (r *fileRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.File, error) {
 	u := r.file(uid).File
+	// Use LIKE 'prefix/%'
 	// 使用 LIKE 'prefix/%'
 	pattern := pathPrefix + "/%"
 	ms, err := u.WithContext(ctx).Where(
@@ -675,6 +717,8 @@ func (r *fileRepository) ListByPathPrefix(ctx context.Context, pathPrefix string
 	return res, nil
 }
 
+// buildFileOrderClause builds file order clause
+// buildFileOrderClause 构建文件排序语句
 func buildFileOrderClause(sortBy, sortOrder string) string {
 	// 默认值
 	if sortBy == "" {
@@ -689,6 +733,7 @@ func buildFileOrderClause(sortBy, sortOrder string) string {
 		sortOrder = "desc"
 	}
 
+	// Map sort field
 	// 映射排序字段
 	var field string
 	switch sortBy {

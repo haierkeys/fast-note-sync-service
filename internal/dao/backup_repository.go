@@ -16,6 +16,7 @@ type backupRepository struct {
 	dao *Dao
 }
 
+// NewBackupRepository creates BackupRepository instance
 // NewBackupRepository 创建 BackupRepository 实例
 func NewBackupRepository(dao *Dao) domain.BackupRepository {
 	return &backupRepository{dao: dao}
@@ -187,8 +188,10 @@ func (r *backupRepository) SaveConfig(ctx context.Context, config *domain.Backup
 		m := r.configToModel(config)
 		m.UID = uid
 
+		// If ID > 0, execute update logic
 		// 如果 ID > 0，执行更新逻辑
 		if config.ID > 0 {
+			// Check if ID belongs to the current user
 			// 检查 ID 是否属于当前用户
 			old, err := q.WithContext(ctx).Where(q.UID.Eq(uid), q.ID.Eq(config.ID)).First()
 			if err != nil {
@@ -201,6 +204,7 @@ func (r *backupRepository) SaveConfig(ctx context.Context, config *domain.Backup
 				return err
 			}
 		} else {
+			// ID == 0, execute create new config logic
 			// ID == 0，执行创建新配置逻辑
 			m.CreatedAt = timex.Now()
 			m.UpdatedAt = timex.Now()
@@ -215,9 +219,13 @@ func (r *backupRepository) SaveConfig(ctx context.Context, config *domain.Backup
 }
 
 func (r *backupRepository) ListEnabledConfigs(ctx context.Context) ([]*domain.BackupConfig, error) {
+	// This is a cross-database operation, requiring external iteration over all users
 	// 这是一个跨库操作，需要在外部循环所有用户。
+	// But in the Repository layer, we only implement operations for specific databases
 	// 但在 Repository 层，我们只实现针对特定库的操作。
+	// There is a bit of a contradiction here because the semantics of ListEnabledConfigs is usually "global"
 	// 这里其实有点矛盾，因为 ListEnabledConfigs 的语义通常是“全局”。
+	// According to the logic of dao.go, we can first get all UIDs and then check them one by one
 	// 按照 dao.go 的逻辑，我们可以先获取所有 UID，然后逐个查。
 	uids, err := r.dao.GetAllUserUIDs()
 	if err != nil {
@@ -246,6 +254,7 @@ func (r *backupRepository) UpdateNextRunTime(ctx context.Context, id, uid int64,
 	})
 }
 
+// Modify interface definition to support calls without UID (if ID is included in Config)
 // 修改接口定义以支持无 UID 调用 (如果 ID 包含在 Config 中)
 func (r *backupRepository) CreateHistory(ctx context.Context, history *domain.BackupHistory, uid int64) (*domain.BackupHistory, error) {
 	var result *domain.BackupHistory
@@ -302,5 +311,6 @@ func (r *backupRepository) DeleteOldHistory(ctx context.Context, uid int64, conf
 	})
 }
 
+// Ensure backupRepository implements domain.BackupRepository interface
 // 确保 backupRepository 实现了 domain.BackupRepository 接口
 var _ domain.BackupRepository = (*backupRepository)(nil)

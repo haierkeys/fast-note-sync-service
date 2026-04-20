@@ -59,6 +59,8 @@ func (s *syncLogService) Log(
 	size int64,
 ) {
 	go func() {
+		// Use Background context for asynchronous logging
+		// 使用 Background context 进行异步日志记录
 		ctx := context.Background()
 		entry := &domain.SyncLog{
 			UID:           uid,

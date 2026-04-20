@@ -65,7 +65,8 @@ func ValidatePath(path string) bool {
 	return !strings.Contains(path, "..")
 }
 
-// CopyFile copies a file from src to dst.
+// CopyFile copies a file from src to dst
+// CopyFile 将文件从 src 复制到 dst
 func CopyFile(src, dst string) error {
 	source, err := os.Open(src)
 	if err != nil {

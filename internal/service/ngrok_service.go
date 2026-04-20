@@ -46,6 +46,7 @@ func (s *ngrokService) Start(ctx context.Context, addr string) error {
 	}
 
 	// 1. Create an agent instance to hold AgentOption
+	// 1. 创建代理实例来持有 AgentOption
 	agent, err := ngrok.NewAgent(ngrok.WithAuthtoken(s.authToken))
 	if err != nil {
 		return fmt.Errorf("failed to create ngrok v2 agent: %w", err)
@@ -53,12 +54,14 @@ func (s *ngrokService) Start(ctx context.Context, addr string) error {
 	s.agent = agent
 
 	// 2. Configure endpoint options
+	// 2. 配置端点选项
 	var endpointOpts []ngrok.EndpointOption
 	if s.domain != "" {
 		endpointOpts = append(endpointOpts, ngrok.WithURL("https://"+s.domain))
 	}
 
 	// 3. Listen creates the endpoint
+	// 3. Listen 创建端点
 	ln, err := agent.Listen(ctx, endpointOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to start ngrok v2 tunnel: %w", err)
@@ -74,6 +77,7 @@ func (s *ngrokService) Start(ctx context.Context, addr string) error {
 	s.logger.Info("ngrok v2 tunnel established", zap.String("url", s.url))
 
 	// Start forwarding
+	// 开始转发
 	go func() {
 		for {
 			conn, err := ln.Accept()

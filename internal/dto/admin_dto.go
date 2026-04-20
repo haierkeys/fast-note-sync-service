@@ -89,13 +89,15 @@ type AdminCPUInfo struct {
 }
 
 // AdminLoadInfo system load information
+// AdminLoadInfo 系统负载信息
 type AdminLoadInfo struct {
-	Load1  float64 `json:"load1"`
-	Load5  float64 `json:"load5"`
-	Load15 float64 `json:"load15"`
+	Load1  float64 `json:"load1"`  // Load 1 min // 1分钟负载
+	Load5  float64 `json:"load5"`  // Load 5 min // 5分钟负载
+	Load15 float64 `json:"load15"` // Load 15 min // 15分钟负载
 }
 
 // AdminMemoryInfo memory information
+// AdminMemoryInfo 内存信息
 type AdminMemoryInfo struct {
 	Total           uint64  `json:"total"`           // Total physical memory // 系统总内存
 	Available       uint64  `json:"available"`       // Available memory // 可用内存
@@ -107,6 +109,7 @@ type AdminMemoryInfo struct {
 }
 
 // AdminHostInfo host identification information
+// AdminHostInfo 主机标识信息
 type AdminHostInfo struct {
 	Hostname       string    `json:"hostname"`       // Hostname // 主机名
 	OS             string    `json:"os"`             // Operating system // 操作系统
@@ -121,12 +124,13 @@ type AdminHostInfo struct {
 }
 
 // AdminProcessInfo current process information
+// AdminProcessInfo 当前进程信息
 type AdminProcessInfo struct {
-	PID           int32   `json:"pid"`           // Process ID
-	PPID          int32   `json:"ppid"`          // Parent Process ID
-	Name          string  `json:"name"`          // Process Name
-	CPUPercent    float64 `json:"cpuPercent"`    // CPU Usage percentage
-	MemoryPercent float32 `json:"memoryPercent"` // Memory Usage percentage
+	PID           int32   `json:"pid"`           // Process ID // 进程 ID
+	PPID          int32   `json:"ppid"`          // Parent Process ID // 父进程 ID
+	Name          string  `json:"name"`          // Process Name // 进程名称
+	CPUPercent    float64 `json:"cpuPercent"`    // CPU Usage percentage // CPU 使用率
+	MemoryPercent float32 `json:"memoryPercent"` // Memory Usage percentage // 内存使用率
 }
 
 // AdminRuntimeInfo Go runtime information

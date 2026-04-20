@@ -16,7 +16,7 @@ type ConflictFileRequest struct {
 // ---------------- DTO / Response ----------------
 
 // ConflictFileResponse Response for creating a conflict file
-// 创建冲突文件的响应
+// ConflictFileResponse 创建冲突文件的响应
 type ConflictFileResponse struct {
 	ConflictPath string `json:"conflictPath"` // Path of the created conflict file // 创建的冲突文件路径
 	Message      string `json:"message"`      // Result message // 结果消息

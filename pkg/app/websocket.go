@@ -61,7 +61,7 @@ func generateTraceID() string {
 // extractOrGenerateTraceID 从 HTTP 请求中提取或生成 Trace ID
 func extractOrGenerateTraceID(c *gin.Context) string {
 	// Try to get from Header
-	// 尝试从 Header 中获取
+	// extractOrGenerateTraceID 尝试从 Header 中获取
 	if traceID := c.GetHeader("X-Trace-ID"); traceID != "" {
 		return traceID
 	}
@@ -351,10 +351,10 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 	var errs ValidErrors
 
 	// Step 1: JSON deserialization (can be replaced by other formats)
-	// Step 1: JSON 反序列化（可替换成其他格式）
+	// BindAndValid Step 1: JSON 反序列化（可替换成其他格式）
 	if err := json.Unmarshal(data, obj); err != nil {
 		// Decoding error handling
-		// 解码错误处理
+		// BindAndValid 解码错误处理
 		errs = append(errs, &ValidError{
 			Key:     "body",
 			Message: "Invalid message format",
@@ -398,8 +398,7 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 // Send Ping message regularly
 // 定期发送 Ping 消息
 func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
-	ticker := time.NewTicker(PingInterval * time.Second) // Send Ping every 25 seconds
-	// 每 25 秒发送一次 Ping
+	ticker := time.NewTicker(PingInterval * time.Second) // Send Ping every 25 seconds // 每 25 秒发送一次 Ping
 	defer ticker.Stop()
 
 	// Periodic cleanup of expired conflict merge paths
@@ -629,8 +628,7 @@ type ValidatorInterface interface {
 }
 
 type WebsocketServer struct {
-	app AppContainer // App Container (Required)
-	// App Container（必须）
+	app AppContainer // App Container (Required) // App Container（必须）
 	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
@@ -686,10 +684,8 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 
 // NewWebsocketServer creates WebSocket server instance
 // NewWebsocketServer 创建 WebSocket 服务器实例
-// c: WebSocket config
-// c: WebSocket 配置
-// app: App Container (Required)
-// app: App Container（必须）
+// c: WebSocket config // c: WebSocket 配置
+// app: App Container (Required) // app: App Container（必须）
 func NewWebsocketServer(c WSConfig, app AppContainer) *WebsocketServer {
 	if app == nil {
 		panic("AppContainer is required for WebsocketServer")

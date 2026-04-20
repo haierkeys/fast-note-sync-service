@@ -9,7 +9,7 @@ type FolderSyncEndMessage struct {
 }
 
 // FolderSyncRenameMessage message structure for folder rename during sync
-// 同步过程中文件夹重命名的消息结构
+// FolderSyncRenameMessage 同步过程中文件夹重命名的消息结构
 type FolderSyncRenameMessage struct {
 	Path        string `json:"path" form:"path" binding:"required" example:"NewFolder"` // New path // 新路径
 	PathHash    string `json:"pathHash" form:"pathHash" example:"nfhash123"`            // New path hash // 新路径哈希
@@ -29,7 +29,7 @@ type FolderSyncDeleteMessage struct {
 }
 
 // FolderSyncModifyMessage message content for folder modification or creation during sync
-// 同步期间文件夹修改或创建的消息内容
+// FolderSyncModifyMessage 同步期间文件夹修改或创建的消息内容
 type FolderSyncModifyMessage struct {
 	Path             string `json:"path" form:"path" example:"Projects"`                   // Folder path // 文件夹路径
 	PathHash         string `json:"pathHash" form:"pathHash" example:"fhash123"`           // Path hash // 路径哈希值

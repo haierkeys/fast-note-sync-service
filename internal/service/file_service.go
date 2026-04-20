@@ -88,15 +88,18 @@ type FileService interface {
 	// Restore restores a file (from recycle bin)
 	// Restore 恢复文件（从回收站恢复）
 	Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error)
+	// Rename renames a file
 	// Rename 重命名文件
 	Rename(ctx context.Context, uid int64, params *dto.FileRenameRequest) (*dto.FileDTO, *dto.FileDTO, error)
 	// WithClient sets client info
 	// WithClient 设置客户端信息
 	WithClient(name, version string) FileService
 
+	// RecycleClear cleans up the recycle bin
 	// RecycleClear 清理回收站
 	RecycleClear(ctx context.Context, uid int64, params *dto.FileRecycleClearRequest) error
 
+	// CleanDuplicateFiles cleans up duplicate file records
 	// CleanDuplicateFiles 清理重复的文件记录
 	CleanDuplicateFiles(ctx context.Context, uid int64, vaultID int64) error
 }
@@ -225,6 +228,7 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 // UpdateOrCreate 创建或修改文件
 func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto.FileUpdateRequest, mtimeCheck bool) (bool, *dto.FileDTO, error) {
 	// Use VaultService.MustGetID to retrieve VaultID
+	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -271,6 +275,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			}
 
 			// Set action
+			// Set action
 			// 设置 action
 			var action domain.FileAction
 			if file.Action == domain.FileActionDelete {
@@ -279,6 +284,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 				action = domain.FileActionModify
 			}
 
+			// Update file
 			// Update file
 			// 更新文件
 			file.VaultID = vaultID
@@ -313,8 +319,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			return &result{isNew: isNew, dto: s.domainToDTO(updated)}, nil
 		}
 
-		// Create new file
-		// 创建新文件
+		// Create new file // 创建新文件
 		isNew = true
 		newFile := &domain.File{
 			VaultID:     vaultID,
@@ -360,8 +365,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 // Delete deletes a file
 // Delete 删除文件
 func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDeleteRequest) (*dto.FileDTO, error) {
-	// Use VaultService.MustGetID to retrieve VaultID
-	// 使用 VaultService.MustGetID 获取 VaultID
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
@@ -372,8 +376,7 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 		return nil, err
 	}
 
-	// Update to deleted status
-	// 更新为删除状态
+	// Update to deleted status // 更新为删除状态
 	file.Action = domain.FileActionDelete
 	file.Rename = 0
 
@@ -400,14 +403,13 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 // Restore restores a file (from recycle bin)
 // Restore 恢复文件（从回收站恢复）
 func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRestoreRequest) (*dto.FileDTO, error) {
-	// Use VaultService.MustGetID to retrieve VaultID
-	// 使用 VaultService.MustGetID 获取 VaultID
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
 	}
 
-	// Calculate PathHash if not provided
+	// Calculate PathHash if not provided // 如果未提供，则计算 PathHash
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
@@ -418,7 +420,7 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 		return nil, code.ErrorNoteNotFound
 	}
 
-	// Check if file is deleted
+	// Check if file is deleted // 检查文件是否已删除
 	if file.Action != domain.FileActionDelete {
 		return nil, code.ErrorNoteNotFound
 	}
@@ -452,6 +454,7 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 // List 获取文件列表
 func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListRequest, pager *app.Pager) ([]*dto.FileDTO, int, error) {
 	// Use VaultService.MustGetID to retrieve VaultID
+	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -479,6 +482,7 @@ func (s *fileService) List(ctx context.Context, uid int64, params *dto.FileListR
 // ListByLastTime retrieves files updated after lastTime
 // ListByLastTime 获取在 lastTime 之后更新的文件
 func (s *fileService) ListByLastTime(ctx context.Context, uid int64, params *dto.FileSyncRequest) ([]*dto.FileDTO, error) {
+	// Use VaultService.MustGetID to retrieve VaultID
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
@@ -626,25 +630,29 @@ func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.Fil
 }
 
 // GetContentInfo retrieves file metadata and path for zero-copy download
-// GetContentInfo 获取文件的元数据 and 路径，用于零拷贝下载
+// GetContentInfo 获取文件的元数据和路径，用于零拷贝下载
 func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto.FileGetRequest) (string, string, int64, string, string, error) {
 	// 1. Get vault ID
+	// 1. 获取仓库 ID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return "", "", 0, "", "", err
 	}
 
 	// 2. Confirm path hash
+	// 2. 确认路径哈希
 	pathHash := params.PathHash
 	if pathHash == "" {
 		pathHash = util.EncodeHash32(params.Path)
 	}
 
 	// 3. Attempt to get from File table
+	// 3. 尝试从 File 表获取
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && file != nil {
 			// Check IsRecycle support
+			// 检查回收站标识支持
 			if params.IsRecycle {
 				if file.Action != domain.FileActionDelete {
 					return "", "", 0, "", "", code.ErrorFileNotFound
@@ -655,6 +663,7 @@ func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto
 				}
 			}
 			// Identify file MIME type
+			// 识别文件 MIME 类型
 			ext := filepath.Ext(file.Path)
 			contentType := mime.TypeByExtension(ext)
 			if contentType == "" {
@@ -768,12 +777,15 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 	}
 
 	val, err, _ := s.sf.Do(key, func() (any, error) {
+		// 1. Check if target path has valid file
 		// 1. 判断目标路径是否存在有效文件
 		existFile, _ := s.fileRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
 		if existFile != nil && existFile.Action != domain.FileActionDelete {
 			return nil, code.ErrorFileExist
 		}
 
+		// 2. Get old file
+		// 2. Get old file
 		// 2. 获取旧文件
 		f, err := s.fileRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
 		if err != nil {
@@ -783,6 +795,8 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		// 3. Mark old file as deleted
+		// 3. Mark old file as deleted
 		// 3. 标记旧文件删除
 		f.Action = domain.FileActionDelete
 		f.Rename = 1
@@ -792,6 +806,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		// 4. Create new or reuse file record
 		// 4. 新建或复用文件记录
 		var newFileCreated *domain.File
 		if existFile != nil {

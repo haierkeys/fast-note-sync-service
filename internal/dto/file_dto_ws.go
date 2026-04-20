@@ -76,7 +76,7 @@ type FileUploadAckMessage struct {
 }
 
 // FileSyncRenameMessage message structure for file rename during sync
-// 同步过程中文件重命名的消息结构
+// FileSyncRenameMessage 同步过程中文件重命名的消息结构
 type FileSyncRenameMessage struct {
 	Path             string `json:"path" form:"path" binding:"required" example:"NewImage.png"` // New path // 新路径
 	PathHash         string `json:"pathHash" form:"pathHash" example:"nfhash123"`               // New path hash // 新路径哈希

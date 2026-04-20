@@ -46,6 +46,7 @@ type FileRestoreRequest struct {
 }
 
 // FileRecycleClearRequest clean recycle bin request
+// FileRecycleClearRequest 清理回收站请求
 type FileRecycleClearRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" example:"path/to/file.png"`             // File path, empty for all // 文件路径，为空则清理全部
@@ -88,7 +89,7 @@ type FileUploadCompleteRequest struct {
 }
 
 // FileGetRequest Request parameters for retrieving a single file
-// 用于获取单条文件的请求参数
+// FileGetRequest 用于获取单条文件的请求参数
 type FileGetRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path      string `json:"path" form:"path" binding:"required" example:"Image.png"` // File path // 文件路径
@@ -97,7 +98,7 @@ type FileGetRequest struct {
 }
 
 // FileListRequest Pagination parameters for retrieving the file list
-// 获取文件列表的分页参数
+// FileListRequest 获取文件列表的分页参数
 type FileListRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Keyword   string `json:"keyword" form:"keyword" example:"vacation"`               // Search keyword // 搜索关键词
@@ -107,7 +108,7 @@ type FileListRequest struct {
 }
 
 // FileRenameRequest Parameters required for renaming a file
-// 重命名文件所需参数
+// FileRenameRequest 重命名文件所需参数
 type FileRenameRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`          // Vault name // 保险库名称
 	Path        string `json:"path" form:"path" binding:"required" example:"NewImage.png"`       // New path // 新路径

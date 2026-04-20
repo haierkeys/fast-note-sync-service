@@ -41,6 +41,8 @@ func (u *DBUtils) ExposeAutoMigrate() error {
 	if err != nil {
 		return err
 	}
+	// Get all user UIDs
+	// 获取所有用户 UID
 	uids, err := u.dao.GetAllUserUIDs()
 	if err != nil {
 		return err

@@ -12,11 +12,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// storageRepository implements domain.StorageRepository interface
 // storageRepository 实现 domain.StorageRepository 接口
 type storageRepository struct {
 	dao *Dao
 }
 
+// NewStorageRepository creates StorageRepository instance
 // NewStorageRepository 创建 StorageRepository 实例
 func NewStorageRepository(dao *Dao) domain.StorageRepository {
 	return &storageRepository{dao: dao}
@@ -35,6 +37,7 @@ func init() {
 	})
 }
 
+// storage gets the storage configuration query object
 // storage 获取存储配置查询对象
 func (r *storageRepository) storage(uid int64) *query.Query {
 	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
@@ -42,6 +45,7 @@ func (r *storageRepository) storage(uid int64) *query.Query {
 	}, r.GetKey(uid)+"#storage", r.GetKey(uid))
 }
 
+// toDomain converts database model to domain model
 // toDomain 将数据库模型转换为领域模型
 func (r *storageRepository) toDomain(m *model.Storage) *domain.Storage {
 	if m == nil {
@@ -68,6 +72,7 @@ func (r *storageRepository) toDomain(m *model.Storage) *domain.Storage {
 	}
 }
 
+// toModel converts domain model to database model
 // toModel 将领域模型转换为数据库模型
 func (r *storageRepository) toModel(s *domain.Storage) *model.Storage {
 	if s == nil {
@@ -103,6 +108,7 @@ func (r *storageRepository) toModel(s *domain.Storage) *model.Storage {
 	return modelStorage
 }
 
+// GetByID retrieves storage configuration by ID
 // GetByID 根据ID获取存储配置
 func (r *storageRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Storage, error) {
 	u := r.storage(uid).Storage
@@ -113,6 +119,7 @@ func (r *storageRepository) GetByID(ctx context.Context, id, uid int64) (*domain
 	return r.toDomain(m), nil
 }
 
+// Create creates storage configuration
 // Create 创建存储配置
 func (r *storageRepository) Create(ctx context.Context, storage *domain.Storage, uid int64) (*domain.Storage, error) {
 	var result *domain.Storage
@@ -140,6 +147,7 @@ func (r *storageRepository) Create(ctx context.Context, storage *domain.Storage,
 	return result, createErr
 }
 
+// Update updates storage configuration
 // Update 更新存储配置
 func (r *storageRepository) Update(ctx context.Context, storage *domain.Storage, uid int64) (*domain.Storage, error) {
 	var result *domain.Storage
@@ -148,6 +156,7 @@ func (r *storageRepository) Update(ctx context.Context, storage *domain.Storage,
 	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.storage(uid).Storage
 
+		// Get original record to confirm ownership
 		// 获取原有记录确认归属
 		old, err := u.WithContext(ctx).Where(u.ID.Eq(storage.ID), u.UID.Eq(uid), u.IsDeleted.Eq(0)).First()
 		if err != nil {
@@ -173,6 +182,7 @@ func (r *storageRepository) Update(ctx context.Context, storage *domain.Storage,
 	return result, updateErr
 }
 
+// List retrieves the user's storage configuration list
 // List 获取用户的存储配置列表
 func (r *storageRepository) List(ctx context.Context, uid int64) ([]*domain.Storage, error) {
 	u := r.storage(uid).Storage
@@ -188,6 +198,7 @@ func (r *storageRepository) List(ctx context.Context, uid int64) ([]*domain.Stor
 	return list, nil
 }
 
+// Delete deletes storage configuration (soft delete)
 // Delete 删除存储配置（软删除）
 func (r *storageRepository) Delete(ctx context.Context, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -197,5 +208,6 @@ func (r *storageRepository) Delete(ctx context.Context, id, uid int64) error {
 	})
 }
 
+// Ensure storageRepository implements domain.StorageRepository interface
 // 确保 storageRepository 实现了 domain.StorageRepository 接口
 var _ domain.StorageRepository = (*storageRepository)(nil)

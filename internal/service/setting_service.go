@@ -51,6 +51,7 @@ type SettingService interface {
 	// ListByLastTime 获取在 lastTime 之后更新的配置
 	ListByLastTime(ctx context.Context, uid int64, params *dto.SettingSyncRequest) ([]*dto.SettingDTO, error)
 
+	// CleanDuplicateSettings cleans up duplicate configuration records
 	// CleanDuplicateSettings 清理重复的配置记录
 	CleanDuplicateSettings(ctx context.Context, uid int64, vaultID int64) error
 
@@ -493,15 +494,17 @@ func (s *settingService) ClearByVault(ctx context.Context, uid int64, vaultName 
 	return s.settingRepo.DeleteByVault(ctx, vaultID, uid)
 }
 
+// CleanDuplicateSettings cleans up duplicate configuration records
 // CleanDuplicateSettings 清理重复的配置记录
 func (s *settingService) CleanDuplicateSettings(ctx context.Context, uid int64, vaultID int64) error {
+	// Get all configurations (including deleted ones for global deduplication)
 	// 获取所有配置（包含已删除，以便全局去重）
 	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
 
-	// 按 PathHash 分组
+	// Group by PathHash // 按 PathHash 分组
 	grouped := make(map[string][]*domain.Setting)
 	for _, s_ := range settings {
 		grouped[s_.PathHash] = append(grouped[s_.PathHash], s_)
@@ -512,7 +515,11 @@ func (s *settingService) CleanDuplicateSettings(ctx context.Context, uid int64, 
 			continue
 		}
 
-		//保留规则：
+		// Retention rules:
+		// 1. Prioritize retaining records with Action != delete
+		// 2. If multiple active records exist, keep the one with the largest (latest) UpdatedTimestamp
+		// 3. If timestamps are identical, keep the record with the largest ID
+		// 保留规则：
 		// 1. 优先保留 Action != delete 的记录
 		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
 		// 3. 如果时间戳一致，保留 ID 最大的记录
@@ -541,9 +548,11 @@ func (s *settingService) CleanDuplicateSettings(ctx context.Context, uid int64, 
 			}
 		}
 
+		// Delete all records except the bestSetting
 		// 删除非 bestSetting 的所有记录
 		for _, s_ := range list {
 			if s_.ID != bestSetting.ID {
+				// Clear singleflight cache to prevent residue
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
 				

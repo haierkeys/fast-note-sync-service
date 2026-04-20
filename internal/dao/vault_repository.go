@@ -1,3 +1,4 @@
+// Package dao implements the data access layer
 // Package dao 实现数据访问层
 package dao
 
@@ -13,12 +14,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// vaultRepository implements domain.VaultRepository interface
 // vaultRepository 实现 domain.VaultRepository 接口
 type vaultRepository struct {
 	dao             *Dao
 	customPrefixKey string
 }
 
+// NewVaultRepository creates VaultRepository instance
 // NewVaultRepository 创建 VaultRepository 实例
 func NewVaultRepository(dao *Dao) domain.VaultRepository {
 	return &vaultRepository{dao: dao, customPrefixKey: "user_vault_"}
@@ -37,6 +40,7 @@ func init() {
 	})
 }
 
+// vault gets the vault query object
 // vault 获取保险库查询对象
 func (r *vaultRepository) vault(uid int64) *query.Query {
 	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
@@ -44,6 +48,7 @@ func (r *vaultRepository) vault(uid int64) *query.Query {
 	}, r.GetKey(uid)+"#vault", r.GetKey(uid))
 }
 
+// toDomain converts database model to domain model
 // toDomain 将数据库模型转换为领域模型
 func (r *vaultRepository) toDomain(m *model.Vault) *domain.Vault {
 	if m == nil {
@@ -51,7 +56,7 @@ func (r *vaultRepository) toDomain(m *model.Vault) *domain.Vault {
 	}
 	return &domain.Vault{
 		ID:        m.ID,
-		UID:       0, // 模型中没有 UID 字段，由上下文提供
+		UID:       0, // Field UID not in model, provided by context // 模型中没有 UID 字段，由上下文提供
 		Name:      m.Vault,
 		NoteCount: m.NoteCount,
 		NoteSize:  m.NoteSize,
@@ -63,6 +68,7 @@ func (r *vaultRepository) toDomain(m *model.Vault) *domain.Vault {
 	}
 }
 
+// toModel converts domain model to database model
 // toModel 将领域模型转换为数据库模型
 func (r *vaultRepository) toModel(vault *domain.Vault) *model.Vault {
 	if vault == nil {
@@ -85,6 +91,7 @@ func (r *vaultRepository) toModel(vault *domain.Vault) *model.Vault {
 	}
 }
 
+// GetByID retrieves vault by ID
 // GetByID 根据ID获取仓库
 func (r *vaultRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Vault, error) {
 	u := r.vault(uid).Vault
@@ -95,6 +102,7 @@ func (r *vaultRepository) GetByID(ctx context.Context, id, uid int64) (*domain.V
 	return r.toDomain(m), nil
 }
 
+// GetByName retrieves vault by name
 // GetByName 根据名称获取仓库
 func (r *vaultRepository) GetByName(ctx context.Context, name string, uid int64) (*domain.Vault, error) {
 	u := r.vault(uid).Vault
@@ -105,6 +113,7 @@ func (r *vaultRepository) GetByName(ctx context.Context, name string, uid int64)
 	return r.toDomain(m), nil
 }
 
+// Create creates a vault
 // Create 创建仓库
 func (r *vaultRepository) Create(ctx context.Context, vault *domain.Vault, uid int64) (*domain.Vault, error) {
 	var result *domain.Vault
@@ -137,6 +146,7 @@ func (r *vaultRepository) Create(ctx context.Context, vault *domain.Vault, uid i
 	return result, createErr
 }
 
+// Update updates a vault
 // Update 更新仓库
 func (r *vaultRepository) Update(ctx context.Context, vault *domain.Vault, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -148,6 +158,7 @@ func (r *vaultRepository) Update(ctx context.Context, vault *domain.Vault, uid i
 	})
 }
 
+// UpdateNoteCountSize updates the note count and size of the vault
 // UpdateNoteCountSize 更新仓库的笔记数量和大小
 func (r *vaultRepository) UpdateNoteCountSize(ctx context.Context, noteSize, noteCount, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -164,6 +175,7 @@ func (r *vaultRepository) UpdateNoteCountSize(ctx context.Context, noteSize, not
 	})
 }
 
+// UpdateFileCountSize updates the file count and size of the vault
 // UpdateFileCountSize 更新仓库的文件数量和大小
 func (r *vaultRepository) UpdateFileCountSize(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -180,6 +192,7 @@ func (r *vaultRepository) UpdateFileCountSize(ctx context.Context, fileSize, fil
 	})
 }
 
+// List retrieves the vault list
 // List 获取仓库列表
 func (r *vaultRepository) List(ctx context.Context, uid int64) ([]*domain.Vault, error) {
 	u := r.vault(uid).Vault
@@ -202,6 +215,7 @@ func (r *vaultRepository) List(ctx context.Context, uid int64) ([]*domain.Vault,
 	return list, nil
 }
 
+// Delete deletes the vault (soft delete)
 // Delete 删除仓库（软删除）
 func (r *vaultRepository) Delete(ctx context.Context, id, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -216,5 +230,6 @@ func (r *vaultRepository) Delete(ctx context.Context, id, uid int64) error {
 	})
 }
 
+// Ensure vaultRepository implements domain.VaultRepository interface
 // 确保 vaultRepository 实现了 domain.VaultRepository 接口
 var _ domain.VaultRepository = (*vaultRepository)(nil)
