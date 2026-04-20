@@ -28,6 +28,10 @@ const (
 	// SyncLogTypeSetting 表示配置资源
 	SyncLogTypeSetting SyncLogType = "setting"
 
+	// SyncLogTypeFolder represents a folder resource
+	// SyncLogTypeFolder 表示文件夹资源
+	SyncLogTypeFolder SyncLogType = "folder"
+
 	// SyncLogActionCreate represents a create action
 	// SyncLogActionCreate 表示新建操作
 	SyncLogActionCreate SyncLogAction = "create"
@@ -81,4 +85,12 @@ type SyncLogRepository interface {
 	// List retrieves sync logs for a user with filtering and pagination
 	// List 按条件分页查询用户的同步日志
 	List(ctx context.Context, uid int64, logType, action string, page, pageSize int) ([]*SyncLog, int64, error)
+
+	// CleanupByTime removes sync logs older than the given timestamp for a specific user
+	// CleanupByTime 清理指定用户在指定时间戳之前的同步日志
+	CleanupByTime(ctx context.Context, timestamp int64, uid int64) error
+
+	// CleanupByTimeAll removes sync logs older than the given timestamp for all users
+	// CleanupByTimeAll 清理所有用户在指定时间戳之前的同步日志
+	CleanupByTimeAll(ctx context.Context, timestamp int64) error
 }

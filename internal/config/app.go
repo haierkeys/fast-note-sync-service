@@ -27,6 +27,9 @@ type AppSettings struct {
 	// SoftDeleteRetentionTime retention time for soft deleted notes
 	// SoftDeleteRetentionTime 软删除笔记保留时间
 	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time" default:"7d"`
+	// SyncLogRetentionTime retention time for sync logs
+	// SyncLogRetentionTime 同步日志保留时间
+	SyncLogRetentionTime string `yaml:"sync-log-retention-time" default:"30d"`
 	// HistoryKeepVersions number of historical versions to keep, default 100
 	// HistoryKeepVersions 历史记录保留版本数，默认 100
 	HistoryKeepVersions int `yaml:"history-keep-versions" default:"100"`

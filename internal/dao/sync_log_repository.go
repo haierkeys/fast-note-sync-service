@@ -135,6 +135,33 @@ func (r *syncLogRepository) List(ctx context.Context, uid int64, logType, action
 	return results, total, nil
 }
 
+// CleanupByTime removes sync logs older than the given timestamp for a specific user
+// CleanupByTime 清理指定用户在指定时间戳之前的同步日志
+func (r *syncLogRepository) CleanupByTime(ctx context.Context, timestamp int64, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		return r.db(uid).WithContext(ctx).Where("created_at < ?", time.UnixMilli(timestamp)).Delete(&model.SyncLog{}).Error
+	})
+}
+
+// CleanupByTimeAll removes sync logs older than the given timestamp for all users
+// CleanupByTimeAll 清理所有用户在指定时间戳之前的同步日志
+func (r *syncLogRepository) CleanupByTimeAll(ctx context.Context, timestamp int64) error {
+	uids, err := r.dao.GetAllUserUIDs()
+	if err != nil {
+		return err
+	}
+
+	for i, uid := range uids {
+		if i > 0 {
+			time.Sleep(100 * time.Millisecond) // Slight delay to reduce bursts
+		}
+		if err := r.CleanupByTime(ctx, timestamp, uid); err != nil {
+			continue // Continue with other users even if one fails
+		}
+	}
+	return nil
+}
+
 // Ensure syncLogRepository implements domain.SyncLogRepository
 // 确保 syncLogRepository 实现了 domain.SyncLogRepository 接口
 var _ domain.SyncLogRepository = (*syncLogRepository)(nil)

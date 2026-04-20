@@ -391,7 +391,7 @@ CREATE TABLE "sync_log" (
     "id"             integer PRIMARY KEY AUTOINCREMENT,
     "uid"            integer NOT NULL DEFAULT 0,
     "vault_id"       integer NOT NULL DEFAULT 0,
-    "type"           text NOT NULL DEFAULT '',  -- 'note', 'file', 'setting'
+    "type"           text NOT NULL DEFAULT '',  -- 'note', 'file', 'setting', 'folder'
     "action"         text NOT NULL DEFAULT '',  -- 'create', 'modify', 'soft_delete', 'delete', 'rename', 'restore'
     "changed_fields" text NOT NULL DEFAULT '',  -- 逗号分隔变更字段，如 'content,mtime' / 'mtime' / 'path'
     "path"           text DEFAULT '',
