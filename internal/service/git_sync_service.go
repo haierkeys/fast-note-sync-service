@@ -28,11 +28,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// errNoChanges indicates that no changes were found after the Git sync check
 // errNoChanges 表示 Git 同步检查后没有发现任何需要提交的变更
 var errNoChanges = errors.New("no changes found")
 
 const gitSyncBatchSize = 100
 
+// GitSyncService defines the Git synchronization business service interface
 // GitSyncService 定义 Git 同步业务服务接口
 type GitSyncService interface {
 	GetConfigs(ctx context.Context, uid int64) ([]*dto.GitSyncConfigDTO, error)
@@ -65,6 +67,7 @@ type gitSyncService struct {
 	gcMu       sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
 }
 
+// NewGitSyncService creates a GitSyncService instance
 // NewGitSyncService 创建 GitSyncService 实例
 func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, gitConf *appconfig.GitConfig, logger *zap.Logger) GitSyncService {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -189,7 +192,7 @@ func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dt
 }
 
 func (s *gitSyncService) DeleteConfig(ctx context.Context, uid int64, id int64) error {
-	// Check identity
+	// 1. Verification identity // 1. 验证身份
 	conf, err := s.repo.GetByID(ctx, id, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
@@ -265,6 +268,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 		return code.ErrorGitSyncNotFound
 	}
 
+	// Strategy: For sync/mirror sync, directly cancel the old task and start a new one
 	// 策略：同步/镜像同步直接取消旧任务，启动新任务
 	s.mu.Lock()
 	if oldCancel, running := s.running[id]; running {
@@ -273,6 +277,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 		delete(s.running, id)
 	}
 
+	// Create context for new task
 	// 为新任务创建 context
 	taskCtx, taskCancel := context.WithCancel(s.ctx)
 	s.running[id] = taskCancel
@@ -283,6 +288,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 	go func() {
 		defer func() {
 			s.mu.Lock()
+			// Ensure only the current cancel function is cleaned up
 			// 确保只清理当前的 cancel 函数
 			if _, ok := s.running[id]; ok {
 				// 虽然 sync 策略下会先 cancel 再 set，但为了闭包内引用的严谨
@@ -293,6 +299,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 			s.wg.Done()
 		}()
 
+		// Use the newly created task context
 		// 使用新创建的任务 context
 		s.syncTask(taskCtx, conf)
 	}()
@@ -302,7 +309,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 
 func (s *gitSyncService) CleanWorkspace(ctx context.Context, uid int64, configID int64) error {
 	if configID > 0 {
-		// 1. Reset database fields
+		// 1. Reset database fields // 1. 重置数据库字段
 		conf, err := s.repo.GetByID(ctx, configID, uid)
 		if err != nil {
 			return code.ErrorDBQuery.WithDetails(err.Error())
@@ -320,17 +327,17 @@ func (s *gitSyncService) CleanWorkspace(ctx context.Context, uid int64, configID
 			return code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
-		// 2. Delete History
+		// 2. Delete History // 2. 删除历史记录
 		_ = s.repo.DeleteHistory(ctx, uid, configID)
 
-		// 3. Remove physical workspace
+		// 3. Remove physical workspace // 3. 删除物理工作区
 		path := s.getWorkspacePath(uid, configID)
 		err = os.RemoveAll(path)
 		if err != nil {
 			s.logger.Warn("Failed to cleanup physical workspace", zap.String("path", path), zap.Error(err))
 		}
 	} else {
-		// 1. Reset all database fields for user
+		// 1. Reset all database fields for user // 1. 重置用户的所有数据库字段
 		configs, err := s.repo.List(ctx, uid)
 		if err != nil {
 			return code.ErrorDBQuery.WithDetails(err.Error())
@@ -342,10 +349,10 @@ func (s *gitSyncService) CleanWorkspace(ctx context.Context, uid int64, configID
 			_, _ = s.repo.Save(ctx, conf, uid)
 		}
 
-		// 2. Delete All History for user
+		// 2. Delete All History for user // 2. 删除用户的所有历史记录
 		_ = s.repo.DeleteHistory(ctx, uid, 0)
 
-		// 3. Remove all physical workspaces for user
+		// 3. Remove all physical workspaces for user // 3. 删除用户的所有物理工作区
 		path := s.getUserWorkspacePath(uid)
 		err = os.RemoveAll(path)
 		if err != nil {
@@ -400,7 +407,7 @@ func (s *gitSyncService) Shutdown(ctx context.Context) error {
 	}
 }
 
-// Internal methods
+// Internal methods // 内部方法
 
 func (s *gitSyncService) historyToDTO(h *domain.GitSyncHistory) *dto.GitSyncHistoryDTO {
 	if h == nil {
@@ -429,6 +436,7 @@ func (s *gitSyncService) syncTask(ctx context.Context, conf *domain.GitSyncConfi
 	startTime := time.Now()
 	s.logger.Info("Starting Git sync task", zap.Int64("configId", conf.ID), zap.Int64("uid", conf.UID))
 
+	// Record status before running to recover if there are no changes
 	// 记录运行前的状态，以便无变更时恢复
 	prevStatus := conf.LastStatus
 
@@ -438,6 +446,8 @@ func (s *gitSyncService) syncTask(ctx context.Context, conf *domain.GitSyncConfi
 
 	err := s.doSync(ctx, conf)
 
+	// No changes: restore original status, trigger Save only to update updated_at
+	// Without writing history, without changing last_sync_time / last_status / last_message
 	// 无变更：恢复原始状态，只触发 Save 更新 updated_at
 	// 不写 history，不改 last_sync_time / last_status / last_message
 	if errors.Is(err, errNoChanges) {
@@ -484,13 +494,16 @@ func (s *gitSyncService) syncTask(ctx context.Context, conf *domain.GitSyncConfi
 	}
 	_, _ = s.repo.CreateHistory(context.Background(), h, conf.UID)
 
+	// Automatically clean up expired history records
 	// 自动清理过期历史记录
 	if conf.RetentionDays != 0 {
 		var cutoffTime time.Time
 		if conf.RetentionDays == -1 {
+			// -1 means retain only the current latest record
 			// -1 表示仅保留当前最新的一条记录
 			cutoffTime = startTime
 		} else if conf.RetentionDays > 0 {
+			// > 0 means clean up records exceeding specified days
 			// > 0 表示清理超过指定天数的记录
 			cutoffTime = time.Now().AddDate(0, 0, -int(conf.RetentionDays))
 		}
@@ -502,6 +515,8 @@ func (s *gitSyncService) syncTask(ctx context.Context, conf *domain.GitSyncConfi
 		}
 	}
 
+	// Schedule delayed memory release after task completion (addressing Issue #113)
+	// Return virtual memory to OS 30 minutes after high-pressure sync ends to avoid frequent operations
 	// 任务结束后调度延迟内存释放 (针对 Issue #113)
 	// 高压同步结束后 30 分钟再归还虚拟内存给操作系统，避免频繁操作
 	s.scheduleGC()
@@ -534,7 +549,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	var r *git.Repository
 	var err error
 
-	// 1. Check/Init Local Repo
+	// 1. Check/Init Local Repo // 1. 检查/初始化本地仓库
 	if _, err := os.Stat(filepath.Join(wsPath, ".git")); os.IsNotExist(err) {
 		s.logger.Info("Initializing local git repo", zap.String("path", wsPath))
 		_ = os.RemoveAll(wsPath)
@@ -578,7 +593,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		return err
 	}
 
-	// 2. Pull latest
+	// 2. Pull latest // 2. 拉取最新变更
 	s.logger.Info("Pulling latest changes", zap.Int64("configId", conf.ID))
 	err = wt.Pull(&git.PullOptions{
 		Auth:          auth,
@@ -595,8 +610,8 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		}
 	}
 
-	// 3. Extract DB content to Workspace
-	// We need to mirror files from DB to this workspace
+	// 3. Extract DB content to Workspace // 3. 提取 DB 内容到工作区
+	// We need to mirror files from DB to this workspace // 我们需要将 DB 中的文件镜像到此工作区
 	changed, err := s.mirrorNotesToWorkspace(ctx, conf, wsPath, conf.LastSyncTime)
 	if err != nil {
 		return fmt.Errorf("mirror to workspace failed: %w", err)
@@ -607,7 +622,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		return errNoChanges
 	}
 
-	// 4. Commit and Push
+	// 4. Commit and Push // 4. 提交并推送
 	status, err := wt.Status()
 	if err != nil {
 		return err
@@ -781,6 +796,7 @@ func (s *gitSyncService) processFilesBatch(files []*domain.File, conf *domain.Gi
 
 		_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
 
+		// Add physical file existence check to prevent source not existing from causing copyFileIfDifferent error interruption
 		// 增加物理文件存在性检查，防止 src 不存在导致 copyFileIfDifferent 报错中断
 		if _, err := os.Stat(f.SavePath); os.IsNotExist(err) {
 			s.logger.Warn("Attachment file not found in storage, skipping mirror for this file",

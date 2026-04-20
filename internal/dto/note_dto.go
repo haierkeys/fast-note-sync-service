@@ -62,6 +62,7 @@ type NoteRestoreRequest struct {
 }
 
 // NoteRecycleClearRequest clean recycle bin request
+// NoteRecycleClearRequest 清理回收站请求
 type NoteRecycleClearRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" example:"path/to/note.md"`              // Note path, empty for all // 笔记路径，为空则清理全部
@@ -128,7 +129,7 @@ type NoteLinkQueryRequest struct {
 }
 
 // NoteSyncCheckRequest Parameters for checking synchronization of a single record
-// 同步检查单条记录的参数
+// NoteSyncCheckRequest 同步检查单条记录的参数
 type NoteSyncCheckRequest struct {
 	Path        string `json:"path" form:"path" example:"ReadMe.md"`                          // Note path // 笔记路径
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"hash123"` // Path hash // 路径哈希
@@ -145,7 +146,7 @@ type NoteSyncDelNote struct {
 }
 
 // NoteSyncRequest Synchronization request body
-// 同步请求主体
+// NoteSyncRequest 同步请求主体
 type NoteSyncRequest struct {
 	Context      string                 `json:"context" form:"context" example:"task123"`                // Context // 上下文
 	Vault        string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
@@ -156,14 +157,14 @@ type NoteSyncRequest struct {
 }
 
 // ModifyMtimeFilesRequest Request for querying modified files by mtime
-// 用于按 mtime 查询修改文件
+// ModifyMtimeFilesRequest 用于按 mtime 查询修改文件
 type ModifyMtimeFilesRequest struct {
 	Vault string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Mtime int64  `json:"mtime" form:"mtime" example:"1700000000"`                 // Threshold modification timestamp // 修改时间戳阈值
 }
 
 // NoteGetRequest Request parameters for retrieving a single note
-// 用于获取单条笔记的请求参数
+// NoteGetRequest 用于获取单条笔记的请求参数
 type NoteGetRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path      string `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
@@ -172,7 +173,7 @@ type NoteGetRequest struct {
 }
 
 // NoteRenameRequest Parameters required for renaming a note
-// 重命名笔记所需参数
+// NoteRenameRequest 重命名笔记所需参数
 type NoteRenameRequest struct {
 	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`        // Vault name // 保险库名称
 	Path        string `json:"path" form:"path" binding:"required" example:"NewName.md"`       // New path // 新路径
@@ -182,7 +183,7 @@ type NoteRenameRequest struct {
 }
 
 // NoteListRequest Pagination parameters for retrieving the note list
-// 获取笔记列表的分页参数
+// NoteListRequest 获取笔记列表的分页参数
 type NoteListRequest struct {
 	Vault         string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Keyword       string `json:"keyword" form:"keyword" example:"todo"`                   // Search keyword // 搜索关键词
@@ -195,7 +196,7 @@ type NoteListRequest struct {
 }
 
 // NoteHistoryListRequest Note history list request parameters
-// 笔记历史列表请求参数
+// NoteHistoryListRequest 笔记历史列表请求参数
 type NoteHistoryListRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path      string `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
@@ -204,7 +205,7 @@ type NoteHistoryListRequest struct {
 }
 
 // NoteHistoryRestoreRequest Request parameters for restoring a historical version
-// 历史版本恢复请求参数
+// NoteHistoryRestoreRequest 历史版本恢复请求参数
 type NoteHistoryRestoreRequest struct {
 	Vault     string `json:"vault" form:"vault" binding:"required" example:"MyVault"`   // Vault name // 保险库名称
 	HistoryID int64  `json:"historyId" form:"historyId" binding:"required" example:"1"` // History version ID // 历史版本 ID
@@ -263,7 +264,7 @@ type NoteLinkItem struct {
 }
 
 // NoteWithFileLinksResponse Note response structure with file links
-// 带有文件链接的笔记响应结构体
+// NoteWithFileLinksResponse 带有文件链接的笔记响应结构体
 type NoteWithFileLinksResponse struct {
 	ID               int64             `json:"-"`           // Note ID // 笔记 ID
 	Path             string            `json:"path"`        // Note path // 笔记路径
@@ -280,7 +281,7 @@ type NoteWithFileLinksResponse struct {
 }
 
 // NoteHistoryDTO Note history data transfer object
-// 笔记历史数据传输对象
+// NoteHistoryDTO 笔记历史数据传输对象
 type NoteHistoryDTO struct {
 	ID          int64                 `json:"id" form:"id"`                   // History entry ID // 历史项 ID
 	NoteID      int64                 `json:"noteId" form:"noteId"`           // Associated note ID // 笔记 ID
@@ -295,7 +296,7 @@ type NoteHistoryDTO struct {
 }
 
 // NoteHistoryNoContentDTO Note history DTO without content
-// 不包含内容的笔记历史 DTO
+// NoteHistoryNoContentDTO 不包含内容的笔记历史 DTO
 type NoteHistoryNoContentDTO struct {
 	ID         int64      `json:"id" form:"id"`                 // History entry ID // 历史项 ID
 	NoteID     int64      `json:"noteId" form:"noteId"`         // Associated note ID // 笔记 ID

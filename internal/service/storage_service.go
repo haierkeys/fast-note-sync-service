@@ -39,6 +39,7 @@ type StorageService interface {
 	// GetEnabledTypes 获取启用的存储类型列表
 	GetEnabledTypes() ([]string, error)
 
+	// Validate verifies storage connectivity by sending and deleting a test file
 	// Validate 通过发送测试文件并删除来验证存储连通性
 	Validate(ctx context.Context, req *dto.StoragePostRequest) error
 }
@@ -138,9 +139,13 @@ func (s *storageService) CreateOrUpdate(ctx context.Context, uid int64, id int64
 	var err error
 
 	if id > 0 {
+		// Update existing storage configuration
+		// 更新现有存储配置
 		storage.ID = id
 		result, err = s.repo.Update(ctx, storage, uid)
 	} else {
+		// Create new storage configuration
+		// 创建新存储配置
 		result, err = s.repo.Create(ctx, storage, uid)
 	}
 
@@ -252,11 +257,15 @@ func (s *storageService) Validate(ctx context.Context, req *dto.StoragePostReque
 		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
 	}
 
+	// Send test file
+	// 发送测试文件
 	testFile := fmt.Sprintf(".fast-note-test-%s", uuid.New().String()[:8])
 	if _, err := client.SendContent(testFile, []byte("ok"), time.Now()); err != nil {
 		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
 	}
 
+	// Delete test file
+	// 删除测试文件
 	if err := client.Delete(testFile); err != nil {
 		return code.ErrorStorageValidateFailed.WithDetails(err.Error())
 	}

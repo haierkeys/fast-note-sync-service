@@ -29,6 +29,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+// DatabaseConfig database configuration (for dependency injection)
 // DatabaseConfig 数据库配置（用于依赖注入）
 // DatabaseConfig is now imported from internal/config
 
@@ -37,13 +38,14 @@ type dbEntry struct {
 	lastUsed time.Time
 }
 
+// Dao data access object, encapsulates database operations
 // Dao 数据访问对象，封装数据库操作
 type Dao struct {
 	Db       *gorm.DB
 	KeyDb    map[string]*dbEntry
 	ctx      context.Context
 	onceKeys sync.Map
-	mu       sync.RWMutex // 保护 KeyDb 的并发访问
+	mu       sync.RWMutex // protects concurrent access to KeyDb // 保护 KeyDb 的并发访问
 
 	poolSemaphores sync.Map // map[string]*semaphore.Weighted 针对不同配置的并发控制
 
@@ -54,9 +56,11 @@ type Dao struct {
 	writeQueueMgr *writequeue.Manager
 }
 
+// DaoOption option function for configuring Dao
 // DaoOption 用于配置 Dao 的选项函数
 type DaoOption func(*Dao)
 
+// WithConfig sets database configuration
 // WithConfig 设置数据库配置
 func WithConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
@@ -64,6 +68,7 @@ func WithConfig(cfg *config.DatabaseConfig) DaoOption {
 	}
 }
 
+// WithUserDatabaseConfig sets user database configuration
 // WithUserDatabaseConfig 设置用户数据库配置
 func WithUserDatabaseConfig(cfg *config.DatabaseConfig) DaoOption {
 	return func(d *Dao) {
@@ -71,6 +76,7 @@ func WithUserDatabaseConfig(cfg *config.DatabaseConfig) DaoOption {
 	}
 }
 
+// WithLogger sets logger
 // WithLogger 设置日志器
 func WithLogger(logger *zap.Logger) DaoOption {
 	return func(d *Dao) {
@@ -78,6 +84,7 @@ func WithLogger(logger *zap.Logger) DaoOption {
 	}
 }
 
+// WithWriteQueueManager sets write queue manager
 // WithWriteQueueManager 设置写队列管理器
 func WithWriteQueueManager(wqm *writequeue.Manager) DaoOption {
 	return func(d *Dao) {
@@ -89,6 +96,7 @@ type daoDBCustomKey interface {
 	GetKey(uid int64) string
 }
 
+// ModelConfig describes the database routing information for a model
 // ModelConfig 描述一个模型的数据库路由信息
 type ModelConfig struct {
 	Name        string
@@ -98,15 +106,16 @@ type ModelConfig struct {
 
 var modelConfigs []ModelConfig
 
+// RegisterModel called by each Repository file in init()
 // RegisterModel 供各 Repository 文件在 init() 中调用
 func RegisterModel(cfg ModelConfig) {
 	modelConfigs = append(modelConfigs, cfg)
 }
 
-// New 创建 Dao 实例（支持依赖注入）
-// db: 主数据库连接
-// ctx: 上下文
-// opts: 可选配置项
+// New creates Dao instance (supports dependency injection)
+// db: Main database connection // db: 主数据库连接
+// ctx: Context // ctx: 上下文
+// opts: Optional configuration items // opts: 可选配置项
 func New(db *gorm.DB, ctx context.Context, opts ...DaoOption) *Dao {
 	d := &Dao{
 		Db:    db,
@@ -127,6 +136,7 @@ func New(db *gorm.DB, ctx context.Context, opts ...DaoOption) *Dao {
 	return d
 }
 
+// Logger gets the logger
 // Logger 获取日志器
 func (d *Dao) Logger() *zap.Logger {
 	if d.logger != nil {
@@ -135,11 +145,13 @@ func (d *Dao) Logger() *zap.Logger {
 	return zap.NewNop()
 }
 
+// Config gets the database configuration
 // Config 获取数据库配置
 func (d *Dao) Config() *config.DatabaseConfig {
 	return d.config
 }
 
+// WriteQueueManager gets the write queue manager
 // WriteQueueManager 获取写队列管理器
 func (d *Dao) WriteQueueManager() *writequeue.Manager {
 	return d.writeQueueMgr
@@ -163,10 +175,12 @@ func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string)
 		if len(key) > 0 {
 			keyName = key[0]
 		}
-		panic(fmt.Sprintf("数据库实例为 nil (key=%s, onceKey=%s),请检查数据库配置和连接", keyName, onceKey))
+		panic(fmt.Sprintf("数据库 instance 为 nil (key=%s, onceKey=%s),请检查数据库配置和连接", keyName, onceKey))
 	}
 
+	// Construct library-level unique initialization Key
 	// 构造库级唯一的初始化 Key
+	// If a key is provided, it indicates a tenant library, and the key needs to be attached to ensure independent initialization of each tenant library
 	// 如果提供了 key，说明是租户库，需附加 key 以保证每个租户库独立初始化
 	actualOnceKey := onceKey
 	if len(key) > 0 && key[0] != "" {
@@ -179,6 +193,7 @@ func (d *Dao) QueryWithOnceInit(f func(*gorm.DB), onceKey string, key ...string)
 	return query.Use(db)
 }
 
+// CleanupConnections cleans up idle database connections
 // CleanupConnections 清理闲置数据库连接
 func (d *Dao) CleanupConnections(maxIdle time.Duration) {
 	d.mu.Lock()
@@ -202,18 +217,21 @@ func (d *Dao) ResolveDB(key ...string) *gorm.DB {
 	return d.GetOrCreateDB(key[0])
 }
 
-// resolveConfig 获取数据库配置
-// key: 数据库标识，如果非空则尝试获取用户数据库配置
+// resolveConfig gets database configuration
+// key: Database identifier, tries to get user DB config if non-empty // key: 数据库标识，如果非空则尝试获取用户数据库配置
 func (d *Dao) resolveConfig(key string) config.DatabaseConfig {
 	var cfg config.DatabaseConfig
+	// If targeted at specific Key (usually user DB) and independent UserDatabase type is configured
 	// 如果是针对特定 Key (通常为用户库) 且配置了独立的 UserDatabase 类型
 	if key != "" && d.userConfig != nil && d.userConfig.Type != "" {
 		cfg = *d.userConfig
 	} else if d.config != nil {
+		// Otherwise inherits main database configuration (Fallback mode)
 		// 否则继承主数据库配置 (Fallback 模式)
 		cfg = *d.config
 	}
 
+	// Final fallback logic: if no type is configured globally, force default to sqlite
 	// 最终回退逻辑：如果全局均未配置类型，强制默认为 sqlite
 	if cfg.Type == "" {
 		cfg.Type = "sqlite"
@@ -225,6 +243,7 @@ func (d *Dao) resolveConfig(key string) config.DatabaseConfig {
 }
 
 func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
+	// Use read lock to check if already exists
 	// 使用读锁检查是否已存在
 	d.mu.RLock()
 	if entry, ok := d.KeyDb[key]; ok {
@@ -234,14 +253,16 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 	}
 	d.mu.RUnlock()
 
+	// Get configuration
 	// 获取配置
 	c := d.resolveConfig(key)
 
 	if (c.Type == "postgres") && key != "" {
+		// PostgreSQL: Uniform mapping to user_<uid> Schema, ignoring specific Repo prefixes
 		// PostgreSQL: 统一映射到 user_<uid> Schema，忽略具体的 Repo 前缀
 		schemaName, ok := d.extractUserSchema(key)
 		if !ok {
-			schemaName = key // 回退逻辑，如果无法解析则使用原始 key
+			schemaName = key // Fallback logic, use original key if resolution fails // 回退逻辑，如果无法解析则使用原始 key
 		}
 
 		if err := d.ensurePostgresSchema(schemaName); err != nil {
@@ -251,10 +272,11 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 		c.Schema = schemaName
 		c.TablePrefix = "" // PostgreSQL 下清空前缀，改用 Schema
 	} else if (c.Type == "mysql") && key != "" {
+		// MySQL: Uniform mapping to user_<uid> database, implementing tenant-level DB isolation
 		// MySQL: 统一映射到 user_<uid> 数据库，实现租户级库隔离
 		dbName, ok := d.extractUserSchema(key)
 		if !ok {
-			dbName = key // 回退逻辑，如果无法解析则使用原始 key
+			dbName = key // Fallback logic, use original key if resolution fails // 回退逻辑，如果无法解析则使用原始 key
 		}
 
 		if err := d.ensureMysqlDatabase(dbName); err != nil {
@@ -262,8 +284,9 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 			return nil
 		}
 		c.Name = dbName
-		c.TablePrefix = "" // MySQL 下清空前缀，改用库路由
+		c.TablePrefix = "" // Clear prefix under MySQL, use database routing instead // MySQL 下清空前缀，改用库路由
 	} else if c.Type == "sqlite" && key != "" {
+		// SQLite: Maintain multi-file isolation mode (using full key as filename suffix)
 		// SQLite: 维持多文件隔离模式 (使用完整的 key 作为文件名后缀)
 		ext := filepath.Ext(c.Path)
 		c.Path = c.Path[:len(c.Path)-len(ext)] + "_" + key + ext
@@ -275,11 +298,14 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 		return nil
 	}
 
+	// Use write lock for storage
 	// 使用写锁存储
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	// Double check
 	// 双重检查
 	if existingEntry, ok := d.KeyDb[key]; ok {
+		// Close the newly created connection
 		// 关闭新创建的连接
 		if sqlDB, err := dbNew.DB(); err == nil {
 			sqlDB.Close()
@@ -288,6 +314,7 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 		return existingEntry.db
 	}
 
+	// Check cache quantity limit; if more than 100 connections, clean up the least recently used one
 	// 检查缓存数量限制，如果超过 100 个连接，清理最久未使用的
 	if len(d.KeyDb) >= 100 {
 		var oldestKey string
@@ -465,6 +492,7 @@ func getDialector(c config.DatabaseConfig) gorm.Dialector {
 
 }
 
+// WithRetry encapsulates retry logic for database operations, mainly to solve SQLite "database is locked" issues
 // WithRetry 封装数据库操作的重试逻辑，主要用于解决 SQLite "database is locked" 问题
 func (d *Dao) WithRetry(fn func() error) error {
 	maxRetries := 5
@@ -475,10 +503,11 @@ func (d *Dao) WithRetry(fn func() error) error {
 			return nil
 		}
 
+		// Check if it's a SQLite lock error
 		// 检查是否为 SQLite 锁定错误
 		errStr := err.Error()
 		if strings.Contains(errStr, "database is locked") || strings.Contains(errStr, "SQLITE_BUSY") {
-			// 指数退避或固定延迟
+			// Exponential backoff or fixed delay // 指数退避或固定延迟
 			time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
 			continue
 		}
@@ -487,17 +516,20 @@ func (d *Dao) WithRetry(fn func() error) error {
 	return err
 }
 
+// ExecuteWrite executes write operation (serialized through write queue)
 // ExecuteWrite 执行写操作（通过写队列串行化）
+// Write operations will be executed serially, and write operations of the same user will be processed in FIFO order
 // 写操作会被串行化执行，同一用户的写操作按 FIFO 顺序处理
-// ctx: 上下文，用于超时和取消控制
-// uid: 用户 ID，用于确定写队列
-// fn: 写操作函数，接收用户数据库连接
-// 返回值: 写操作的错误
-// 注意: 必须通过 WithWriteQueueManager 注入写队列管理器
+// ctx: Context for timeout and cancellation control // ctx: 上下文，用于超时和取消控制
+// uid: User ID, used to determine write queue // uid: 用户 ID，用于确定写队列
+// fn: Write operation function, receiving user database connection // fn: 写操作函数，接收用户数据库连接
+// Return value: Error of the write operation // 返回值: 写操作的错误
+// Note: Write queue manager must be injected via WithWriteQueueManager // 注意: 必须通过 WithWriteQueueManager 注入写队列管理器
 func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
 	dbKey := r.GetKey(uid)
 	cfg := d.resolveConfig(dbKey)
 
+	// Determine whether to enable write queue
 	// 判断是否启用写队列
 	enableQueue := (cfg.EnableWriteQueue == nil || *cfg.EnableWriteQueue)
 
@@ -514,9 +546,12 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 		})
 	}
 
+	// When not using write queue and concurrency control is configured, check concurrency limits
 	// 不使用写队列且配置了并发控制时，检查并发限制
 	if !enableQueue && cfg.MaxWriteConcurrency > 0 {
+		// Determine the group identifier for configuration (used for sharing the same limiter)
 		// 确定配置的分组标识（用于共享同一个限制器）
+		// Simple handling here: main DB and user DB have independent concurrency limit pools
 		// 这里简单处理：主库和用户库各自拥有独立的并发限制池
 		groupKey := "main"
 		if dbKey != "" {
@@ -532,6 +567,7 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 		defer sem.Release(1)
 	}
 
+	// Execute write operation
 	// 执行写操作
 	db := d.ResolveDB(dbKey)
 	if db == nil {
@@ -540,12 +576,14 @@ func (d *Dao) ExecuteWrite(ctx context.Context, uid int64, r daoDBCustomKey, fn 
 	return fn(db.WithContext(ctx))
 }
 
+// ExecuteRead executes read operation (executed directly, not through write queue)
 // ExecuteRead 执行读操作（直接执行，不经过写队列）
+// Read operations do not need serialization and can be executed concurrently
 // 读操作不需要串行化，可以并发执行
-// ctx: 上下文，用于超时和取消控制
-// uid: 用户 ID，用于获取用户数据库连接
-// fn: 读操作函数，接收用户数据库连接
-// 返回值: 读操作的错误
+// ctx: Context for timeout and cancellation control // ctx: 上下文，用于超时和取消控制
+// uid: User ID, used to get user database connection // uid: 用户 ID，用于获取用户数据库连接
+// fn: Read operation function, receiving user database connection // fn: 读操作函数，接收用户数据库连接
+// Return value: Error of the read operation // 返回值: 读操作的错误
 func (d *Dao) ExecuteRead(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
 	db := d.ResolveDB(r.GetKey(uid))
 	if db == nil {
@@ -554,12 +592,14 @@ func (d *Dao) ExecuteRead(ctx context.Context, uid int64, r daoDBCustomKey, fn f
 	return fn(db.WithContext(ctx))
 }
 
+// ExecuteWriteWithRetry executes write operation (serialized through write queue, with retries)
 // ExecuteWriteWithRetry 执行写操作（通过写队列串行化，带重试）
+// Combine write queue and retry logic to handle SQLite concurrent write issues
 // 结合写队列和重试逻辑，用于处理 SQLite 并发写入问题
-// ctx: 上下文，用于超时和取消控制
-// uid: 用户 ID，用于确定写队列
-// fn: 写操作函数，接收用户数据库连接
-// 返回值: 写操作的错误
+// ctx: Context for timeout and cancellation control // ctx: 上下文，用于超时和取消控制
+// uid: User ID, used to determine write queue // uid: 用户 ID，用于确定写队列
+// fn: Write operation function, receiving user database connection // fn: 写操作函数，接收用户数据库连接
+// Return value: Error of the write operation // 返回值: 写操作的错误
 func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, r daoDBCustomKey, fn func(*gorm.DB) error) error {
 	return d.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		return d.WithRetry(func() error {
@@ -568,10 +608,11 @@ func (d *Dao) ExecuteWriteWithRetry(ctx context.Context, uid int64, r daoDBCusto
 	})
 }
 
+// getModelDBKey gets the corresponding database connection Key based on model name
 // getModelDBKey 根据模型名称获取对应的数据库连接 Key
 func (d *Dao) getModelDBKey(uid int64, modelKey string) string {
 	if uid <= 0 {
-		return "" // 主数据库
+		return "" // Main database // 主数据库
 	}
 
 	for _, cfg := range modelConfigs {
@@ -589,6 +630,7 @@ func (d *Dao) getModelDBKey(uid int64, modelKey string) string {
 }
 
 func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
+	// 1. If modelKey is empty, it means "full migration", route migration separately by model
 	// 1. 如果 modelKey 为空，说明是“全量迁移”，按模型分别路由迁移
 	if modelKey == "" {
 		for _, cfg := range modelConfigs {
@@ -602,6 +644,7 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	dbKey := d.getModelDBKey(uid, modelKey)
 	cfg := d.resolveConfig(dbKey)
 
+	// 2. Verify the AutoMigrate flag in the configuration
 	// 2. 校验配置中的 AutoMigrate 标志
 	if !cfg.AutoMigrate {
 		return nil
@@ -615,6 +658,7 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 	return model.AutoMigrate(b, modelKey)
 }
 
+// user gets the user query object (internal method)
 // user 获取用户查询对象（内部方法）
 func (d *Dao) user() *query.Query {
 	return d.QueryWithOnceInit(func(g *gorm.DB) {
@@ -622,10 +666,12 @@ func (d *Dao) user() *query.Query {
 	}, "user#user")
 }
 
+// GetAllUserUIDs retrieves UIDs of all users
 // GetAllUserUIDs 获取所有用户的UID
+// Return value description:
 // 返回值说明:
-//   - []int64: 用户UID列表
-//   - error: 出错时返回错误
+//   - []int64: User UID list // 用户UID列表
+//   - error: Error on failure // 出错时返回错误
 func (d *Dao) GetAllUserUIDs() ([]int64, error) {
 	var uids []int64
 	u := d.user().User
@@ -636,16 +682,19 @@ func (d *Dao) GetAllUserUIDs() ([]int64, error) {
 	return uids, nil
 }
 
+// ensurePostgresSchema ensures the specified Schema exists in PostgreSQL
 // ensurePostgresSchema 确保 PostgreSQL 中指定的 Schema 存在
 func (d *Dao) ensurePostgresSchema(schemaName string) error {
 	if d.userConfig == nil || d.userConfig.Type != "postgres" {
 		return nil
 	}
 
+	// Construct basic connection DSN without schema
 	// 构造不带 schema 的基础连接 DSN
 	cfg := *d.userConfig
 	cfg.Schema = ""
 
+	// Use base connection to create a new Schema
 	// 使用基础连接来创建新的 Schema
 	db, err := NewEngine(cfg, d.Logger())
 	if err != nil {
@@ -657,6 +706,7 @@ func (d *Dao) ensurePostgresSchema(schemaName string) error {
 		}
 	}()
 
+	// Execute create Schema statement
 	// 执行创建 Schema 语句
 	err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schemaName)).Error
 	if err != nil {
@@ -666,14 +716,17 @@ func (d *Dao) ensurePostgresSchema(schemaName string) error {
 	return nil
 }
 
+// extractUserSchema extracts uniform user Schema name (e.g., user_1) from connection Key (e.g., user_vault_1)
 // extractUserSchema 从连接 Key (如 user_vault_1) 中提取统一的用户 Schema 名 (如 user_1)
 func (d *Dao) extractUserSchema(key string) (string, bool) {
+	// Find the last underscore, try to extract UID
 	// 查找最后一个下划线，尝试提取 UID
 	lastUnder := strings.LastIndex(key, "_")
 	if lastUnder == -1 {
 		return "", false
 	}
 	uidStr := key[lastUnder+1:]
+	// If the last part is pure digits, we consider it the UID and map it to a uniform Schema: user_<uid>
 	// 如果最后一部分是纯数字，我们认为它是 UID，并映射到统一的 Schema: user_<uid>
 	if _, err := strconv.ParseInt(uidStr, 10, 64); err == nil {
 		return "user_" + uidStr, true
@@ -681,16 +734,19 @@ func (d *Dao) extractUserSchema(key string) (string, bool) {
 	return "", false
 }
 
+// ensureMysqlDatabase ensures the specified database exists in MySQL
 // ensureMysqlDatabase 确保 MySQL 中指定的数据库存在
 func (d *Dao) ensureMysqlDatabase(dbName string) error {
 	if d.userConfig == nil || d.userConfig.Type != "mysql" {
 		return nil
 	}
 
+	// Construct basic connection configuration without database name
 	// 构造不带数据库名的基础连接配置
 	cfg := *d.userConfig
 	cfg.Name = ""
 
+	// Use base connection to connect to MySQL service
 	// 使用基础连接连接到 MySQL 服务
 	db, err := NewEngine(cfg, d.Logger())
 	if err != nil {
@@ -702,7 +758,9 @@ func (d *Dao) ensureMysqlDatabase(dbName string) error {
 		}
 	}()
 
+	// Execute create database statement
 	// 执行创建数据库语句
+	// Note: MySQL database names cannot contain special characters; user_<uid> is safe
 	// 注意：MySQL 库名不能包含特殊字符，user_<uid> 是安全的
 	err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci", dbName)).Error
 	if err != nil {

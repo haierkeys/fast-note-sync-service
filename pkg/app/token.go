@@ -21,10 +21,10 @@ const DefaultTokenIssuer = "fast-note-sync-service"
 
 // TokenConfig defines Token manager configuration // TokenConfig 定义 Token 管理器的配置
 type TokenConfig struct {
-	SecretKey     string        `yaml:"secret-key"`         // JWT 签名密钥
-	Expiry        time.Duration `yaml:"expiry"`             // Token 过期时间，默认 365 天
-	ShareTokenKey string        `yaml:"share-token-key"`    // 分享专用签名密钥
-	ShareExpiry   time.Duration `yaml:"share-token-expiry"` // 分享专用过期时间
+	SecretKey     string        `yaml:"secret-key"`         // JWT signing key // JWT 签名密钥
+	Expiry        time.Duration `yaml:"expiry"`             // Token expiration time, defaults to 365 days // Token 过期时间，默认 365 天
+	ShareTokenKey string        `yaml:"share-token-key"`    // Dedicated signing key for sharing // 分享专用签名密钥
+	ShareExpiry   time.Duration `yaml:"share-token-expiry"` // Dedicated expiration time for sharing // 分享专用过期时间
 	Issuer        string        `yaml:"issuer"`             // Token issuer // Token 签发者
 }
 
@@ -50,9 +50,10 @@ type tokenManager struct {
 // NewTokenManager creates a new TokenManager instance
 // NewTokenManager 创建一个新的 TokenManager 实例
 func NewTokenManager(cfg TokenConfig) TokenManager {
+	// Set default values
 	// 设置默认值
 	if cfg.Expiry == 0 {
-		cfg.Expiry = 365 * 24 * time.Hour // 默认 365 天
+		cfg.Expiry = 365 * 24 * time.Hour // Default 365 days // 默认 365 天
 	}
 	if cfg.Issuer == "" {
 		cfg.Issuer = DefaultTokenIssuer
@@ -133,22 +134,27 @@ func (t *tokenManager) Parse(token string) (*UserEntity, error) {
 func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[string][]string) (string, error) {
 	expirationTime := time.Unix(time.Now().Add(t.config.ShareExpiry).Unix(), 0)
 
+	// Prepare data (fixed 16 bytes): SID (6) + UID (3) + ExpiresAt (4) + Checksum (3)
 	// 准备数据 (固定 16 字节): SID (6) + UID (3) + ExpiresAt (4) + Checksum (3)
 	data := make([]byte, 16)
 
+	// SID: 6 bytes (0-5)
 	// SID: 6 字节 (0-5)
 	sidBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(sidBytes, uint64(shareID))
 	copy(data[0:6], sidBytes[2:8])
 
+	// UID: 3 bytes (6-8)
 	// UID: 3 字节 (6-8)
 	uidBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(uidBytes, uint64(uid))
 	copy(data[6:9], uidBytes[5:8])
 
+	// ExpiresAt: 4 bytes (9-12)
 	// ExpiresAt: 4 字节 (9-12)
 	binary.BigEndian.PutUint32(data[9:13], uint32(expirationTime.Unix()))
 
+	// Generate checksum: generate summary using Key + first 13 bytes, take first 3 bytes
 	// 生成校验和: 使用 Key + 前 13 字节生成摘要，取前 3 字节
 	key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
 	h := sha256.New()
@@ -162,6 +168,7 @@ func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[str
 		return "", err
 	}
 
+	// Execute single block encryption (16 bytes)
 	// 执行单块加密 (16 字节)
 	ciphertext := make([]byte, 16)
 	block.Encrypt(ciphertext, data)
@@ -178,6 +185,7 @@ func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 		return nil, fmt.Errorf("invalid token format")
 	}
 
+	// Generate AES Key using ShareTokenKey + MachineID
 	// 使用 ShareTokenKey + MachineID 生成 AES Key
 	key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
 
@@ -186,10 +194,12 @@ func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 		return nil, err
 	}
 
+	// Execute single block decryption
 	// 执行单块解密
 	data := make([]byte, 16)
 	block.Decrypt(data, ciphertext)
 
+	// Verify checksum
 	// 验证校验和
 	h := sha256.New()
 	h.Write(key[:])
@@ -200,16 +210,19 @@ func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
 		return nil, fmt.Errorf("invalid token checksum")
 	}
 
+	// Parse SID (6 bytes)
 	// 解析 SID (6 字节)
 	sidBytes := make([]byte, 8)
 	copy(sidBytes[2:8], data[0:6])
 	shareID := int64(binary.BigEndian.Uint64(sidBytes))
 
+	// Parse UID (3 bytes)
 	// 解析 UID (3 字节)
 	uidBytes := make([]byte, 8)
 	copy(uidBytes[5:8], data[6:9])
 	uid := int64(binary.BigEndian.Uint64(uidBytes))
 
+	// Parse ExpiresAt (4 bytes)
 	// 解析 ExpiresAt (4 字节)
 	expUnix := int64(binary.BigEndian.Uint32(data[9:13]))
 

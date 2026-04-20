@@ -54,6 +54,7 @@ func (w *WebDAV) setModifiedTime(pathKey string, modTime time.Time) error {
 	return nil
 }
 
+// SendFile upload local file to WebDAV server
 // SendFile 将本地文件上传到 WebDAV 服务器。
 func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
@@ -84,6 +85,7 @@ func (w *WebDAV) SendFile(fileKey string, file io.Reader, itype string, modTime 
 	return fileKey, nil
 }
 
+// SendContent upload binary content to WebDAV server
 // SendContent 将二进制内容上传到 WebDAV 服务器。
 func (w *WebDAV) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
 

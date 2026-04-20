@@ -40,6 +40,7 @@ func (s StrTo) MustUInt32() uint32 {
 	return v
 }
 
+// ToSize converts a string to byte size, supporting KB, MB, B suffixes
 // ToSize 将字符串转换为字节大小，支持 KB, MB, B 后缀
 func (s StrTo) ToSize() (int64, error) {
 	sizeStr := strings.ToUpper(strings.TrimSpace(s.String()))
@@ -67,6 +68,7 @@ func (s StrTo) ToSize() (int64, error) {
 	return size * multiplier, nil
 }
 
+// MustToSize converts a string to byte size, returns default value if error occurs
 // MustToSize 将字符串转换为字节大小，如果出错返回默认值
 func (s StrTo) MustToSize(defaultVal int64) int64 {
 	v, err := s.ToSize()

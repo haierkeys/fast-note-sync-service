@@ -114,9 +114,11 @@ type NoteService interface {
 	// UpdateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
 	UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64)
 
+	// RecycleClear cleans up the recycle bin
 	// RecycleClear 清理回收站
 	RecycleClear(ctx context.Context, uid int64, params *dto.NoteRecycleClearRequest) error
 
+	// CleanDuplicateNotes cleans up duplicate note records
 	// CleanDuplicateNotes 清理重复的笔记记录
 	CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error
 }
@@ -336,8 +338,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
 			}
 
-			// Set action
-			// 设置 action
+			// Set action // 设置 action
 			var action domain.NoteAction
 			if note.Action == domain.NoteActionDelete {
 				action = domain.NoteActionCreate
@@ -345,8 +346,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 				action = domain.NoteActionModify
 			}
 
-			// Update note
-			// 更新笔记
+			// Update note // 更新笔记
 			note.VaultID = vaultID
 			note.Path = params.Path
 			note.PathHash = params.PathHash
@@ -385,7 +385,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			return &result{isNew: isNew, dto: s.domainToDTO(updated)}, nil
 		}
 
-		// Create new note
+		// Create new note // 创建新笔记
 		isNew = true
 		newNote := &domain.Note{
 			VaultID:     vaultID,
@@ -436,8 +436,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 // Delete deletes a note
 // Delete 删除笔记
 func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error) {
-	// Use VaultService.MustGetID to retrieve VaultID
-	// 使用 VaultService.MustGetID 获取 VaultID
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err // VaultService 已返回 code.Error
@@ -451,8 +450,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Update to deleted status
-	// 更新为删除状态
+	// Update to deleted status // 更新为删除状态
 	note.Action = domain.NoteActionDelete
 	note.ClientName = s.clientName
 	note.Rename = 0
@@ -462,7 +460,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// 若笔记有 active 分享，自动撤销（防止计数残留）
+	// If note has active share, automatically revoke (to prevent count residue) // 若笔记有 active 分享，自动撤销（防止计数残留）
 	_ = s.shareRepo.UpdateStatusByRes(ctx, uid, "note", note.ID, domain.UserShareStatusRevoked)
 
 	// Log soft delete // 记录软删除日志
@@ -470,7 +468,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientName, note.Size)
 	}
 
-	// 重新获取更新后的笔记
+	// Re-fetch the updated note // 重新获取更新后的笔记
 	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
@@ -490,15 +488,13 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 // Restore restores a note (from recycle bin)
 // Restore 恢复笔记（从回收站恢复）
 func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRestoreRequest) (*dto.NoteDTO, error) {
-	// Use VaultService.MustGetID to retrieve VaultID
-	// 使用 VaultService.MustGetID 获取 VaultID
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	// Get note from recycle bin
-	// 从回收站获取笔记
+	// Get note from recycle bin // 从回收站获取笔记
 	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, true)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -507,14 +503,12 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Check if note is deleted
-	// 检查笔记是否已删除
+	// Check if note is deleted // 检查笔记是否已删除
 	if note.Action != domain.NoteActionDelete {
 		return nil, code.ErrorNoteNotFound
 	}
 
-	// Update to modified status and update modification time
-	// 更新为修改状态 并更新修改时间
+	// Update to modified status and update modification time // 更新为修改状态 并更新修改时间
 	note.Action = domain.NoteActionModify
 	note.ClientName = s.clientName
 	note.Mtime = time.Now().UnixMilli()
@@ -530,6 +524,7 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRestore, "", note.Path, note.PathHash, s.clientName, note.Size)
 	}
 
+	// Re-fetch the updated note
 	// 重新获取更新后的笔记
 	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
 	if err != nil {
@@ -572,6 +567,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 	}
 
 	val, err, _ := s.sf.Do(key, func() (any, error) {
+		// 1. Check if target path has valid note
 		// 1. 判断目标路径是否存在有效笔记
 		existNote, _ := s.noteRepo.GetAllByPathHash(ctx, newPathHash, vaultID, uid)
 		if existNote != nil && existNote.Action != domain.NoteActionDelete {
@@ -584,6 +580,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			oldPathHash = util.EncodeHash32(oldPath)
 		}
 
+		// 2. Get old note
 		// 2. 获取旧笔记
 		n, err := s.noteRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
 		if err != nil {
@@ -593,6 +590,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		// 3. Mark old note as deleted
 		// 3. 标记旧笔记删除
 		n.Action = domain.NoteActionDelete
 		n.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -601,10 +599,11 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		// 4. New or reuse note record
 		// 4. 新建或复用笔记记录
 		var newNoteCreated *domain.Note
 		if existNote != nil {
-			// 复用已删除的记录
+			// Reuse deleted record // 复用已删除的记录
 			existNote.Action = domain.NoteActionCreate
 			existNote.Path = newPath
 			existNote.PathHash = newPathHash
@@ -620,7 +619,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			existNote.UpdatedTimestamp = timex.Now().UnixMilli()
 			newNoteCreated, err = s.noteRepo.Update(ctx, existNote, uid)
 		} else {
-			// 创建新记录
+			// Create new record // 创建新记录
 			newNote := &domain.Note{
 				VaultID:          vaultID,
 				Action:           domain.NoteActionCreate,
@@ -638,7 +637,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			if idx := strings.LastIndex(newPath, "/"); idx >= 0 {
 				newPathDir = newPath[:idx]
 			}
-			// 确保 FID 正确
+			// Ensure FID is correct // 确保 FID 正确
 			newNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 			newNoteCreated, err = s.noteRepo.Create(ctx, newNote, uid)
 		}
@@ -682,6 +681,7 @@ func (s *noteService) List(ctx context.Context, uid int64, params *dto.NoteListR
 		return nil, 0, err
 	}
 
+	// Parse paths parameter (comma-separated -> []string)
 	// 解析 paths 参数（逗号分隔 → []string）
 	var paths []string
 	if params.Paths != "" {
@@ -744,7 +744,7 @@ func (s *noteService) CountSizeSum(ctx context.Context, vaultID int64, uid int64
 	key := fmt.Sprintf("%d_%d", uid, vaultID)
 
 	// Debounce: 10 seconds delay. If a new request comes within 10s, reset the timer.
-	// 防抖：10秒延迟。如果10秒内有新请求，重置计时器。
+	// 防抖：10秒延迟。如果10秒内 house 有新请求，重置计时器。
 	if timerOld, ok := s.countTimers.Load(key); ok {
 		if t, ok := timerOld.(*time.Timer); ok {
 			t.Stop()
@@ -822,6 +822,7 @@ func (s *noteService) ListNeedSnapshot(ctx context.Context, uid int64) ([]*dto.N
 // Migrate 迁移笔记历史记录
 func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, uid int64) error {
 	// Get old note information
+	// Get old note information
 	// 获取旧笔记信息
 	oldNote, err := s.noteRepo.GetByID(ctx, oldNoteID, uid)
 	if err != nil {
@@ -829,12 +830,14 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 	}
 
 	// Migrate ContentLastSnapshot and Version from old note to new note
+	// Migrate ContentLastSnapshot and Version from old note to new note
 	// 将旧笔记的 ContentLastSnapshot 和 Version 迁移到新笔记
 	err = s.noteRepo.UpdateSnapshot(ctx, oldNote.ContentLastSnapshot, oldNote.ContentLastSnapshotHash, oldNote.Version, newNoteID, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	// Mark old note as deleted, and mark as rename deleted
 	// Mark old note as deleted, and mark as rename deleted
 	// 标记删除旧笔记，并标记是 rename 删除的笔记
 	oldNote.Action = domain.NoteActionDelete
@@ -845,6 +848,7 @@ func (s *noteService) Migrate(ctx context.Context, oldNoteID, newNoteID int64, u
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	// Migrate share records: update res_id and resources from old note ID to new note ID
 	// Migrate share records: update res_id and resources from old note ID to new note ID
 	// 迁移分享记录：将旧笔记 ID 的分享指向新笔记 ID
 	if s.shareRepo != nil {
@@ -944,6 +948,7 @@ func (s *noteService) AppendContent(ctx context.Context, uid int64, params *dto.
 	}
 
 	// Append content
+	// Append content
 	// 追加内容
 	newContent := note.Content + params.Content
 
@@ -983,9 +988,11 @@ func (s *noteService) PrependContent(ctx context.Context, uid int64, params *dto
 	}
 
 	// Parse frontmatter to preserve it
+	// Parse frontmatter to preserve it
 	// 解析 Frontmatter 以保留它
 	yamlData, body, hasFrontmatter := util.ParseFrontmatter(note.Content)
 
+	// Prepend content to body
 	// Prepend content to body
 	// 在正文开头插入内容
 	newBody := params.Content + body
@@ -1038,6 +1045,7 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 
 	if params.Regex {
 		// Regex mode
+		// Regex mode
 		// 正则模式
 		re, err := regexp.Compile(params.Find)
 		if err != nil {
@@ -1051,6 +1059,7 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 			newContent = re.ReplaceAllString(note.Content, params.Replace)
 		} else if matchCount > 0 {
 			// Only replace first match
+			// Only replace first match
 			// 仅替换第一个匹配项
 			loc := re.FindStringIndex(note.Content)
 			if loc != nil {
@@ -1060,6 +1069,7 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 			newContent = note.Content
 		}
 	} else {
+		// Plain text mode
 		// Plain text mode
 		// 纯文本模式
 		matchCount = strings.Count(note.Content, params.Find)
@@ -1074,11 +1084,13 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 	}
 
 	// Check if no match found and fail flag is set
+	// Check if no match found and fail flag is set
 	// 检查是否未找到匹配项且设置了失败标志
 	if matchCount == 0 && params.FailIfNoMatch {
 		return nil, code.ErrorNoMatchFound
 	}
 
+	// If no changes, return early
 	// If no changes, return early
 	// 如果没有变化，提前返回
 	if newContent == note.Content {
@@ -1123,6 +1135,7 @@ func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveR
 	}
 
 	// Get source note
+	// Get source note
 	// 获取源笔记
 	sourceNote, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
@@ -1135,12 +1148,14 @@ func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveR
 	destPathHash := util.EncodeHash32(params.Destination)
 
 	// Check if destination exists
+	// Check if destination exists
 	// 检查目标位置是否已存在
 	destNote, _ := s.noteRepo.GetByPathHash(ctx, destPathHash, vaultID, uid)
 	if destNote != nil {
 		if !params.Overwrite {
 			return nil, code.ErrorNoteConflict
 		}
+		// Delete destination if overwrite is allowed
 		// Delete destination if overwrite is allowed
 		// 如果允许覆盖，则删除目标笔记
 		deleteParams := &dto.NoteDeleteRequest{
@@ -1172,6 +1187,7 @@ func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveR
 	}
 
 	// Delete source note
+	// Delete source note
 	// 删除源笔记
 	deleteParams := &dto.NoteDeleteRequest{
 		Vault:    params.Vault,
@@ -1189,6 +1205,7 @@ func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveR
 	}
 
 	// Trigger history migration
+	// Trigger history migration
 	// 触发历史记录迁移
 	if result != nil {
 		s.MigratePush(sourceNote.ID, result.ID, uid)
@@ -1205,9 +1222,11 @@ func (s *noteService) UpdateNoteLinks(ctx context.Context, noteID int64, content
 	}
 
 	// Delete existing links for this note
+	// Delete existing links for this note
 	// 删除该笔记现有的链接
 	_ = s.noteLinkRepo.DeleteBySourceNoteID(ctx, noteID, uid)
 
+	// Parse wiki links from content
 	// Parse wiki links from content
 	// 从内容中解析 Wiki 链接
 	links := util.ParseWikiLinks(content)
@@ -1215,6 +1234,7 @@ func (s *noteService) UpdateNoteLinks(ctx context.Context, noteID int64, content
 		return
 	}
 
+	// Create new link records
 	// Create new link records
 	// 创建新链接记录
 	var noteLinks []*domain.NoteLink
@@ -1259,12 +1279,14 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 
 // CleanDuplicateNotes 清理重复的笔记记录
 func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
+	// Get all notes (including deleted ones for global deduplication)
 	// 获取所有笔记（包含已删除，以便全局去重）
 	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
 
+	// Group by PathHash
 	// 按 PathHash 分组
 	grouped := make(map[string][]*domain.Note)
 	for _, n := range notes {
@@ -1276,9 +1298,13 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 			continue
 		}
 
-		//保留规则：
+		// Retention rules:
+		// 保留规则：
+		// 1. Prioritize records with Action != delete
 		// 1. 优先保留 Action != delete 的记录
+		// 2. If multiple active records exist, keep the one with the largest UpdatedTimestamp (latest)
 		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
+		// 3. If timestamps are identical, keep the record with the largest ID
 		// 3. 如果时间戳一致，保留 ID 最大的记录
 
 		var bestNote *domain.Note
@@ -1288,6 +1314,7 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 				continue
 			}
 
+			// Comparison logic
 			// 比较逻辑
 			isBetter := false
 			if n.Action != domain.NoteActionDelete && bestNote.Action == domain.NoteActionDelete {
@@ -1305,9 +1332,12 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 			}
 		}
 
+		// Delete all records except the bestNote
+		// Delete all records except the bestNote
 		// 删除非 bestNote 的所有记录
 		for _, n := range list {
 			if n.ID != bestNote.ID {
+				// Clear singleflight cache to prevent residual data
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
 				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash)) // 虽然 rename key 不同，但以防万一
@@ -1320,6 +1350,6 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 	return nil
 }
 
-// Verify noteService implements NoteService interface
+// Ensure noteService implements NoteService interface
 // 确保 noteService 实现了 NoteService interface
 var _ NoteService = (*noteService)(nil)

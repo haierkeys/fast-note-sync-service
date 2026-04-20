@@ -47,6 +47,7 @@ func NewCloudflareService(logger *zap.Logger) CloudflareService {
 }
 
 // Start starts the Cloudflare tunnel
+// Start 启动 Cloudflare 隧道
 func (s *cloudflareService) Start(ctx context.Context, token string, logEnabled bool) error {
 	if token == "" {
 		return fmt.Errorf("cloudflare tunnel token is required")
@@ -58,6 +59,7 @@ func (s *cloudflareService) Start(ctx context.Context, token string, logEnabled 
 
 	s.logger.Info("Starting Cloudflare Tunnel service...")
 
+	// Ensure binary exists
 	// 确保二进制文件存在
 	binPath, err := s.DownloadBinary()
 	if err != nil {
@@ -75,6 +77,7 @@ func (s *cloudflareService) Start(ctx context.Context, token string, logEnabled 
 	return nil
 }
 
+// DownloadBinary implements active download logic
 // DownloadBinary 实现主动下载逻辑
 func (s *cloudflareService) DownloadBinary() (string, error) {
 	storageDir := "storage/cloudflared_tunnel"
@@ -92,16 +95,19 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 	fileName := fmt.Sprintf("cloudflared-%s-%s%s", goos, goarch, ext)
 	binPath := filepath.Join(storageDir, fileName)
 
+	// If file already exists and is executable
 	// 如果文件已存在且可执行
 	if _, err := os.Stat(binPath); err == nil {
 		return binPath, nil
 	}
 
+	// Construct download URL
 	// 构造下载链接
 	downloadURL := "https://github.com/cloudflare/cloudflared/releases/latest/download/" + fileName
 
 	s.logger.Info("Cloudflared binary not found, attempting to download...", zap.String("url", downloadURL))
 
+	// Execute download
 	// 执行下载
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Get(downloadURL)
@@ -120,6 +126,7 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 		return "", fmt.Errorf("download server returned %s. \n[💡 Suggestion] Please manually download from:\n %s \nAnd place it in: %s", resp.Status, downloadURL, storageDir)
 	}
 
+	// Save to file
 	// 保存到文件
 	out, err := os.Create(binPath)
 	if err != nil {
@@ -131,6 +138,7 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 		return "", fmt.Errorf("failed to save binary: %w", err)
 	}
 
+	// Grant execution permission (Unix)
 	// 赋予执行权限 (Unix)
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(binPath, 0755); err != nil {
@@ -142,6 +150,7 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 	return binPath, nil
 }
 
+// runTunnelProcess runs external process
 // runTunnelProcess 运行外部进程
 func (s *cloudflareService) runTunnelProcess(ctx context.Context, binPath, token string) error {
 	var writers []io.Writer
@@ -151,6 +160,7 @@ func (s *cloudflareService) runTunnelProcess(ctx context.Context, binPath, token
 	errWriters = append(errWriters, os.Stderr)
 
 	if s.logEnabled {
+		// Ensure system log directory exists
 		// 确保统一日志目录存在
 		logDir := "storage/logs"
 		if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -169,6 +179,7 @@ func (s *cloudflareService) runTunnelProcess(ctx context.Context, binPath, token
 		s.logger.Info("Cloudflare Tunnel logging enabled", zap.String("logPath", logPath))
 	}
 
+	// Using context.WithCancel ensures child processes are killed when the main context is cancelled
 	// 使用 context.WithCancel 可以确保主 Context 取消时，子进程也被杀死
 	s.cmd = exec.CommandContext(ctx, binPath, "tunnel", "--no-autoupdate", "run", "--token", token)
 
@@ -180,6 +191,7 @@ func (s *cloudflareService) runTunnelProcess(ctx context.Context, binPath, token
 		return err
 	}
 
+	// Wait for process completion
 	// 等待进程结束
 	if err := s.cmd.Wait(); err != nil && ctx.Err() == nil {
 		return fmt.Errorf("cloudflared exited unexpectedly: %w", err)

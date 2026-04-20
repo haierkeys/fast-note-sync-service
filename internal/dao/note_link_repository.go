@@ -1,4 +1,5 @@
 // Package dao implements the data access layer
+// Package dao 实现数据访问层
 package dao
 
 import (
@@ -38,6 +39,7 @@ func init() {
 	})
 }
 
+// noteLink gets the note link query object
 // noteLink 获取笔记链接查询对象
 func (r *noteLinkRepository) noteLink(uid int64) *query.Query {
 	key := r.GetKey(uid)

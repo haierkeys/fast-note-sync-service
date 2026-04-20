@@ -122,6 +122,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Unified call to EnsurePathFID
 	// 统一调用 EnsurePathFID
 	fid, err := s.EnsurePathFID(ctx, uid, vaultID, params.Path)
 	if err != nil {
@@ -141,6 +142,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 }
 
 func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) (*dto.FolderDTO, error) {
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return nil, err
@@ -162,7 +164,8 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 		return nil, code.ErrorFolderGetFailed.WithDetails(err.Error())
 	}
 
-	// 软删除
+	// Update to deleted status
+	// 更新为删除状态
 	f.Action = domain.FolderActionDelete
 	f.UpdatedTimestamp = time.Now().UnixMilli()
 	_, err = s.folderRepo.Update(ctx, f, uid)
@@ -178,6 +181,7 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 }
 
 func (s *folderService) ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error) {
+	// Use VaultService.MustGetID to retrieve VaultID // 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, vault)
 	if err != nil {
 		return nil, err
@@ -223,7 +227,8 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		params.OldPathHash = util.EncodeHash32(params.OldPath)
 	}
 
-	// 1. 获取旧文件夹
+	// Rename renames a folder
+	// Rename 重命名文件夹
 	oldFolder, err := s.folderRepo.GetByPathHash(ctx, params.OldPathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -240,7 +245,8 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		return nil, nil, code.ErrorFolderGetFailed.WithDetails(params.OldPathHash + "->" + params.PathHash + ":" + err.Error())
 	}
 
-	// 2. 判断目标目录是否存在且有效
+	// 1. Check if target path has valid folder
+	// 1. 判断目标路径是否存在有效文件夹
 	existFolder, _ := s.folderRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if existFolder != nil && existFolder.Action != domain.FolderActionDelete {
 		newFolder, err := s.Delete(ctx, uid, &dto.FolderDeleteRequest{
@@ -254,6 +260,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		return s.domainToDTO(oldFolder), newFolder, nil
 	}
 
+	// 3. Mark old folder as deleted
 	// 3. 标记旧文件夹删除
 	oldFolder.Action = domain.FolderActionDelete
 	oldFolder.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -262,7 +269,9 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 		return nil, nil, code.ErrorFolderRenameFailed.WithDetails(err.Error())
 	}
 
-	// 4. 新建或复用文件夹记录（统一调用 EnsurePathFID）
+	// 4. New or reuse folder record
+	// 4. 新建或复用文件夹记录
+	// 统一调用 EnsurePathFID
 	fid, err := s.EnsurePathFID(ctx, uid, vaultID, params.Path)
 	if err != nil {
 		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
@@ -409,7 +418,8 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 	return res, int(count), nil
 }
 
-// EnsurePathFID 确保资源的父目录存在并返回其 ID
+// EnsurePathFID ensures all folders in path exist and returns the ID of the deepest folder
+// EnsurePathFID 确保路径中的所有文件夹都存在并返回最深文件夹的 ID
 //
 // NOTE: Race condition — when multiple notes sync concurrently (even from a
 // single device), each goroutine calls EnsurePathFID independently. The
@@ -430,6 +440,7 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 		return 0, nil
 	}
 
+	// Decompose directory
 	// 分解目录
 	parts := strings.Split(path, "/")
 	var currentFID int64 = 0
@@ -482,10 +493,10 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 	return currentFID, nil
 }
 
-// SyncResourceFID 同步 Vault 下资源的 FID（支持全量或部分同步）
+// SyncResourceFID syncs FID of resources (called after folder rename/move)
+// SyncResourceFID 同步资源的 FID（在文件夹重命名/移动后调用）
 func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {
-	// Use pool for async execution to avoid CPU spike
-	// 使用协程池异步执行，避免 CPU 飙升
+	// Use pool for async execution to avoid CPU spike // 使用协程池异步执行，避免 CPU 飙升
 	if s.pool != nil {
 		// Create a background context to avoid being cancelled by request context
 		// 使用背景 context 避免被请求 context 取消
@@ -508,6 +519,7 @@ func (s *folderService) SyncResourceFID(ctx context.Context, uid int64, vaultID 
 }
 
 func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {
+	// Sync notes
 	// 同步笔记
 	var notes []*domain.Note
 	var err error
@@ -520,6 +532,8 @@ func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultI
 
 	if err == nil {
 		for _, n := range notes {
+			// Set action
+			// 设置 action
 			if n.Action == domain.NoteActionDelete {
 				continue
 			}
@@ -542,6 +556,7 @@ func (s *folderService) doSyncResourceFID(ctx context.Context, uid int64, vaultI
 		}
 	}
 
+	// Sync files
 	// 同步文件
 	var files []*domain.File
 	if len(fileIDs) > 0 {
@@ -584,7 +599,7 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 		return nil, err
 	}
 
-	// Get all non-deleted folders
+	// Get all non-deleted folders // 获取所有未删除的文件夹
 	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
 		return nil, code.ErrorFolderListFailed.WithDetails(err.Error())
@@ -688,25 +703,29 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 }
 
 func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, vaultID int64) error {
+	// 1. Get all folder records (including deleted ones for logical cleanup)
 	// 1. 获取所有文件夹记录（包含已删除的，以便按逻辑清理）
 	folders, err := s.folderRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
 
+	// 2. Group by PathHash
 	// 2. 按 PathHash 分组
 	grouped := make(map[string][]*domain.Folder)
 	for _, f := range folders {
 		grouped[f.PathHash] = append(grouped[f.PathHash], f)
 	}
 
+	// 3. Traverse groups and identify duplicates
 	// 3. 遍历分组，识别重复项
 	for pathHash, list := range grouped {
 		if len(list) <= 1 {
 			continue
 		}
 
-		// 检查这组重复记录中是否有被标记为删除的
+		// Check if any deleted records exist in this group to resolve issues where deleted folders are recreated by EnsurePathFID
+		// 检查这组重复记录中是否有被标记为删除的（处理已删除但仍被 EnsurePathFID 误创出的情况）
 		var hasDeleted bool
 		for _, f := range list {
 			if f.Action == domain.FolderActionDelete {
@@ -716,6 +735,7 @@ func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, va
 		}
 
 		if hasDeleted {
+			// If deleted records exist, remove all active records for this path to resolve consistency
 			// 如果存在已删除记录，则删除所有未标记删除的记录（解决已删除但仍被 EnsurePathFID 误创出的活跃记录）
 			for _, f := range list {
 				if f.Action != domain.FolderActionDelete {
@@ -724,6 +744,7 @@ func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, va
 				}
 			}
 		} else {
+			// If all records are active, keep the one with the largest ID (assumed to be the latest)
 			// 如果全部都是活跃记录，保留 ID 最大的一条（假设是最后创建的）
 			var maxID int64
 			for _, f := range list {

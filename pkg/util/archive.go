@@ -29,12 +29,14 @@ func Zip(source, target string) error {
 			return err
 		}
 
+		// Get relative path from source
 		// 获取相对于 source 的路径
 		relPath, err := filepath.Rel(source, path)
 		if err != nil {
 			return err
 		}
 
+		// Skip root directory itself
 		// 跳过根目录本身
 		if relPath == "." {
 			return nil
@@ -45,6 +47,7 @@ func Zip(source, target string) error {
 			return err
 		}
 
+		// Use relative path as filename in zip
 		// 使用相对路径作为压缩包内的文件名
 		header.Name = relPath
 		if info.IsDir() {

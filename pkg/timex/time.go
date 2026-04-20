@@ -25,8 +25,8 @@ func (t *Time) UnmarshalJSON(data []byte) (err error) {
 func (t Time) MarshalJSON() ([]byte, error) {
 	tTime := time.Time(t)
 	// If time value is empty or 0, return null. Returning empty string will cause abnormal time exception.
-	// 如果时间值是空或者0值 返回为null 如果写空字符串会报出异常时间
-	// Fixes 0001-01-01 issue below
+	// MarshalJSON 如果时间值是空或者0值 返回为null 如果写空字符串会报出异常时间
+	// Below is to fix the 0001-01-01 issue
 	// 下面是修复0001-01-01问题的
 	if t.IsZero() {
 		return []byte("null"), nil
@@ -108,6 +108,7 @@ func (t Time) Before(u Time) bool {
 }
 
 // Equal reports whether t and u represent the same time instant.
+// Equal 报告 t 和 u 是否代表相同的时间点。
 // Two times can be equal even if they are in different locations.
 // For example, 6:00 +0200 and 4:00 UTC are Equal.
 // See the documentation on the Time type for the pitfalls of using == with

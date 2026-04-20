@@ -26,7 +26,8 @@ func (p *R2) GetBucket(bucketName string) string {
 	return bucketName
 }
 
-// UploadByFile 上传文件
+// SendFile upload file
+// SendFile 上传文件
 func (p *R2) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
 
 	ctx := context.Background()

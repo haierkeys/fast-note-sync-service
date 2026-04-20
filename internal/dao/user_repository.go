@@ -1,3 +1,4 @@
+// Package dao implements the data access layer
 // Package dao 实现数据访问层
 package dao
 
@@ -12,11 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// userRepository implements domain.UserRepository interface
 // userRepository 实现 domain.UserRepository 接口
 type userRepository struct {
 	dao *Dao
 }
 
+// NewUserRepository creates UserRepository instance
 // NewUserRepository 创建 UserRepository 实例
 func NewUserRepository(dao *Dao) domain.UserRepository {
 	return &userRepository{dao: dao}
@@ -33,6 +36,7 @@ func init() {
 	})
 }
 
+// user gets the user query object
 // user 获取用户查询对象
 func (r *userRepository) user() *query.Query {
 	return r.dao.QueryWithOnceInit(func(g *gorm.DB) {
@@ -40,6 +44,7 @@ func (r *userRepository) user() *query.Query {
 	}, "user#user")
 }
 
+// toDomain converts database model to domain model
 // toDomain 将数据库模型转换为领域模型
 func (r *userRepository) toDomain(m *model.User) *domain.User {
 	if m == nil {
@@ -60,6 +65,7 @@ func (r *userRepository) toDomain(m *model.User) *domain.User {
 	}
 }
 
+// toModel converts domain model to database model
 // toModel 将领域模型转换为数据库模型
 func (r *userRepository) toModel(user *domain.User) *model.User {
 	if user == nil {
@@ -84,6 +90,7 @@ func (r *userRepository) toModel(user *domain.User) *model.User {
 	}
 }
 
+// GetByUID retrieves user by UID
 // GetByUID 根据UID获取用户
 func (r *userRepository) GetByUID(ctx context.Context, uid int64) (*domain.User, error) {
 	u := r.user().User
@@ -94,6 +101,7 @@ func (r *userRepository) GetByUID(ctx context.Context, uid int64) (*domain.User,
 	return r.toDomain(m), nil
 }
 
+// GetByEmail retrieves user by email
 // GetByEmail 根据邮箱获取用户
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	u := r.user().User
@@ -104,6 +112,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return r.toDomain(m), nil
 }
 
+// GetByUsername retrieves user by username
 // GetByUsername 根据用户名获取用户
 func (r *userRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 	u := r.user().User
@@ -114,6 +123,7 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*d
 	return r.toDomain(m), nil
 }
 
+// Create creates a user
 // Create 创建用户
 func (r *userRepository) Create(ctx context.Context, user *domain.User) (*domain.User, error) {
 	u := r.user().User
@@ -128,6 +138,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) (*domain
 	return r.toDomain(m), nil
 }
 
+// UpdatePassword updates user password
 // UpdatePassword 更新用户密码
 func (r *userRepository) UpdatePassword(ctx context.Context, password string, uid int64) error {
 	u := r.user().User
@@ -141,6 +152,7 @@ func (r *userRepository) UpdatePassword(ctx context.Context, password string, ui
 	return err
 }
 
+// GetAllUIDs retrieves all user UIDs
 // GetAllUIDs 获取所有用户UID
 func (r *userRepository) GetAllUIDs(ctx context.Context) ([]int64, error) {
 	var uids []int64
@@ -152,5 +164,6 @@ func (r *userRepository) GetAllUIDs(ctx context.Context) ([]int64, error) {
 	return uids, nil
 }
 
+// Ensure userRepository implements domain.UserRepository interface
 // 确保 userRepository 实现了 domain.UserRepository 接口
 var _ domain.UserRepository = (*userRepository)(nil)

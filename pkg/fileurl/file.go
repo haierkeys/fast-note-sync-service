@@ -113,8 +113,7 @@ func IsPermission(dst string) bool {
 // IsExist determines if the given path exists
 // IsExist 判断所给路径是否不存在
 func IsExist(dst string) bool {
-	_, err := os.Stat(dst) // os.Stat gets file info
-	// os.Stat获取文件信息
+	_, err := os.Stat(dst) // os.Stat gets file info // os.Stat获取文件信息
 	if err != nil {
 		return os.IsExist(err)
 	}
@@ -157,11 +156,9 @@ func IsAbsPath(path string) bool {
 		// Windows system
 		// Windows系统
 		if filepath.VolumeName(path) != "" {
-			return true // If there is a drive letter, it is an absolute path
-			// 如果有盘符，则为绝对路径
+			return true // If there is a drive letter, it is an absolute path // 如果有盘符，则为绝对路径
 		}
-		return filepath.IsAbs(path) // Check if it is an absolute path
-		// 检查是否是绝对路径
+		return filepath.IsAbs(path) // Check if it is an absolute path // 检查是否是绝对路径
 	}
 	// UNIX/Linux system
 	// UNIX/Linux系统

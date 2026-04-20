@@ -65,18 +65,23 @@ func (v ValidErrors) MapsToString() string {
 	return string(re)
 }
 
+// BindAndValid bind request parameters and perform validation, supporting multiple languages
 // BindAndValid 绑定请求参数并进行验证，支持多语言
 func BindAndValid(c *gin.Context, obj interface{}) (bool, ValidErrors) {
 	var errs ValidErrors
 
+	// Use global validator for validation
 	// 使用全局验证器进行验证
 	if err := c.ShouldBind(obj); err != nil {
+		// If verification fails, check error type
 		// 如果验证失败，检查错误类型
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			// Get translator
 			// 获取翻译器
 			v := c.Value("trans")
 			trans := v.(ut.Translator)
 
+			// Iterate through validation errors and translate them
 			// 遍历验证错误并进行翻译
 			for _, validationErr := range validationErrors {
 				translatedMsg := validationErr.Translate(trans) // 翻译错误消息
@@ -87,8 +92,8 @@ func BindAndValid(c *gin.Context, obj interface{}) (bool, ValidErrors) {
 			}
 		}
 
-		return false, errs // 返回验证错误
+		return false, errs // Return validation error // 返回验证错误
 	}
 
-	return true, nil // 绑定和验证都成功，返回 true
+	return true, nil // Binding and validation both succeeded, returns true // 绑定和验证都成功，返回 true
 }

@@ -18,6 +18,7 @@ type gitSyncRepository struct {
 	customPrefixKey string
 }
 
+// NewGitSyncRepository creates GitSyncRepository instance
 // NewGitSyncRepository 创建 GitSyncRepository 实例
 func NewGitSyncRepository(dao *Dao) domain.GitSyncRepository {
 	return &gitSyncRepository{dao: dao, customPrefixKey: "user_git_sync_"}
@@ -314,5 +315,6 @@ func (r *gitSyncRepository) DeleteOldHistory(ctx context.Context, uid int64, con
 	})
 }
 
+// Ensure gitSyncRepository implements domain.GitSyncRepository interface
 // 确保 gitSyncRepository 实现了 domain.GitSyncRepository 接口
 var _ domain.GitSyncRepository = (*gitSyncRepository)(nil)

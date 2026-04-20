@@ -27,9 +27,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// attachmentRegex regular expression for attachment links
+// attachmentRegex 附件链接正则表达式
 var (
 	attachmentRegex    = regexp.MustCompile(`!\[\[(.*?)\]\]`)
+	// markdownImageRegex regular expression for markdown images
+	// markdownImageRegex markdown 图片正则表达式
 	markdownImageRegex = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
+	// htmlImageRegex regular expression for html images
+	// htmlImageRegex html 图片正则表达式
 	htmlImageRegex     = regexp.MustCompile(`(?i)<img\b([^>]*?)\bsrc\s*=\s*(['"])(.*?)['"]([^>]*)>`)
 )
 
@@ -177,9 +183,9 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 			} else {
 				for _, file := range fileRefs {
 					fileIDStr := strconv.FormatInt(file.ID, 10)
-					// Avoid duplicate authorization
-					// 避免重复授权
-					if !util.Inarray(resolvedResources["file"], fileIDStr) {
+			// Avoid duplicate authorization
+			// 避免重复授权
+			if !util.Inarray(resolvedResources["file"], fileIDStr) {
 						resolvedResources["file"] = append(resolvedResources["file"], fileIDStr)
 					}
 				}
@@ -209,8 +215,12 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 			expiry = d
 		}
 	}
+	// expiresAt expiration time
+	// expiresAt 过期时间
 	expiresAt := time.Now().Add(expiry)
 
+	// pwdMd5 password MD5
+	// pwdMd5 密码 MD5
 	pwdMd5 := ""
 	if password != "" {
 		pwdMd5 = util.EncodeMD5(password)
@@ -228,8 +238,8 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		UpdatedAt: time.Now(),
 	}
 
-	// 幂等：若该资源已有 active 分享，先撤销，避免重复计数
 	// Idempotent: revoke any existing active share before creating a new one
+	// 幂等：若该资源已有 active 分享，先撤销，避免重复计数
 	if existing, err := s.repo.GetByRes(ctx, uid, mainType, mainID); err == nil && existing != nil {
 		_ = s.StopShare(ctx, uid, existing.ID)
 	}
@@ -274,6 +284,7 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 		return nil, domain.ErrShareCancelled
 	}
 
+	// Add password verification logic
 	// 增加密码校验逻辑
 	if share.Password != "" {
 		if password == "" {
@@ -418,8 +429,8 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 
 	items := make([]*dto.ShareListItem, 0, len(shares))
 
-	// 批量收集 noteIDs 和 fileIDs，避免 N+1 查询
 	// Collect noteIDs and fileIDs in bulk to avoid N+1 queries
+	// 批量收集 noteIDs 和 fileIDs，避免 N+1 查询
 	var noteIDs, fileIDs []int64
 	for _, share := range shares {
 		switch share.ResType {
@@ -430,8 +441,8 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 		}
 	}
 
-	// 批量查询 notes，建立 id→note 映射
 	// Batch query notes and build id→note map
+	// 批量查询 notes，建立 id→note 映射
 	noteMap := make(map[int64]*domain.Note)
 	if len(noteIDs) > 0 {
 		notes, err := s.noteRepo.ListByIDs(ctx, noteIDs, uid)
@@ -456,8 +467,8 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 		}
 	}
 
-	// 查询 vault 名称（vault 数量极少，按需缓存）
 	// Query vault names on demand with local cache (vault count is always small)
+	// 查询 vault 名称（vault 数量极少，按需缓存）
 	vaultNameCache := make(map[int64]string)
 
 	for _, share := range shares {
@@ -475,15 +486,15 @@ func (s *shareService) ListShares(ctx context.Context, uid int64, sortBy string,
 			IsPassword:   share.Password != "",
 		}
 
-		// 生成 Token 并拼接 URL /ResID/token
 		// Generate Token and concatenate URL /ResID/token
+		// 生成 Token 并拼接 URL /ResID/token
 		token, err := s.tokenManager.ShareGenerate(share.ID, uid, share.Resources)
 		if err == nil {
 			item.URL = "/share/" + strconv.FormatInt(share.ResID, 10) + "/" + token
 		}
 
-		// 从预加载的 map 中回填标题，无额外查询
 		// Fill title from preloaded maps, no extra DB queries
+		// 从预加载的 map 中回填标题，无额外查询
 		switch share.ResType {
 		case "note":
 			if note, ok := noteMap[share.ResID]; ok && note.Action != domain.NoteActionDelete {
@@ -725,6 +736,7 @@ func (s *shareService) GetSharedNote(ctx context.Context, shareToken string, not
 		rawPath := inner
 		options := ""
 
+		// Extract resource path (remove part after alias | and anchor #)
 		// 提取资源路径（移除别名 | 和锚点 # 之后的部分）
 		if idx := strings.IndexAny(inner, "|#"); idx != -1 {
 			rawPath = inner[:idx]

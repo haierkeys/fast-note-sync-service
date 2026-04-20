@@ -102,7 +102,7 @@ func RequestParamStrParse(c *gin.Context, param any) {
 }
 
 // GetRequestIP gets the request IP
-// GetRequestIP 获取ip
+// GetRequestIP 获取 IP 地址
 func GetRequestIP(c *gin.Context) string {
 	reqIP := c.ClientIP()
 	if reqIP == "::1" {
@@ -139,7 +139,7 @@ func (r *Response) ToResponse(codeObj *code.Code) {
 
 	if codeObj.HaveVault() {
 		// Assume codeObj.Vault() returns a serializable value (string, struct, etc.)
-		// 假设 codeObj.Vault() 返回可序列化的值（string 或 struct 等）
+		// Assume codeObj.Vault() 假设 codeObj.Vault() 返回可序列化的值（string 或 struct 等）
 		content.Vault = codeObj.Vault()
 	}
 

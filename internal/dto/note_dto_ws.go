@@ -1,7 +1,7 @@
 package dto
 
 // NoteSyncRenameMessage message structure for note rename during sync
-// 同步过程中笔记重命名的消息结构
+// NoteSyncRenameMessage 同步过程中笔记重命名的消息结构
 type NoteSyncRenameMessage struct {
 	Path             string `json:"path" form:"path" binding:"required" example:"NewName.md"` // New path // 新路径
 	PathHash         string `json:"pathHash" form:"pathHash" example:"nfhash123"`             // New path hash // 新路径哈希

@@ -16,6 +16,7 @@ type VaultGetRequest struct {
 }
 
 // ---------------- DTO / Response ----------------
+// ---------------- DTO / 响应参数 ----------------
 
 // VaultDTO Vault data transfer object
 // VaultDTO Vault 数据传输对象

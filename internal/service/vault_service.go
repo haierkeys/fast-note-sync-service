@@ -99,12 +99,14 @@ func (s *vaultService) GetOrCreate(ctx context.Context, uid int64, name string) 
 	key := fmt.Sprintf("vault_get_or_create_%d_%s", uid, name)
 
 	result, err, _ := s.sf.Do(key, func() (interface{}, error) {
+		// Attempt to retrieve first
 		// 先尝试获取
 		vault, err := s.repo.GetByName(ctx, name, uid)
 		if err == nil {
 			return vault, nil
 		}
 
+		// Create if not exists
 		// 如果不存在，则创建
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			newVault := &domain.Vault{

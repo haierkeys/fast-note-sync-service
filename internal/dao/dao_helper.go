@@ -8,26 +8,31 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 )
 
+// getContentPath gets the content storage path
 // getContentPath 获取内容存储路径
 func (d *Dao) GetNoteFolderPath(uid int64, noteID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "note", fmt.Sprintf("n_%d", noteID))
 }
 
+// getSettingFolderPath gets the setting storage path
 // getSettingFolderPath 获取配置存储路径
 func (d *Dao) GetSettingFolderPath(uid int64, settingID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "setting", fmt.Sprintf("s_%d", settingID))
 }
 
+// GetFileFolderPath gets the file folder path
 // GetFileFolderPath 获取文件目录路径
 func (d *Dao) GetFileFolderPath(uid int64, fileID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "file", fmt.Sprintf("f_%d", fileID))
 }
 
+// GetNoteHistoryFolderPath gets the note history storage path
 // GetNoteHistoryFolderPath 获取笔记历史存储路径
 func (d *Dao) GetNoteHistoryFolderPath(uid int64, historyID int64) string {
 	return filepath.Join("storage", "vault", fmt.Sprintf("u_%d", uid), "history", fmt.Sprintf("h_%d", historyID))
 }
 
+// saveContentToFile saves content to a file
 // saveContentToFile 保存内容到文件
 func (d *Dao) SaveContentToFile(folderPath string, fileName string, content string) error {
 	if err := os.MkdirAll(folderPath, 0755); err != nil {
@@ -37,7 +42,9 @@ func (d *Dao) SaveContentToFile(folderPath string, fileName string, content stri
 	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
+// loadContentFromFile loads content from a file
 // loadContentFromFile 从文件加载内容
+// Return values: content, whether it exists, error
 // 返回值: 内容, 是否存在, 错误
 func (d *Dao) LoadContentFromFile(folderPath string, fileName string) (string, bool, error) {
 	filePath := filepath.Join(folderPath, fileName)
@@ -51,6 +58,7 @@ func (d *Dao) LoadContentFromFile(folderPath string, fileName string) (string, b
 	return string(content), true, nil
 }
 
+// removeContentFolder removes the content folder
 // removeContentFolder 删除内容文件夹
 func (d *Dao) RemoveContentFolder(folderPath string) error {
 	if fileurl.IsExist(folderPath) {
