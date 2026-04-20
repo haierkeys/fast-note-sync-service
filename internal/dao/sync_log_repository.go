@@ -25,7 +25,7 @@ type syncLogRepository struct {
 // NewSyncLogRepository creates a SyncLogRepository instance
 // NewSyncLogRepository 创建 SyncLogRepository 实例
 func NewSyncLogRepository(dao *Dao) domain.SyncLogRepository {
-	return &syncLogRepository{dao: dao, customPrefixKey: "user_"}
+	return &syncLogRepository{dao: dao, customPrefixKey: "user_sync_log_"}
 }
 
 // GetKey returns the database routing key for the given user
