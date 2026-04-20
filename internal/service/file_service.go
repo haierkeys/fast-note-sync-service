@@ -108,6 +108,7 @@ type fileService struct {
 	noteRepo       domain.NoteRepository // Note repository // 笔记仓库
 	vaultService   VaultService          // Vault service // 仓库服务
 	folderService  FolderService         // Folder service // 文件夹服务
+	syncLogService SyncLogService        // Sync log service // 同步日志服务
 	sf             *singleflight.Group   // Singleflight group // 并发请求合并组
 	clientName     string                // Client name // 客户端名称
 	clientVer      string                // Client version // 客户端版本
@@ -119,7 +120,7 @@ type fileService struct {
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) FileService {
+func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) FileService {
 	return &fileService{
 		fileRepo:       fileRepo,
 		noteRepo:       noteRepo,
@@ -127,6 +128,7 @@ func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteReposito
 		folderService:  folderSvc,
 		backupService:  backupSvc,
 		gitSyncService: gitSyncSvc,
+		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
 		countTimers:    &sync.Map{},
@@ -255,6 +257,10 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 					return nil, code.ErrorDBQuery.WithDetails(err.Error())
 				}
 				file.Mtime = params.Mtime
+				// Log mtime-only update // 记录仅 mtime 变更日志
+				if s.syncLogService != nil {
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "mtime", file.Path, file.PathHash, s.clientName, file.Size)
+				}
 				if s.backupService != nil {
 					go s.backupService.NotifyUpdated(uid)
 				}
@@ -291,6 +297,11 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 
+			// Log content modify // 记录内容变更日志
+			if s.syncLogService != nil {
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientName, updated.Size)
+			}
+
 			go s.CountSizeSum(context.Background(), vaultID, uid)
 			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
 			if s.backupService != nil {
@@ -320,6 +331,11 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		created, err := s.fileRepo.Create(ctx, newFile, uid)
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// Log create // 记录新建日志
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientName, created.Size)
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -366,6 +382,11 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	// Log soft delete // 记录软删除日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionSoftDelete, "", file.Path, file.PathHash, s.clientName, file.Size)
+	}
+
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	if s.backupService != nil {
 		go s.backupService.NotifyUpdated(uid)
@@ -410,6 +431,11 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log restore // 记录恢复日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRestore, "", updated.Path, updated.PathHash, s.clientName, updated.Size)
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -812,6 +838,11 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
+		// Log rename // 记录重命名日志
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRename, "path", newFileCreated.Path, newFileCreated.PathHash, s.clientName, newFileCreated.Size)
+		}
+
 		// 修正目录FID
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
 
@@ -841,6 +872,7 @@ func (s *fileService) WithClient(name, version string) FileService {
 		noteRepo:       s.noteRepo,
 		vaultService:   s.vaultService,
 		folderService:  s.folderService,
+		syncLogService: s.syncLogService,
 		sf:             s.sf,
 		clientName:     name,
 		clientVer:      version,
@@ -865,6 +897,11 @@ func (s *fileService) RecycleClear(ctx context.Context, uid int64, params *dto.F
 	err = s.fileRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log permanent delete // 记录彻底删除日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionDelete, "", params.Path, params.PathHash, s.clientName, 0)
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)

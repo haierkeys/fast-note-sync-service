@@ -130,6 +130,7 @@ type noteService struct {
 	shareRepo      domain.UserShareRepository // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
 	vaultService   VaultService               // Vault service // 仓库服务
 	folderService  FolderService              // Folder service // 文件夹服务
+	syncLogService SyncLogService             // Sync log service // 同步日志服务
 	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
 	clientName     string                     // Client name // 客户端名称
 	clientVer      string                     // Client version // 客户端版本
@@ -141,7 +142,7 @@ type noteService struct {
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, config *ServiceConfig) NoteService {
+func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
 	return &noteService{
 		noteRepo:       noteRepo,
 		noteLinkRepo:   noteLinkRepo,
@@ -151,6 +152,7 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 		folderService:  folderSvc,
 		backupService:  backupSvc,
 		gitSyncService: gitSyncSvc,
+		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
 		config:         config,
 		countTimers:    &sync.Map{},
@@ -167,6 +169,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		shareRepo:      s.shareRepo,
 		vaultService:   s.vaultService,
 		folderService:  s.folderService,
+		syncLogService: s.syncLogService,
 		sf:             s.sf,
 		clientName:     name,
 		clientVer:      version,
@@ -326,6 +329,10 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 					return nil, code.ErrorDBQuery.WithDetails(err.Error())
 				}
 				note.Mtime = params.Mtime
+				// Log mtime-only update // 记录仅 mtime 变更日志
+				if s.syncLogService != nil {
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "mtime", note.Path, note.PathHash, s.clientName, note.Size)
+				}
 				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
 			}
 
@@ -356,6 +363,11 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			updated, err := s.noteRepo.Update(ctx, note, uid)
 			if err != nil {
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+
+			// Log content modify // 记录内容变更日志
+			if s.syncLogService != nil {
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientName, updated.Size)
 			}
 
 			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
@@ -391,6 +403,11 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		created, err := s.noteRepo.Create(ctx, newNote, uid)
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// Log create // 记录新建日志
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientName, created.Size)
 		}
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
@@ -448,6 +465,11 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	// 若笔记有 active 分享，自动撤销（防止计数残留）
 	_ = s.shareRepo.UpdateStatusByRes(ctx, uid, "note", note.ID, domain.UserShareStatusRevoked)
 
+	// Log soft delete // 记录软删除日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientName, note.Size)
+	}
+
 	// 重新获取更新后的笔记
 	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
 	if err != nil {
@@ -501,6 +523,11 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log restore // 记录恢复日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRestore, "", note.Path, note.PathHash, s.clientName, note.Size)
 	}
 
 	// 重新获取更新后的笔记
@@ -618,6 +645,11 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// Log rename // 记录重命名日志
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRename, "path", newNoteCreated.Path, newNoteCreated.PathHash, s.clientName, newNoteCreated.Size)
 		}
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
@@ -1214,6 +1246,11 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 	err = s.noteRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log permanent delete // 记录彻底删除日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionDelete, "", params.Path, params.PathHash, s.clientName, 0)
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)

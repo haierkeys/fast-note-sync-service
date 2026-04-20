@@ -4841,6 +4841,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/sync-logs": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Get sync log list for current user with optional type/action filters and pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync Log"
+                ],
+                "summary": "Get sync log list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "modify",
+                        "description": "Action type // 操作类型",
+                        "name": "action",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "note",
+                        "description": "Resource type: note / file / setting // 资源类型",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "MyVault",
+                        "description": "Vault name (optional filter) // 保险库名称（可选过滤）",
+                        "name": "vault",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number // 页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size // 每页数量",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/app.ListRes"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/dto.SyncLogDTO"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/user/change_password": {
             "post": {
                 "security": [
@@ -7611,6 +7705,59 @@ const docTemplate = `{
                     "description": "访问用户名",
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "dto.SyncLogDTO": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "Action type // 操作类型",
+                    "type": "string"
+                },
+                "changedFields": {
+                    "description": "Changed fields // 变更字段",
+                    "type": "string"
+                },
+                "clientName": {
+                    "description": "Client name // 客户端名称",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "Log creation time // 创建时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Record ID // 记录 ID",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "Additional message // 附加消息",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "Resource path // 资源路径",
+                    "type": "string"
+                },
+                "pathHash": {
+                    "description": "Resource path hash // 路径哈希",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size in bytes // 大小（字节）",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Status: 1 success, 2 failed // 状态",
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "Resource type // 资源类型",
+                    "type": "string"
+                },
+                "vaultId": {
+                    "description": "Vault ID // 笔记本 ID",
+                    "type": "integer"
                 }
             }
         },

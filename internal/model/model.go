@@ -43,6 +43,9 @@ func AutoMigrate(db *gorm.DB, key string) error {
 	case "Storage":
 		return db.AutoMigrate(Storage{})
 
+	case "SyncLog":
+		return db.AutoMigrate(SyncLog{})
+
 	case "User":
 		return db.AutoMigrate(User{})
 

@@ -82,20 +82,22 @@ type SettingService interface {
 // settingService implementation of SettingService interface
 // settingService 实现 SettingService 接口
 type settingService struct {
-	settingRepo  domain.SettingRepository // Setting repository // 配置仓库
-	vaultService VaultService             // Vault service // 仓库服务
-	sf           *singleflight.Group      // Singleflight group // 并发请求合并组
-	config       *ServiceConfig           // Service configuration // 服务配置
+	settingRepo    domain.SettingRepository // Setting repository // 配置仓库
+	vaultService   VaultService             // Vault service // 仓库服务
+	syncLogService SyncLogService           // Sync log service // 同步日志服务
+	sf             *singleflight.Group      // Singleflight group // 并发请求合并组
+	config         *ServiceConfig           // Service configuration // 服务配置
 }
 
 // NewSettingService creates SettingService instance
 // NewSettingService 创建 SettingService 实例
-func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultService, config *ServiceConfig) SettingService {
+func NewSettingService(settingRepo domain.SettingRepository, vaultSvc VaultService, syncLogSvc SyncLogService, config *ServiceConfig) SettingService {
 	return &settingService{
-		settingRepo:  settingRepo,
-		vaultService: vaultSvc,
-		sf:           &singleflight.Group{},
-		config:       config,
+		settingRepo:    settingRepo,
+		vaultService:   vaultSvc,
+		syncLogService: syncLogSvc,
+		sf:             &singleflight.Group{},
+		config:         config,
 	}
 }
 
@@ -206,6 +208,10 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 					return nil, code.ErrorDBQuery.WithDetails(err.Error())
 				}
 				setting.Mtime = params.Mtime
+				// Log mtime-only update // 记录仅 mtime 变更日志
+				if s.syncLogService != nil {
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "mtime", setting.Path, setting.PathHash, "", int64(len(setting.Content)))
+				}
 				return &result{isNew: false, dto: s.domainToDTO(setting)}, nil
 			}
 
@@ -235,6 +241,11 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 
+			// Log content modify // 记录内容变更日志
+			if s.syncLogService != nil {
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, "", updated.Size)
+			}
+
 			return &result{isNew: false, dto: s.domainToDTO(updated)}, nil
 		}
 
@@ -255,6 +266,11 @@ func (s *settingService) ModifyOrCreate(ctx context.Context, uid int64, params *
 		created, err := s.settingRepo.Create(ctx, newSetting, uid)
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+
+		// Log create // 记录新建日志
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionCreate, "", created.Path, created.PathHash, "", created.Size)
 		}
 
 		return &result{isNew: true, dto: s.domainToDTO(created)}, nil
@@ -302,6 +318,11 @@ func (s *settingService) Delete(ctx context.Context, uid int64, params *dto.Sett
 	updated, err := s.settingRepo.Update(ctx, setting, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log soft delete // 记录软删除日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionSoftDelete, "", setting.Path, setting.PathHash, "", 0)
 	}
 
 	return s.domainToDTO(updated), nil
@@ -420,6 +441,11 @@ func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.Sett
 	updated, err := s.settingRepo.Update(ctx, setting, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Log rename // 记录重命名日志
+	if s.syncLogService != nil {
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionRename, "path", updated.Path, updated.PathHash, "", updated.Size)
 	}
 
 	return s.domainToDTO(updated), nil

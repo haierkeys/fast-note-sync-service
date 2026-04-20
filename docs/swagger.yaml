@@ -1674,6 +1674,45 @@ definitions:
     - accessUrlPrefix
     - type
     type: object
+  dto.SyncLogDTO:
+    properties:
+      action:
+        description: Action type // 操作类型
+        type: string
+      changedFields:
+        description: Changed fields // 变更字段
+        type: string
+      clientName:
+        description: Client name // 客户端名称
+        type: string
+      createdAt:
+        description: Log creation time // 创建时间
+        type: string
+      id:
+        description: Record ID // 记录 ID
+        type: integer
+      message:
+        description: Additional message // 附加消息
+        type: string
+      path:
+        description: Resource path // 资源路径
+        type: string
+      pathHash:
+        description: Resource path hash // 路径哈希
+        type: string
+      size:
+        description: Size in bytes // 大小（字节）
+        type: integer
+      status:
+        description: 'Status: 1 success, 2 failed // 状态'
+        type: integer
+      type:
+        description: Resource type // 资源类型
+        type: string
+      vaultId:
+        description: Vault ID // 笔记本 ID
+        type: integer
+    type: object
   dto.UserChangePasswordRequest:
     properties:
       confirmPassword:
@@ -4788,6 +4827,63 @@ paths:
       summary: Get support records
       tags:
       - System
+  /api/sync-logs:
+    get:
+      description: Get sync log list for current user with optional type/action filters
+        and pagination
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Action type // 操作类型
+        example: modify
+        in: query
+        name: action
+        type: string
+      - description: 'Resource type: note / file / setting // 资源类型'
+        example: note
+        in: query
+        name: type
+        type: string
+      - description: Vault name (optional filter) // 保险库名称（可选过滤）
+        example: MyVault
+        in: query
+        name: vault
+        type: string
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.SyncLogDTO'
+                        type: array
+                    type: object
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Get sync log list
+      tags:
+      - Sync Log
   /api/user/change_password:
     post:
       consumes:

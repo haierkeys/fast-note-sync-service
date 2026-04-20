@@ -381,3 +381,27 @@ CREATE TABLE "git_sync_history" (
 CREATE INDEX "idx_git_sync_history_uid" ON "git_sync_history" ("uid", "created_at" DESC);
 
 CREATE INDEX "idx_git_sync_history_config_id" ON "git_sync_history" ("config_id");
+
+-- ----------------------------
+-- Table structure for sync_log
+-- ----------------------------
+DROP TABLE IF EXISTS "sync_log";
+
+CREATE TABLE "sync_log" (
+    "id"             integer PRIMARY KEY AUTOINCREMENT,
+    "uid"            integer NOT NULL DEFAULT 0,
+    "vault_id"       integer NOT NULL DEFAULT 0,
+    "type"           text NOT NULL DEFAULT '',  -- 'note', 'file', 'setting'
+    "action"         text NOT NULL DEFAULT '',  -- 'create', 'modify', 'soft_delete', 'delete', 'rename', 'restore'
+    "changed_fields" text NOT NULL DEFAULT '',  -- 逗号分隔变更字段，如 'content,mtime' / 'mtime' / 'path'
+    "path"           text DEFAULT '',
+    "path_hash"      text DEFAULT '',
+    "size"           integer DEFAULT 0,
+    "client_name"    text DEFAULT '',
+    "status"         integer DEFAULT 1,         -- 1: success, 2: failed
+    "message"        text DEFAULT '',
+    "created_at"     datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_sync_log_uid_created_at"  ON "sync_log" ("uid", "created_at" DESC);
+CREATE INDEX "idx_sync_log_uid_type_action" ON "sync_log" ("uid", "type", "action");
