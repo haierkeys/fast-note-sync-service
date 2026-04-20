@@ -274,6 +274,15 @@ func (a *App) GetFileService(clientName, clientVersion string) service.FileServi
 	return a.FileService
 }
 
+// GetSettingService gets SettingService, supports setting client info
+// GetSettingService 获取 SettingService，支持设置客户端信息
+func (a *App) GetSettingService(clientName, clientVersion string) service.SettingService {
+	if clientName != "" || clientVersion != "" {
+		return a.SettingService.WithClient(clientName, clientVersion)
+	}
+	return a.SettingService
+}
+
 // loadSupportRecords loads support records from embedded file system
 // loadSupportRecords 从嵌入文件系统加载打赏记录
 func (a *App) loadSupportRecords(efs embed.FS) {

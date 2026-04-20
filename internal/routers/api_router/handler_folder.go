@@ -11,11 +11,11 @@ import (
 )
 
 type FolderHandler struct {
-	appContainer *app.App
+	*Handler
 }
 
 func NewFolderHandler(appContainer *app.App) *FolderHandler {
-	return &FolderHandler{appContainer: appContainer}
+	return &FolderHandler{Handler: NewHandler(appContainer)}
 }
 
 // Get retrieves a folder
@@ -32,13 +32,13 @@ func (h *FolderHandler) Get(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderGetRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.Get.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.Get.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.Get(c.Request.Context(), uid, params)
+	res, err := h.App.GetFolderService(h.getClientInfo(c)).Get(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -61,13 +61,13 @@ func (h *FolderHandler) List(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderListRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.List.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.List.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.List(c.Request.Context(), uid, params)
+	res, err := h.App.GetFolderService(h.getClientInfo(c)).List(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -91,13 +91,13 @@ func (h *FolderHandler) Create(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderCreateRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.Create.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.Create.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.GetFolderService(app.WebClientName, "").UpdateOrCreate(c.Request.Context(), uid, params)
+	res, err := h.App.GetFolderService(h.getClientInfo(c)).UpdateOrCreate(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -121,13 +121,13 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderDeleteRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.Delete.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.Delete.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	_, err := h.appContainer.GetFolderService(app.WebClientName, "").Delete(c.Request.Context(), uid, params)
+	_, err := h.App.GetFolderService(h.getClientInfo(c)).Delete(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -151,7 +151,7 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderContentRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.ListNotes.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.ListNotes.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
@@ -159,7 +159,7 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	pager := pkgapp.NewPager(c)
 
-	res, count, err := h.appContainer.FolderService.ListNotes(c.Request.Context(), uid, params, pager)
+	res, count, err := h.App.GetFolderService(h.getClientInfo(c)).ListNotes(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -183,14 +183,14 @@ func (h *FolderHandler) ListFiles(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderContentRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.ListFiles.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.ListFiles.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
 	pager := pkgapp.NewPager(c)
-	res, count, err := h.appContainer.FolderService.ListFiles(c.Request.Context(), uid, params, pager)
+	res, count, err := h.App.GetFolderService(h.getClientInfo(c)).ListFiles(c.Request.Context(), uid, params, pager)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -213,13 +213,13 @@ func (h *FolderHandler) Tree(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	params := &dto.FolderTreeRequest{}
 	if valid, errs := pkgapp.BindAndValid(c, params); !valid {
-		h.appContainer.Logger().Error("FolderHandler.Tree.BindAndValid errs", zap.Error(errs))
+		h.App.Logger().Error("FolderHandler.Tree.BindAndValid errs", zap.Error(errs))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
 		return
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.GetTree(c.Request.Context(), uid, params)
+	res, err := h.App.GetFolderService(h.getClientInfo(c)).GetTree(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return

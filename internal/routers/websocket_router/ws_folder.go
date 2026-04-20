@@ -33,6 +33,8 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Check and create vault
 	h.App.VaultService.GetOrCreate(ctx, uid, params.Vault)
 
+	folderSvc := h.App.GetFolderService(c.ClientName, c.ClientVersion)
+
 	var cFolders map[string]dto.FolderSyncCheckRequest = make(map[string]dto.FolderSyncCheckRequest)
 	var cFoldersKeys map[string]struct{} = make(map[string]struct{}, 0)
 	if len(params.Folders) > 0 {
@@ -54,7 +56,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		for _, delFolder := range params.DelFolders {
 
 			// Check if folder exists before deleting
-			checkFolder, err := h.App.FolderService.Get(ctx, uid, &dto.FolderGetRequest{
+			checkFolder, err := folderSvc.Get(ctx, uid, &dto.FolderGetRequest{
 				Vault:    params.Vault,
 				PathHash: delFolder.PathHash,
 			})
@@ -65,7 +67,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 					Path:     delFolder.Path,
 					PathHash: delFolder.PathHash,
 				}
-				folder, err := h.App.FolderService.Delete(ctx, uid, delParams)
+				folder, err := folderSvc.Delete(ctx, uid, delParams)
 				if err != nil {
 					h.App.Logger().Error("websocket_router.folder.FolderSync.FolderService.Delete",
 						zap.String(logpkg.FieldTraceID, c.TraceID),
@@ -107,7 +109,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Handle missing folders on client
 	if params.LastTime > 0 && len(params.MissingFolders) > 0 {
 		for _, missingFolder := range params.MissingFolders {
-			folder, err := h.App.FolderService.Get(ctx, uid, &dto.FolderGetRequest{
+			folder, err := folderSvc.Get(ctx, uid, &dto.FolderGetRequest{
 				Vault:    params.Vault,
 				Path:     missingFolder.Path,
 				PathHash: missingFolder.PathHash,
@@ -137,7 +139,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	}
 
 	// Get updated folders from server
-	list, err := h.App.FolderService.ListByUpdatedTimestamp(ctx, uid, params.Vault, params.LastTime)
+	list, err := folderSvc.ListByUpdatedTimestamp(ctx, uid, params.Vault, params.LastTime)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderListFailed, err, "websocket_router.folder.FolderSync.ListByUpdatedTimestamp")
 		return
@@ -184,7 +186,7 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		for pathHash := range cFoldersKeys {
 			folder := cFolders[pathHash]
 
-			newFolder, err := h.App.FolderService.UpdateOrCreate(ctx, uid, &dto.FolderCreateRequest{
+			newFolder, err := folderSvc.UpdateOrCreate(ctx, uid, &dto.FolderCreateRequest{
 				Vault:    params.Vault,
 				Path:     folder.Path,
 				PathHash: folder.PathHash,
@@ -230,7 +232,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.FolderService.UpdateOrCreate(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientName, c.ClientVersion).UpdateOrCreate(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderModifyOrCreateFailed, err, "websocket_router.folder.FolderModify.UpdateOrCreate")
 		return
@@ -259,7 +261,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.FolderService.Delete(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientName, c.ClientVersion).Delete(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderDeleteFailed, err, "websocket_router.folder.FolderDelete.Delete")
 		return
@@ -287,7 +289,8 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	oldFolder, newFolder, err := h.App.FolderService.Rename(c.Context(), uid, params)
+	folderSvc := h.App.GetFolderService(c.ClientName, c.ClientVersion)
+	oldFolder, newFolder, err := folderSvc.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderRenameFailed, err, "websocket_router.folder.FolderRename.Rename")
 		return
