@@ -37,6 +37,9 @@ app:
   # 软删除笔记保留时长。例如: 7d, 24h。0 表示永久保留。
   # Retention duration for soft deleted notes. e.g., 7d, 24h. 0 means keep forever.
   soft-delete-retention-time: "7d"
+  # 同步日志保留时长。例如: 30d, 7d。
+  # Retention duration for sync logs. e.g., 30d, 7d.
+  sync-log-retention-time: "30d"
   # 历史记录保留的最大版本数
   # Maximum number of history versions to keep
   history-keep-versions: 100

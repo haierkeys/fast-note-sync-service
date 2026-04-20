@@ -31,6 +31,10 @@ type SyncLogService interface {
 	// List retrieves sync logs with pagination
 	// List 分页查询同步日志
 	List(ctx context.Context, uid int64, vaultID int64, logType, action string, page, pageSize int) ([]*dto.SyncLogDTO, int64, error)
+
+	// CleanupByTime removes sync logs older than the given cutoff time for all users
+	// CleanupByTime 清理所有用户在指定截止时间之前的同步日志
+	CleanupByTime(ctx context.Context, cutoffTime int64) error
 }
 
 // syncLogService implements SyncLogService
@@ -103,6 +107,12 @@ func (s *syncLogService) List(ctx context.Context, uid int64, vaultID int64, log
 		result = append(result, s.domainToDTO(l))
 	}
 	return result, total, nil
+}
+
+// CleanupByTime removes sync logs older than the given cutoff time for all users
+// CleanupByTime 清理所有用户在指定截止时间之前的同步日志
+func (s *syncLogService) CleanupByTime(ctx context.Context, cutoffTime int64) error {
+	return s.repo.CleanupByTimeAll(ctx, cutoffTime)
 }
 
 // domainToDTO converts domain SyncLog to DTO

@@ -55,7 +55,7 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 	// SyncLogService 必须最先初始化，因为其他服务依赖它
 	s.SyncLogService = service.NewSyncLogService(repos.SyncLogRepo)
 
-	s.FolderService = service.NewFolderService(repos.FolderRepo, repos.NoteRepo, repos.FileRepo, s.VaultService, s.BackupService, infra.workerPool)
+	s.FolderService = service.NewFolderService(repos.FolderRepo, repos.NoteRepo, repos.FileRepo, s.VaultService, s.BackupService, s.SyncLogService, infra.workerPool)
 	s.NoteService = service.NewNoteService(repos.NoteRepo, repos.NoteLinkRepo, repos.FileRepo, repos.ShareRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
 	s.UserService = service.NewUserService(repos.UserRepo, infra.TokenManager, logger, svcConfig)
 	s.FileService = service.NewFileService(repos.FileRepo, repos.NoteRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)

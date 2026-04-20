@@ -259,6 +259,12 @@ func (a *App) GetNoteService(clientName, clientVersion string) service.NoteServi
 	return a.NoteService
 }
 
+// GetFolderService returns FolderService instance with client information
+// GetFolderService 返回带有客户端信息的 FolderService 示例
+func (a *App) GetFolderService(clientName, clientVersion string) service.FolderService {
+	return a.FolderService.WithClient(clientName, clientVersion)
+}
+
 // GetFileService gets FileService, supports setting client info
 // GetFileService 获取 FileService，支持设置客户端信息
 func (a *App) GetFileService(clientName, clientVersion string) service.FileService {

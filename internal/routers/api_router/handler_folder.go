@@ -97,7 +97,7 @@ func (h *FolderHandler) Create(c *gin.Context) {
 	}
 
 	uid := pkgapp.GetUID(c)
-	res, err := h.appContainer.FolderService.UpdateOrCreate(c.Request.Context(), uid, params)
+	res, err := h.appContainer.GetFolderService(app.WebClientName, "").UpdateOrCreate(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return
@@ -127,7 +127,7 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 	}
 
 	uid := pkgapp.GetUID(c)
-	_, err := h.appContainer.FolderService.Delete(c.Request.Context(), uid, params)
+	_, err := h.appContainer.GetFolderService(app.WebClientName, "").Delete(c.Request.Context(), uid, params)
 	if err != nil {
 		apperrors.ErrorResponse(c, err)
 		return

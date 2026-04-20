@@ -13,8 +13,9 @@ import (
 type DbCleanTask struct {
 	app                 *app.App
 	logger              *zap.Logger
-	retentionDuration   time.Duration
-	historyKeepVersions int
+	retentionDuration         time.Duration
+	syncLogRetentionDuration  time.Duration
+	historyKeepVersions       int
 }
 
 // Name 返回任务名称
@@ -89,6 +90,20 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.String("service", "NoteHistoryService"))
 	}
 
+	// 清理 SyncLog
+	syncLogCutoffTime := time.Now().Add(-t.syncLogRetentionDuration).UnixMilli()
+	if err := t.app.SyncLogService.CleanupByTime(ctx, syncLogCutoffTime); err != nil {
+		errs = append(errs, err)
+		t.logger.Error("cleanup failed",
+			zap.String("task", t.Name()),
+			zap.String("service", "SyncLogService"),
+			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup success",
+			zap.String("task", t.Name()),
+			zap.String("service", "SyncLogService"))
+	}
+
 	// 清理闲置数据库连接 (保持 1 小时闲置)
 	t.app.Dao.CleanupConnections(time.Hour)
 
@@ -114,6 +129,16 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 		return nil, nil
 	}
 
+	// 解析同步日志保留时间
+	syncLogRetentionTimeStr := appContainer.Config().App.SyncLogRetentionTime
+	if syncLogRetentionTimeStr == "" {
+		syncLogRetentionTimeStr = "30d" // Default
+	}
+	syncLogDuration, err := util.ParseDuration(syncLogRetentionTimeStr)
+	if err != nil {
+		syncLogDuration = 30 * 24 * time.Hour // Fallback
+	}
+
 	// 获取历史记录保留版本数，默认 10
 	historyKeepVersions := appContainer.Config().App.HistoryKeepVersions
 	if historyKeepVersions <= 0 {
@@ -121,10 +146,11 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 	}
 
 	return &DbCleanTask{
-		app:                 appContainer,
-		logger:              appContainer.Logger(),
-		retentionDuration:   duration,
-		historyKeepVersions: historyKeepVersions,
+		app:                       appContainer,
+		logger:                    appContainer.Logger(),
+		retentionDuration:         duration,
+		syncLogRetentionDuration:  syncLogDuration,
+		historyKeepVersions:       historyKeepVersions,
 	}, nil
 }
 

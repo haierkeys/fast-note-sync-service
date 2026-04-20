@@ -8,7 +8,7 @@ import "time"
 // SyncLogListRequest 查询同步日志列表的请求参数
 type SyncLogListRequest struct {
 	Vault  string `json:"vault" form:"vault" example:"MyVault"`          // Vault name (optional filter) // 保险库名称（可选过滤）
-	Type   string `json:"type" form:"type" example:"note"`               // Resource type: note / file / setting // 资源类型
+	Type   string `json:"type" form:"type" example:"note"`               // Resource type: note / file / setting / folder // 资源类型
 	Action string `json:"action" form:"action" example:"modify"`         // Action type // 操作类型
 }
 
