@@ -177,6 +177,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 		backupHandler := api_router.NewBackupHandler(appContainer)
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
 		settingHandler := api_router.NewSettingHandler(appContainer, wss)
+		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -310,6 +311,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.DELETE("/setting", settingHandler.Delete)
 			auth.POST("/setting/rename", settingHandler.Rename)
 			auth.GET("/settings", settingHandler.List)
+
+			// Sync log routes
+			// 同步日志路由
+			auth.GET("/sync-logs", syncLogHandler.List)
 
 		}
 
