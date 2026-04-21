@@ -6,136 +6,136 @@
 
 | Time | Item | Amount | Name | Message |
 | :--- | :--- | :--- | :--- | :--- |
-| 2026/03/27 00:36:52 | 任意打赏 | **¥128.00** | Geeson | 特别棒，一直在用，希望越做越好。 |
-| 2026/04/18 21:15:46 | 四杯咖啡☕ | **¥100.00** | lien | 支持一下[抱拳] |
-| 2026/03/29 11:20:42 | 四杯咖啡☕ | **¥100.00** | 猛将兄 | 支持！加油！ |
-| 2026/03/27 15:05:35 | 四杯咖啡☕ | **¥100.00** | Bais | 做得太棒了 |
-| 2026/03/24 09:02:45 | 四杯咖啡☕ | **¥100.00** | cc | 辛苦了 |
-| 2026/03/22 12:16:07 | 四杯咖啡☕ | **¥100.00** | cw | 强烈支持版本迭代 |
-| 2026/03/19 13:41:05 | 四杯咖啡☕ | **¥100.00** | 背背背疼 | 快去加班更新 |
-| 2026/03/13 17:28:40 | 四杯咖啡☕ | **¥100.00** | 一世风霜 | 非常感谢你的开源与付出，插件超实用，小小支持，继续加油！💪 |
-| 2026/03/02 09:38:26 | 四杯咖啡☕ | **¥100.00** | xuhsu | 非常好，开发不易，支持一下。 |
-| 2026/01/14 15:58:04 | 任意打赏 | **¥88.00** | wutay | 能力有限，不成敬意 |
-| 2026/03/02 14:50:25 | 任意打赏 | **¥66.00** | Patrick | 感谢大佬！非常好用！ |
-| 2026/03/01 22:56:17 | 任意打赏 | **¥66.00** | xday | 随喜赞叹！ |
-| 2026/03/01 22:40:23 | 任意打赏 | **¥66.00** | HanHaocheng | 大佬nb，插件很好用ヽ(*≧ω≦)ﾉ |
-| 2026/02/16 21:34:33 | 任意打赏 | **¥66.00** | Jack | 新年快乐 |
-| 2026/04/02 19:16:44 | 任意打赏 | **¥51.55** | 小七的小洋 | 很好的插件 |
-| 2026/04/21 14:32:40 | 两杯咖啡☕ | **¥50.00** | 安度 | 太棒了，宝藏插件啊，加油 |
-| 2026/04/09 13:45:07 | 两杯咖啡☕ | **¥50.00** | 亲 yexizhu811 | 电脑同步成功，安卓报错  code=305，message=参数验证失败 Details=context is requ |
-| 2026/04/08 03:18:40 | 两杯咖啡☕ | **¥50.00** | 彼岸花 | 感谢作者，这一同步方式解决了多设备配置一致性的麻烦。 |
-| 2026/04/07 07:52:09 | 两杯咖啡☕ | **¥50.00** | tom | 太棒了，很需要，感谢大佬。 |
-| 2026/04/03 10:50:44 | 两杯咖啡☕ | **¥50.00** | David | Good work |
-| 2026/04/02 03:03:20 | 两杯咖啡☕ | **¥50.00** | 狗带带子 | 为牛逼付费！ |
-| 2026/03/27 10:15:04 | 两杯咖啡☕ | **¥50.00** | 卿 | 好人一生平安 |
-| 2026/03/18 22:57:03 | 两杯咖啡☕ | **¥50.00** | 灰风 | 感谢telegram上的指导 |
-| 2026/03/15 20:09:05 | 两杯咖啡☕ | **¥50.00** | 红星 RedStar | 感谢🙏，插件好用 |
-| 2026/03/14 23:46:58 | 两杯咖啡☕ | **¥50.00** | fbeis | 非常好整套架构，让我进入21世纪 |
-| 2026/03/02 21:00:43 | 两杯咖啡☕ | **¥50.00** | 南科大小魏 | 谢谢大佬 |
-| 2026/02/28 13:56:18 | 两杯咖啡☕ | **¥50.00** | xenon | 太勤劳了，必须支持 |
-| 2026/02/24 16:37:58 | 两杯咖啡☕ | **¥50.00** | 熙熙煦煦 | 很不错的同步方案 |
-| 2026/02/16 12:14:32 | 两杯咖啡☕ | **¥50.00** | 红殇 | 感谢作者，新年快乐！ |
-| 2026/02/14 18:01:55 | 两杯咖啡☕ | **¥50.00** | Jacky龙 | 感谢开发这么棒的插件，解决了同步问题 |
-| 2026/02/04 10:41:49 | 两杯咖啡☕ | **¥50.00** | 咕咕咕 | 同步功能很好用，希望继续迭代完善，以笔记安全为主 |
-| 2026/01/31 16:59:55 | 两杯咖啡☕ | **¥50.00** | vulnnull | 好好开发，确实解决了 Obsidian 最大的一个痛点！ |
-| 2026/01/21 09:37:19 | 两杯咖啡☕ | **¥50.00** | Mojo抖音 | 谢谢你的Obsidian同步很好用👍🏻 |
-| 2026/01/09 16:34:10 | 两杯咖啡☕ | **¥50.00** | 喆 | 谢谢男菩萨的 OB 插件造福世人(^🙏^)，小小心意不成敬意。 |
-| 2026/03/04 21:42:57 | 任意打赏 | **¥30.00** | X | 插件很好用，感谢开发者 |
-| 2026/02/25 10:55:32 | 任意打赏 | **¥30.00** | jeanlaw | 大佬的项目帮了我大忙！非常感谢！希望大佬继续加油 |
-| 2026/03/13 13:43:33 | 任意打赏 | **¥29.00** | rocku | 好作品，加油！ |
-| 2026/02/24 18:36:51 | 任意打赏 | **¥25.00** | 淇淇 | 一直找不到理想的obsidian的同步方案,感谢作者 加油！ |
-| 2026/04/21 13:45:19 | 一杯咖啡☕ | **¥20.00** | 蓬歌 | 很好用，加油 |
-| 2026/04/20 15:37:57 | 一杯咖啡☕ | **¥20.00** | riding-a-colt | 给大佬跪了🧎🏻‍♂️，希望后续多多更新 |
-| 2026/04/17 00:15:35 | 一杯咖啡☕ | **¥20.00** | 稻草人 | 好用，支持一下 |
-| 2026/04/15 13:41:41 | 一杯咖啡☕ | **¥20.00** | hitomi | 谢谢大佬 |
-| 2026/04/15 11:22:39 | 一杯咖啡☕ | **¥20.00** | woshiug | 忘记密码如何找回 |
-| 2026/04/15 06:38:14 | 一杯咖啡☕ | **¥20.00** | ke1078 | 试试 |
-| 2026/04/12 23:54:45 | 一杯咖啡☕ | **¥20.00** | Nikki | 很棒的软件，感谢作者付出和开源分享。 |
-| 2026/04/12 23:40:17 | 一杯咖啡☕ | **¥20.00** | 月非明 | 感谢🙏🏻 |
-| 2026/04/10 23:00:36 | 一杯咖啡☕ | **¥20.00** | wdysjy | 棒棒哒，真好用 |
-| 2026/04/04 01:33:37 | 一杯咖啡☕ | **¥20.00** | hsonghao | 来杯咖啡，辛苦了 |
-| 2026/04/03 23:42:51 | 一杯咖啡☕ | **¥20.00** | kakaa | 牛逼，好用 |
-| 2026/04/03 13:28:02 | 一杯咖啡☕ | **¥20.00** | 晴天小嘉 | 非常好用，感谢 |
-| 2026/04/02 23:08:13 | 一杯咖啡☕ | **¥20.00** | 畅 | 感谢大佬，希望能继续坚持 |
-| 2026/04/02 15:13:46 | 一杯咖啡☕ | **¥20.00** | dove | 请您喝咖啡，这个项目非常有用 |
-| 2026/03/30 23:34:12 | 一杯咖啡☕ | **¥20.00** | andie | 加油⛽️ |
-| 2026/03/28 12:46:23 | 一杯咖啡☕ | **¥20.00** | zhengbiubiu | 感谢大大，辛苦啦 |
-| 2026/03/27 19:45:57 | 一杯咖啡☕ | **¥20.00** | IsaacSuo | fast note sync👍 |
-| 2026/03/26 13:22:50 | 一杯咖啡☕ | **¥20.00** | dawn | 牛哇👍 |
-| 2026/03/24 14:45:21 | 一杯咖啡☕ | **¥20.00** | Bean | 感谢，软件很方便。 |
-| 2026/03/22 23:08:14 | 一杯咖啡☕ | **¥20.00** | 拾感 | respect |
-| 2026/03/19 22:47:54 | 一杯咖啡☕ | **¥20.00** | jediknight | 谢谢🙏！很赞！ |
-| 2026/03/19 20:20:17 | 一杯咖啡☕ | **¥20.00** | Fcjd | 感谢开发者，太好用了，加油！ |
-| 2026/03/17 01:17:02 | 一杯咖啡☕ | **¥20.00** | southzen | 做的太好了，大道至简，希望继续优化~ |
-| 2026/03/16 16:24:11 | 一杯咖啡☕ | **¥20.00** | 长筱团子 | 非常好用的喵～谢谢喵～ |
-| 2026/03/16 09:22:14 | 一杯咖啡☕ | **¥20.00** | barry | 不成敬意^_^ |
-| 2026/03/16 01:01:12 | 一杯咖啡☕ | **¥20.00** | Stone | 感谢你对开源世界的贡献 |
-| 2026/03/14 17:15:45 | 一杯咖啡☕ | **¥20.00** | R M | 感谢作者，不成敬意 |
-| 2026/03/14 00:39:54 | 一杯咖啡☕ | **¥20.00** | T0_欣 | 大佬NB，感谢感谢 |
-| 2026/03/11 20:05:58 | 一杯咖啡☕ | **¥20.00** | Ucat | 感谢大佬做的插件，很好用很方便 |
-| 2026/03/10 01:08:20 | 一杯咖啡☕ | **¥20.00** | la | 牛逼 |
-| 2026/03/09 09:59:44 | 一杯咖啡☕ | **¥20.00** | 耀/ | 好用，支持 |
-| 2026/03/07 23:36:38 | 一杯咖啡☕ | **¥20.00** | 阿叶 | 很好的插件 支持 |
-| 2026/03/06 09:58:58 | 一杯咖啡☕ | **¥20.00** | Dylan | 谢谢 |
-| 2026/03/03 00:53:09 | 一杯咖啡☕ | **¥20.00** | Alan | 感谢作者日夜辛苦的写代码，并开源 |
-| 2026/03/01 21:10:27 | 一杯咖啡☕ | **¥20.00** | Jack ☑️ | 希望能更完善，可以在云端查看ob的其他格式的文件 |
-| 2026/02/28 09:50:58 | 一杯咖啡☕ | **¥20.00** | tangdh | 这个插件思路很好，加油 |
-| 2026/02/27 12:48:50 | 一杯咖啡☕ | **¥20.00** | aban | 很好的同步插件 |
-| 2026/02/27 11:37:18 | 一杯咖啡☕ | **¥20.00** | 三岁 | 感谢您的工作 |
-| 2026/02/27 11:19:13 | 一杯咖啡☕ | **¥20.00** | 行长 | 太强了 |
-| 2026/02/26 11:16:25 | 一杯咖啡☕ | **¥20.00** | fausto | 这么好的东西应该让更多人知道，加大宣传力度啊！ |
-| 2026/02/25 20:17:42 | 一杯咖啡☕ | **¥20.00** | woloin | 非常好用，感谢作者开发这么好的工具！ |
-| 2026/02/24 18:29:45 | 一杯咖啡☕ | **¥20.00** | kimi | 感谢作者开发那么好用的插件，让我的obsidian旋转🥰 |
-| 2026/02/24 10:01:37 | 一杯咖啡☕ | **¥20.00** | ccsir | 插件好用 |
-| 2026/02/23 20:53:08 | 一杯咖啡☕ | **¥20.00** | KevinYAN | 用了一段时间了，真的太棒了。 |
-| 2026/02/23 19:32:03 | 一杯咖啡☕ | **¥20.00** | 繁星影月 | 马年快乐 |
-| 2026/02/23 12:30:55 | 一杯咖啡☕ | **¥20.00** | ahto | 谢谢辛苦了 |
-| 2026/02/23 06:24:55 | 一杯咖啡☕ | **¥20.00** | 大学生 | 很有帮助，加油！ |
-| 2026/02/15 09:25:17 | 一杯咖啡☕ | **¥20.00** | sfsun67 | 支持，加油~，很实用，强需求的功能。在AI时代大有用处 |
-| 2026/02/10 23:21:38 | 一杯咖啡☕ | **¥20.00** | toby | 感谢大佬做的同步插件，非常好用，请大佬先喝一杯咖啡，后续还会再继续打赏的 |
-| 2026/02/10 11:41:36 | 一杯咖啡☕ | **¥20.00** | WONG | 大佬的同步插件非常棒，我会一直持续支持的 |
-| 2026/02/08 22:02:32 | 一杯咖啡☕ | **¥20.00** | 小迪 | 非常好用，感谢 |
-| 2026/02/06 08:42:49 | 一杯咖啡☕ | **¥20.00** | Max | 加油💪web端的图片编辑功能整一下呗 |
-| 2026/01/28 10:48:02 | 一杯咖啡☕ | **¥20.00** | 通 | 加油 |
-| 2026/01/26 17:21:27 | 一杯咖啡☕ | **¥20.00** | CloseCV | 😘 |
-| 2026/01/16 11:47:13 | 一杯咖啡☕ | **¥20.00** | 苏 | 很好用，期待后续的开发与优化。感谢。 |
-| 2026/01/15 14:51:11 | 一杯咖啡☕ | **¥20.00** | 灰风 | 非常好用感谢！ |
-| 2026/01/09 18:12:17 | 一杯咖啡☕ | **¥20.00** | xix | 插件思路太对了 |
-| 2026/01/03 22:44:43 | 一杯咖啡☕ | **¥20.00** | 姚朝伟 | 希望越来越好👌🏻 |
-| 2026/01/03 14:58:43 | 一杯咖啡☕ | **¥20.00** | roao | 很棒的同步方案，未来可期！非常感谢开源！加油！ |
-| 2026/03/11 09:58:20 | 任意打赏 | **¥18.00** | 下鞅 | 绵薄之力，以表敬意 |
-| 2026/03/02 21:15:39 | 任意打赏 | **¥10.00** | 路过打酱 | 加油大神 |
-| 2026/02/28 12:27:51 | 任意打赏 | **¥10.00** | 白芷 | 希望越来越好 |
-| 2026/02/27 15:54:55 | 任意打赏 | **¥10.00** | 柴特 | 谢谢作者开发，感谢开源，祝越来越好。 |
-| 2026/02/23 15:34:53 | 任意打赏 | **¥10.00** | Joe M | 感谢，比官方同步还好用 |
-| 2026/02/20 10:37:02 | 任意打赏 | **¥10.00** | 羽山猫四叶 | 感谢做了这么便捷的同步软件 |
-| 2026/03/22 15:09:43 | 任意打赏 | **¥9.90** | Shifuwang | 好软件，感谢作者。 |
-| 2026/01/28 12:03:03 | 任意打赏 | **¥9.90** | 华星 | 牛🐮 |
-| 2026/04/09 13:51:11 | 任意打赏 | **¥8.88** | 散装白酒🍶 | 加油……你这个绝对有发展前途，推荐其他朋友看都觉得很不错。 |
-| 2026/03/07 20:29:42 | 任意打赏 | **¥8.88** | 皮皮 | 感谢大佬，非常好用，点赞 |
-| 2026/01/28 02:52:15 | 任意打赏 | **¥8.88** | obsidian | 感谢分享 |
-| 2026/02/28 19:51:59 | 任意打赏 | **¥8.00** | yang | 很完善，甚至服务器界面也做得非常好看 |
-| 2026/03/25 11:52:09 | 任意打赏 | **¥6.66** | 东 | 装好了 无敌 哈哈哈哈哈哈 |
-| 2026/03/23 01:02:18 | 任意打赏 | **¥6.66** | wishyuwill | 一定要坚持开发呀！！！ |
-| 2026/03/02 17:10:28 | 任意打赏 | **¥6.66** | 马孔多的旅人 | 感谢开发，插件很好用，更新很快[强] |
-| 2026/02/01 23:44:27 | 任意打赏 | **¥6.66** | 爱你 | 爱你 |
-| 2026/01/09 22:22:25 | 任意打赏 | **¥6.66** | kane | 老哥写的插件很棒，继续努力吧！ |
-| 2026/04/20 16:34:57 | 任意打赏 | **¥5.00** | david | 这也太好用了，折腾这么久感觉终于毕业了(╥╯﹏╰╥)ง |
-| 2026/04/15 00:48:38 | 任意打赏 | **¥5.00** | ben | 不易 |
-| 2026/04/06 20:57:36 | 任意打赏 | **¥5.00** | octobersky | 感谢你的项目帮助到我，obsidian 同步从此变得容易 |
-| 2026/03/01 00:28:19 | 任意打赏 | **¥5.00** | colorednoise | 开发的太棒了 |
-| 2026/02/27 15:18:26 | 任意打赏 | **¥5.00** | wudibaolong | 支持 |
-| 2026/02/14 02:32:50 | 任意打赏 | **¥5.00** | 支持开源精神 | 感谢开发这么好用的插件 |
-| 2026/02/13 02:13:10 | 任意打赏 | **¥5.00** | xxx | 打赏 |
-| 2026/02/11 17:07:02 | 任意打赏 | **¥5.00** | Acckion | 加油 |
-| 2026/01/11 14:20:34 | 任意打赏 | **¥5.00** | 安宁 | 很好用，希望能把 git 做出来 |
-| 2026/04/18 16:59:14 | 任意打赏 | **¥3.66** | jeremy | 继续开发，作出好产品 |
-| 2026/02/23 17:47:46 | 任意打赏 | **¥3.00** | LL | 新年快乐 |
-| 2026/04/11 12:28:18 | 任意打赏 | **¥1.00** | ke1078 | 试试 |
-| 2026/03/26 15:03:40 | 任意打赏 | **¥1.00** | guanyingquan | 感谢，十分有用 |
-| 2026/02/24 20:15:19 | 任意打赏 | **¥1.00** | Jimmy | 感恩您的 Obs 同步插件非常有帮助！ |
-| 2026/01/08 15:18:06 | 任意打赏 | **¥1.00** | 用户 | 从发现部署到使用，好多年了，从未有过的流畅丝滑的感觉，真的太好了！[强][强][强] |
+| 2026/03/27 00:36:52 | Tip as you like | **¥128.00** | Geeson | It’s great, I’ve been using it, and I hope it gets better and better. |
+| 2026/04/18 21:15:46 | Four cups of coffee☕ | **¥100.00** | lien | Support me [hold fist] |
+| 2026/03/29 11:20:42 | Four cups of coffee☕ | **¥100.00** | 猛将兄 | support! come on! |
+| 2026/03/27 15:05:35 | Four cups of coffee☕ | **¥100.00** | Bais | Great job |
+| 2026/03/24 09:02:45 | Four cups of coffee☕ | **¥100.00** | cc | Thanks for your hard work |
+| 2026/03/22 12:16:07 | Four cups of coffee☕ | **¥100.00** | cw | Strong support for version iteration |
+| 2026/03/19 13:41:05 | Four cups of coffee☕ | **¥100.00** | 背背背疼 | Go and work overtime to update |
+| 2026/03/13 17:28:40 | Four cups of coffee☕ | **¥100.00** | 一世风霜 | Thank you very much for your open source and efforts. The plug-in is super practical. I appreciate your support. Keep up the good work! 💪 |
+| 2026/03/02 09:38:26 | Four cups of coffee☕ | **¥100.00** | xuhsu | Very good, development is not easy, please support it. |
+| 2026/01/14 15:58:04 | Tip as you like | **¥88.00** | wutay | Limited ability, no respect |
+| 2026/03/02 14:50:25 | Tip as you like | **¥66.00** | Patrick | Thanks man! Very easy to use! |
+| 2026/03/01 22:56:17 | Tip as you like | **¥66.00** | xday | Congratulations! |
+| 2026/03/01 22:40:23 | Tip as you like | **¥66.00** | HanHaocheng | Boss nb, the plug-in is very usefulヽ(*≧ω≦)ﾉ |
+| 2026/02/16 21:34:33 | Tip as you like | **¥66.00** | Jack | Happy New Year |
+| 2026/04/02 19:16:44 | Tip as you like | **¥51.55** | 小七的小洋 | Very good plugin |
+| 2026/04/21 14:32:40 | Two cups of coffee☕ | **¥50.00** | 安度 | Great, treasure plug-in, come on |
+| 2026/04/09 13:45:07 | Two cups of coffee☕ | **¥50.00** | 亲 yexizhu811 | Computer synchronization is successful, Android error code=305, message=parameter verification failed Details=context is requ |
+| 2026/04/08 03:18:40 | Two cups of coffee☕ | **¥50.00** | 彼岸花 | Thanks to the author, this synchronization method solves the trouble of multi-device configuration consistency. |
+| 2026/04/07 07:52:09 | Two cups of coffee☕ | **¥50.00** | tom | Awesome, much needed, thank you sir. |
+| 2026/04/03 10:50:44 | Two cups of coffee☕ | **¥50.00** | David | Good work |
+| 2026/04/02 03:03:20 | Two cups of coffee☕ | **¥50.00** | 狗带带子 | Pay for awesomeness! |
+| 2026/03/27 10:15:04 | Two cups of coffee☕ | **¥50.00** | 卿 | Good people have a safe life |
+| 2026/03/18 22:57:03 | Two cups of coffee☕ | **¥50.00** | 灰风 | Thanks for the guidance on telegram |
+| 2026/03/15 20:09:05 | Two cups of coffee☕ | **¥50.00** | 红星 RedStar | Thanks 🙏, the plug-in is easy to use |
+| 2026/03/14 23:46:58 | Two cups of coffee☕ | **¥50.00** | fbeis | The whole structure is very good and brings me into the 21st century. |
+| 2026/03/02 21:00:43 | Two cups of coffee☕ | **¥50.00** | 南科大小魏 | Thank you, boss |
+| 2026/02/28 13:56:18 | Two cups of coffee☕ | **¥50.00** | xenon | Too hardworking and must be supported |
+| 2026/02/24 16:37:58 | Two cups of coffee☕ | **¥50.00** | 熙熙煦煦 | Very good synchronization solution |
+| 2026/02/16 12:14:32 | Two cups of coffee☕ | **¥50.00** | 红殇 | Thanks to the author and Happy New Year! |
+| 2026/02/14 18:01:55 | Two cups of coffee☕ | **¥50.00** | Jacky龙 | Thanks for developing such a great plug-in, which solves the synchronization problem |
+| 2026/02/04 10:41:49 | Two cups of coffee☕ | **¥50.00** | 咕咕咕 | The synchronization function is very useful. I hope to continue to iterate and improve it, focusing on note safety. |
+| 2026/01/31 16:59:55 | Two cups of coffee☕ | **¥50.00** | vulnnull | Well developed, it has indeed solved one of Obsidian’s biggest pain points! |
+| 2026/01/21 09:37:19 | Two cups of coffee☕ | **¥50.00** | Mojo抖音 | Thank you for the Obsidian synchronization which is very useful👍🏻 |
+| 2026/01/09 16:34:10 | Two cups of coffee☕ | **¥50.00** | 喆 | Thank you Male Bodhisattva for your OB plug-in for benefiting the world (^🙏^), being petty is disrespectful. |
+| 2026/03/04 21:42:57 | Tip as you like | **¥30.00** | X | The plug-in is very useful, thank you to the developer |
+| 2026/02/25 10:55:32 | Tip as you like | **¥30.00** | jeanlaw | The boss’s project helped me a lot! Thank you so much! I hope you guys will continue to work hard |
+| 2026/03/13 13:43:33 | Tip as you like | **¥29.00** | rocku | Great work, keep it up! |
+| 2026/02/24 18:36:51 | Tip as you like | **¥25.00** | 淇淇 | I have never been able to find an ideal obsidian synchronization solution. Thank you to the author. Come on! |
+| 2026/04/21 13:45:19 | A cup of coffee☕ | **¥20.00** | 蓬歌 | Very useful, keep going |
+| 2026/04/20 15:37:57 | A cup of coffee☕ | **¥20.00** | riding-a-colt | Kneel down to the boss 🧎🏻‍♂️, I hope there will be more updates in the future |
+| 2026/04/17 00:15:35 | A cup of coffee☕ | **¥20.00** | 稻草人 | It’s easy to use, support it |
+| 2026/04/15 13:41:41 | A cup of coffee☕ | **¥20.00** | hitomi | Thank you, boss |
+| 2026/04/15 11:22:39 | A cup of coffee☕ | **¥20.00** | woshiug | How to retrieve forgotten password |
+| 2026/04/15 06:38:14 | A cup of coffee☕ | **¥20.00** | ke1078 | try |
+| 2026/04/12 23:54:45 | A cup of coffee☕ | **¥20.00** | Nikki | Great software, thank the author for his contribution and open source sharing. |
+| 2026/04/12 23:40:17 | A cup of coffee☕ | **¥20.00** | 月非明 | Thank you🙏🏻 |
+| 2026/04/10 23:00:36 | A cup of coffee☕ | **¥20.00** | wdysjy | Awesome, really useful |
+| 2026/04/04 01:33:37 | A cup of coffee☕ | **¥20.00** | hsonghao | Have a cup of coffee. Thank you for your hard work. |
+| 2026/04/03 23:42:51 | A cup of coffee☕ | **¥20.00** | kakaa | Awesome, easy to use |
+| 2026/04/03 13:28:02 | A cup of coffee☕ | **¥20.00** | 晴天小嘉 | Very useful, thank you |
+| 2026/04/02 23:08:13 | A cup of coffee☕ | **¥20.00** | 畅 | Thanks man, I hope you can continue to persevere |
+| 2026/04/02 15:13:46 | A cup of coffee☕ | **¥20.00** | dove | Buy you a coffee, this project is very useful |
+| 2026/03/30 23:34:12 | A cup of coffee☕ | **¥20.00** | andie | Come on⛽️ |
+| 2026/03/28 12:46:23 | A cup of coffee☕ | **¥20.00** | zhengbiubiu | Thank you very much, thank you for your hard work |
+| 2026/03/27 19:45:57 | A cup of coffee☕ | **¥20.00** | IsaacSuo | fast note sync👍 |
+| 2026/03/26 13:22:50 | A cup of coffee☕ | **¥20.00** | dawn | Wow 👍 |
+| 2026/03/24 14:45:21 | A cup of coffee☕ | **¥20.00** | Bean | Thank you, the software is very convenient. |
+| 2026/03/22 23:08:14 | A cup of coffee☕ | **¥20.00** | 拾感 | respect |
+| 2026/03/19 22:47:54 | A cup of coffee☕ | **¥20.00** | jediknight | Thank you 🙏! Great! |
+| 2026/03/19 20:20:17 | A cup of coffee☕ | **¥20.00** | Fcjd | Thanks to the developer, it’s so easy to use, come on! |
+| 2026/03/17 01:17:02 | A cup of coffee☕ | **¥20.00** | southzen | Great job, simple and simple, I hope to continue to optimize~ |
+| 2026/03/16 16:24:11 | A cup of coffee☕ | **¥20.00** | 长筱团子 | Very useful, meow~Thank you, meow~ |
+| 2026/03/16 09:22:14 | A cup of coffee☕ | **¥20.00** | barry | Not respectful^_^ |
+| 2026/03/16 01:01:12 | A cup of coffee☕ | **¥20.00** | Stone | Thank you for your contributions to the open source world |
+| 2026/03/14 17:15:45 | A cup of coffee☕ | **¥20.00** | R M | Thanks to the author, no disrespect |
+| 2026/03/14 00:39:54 | A cup of coffee☕ | **¥20.00** | T0_欣 | Boss NB, thank you thank you |
+| 2026/03/11 20:05:58 | A cup of coffee☕ | **¥20.00** | Ucat | Thanks for the plug-in, it’s very useful and convenient. |
+| 2026/03/10 01:08:20 | A cup of coffee☕ | **¥20.00** | la | Awesome |
+| 2026/03/09 09:59:44 | A cup of coffee☕ | **¥20.00** | 耀/ | Easy to use, support |
+| 2026/03/07 23:36:38 | A cup of coffee☕ | **¥20.00** | 阿叶 | Very good plugin support |
+| 2026/03/06 09:58:58 | A cup of coffee☕ | **¥20.00** | Dylan | Thanks |
+| 2026/03/03 00:53:09 | A cup of coffee☕ | **¥20.00** | Alan | Thanks to the author for working hard day and night to write the code and open source it |
+| 2026/03/01 21:10:27 | A cup of coffee☕ | **¥20.00** | Jack ☑️ | I hope it will be more complete and you can view ob files in other formats on the cloud. |
+| 2026/02/28 09:50:58 | A cup of coffee☕ | **¥20.00** | tangdh | The idea of ​​this plug-in is very good, keep up the good work |
+| 2026/02/27 12:48:50 | A cup of coffee☕ | **¥20.00** | aban | Very good sync plugin |
+| 2026/02/27 11:37:18 | A cup of coffee☕ | **¥20.00** | 三岁 | thank you for your work |
+| 2026/02/27 11:19:13 | A cup of coffee☕ | **¥20.00** | 行长 | Too strong |
+| 2026/02/26 11:16:25 | A cup of coffee☕ | **¥20.00** | fausto | Such a good thing should be made known to more people and publicity efforts should be increased! |
+| 2026/02/25 20:17:42 | A cup of coffee☕ | **¥20.00** | woloin | Very easy to use, thank the author for developing such a good tool! |
+| 2026/02/24 18:29:45 | A cup of coffee☕ | **¥20.00** | kimi | Thanks to the author for developing such a useful plug-in, which makes my obsidian rotate🥰 |
+| 2026/02/24 10:01:37 | A cup of coffee☕ | **¥20.00** | ccsir | Plug-in is easy to use |
+| 2026/02/23 20:53:08 | A cup of coffee☕ | **¥20.00** | KevinYAN | Been using it for a while and it's really great. |
+| 2026/02/23 19:32:03 | A cup of coffee☕ | **¥20.00** | 繁星影月 | Happy Year of the Horse |
+| 2026/02/23 12:30:55 | A cup of coffee☕ | **¥20.00** | ahto | Thank you for your hard work |
+| 2026/02/23 06:24:55 | A cup of coffee☕ | **¥20.00** | 大学生 | Very helpful, come on! |
+| 2026/02/15 09:25:17 | A cup of coffee☕ | **¥20.00** | sfsun67 | Support, come on~, it is very practical and a highly demanded function. Very useful in the AI ​​era |
+| 2026/02/10 23:21:38 | A cup of coffee☕ | **¥20.00** | toby | Thanks for the synchronization plug-in made by the boss. It is very easy to use. Please drink a cup of coffee first and I will continue to reward you later. |
+| 2026/02/10 11:41:36 | A cup of coffee☕ | **¥20.00** | WONG | The synchronization plug-in of the boss is very good. I will continue to support it. |
+| 2026/02/08 22:02:32 | A cup of coffee☕ | **¥20.00** | 小迪 | Very useful, thank you |
+| 2026/02/06 08:42:49 | A cup of coffee☕ | **¥20.00** | Max | Come on💪 improve the image editing function on the web |
+| 2026/01/28 10:48:02 | A cup of coffee☕ | **¥20.00** | 通 | come on |
+| 2026/01/26 17:21:27 | A cup of coffee☕ | **¥20.00** | CloseCV | 😘 |
+| 2026/01/16 11:47:13 | A cup of coffee☕ | **¥20.00** | 苏 | Very useful, looking forward to subsequent development and optimization. grateful. |
+| 2026/01/15 14:51:11 | A cup of coffee☕ | **¥20.00** | 灰风 | Very useful. Thanks! |
+| 2026/01/09 18:12:17 | A cup of coffee☕ | **¥20.00** | xix | The plug-in idea is so right |
+| 2026/01/03 22:44:43 | A cup of coffee☕ | **¥20.00** | 姚朝伟 | Hope it gets better and better👌🏻 |
+| 2026/01/03 14:58:43 | A cup of coffee☕ | **¥20.00** | roao | Great synchronization solution, look forward to the future! Thank you very much for the open source! come on! |
+| 2026/03/11 09:58:20 | Tip as you like | **¥18.00** | 下鞅 | A small effort to show respect |
+| 2026/03/02 21:15:39 | Tip as you like | **¥10.00** | 路过打酱 | Come on, God |
+| 2026/02/28 12:27:51 | Tip as you like | **¥10.00** | 白芷 | Hope it gets better and better |
+| 2026/02/27 15:54:55 | Tip as you like | **¥10.00** | 柴特 | Thank you to the author for the development, thank you for the open source, and wish it better and better. |
+| 2026/02/23 15:34:53 | Tip as you like | **¥10.00** | Joe M | Thanks, it’s easier to use than the official synchronization |
+| 2026/02/20 10:37:02 | Tip as you like | **¥10.00** | 羽山猫四叶 | Thanks for making such a convenient synchronization software |
+| 2026/03/22 15:09:43 | Tip as you like | **¥9.90** | Shifuwang | Great software, thanks to the author. |
+| 2026/01/28 12:03:03 | Tip as you like | **¥9.90** | 华星 | Cow🐮 |
+| 2026/04/09 13:51:11 | Tip as you like | **¥8.88** | 散装白酒🍶 | Come on...you definitely have a bright future. I would recommend it to other friends and think it would be great. |
+| 2026/03/07 20:29:42 | Tip as you like | **¥8.88** | 皮皮 | Thanks man, it’s very useful, like it |
+| 2026/01/28 02:52:15 | Tip as you like | **¥8.88** | obsidian | thanks for sharing |
+| 2026/02/28 19:51:59 | Tip as you like | **¥8.00** | yang | It's very complete, even the server interface is very nice. |
+| 2026/03/25 11:52:09 | Tip as you like | **¥6.66** | 东 | Pretended to be invincible hahahahahaha |
+| 2026/03/23 01:02:18 | Tip as you like | **¥6.66** | wishyuwill | You must keep developing! ! ! |
+| 2026/03/02 17:10:28 | Tip as you like | **¥6.66** | 马孔多的旅人 | Thanks for the development, the plug-in is very useful and will be updated quickly [strong] |
+| 2026/02/01 23:44:27 | Tip as you like | **¥6.66** | 爱你 | Love you |
+| 2026/01/09 22:22:25 | Tip as you like | **¥6.66** | kane | The plug-in I wrote is great, keep up the good work! |
+| 2026/04/20 16:34:57 | Tip as you like | **¥5.00** | david | This is so useful. I feel like I have finally graduated after struggling for so long (╥╯﹏╰╥)ง |
+| 2026/04/15 00:48:38 | Tip as you like | **¥5.00** | ben | Not easy |
+| 2026/04/06 20:57:36 | Tip as you like | **¥5.00** | octobersky | Thanks for helping me with your project, obsidian synchronization becomes easy from now on |
+| 2026/03/01 00:28:19 | Tip as you like | **¥5.00** | colorednoise | Great development |
+| 2026/02/27 15:18:26 | Tip as you like | **¥5.00** | wudibaolong | support |
+| 2026/02/14 02:32:50 | Tip as you like | **¥5.00** | 支持开源精神 | Thanks for developing such a useful plug-in |
+| 2026/02/13 02:13:10 | Tip as you like | **¥5.00** | xxx | reward |
+| 2026/02/11 17:07:02 | Tip as you like | **¥5.00** | Acckion | come on |
+| 2026/01/11 14:20:34 | Tip as you like | **¥5.00** | 安宁 | It’s very useful. I hope I can use git to build it. |
+| 2026/04/18 16:59:14 | Tip as you like | **¥3.66** | jeremy | Continue to develop and make good products |
+| 2026/02/23 17:47:46 | Tip as you like | **¥3.00** | LL | Happy New Year |
+| 2026/04/11 12:28:18 | Tip as you like | **¥1.00** | ke1078 | try |
+| 2026/03/26 15:03:40 | Tip as you like | **¥1.00** | guanyingquan | Thanks, very useful |
+| 2026/02/24 20:15:19 | Tip as you like | **¥1.00** | Jimmy | Thanks for the very helpful Obs sync plugin! |
+| 2026/01/08 15:18:06 | Tip as you like | **¥1.00** | 用户 | From discovery and deployment to use, it has been many years, and it feels smooth and silky like never before. It is really great! [strong][strong][strong] |
 
 
 --- 
-*Last updated on: Tue, 21 Apr 2026 12:22:16 GMT*
+*Last updated on: Tue, 21 Apr 2026 13:06:19 GMT*
