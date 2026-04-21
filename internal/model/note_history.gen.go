@@ -18,6 +18,8 @@ type NoteHistory struct {
 	ContentHash string     `gorm:"column:content_hash;type:varchar(255);not null;index:idx_note_history_content_hash,priority:2;default:''" json:"contentHash" form:"contentHash"`
 	DiffPatch   string     `gorm:"column:diff_patch;default:''" json:"diffPatch" form:"diffPatch"`
 	ClientName  string     `gorm:"column:client_name;default:''" json:"clientName" form:"clientName"`
+	ClientType  string     `gorm:"column:client_type;default:''" json:"clientType" form:"clientType"`
+	ClientVersion string   `gorm:"column:client_version;default:''" json:"clientVersion" form:"clientVersion"`
 	Version     int64      `gorm:"column:version;index:idx_note_history_version,priority:2;default:0" json:"version" form:"version"`
 	CreatedAt   timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt   timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`

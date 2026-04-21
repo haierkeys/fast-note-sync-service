@@ -41,6 +41,8 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.ContentLastSnapshotHash = field.NewString(tableName, "content_last_snapshot_hash")
 	_note.Version = field.NewInt64(tableName, "version")
 	_note.ClientName = field.NewString(tableName, "client_name")
+	_note.ClientType = field.NewString(tableName, "client_type")
+	_note.ClientVersion = field.NewString(tableName, "client_version")
 	_note.Size = field.NewInt64(tableName, "size")
 	_note.Ctime = field.NewInt64(tableName, "ctime")
 	_note.Mtime = field.NewInt64(tableName, "mtime")
@@ -70,6 +72,8 @@ type note struct {
 	ContentLastSnapshotHash field.String
 	Version                 field.Int64
 	ClientName              field.String
+	ClientType              field.String
+	ClientVersion           field.String
 	Size                    field.Int64
 	Ctime                   field.Int64
 	Mtime                   field.Int64
@@ -105,6 +109,8 @@ func (n *note) updateTableName(table string) *note {
 	n.ContentLastSnapshotHash = field.NewString(table, "content_last_snapshot_hash")
 	n.Version = field.NewInt64(table, "version")
 	n.ClientName = field.NewString(table, "client_name")
+	n.ClientType = field.NewString(table, "client_type")
+	n.ClientVersion = field.NewString(table, "client_version")
 	n.Size = field.NewInt64(table, "size")
 	n.Ctime = field.NewInt64(table, "ctime")
 	n.Mtime = field.NewInt64(table, "mtime")
@@ -135,7 +141,7 @@ func (n *note) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *note) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 19)
+	n.fieldMap = make(map[string]field.Expr, 21)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["vault_id"] = n.VaultID
 	n.fieldMap["action"] = n.Action
@@ -149,6 +155,8 @@ func (n *note) fillFieldMap() {
 	n.fieldMap["content_last_snapshot_hash"] = n.ContentLastSnapshotHash
 	n.fieldMap["version"] = n.Version
 	n.fieldMap["client_name"] = n.ClientName
+	n.fieldMap["client_type"] = n.ClientType
+	n.fieldMap["client_version"] = n.ClientVersion
 	n.fieldMap["size"] = n.Size
 	n.fieldMap["ctime"] = n.Ctime
 	n.fieldMap["mtime"] = n.Mtime
