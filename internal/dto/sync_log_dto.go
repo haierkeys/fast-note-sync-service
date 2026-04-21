@@ -7,15 +7,15 @@ import "time"
 // SyncLogListRequest Request parameters for listing sync logs
 // SyncLogListRequest 查询同步日志列表的请求参数
 type SyncLogListRequest struct {
-	Vault  string `json:"vault" form:"vault" example:"MyVault"`          // Vault name (optional filter) // 保险库名称（可选过滤）
-	Type   string `json:"type" form:"type" example:"note"`               // Resource type: note / file / setting / folder // 资源类型
-	Action string `json:"action" form:"action" example:"modify"`         // Action type // 操作类型
+	Vault  string `json:"vault" form:"vault" example:"MyVault"`  // Vault name (optional filter) // 保险库名称（可选过滤）
+	Type   string `json:"type" form:"type" example:"note"`       // Resource type: note / file / setting / folder // 资源类型
+	Action string `json:"action" form:"action" example:"modify"` // Action type // 操作类型
 }
 
 // SyncLogDTO Sync log data transfer object
 // SyncLogDTO 同步日志数据传输对象
 type SyncLogDTO struct {
-	ID            int64     `json:"id"`            // Record ID // 记录 ID
+	ID            int64     `json:"-"`             // Record ID // 记录 ID
 	VaultID       int64     `json:"vaultId"`       // Vault ID // 笔记本 ID
 	Type          string    `json:"type"`          // Resource type // 资源类型
 	Action        string    `json:"action"`        // Action type // 操作类型
