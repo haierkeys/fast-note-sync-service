@@ -124,6 +124,8 @@ func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *dto.NoteH
 		Content:     history.Content,
 		ContentHash: history.ContentHash,
 		ClientName:  history.ClientName,
+		ClientType:  history.ClientType,
+		ClientVersion: history.ClientVersion,
 		Version:     history.Version,
 		CreatedAt:   timex.Time(history.CreatedAt),
 	}
@@ -141,6 +143,8 @@ func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *
 		VaultID:    history.VaultID,
 		Path:       history.Path,
 		ClientName: history.ClientName,
+		ClientType: history.ClientType,
+		ClientVersion: history.ClientVersion,
 		Version:    history.Version,
 		CreatedAt:  timex.Time(history.CreatedAt),
 	}
@@ -270,6 +274,8 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 		Content:     note.ContentLastSnapshot,
 		ContentHash: note.ContentLastSnapshotHash,
 		ClientName:  note.ClientName,
+		ClientType:  note.ClientType,
+		ClientVersion: note.ClientVersion,
 		Version:     latestVersion + 1,
 		CreatedAt:   note.UpdatedAt,
 	}

@@ -201,6 +201,9 @@ func (s *noteService) domainToDTO(note *domain.Note) *dto.NoteDTO {
 		Size:             note.Size,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
+		ClientName:       note.ClientName,
+		ClientType:       note.ClientType,
+		ClientVersion:    note.ClientVersion,
 		UpdatedTimestamp: note.UpdatedTimestamp,
 		UpdatedAt:        timex.Time(note.UpdatedAt),
 		CreatedAt:        timex.Time(note.CreatedAt),
@@ -222,6 +225,9 @@ func (s *noteService) domainToNoContentDTO(note *domain.Note) *dto.NoteNoContent
 		Size:             note.Size,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
+		ClientName:       note.ClientName,
+		ClientType:       note.ClientType,
+		ClientVersion:    note.ClientVersion,
 		UpdatedTimestamp: note.UpdatedTimestamp,
 		UpdatedAt:        timex.Time(note.UpdatedAt),
 		CreatedAt:        timex.Time(note.CreatedAt),
@@ -355,6 +361,8 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			note.Content = params.Content
 			note.ContentHash = params.ContentHash
 			note.ClientName = s.clientName
+			note.ClientType = s.clientType
+			note.ClientVersion = s.clientVer
 			note.Size = int64(len(params.Content))
 			note.Mtime = params.Mtime
 			note.Ctime = params.Ctime
@@ -390,16 +398,18 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		// Create new note // 创建新笔记
 		isNew = true
 		newNote := &domain.Note{
-			VaultID:     vaultID,
-			Path:        params.Path,
-			PathHash:    params.PathHash,
-			Content:     params.Content,
-			ContentHash: params.ContentHash,
-			ClientName:  s.clientName,
-			Size:        int64(len(params.Content)),
-			Mtime:       params.Mtime,
-			Ctime:       params.Ctime,
-			Action:      domain.NoteActionCreate,
+			VaultID:       vaultID,
+			Path:          params.Path,
+			PathHash:      params.PathHash,
+			Content:       params.Content,
+			ContentHash:   params.ContentHash,
+			ClientName:    s.clientName,
+			ClientType:    s.clientType,
+			ClientVersion: s.clientVer,
+			Size:          int64(len(params.Content)),
+			Mtime:         params.Mtime,
+			Ctime:         params.Ctime,
+			Action:        domain.NoteActionCreate,
 		}
 
 		created, err := s.noteRepo.Create(ctx, newNote, uid)
@@ -455,6 +465,8 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	// Update to deleted status // 更新为删除状态
 	note.Action = domain.NoteActionDelete
 	note.ClientName = s.clientName
+	note.ClientType = s.clientType
+	note.ClientVersion = s.clientVer
 	note.Rename = 0
 
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
@@ -513,6 +525,8 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	// Update to modified status and update modification time // 更新为修改状态 并更新修改时间
 	note.Action = domain.NoteActionModify
 	note.ClientName = s.clientName
+	note.ClientType = s.clientType
+	note.ClientVersion = s.clientVer
 	note.Mtime = time.Now().UnixMilli()
 	note.Rename = 0
 
@@ -595,6 +609,9 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		// 3. Mark old note as deleted
 		// 3. 标记旧笔记删除
 		n.Action = domain.NoteActionDelete
+		n.ClientName = s.clientName
+		n.ClientType = s.clientType
+		n.ClientVersion = s.clientVer
 		n.UpdatedTimestamp = timex.Now().UnixMilli()
 		oldNote, err := s.noteRepo.Update(ctx, n, uid)
 		if err != nil {
@@ -618,6 +635,9 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			existNote.ContentHash = n.ContentHash
 			existNote.Version = n.Version
 			existNote.Mtime = timex.Now().UnixMilli()
+			existNote.ClientName = s.clientName
+			existNote.ClientType = s.clientType
+			existNote.ClientVersion = s.clientVer
 			existNote.UpdatedTimestamp = timex.Now().UnixMilli()
 			newNoteCreated, err = s.noteRepo.Update(ctx, existNote, uid)
 		} else {
@@ -630,6 +650,9 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 				FID:              n.FID,
 				Ctime:            n.Ctime,
 				Mtime:            timex.Now().UnixMilli(),
+				ClientName:       s.clientName,
+				ClientType:       s.clientType,
+				ClientVersion:    s.clientVer,
 				UpdatedTimestamp: timex.Now().UnixMilli(),
 				Content:          n.Content,
 				ContentHash:      n.ContentHash,

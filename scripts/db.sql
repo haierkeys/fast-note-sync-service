@@ -55,6 +55,8 @@ CREATE TABLE "note" (
     "content_last_snapshot_hash" text NOT NULL DEFAULT '',
     "version" integer DEFAULT 0,
     "client_name" text NOT NULL DEFAULT '',
+    "client_type" text NOT NULL DEFAULT '',
+    "client_version" text NOT NULL DEFAULT '',
     "size" integer DEFAULT 0,
     "ctime" integer DEFAULT 0,
     "mtime" integer DEFAULT 0,
@@ -86,6 +88,8 @@ CREATE TABLE "note_history" (
     "content_hash" text NOT NULL DEFAULT '',
     "diff_patch" text DEFAULT '',
     "client_name" text DEFAULT '',
+    "client_type" text DEFAULT '',
+    "client_version" text DEFAULT '',
     "version" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL

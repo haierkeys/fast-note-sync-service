@@ -17,6 +17,8 @@ type NoteHistory struct {
 	Content     string
 	ContentHash string
 	ClientName  string
+	ClientType  string
+	ClientVersion string
 	Version     int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

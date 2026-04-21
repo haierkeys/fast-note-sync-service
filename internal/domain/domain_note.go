@@ -31,6 +31,8 @@ type Note struct {
 	ContentLastSnapshotHash string
 	Version                 int64
 	ClientName              string
+	ClientType              string
+	ClientVersion           string
 	Size                    int64
 	Ctime                   int64
 	Mtime                   int64

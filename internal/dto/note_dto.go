@@ -226,6 +226,9 @@ type NoteDTO struct {
 	Ctime            int64      `json:"ctime" form:"ctime"`             // Creation timestamp // 创建时间戳
 	Mtime            int64      `json:"mtime" form:"mtime"`             // Modification timestamp // 修改时间戳
 	Size             int64      `json:"size" form:"size"`               // Note size // 笔记大小
+	ClientName       string     `json:"clientName"`                     // Client name // 客户端名称
+	ClientType       string     `json:"clientType"`                     // Client type // 客户端类型
+	ClientVersion    string     `json:"clientVersion"`                  // Client version // 客户端版本
 	UpdatedTimestamp int64      `json:"lastTime"`                       // Record update timestamp // 记录更新时间戳
 	UpdatedAt        timex.Time `json:"updatedAt"`                      // Updated at time // 更新时间
 	CreatedAt        timex.Time `json:"createdAt"`                      // Created at time // 创建时间
@@ -242,6 +245,9 @@ type NoteNoContentDTO struct {
 	Ctime            int64      `json:"ctime" form:"ctime"`               // Creation timestamp // 创建时间戳
 	Mtime            int64      `json:"mtime" form:"mtime"`               // Modification timestamp // 修改时间戳
 	Size             int64      `json:"size" form:"size"`                 // Note size // 笔记大小
+	ClientName       string     `json:"clientName"`                       // Client name // 客户端名称
+	ClientType       string     `json:"clientType"`                       // Client type // 客户端类型
+	ClientVersion    string     `json:"clientVersion"`                    // Client version // 客户端版本
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // Record update timestamp // 记录更新时间戳
 	UpdatedAt        timex.Time `json:"updatedAt"`                        // Updated at time // 更新时间
 	CreatedAt        timex.Time `json:"createdAt"`                        // Created at time // 创建时间
@@ -291,6 +297,8 @@ type NoteHistoryDTO struct {
 	Content     string                `json:"content" form:"content"`         // Full historical content // 完整历史内容
 	ContentHash string                `json:"contentHash" form:"contentHash"` // Content hash // 内容哈希
 	ClientName  string                `json:"clientName" form:"clientName"`   // Client that made changes // 产生变更的客户端
+	ClientType  string                `json:"clientType" form:"clientType"`   // Client type // 客户端类型
+	ClientVersion string              `json:"clientVersion" form:"clientVersion"` // Client version // 客户端版本
 	Version     int64                 `json:"version" form:"version"`         // Historical version number // 历史版本号
 	CreatedAt   timex.Time            `json:"createdAt" form:"createdAt"`     // Creation time of this version // 此版本的创建时间
 }
@@ -303,6 +311,8 @@ type NoteHistoryNoContentDTO struct {
 	VaultID    int64      `json:"vaultId" form:"vaultId"`       // Associated vault ID // 保险库 ID
 	Path       string     `json:"path" form:"path"`             // Note path at that time // 当时的笔记路径
 	ClientName string     `json:"clientName" form:"clientName"` // Client that made changes // 产生变更的客户端
+	ClientType string     `json:"clientType" form:"clientType"` // Client type // 客户端类型
+	ClientVersion string  `json:"clientVersion" form:"clientVersion"` // Client version // 客户端版本
 	Version    int64      `json:"version" form:"version"`       // Historical version number // 历史版本号
 	CreatedAt  timex.Time `json:"createdAt" form:"createdAt"`   // Creation time of this version // 此版本的创建时间
 }
