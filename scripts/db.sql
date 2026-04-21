@@ -398,6 +398,8 @@ CREATE TABLE "sync_log" (
     "path_hash"      text DEFAULT '',
     "size"           integer DEFAULT 0,
     "client_name"    text DEFAULT '',
+    "client_type"    text DEFAULT '',
+    "client_version" text DEFAULT '',
     "status"         integer DEFAULT 1,         -- 1: success, 2: failed
     "message"        text DEFAULT '',
     "created_at"     datetime DEFAULT NULL

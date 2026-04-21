@@ -20,6 +20,8 @@ type SyncLog struct {
 	PathHash      string     `gorm:"column:path_hash;default:''" json:"pathHash" form:"pathHash"`
 	Size          int64      `gorm:"column:size;default:0" json:"size" form:"size"`
 	ClientName    string     `gorm:"column:client_name;default:''" json:"clientName" form:"clientName"`
+	ClientType    string     `gorm:"column:client_type;default:''" json:"clientType" form:"clientType"`
+	ClientVersion string     `gorm:"column:client_version;default:''" json:"clientVersion" form:"clientVersion"`
 	Status        int        `gorm:"column:status;default:1" json:"status" form:"status"`
 	Message       string     `gorm:"column:message;default:''" json:"message" form:"message"`
 	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`

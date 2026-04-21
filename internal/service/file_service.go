@@ -93,7 +93,7 @@ type FileService interface {
 	Rename(ctx context.Context, uid int64, params *dto.FileRenameRequest) (*dto.FileDTO, *dto.FileDTO, error)
 	// WithClient sets client info
 	// WithClient 设置客户端信息
-	WithClient(name, version string) FileService
+	WithClient(clientType, name, version string) FileService
 
 	// RecycleClear cleans up the recycle bin
 	// RecycleClear 清理回收站
@@ -113,6 +113,7 @@ type fileService struct {
 	folderService  FolderService         // Folder service // 文件夹服务
 	syncLogService SyncLogService        // Sync log service // 同步日志服务
 	sf             *singleflight.Group   // Singleflight group // 并发请求合并组
+	clientType     string                // Client type // 客户端类型
 	clientName     string                // Client name // 客户端名称
 	clientVer      string                // Client version // 客户端版本
 	config         *ServiceConfig        // Service configuration // 服务配置
@@ -263,7 +264,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 				file.Mtime = params.Mtime
 				// Log mtime-only update // 记录仅 mtime 变更日志
 				if s.syncLogService != nil {
-					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "mtime", file.Path, file.PathHash, s.clientName, file.Size)
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "mtime", file.Path, file.PathHash, s.clientType, s.clientName, s.clientVer, file.Size)
 				}
 				if s.backupService != nil {
 					go s.backupService.NotifyUpdated(uid)
@@ -305,7 +306,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 			// Log content modify // 记录内容变更日志
 			if s.syncLogService != nil {
-				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientName, updated.Size)
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientType, s.clientName, s.clientVer, updated.Size)
 			}
 
 			go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -340,7 +341,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 		// Log create // 记录新建日志
 		if s.syncLogService != nil {
-			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientName, created.Size)
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientType, s.clientName, s.clientVer, created.Size)
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -387,7 +388,7 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 
 	// Log soft delete // 记录软删除日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionSoftDelete, "", file.Path, file.PathHash, s.clientName, file.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionSoftDelete, "", file.Path, file.PathHash, s.clientType, s.clientName, s.clientVer, file.Size)
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -437,7 +438,7 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 
 	// Log restore // 记录恢复日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRestore, "", updated.Path, updated.PathHash, s.clientName, updated.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRestore, "", updated.Path, updated.PathHash, s.clientType, s.clientName, s.clientVer, updated.Size)
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -855,7 +856,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 
 		// Log rename // 记录重命名日志
 		if s.syncLogService != nil {
-			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRename, "path", newFileCreated.Path, newFileCreated.PathHash, s.clientName, newFileCreated.Size)
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionRename, "path", newFileCreated.Path, newFileCreated.PathHash, s.clientType, s.clientName, s.clientVer, newFileCreated.Size)
 		}
 
 		// 修正目录FID
@@ -880,8 +881,8 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 }
 
 // WithClient sets client info, returns new FileService instance
-// WithClient 设置客户端信息，返回新的 FileService 实例
-func (s *fileService) WithClient(name, version string) FileService {
+// WithClient 设置客户端信息，返回新 FileService 实例
+func (s *fileService) WithClient(clientType, name, version string) FileService {
 	return &fileService{
 		fileRepo:       s.fileRepo,
 		noteRepo:       s.noteRepo,
@@ -889,6 +890,7 @@ func (s *fileService) WithClient(name, version string) FileService {
 		folderService:  s.folderService,
 		syncLogService: s.syncLogService,
 		sf:             s.sf,
+		clientType:     clientType,
 		clientName:     name,
 		clientVer:      version,
 		config:         s.config,
@@ -909,14 +911,33 @@ func (s *fileService) RecycleClear(ctx context.Context, uid int64, params *dto.F
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Capture items to be deleted for detailed logging
+	// 捕获待删除的项目以便进行详细日志记录
+	var filesToDelete []*domain.File
+	if params.PathHash != "" {
+		file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		if file != nil {
+			filesToDelete = append(filesToDelete, file)
+			if params.Path == "" {
+				params.Path = file.Path
+			}
+		}
+	} else {
+		// Clear all: retrieve all files in recycle bin (using a large page size)
+		// 清理全部：获取回收站中的所有文件（使用较大的分页限制）
+		filesToDelete, _ = s.fileRepo.List(ctx, vaultID, 1, 10000, uid, "", true, "", "")
+	}
+
 	err = s.fileRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Log permanent delete // 记录彻底删除日志
+	// Log permanent delete for each item // 为每一项记录彻底删除日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionDelete, "", params.Path, params.PathHash, s.clientName, 0)
+		for _, f := range filesToDelete {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionDelete, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVer, f.Size)
+		}
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
@@ -977,7 +998,7 @@ func (s *fileService) CleanDuplicateFiles(ctx context.Context, uid int64, vaultI
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, pathHash))
 				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash))
-				
+
 				_ = s.fileRepo.Delete(ctx, f.ID, uid)
 			}
 		}

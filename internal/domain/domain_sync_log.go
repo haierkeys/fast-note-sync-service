@@ -70,6 +70,8 @@ type SyncLog struct {
 	PathHash      string        // Resource path hash // 资源路径哈希
 	Size          int64         // Resource size in bytes // 资源大小（字节）
 	ClientName    string        // Client name that initiated the sync // 发起同步的客户端名称
+	ClientType    string        // Client type // 客户端类型
+	ClientVersion string        // Client version // 客户端版本
 	Status        int           // 1: success, 2: failed // 状态：1 成功，2 失败
 	Message       string        // Additional message or error detail // 附加消息或错误详情
 	CreatedAt     time.Time     // Log creation time // 日志创建时间

@@ -24,7 +24,9 @@ type SyncLogService interface {
 		changedFields string, // e.g. "content,mtime" / "mtime" / "path" / "" // 如 "content,mtime" / "mtime" / "path" / ""
 		path string,
 		pathHash string,
+		clientType string,
 		clientName string,
+		clientVersion string,
 		size int64,
 	)
 
@@ -59,7 +61,9 @@ func (s *syncLogService) Log(
 	changedFields string,
 	path string,
 	pathHash string,
+	clientType string,
 	clientName string,
+	clientVersion string,
 	size int64,
 ) {
 	go func() {
@@ -74,8 +78,10 @@ func (s *syncLogService) Log(
 			ChangedFields: changedFields,
 			Path:          path,
 			PathHash:      pathHash,
-			Size:          size,
+			Size:           size,
+			ClientType:    clientType,
 			ClientName:    clientName,
+			ClientVersion: clientVersion,
 			Status:        1, // success // 成功
 			CreatedAt:     time.Now(),
 		}
@@ -128,6 +134,8 @@ func (s *syncLogService) domainToDTO(l *domain.SyncLog) *dto.SyncLogDTO {
 		PathHash:      l.PathHash,
 		Size:          l.Size,
 		ClientName:    l.ClientName,
+		ClientType:    l.ClientType,
+		ClientVersion: l.ClientVersion,
 		Status:        l.Status,
 		Message:       l.Message,
 		CreatedAt:     l.CreatedAt,

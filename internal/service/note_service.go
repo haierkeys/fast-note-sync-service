@@ -88,7 +88,7 @@ type NoteService interface {
 
 	// WithClient sets client info
 	// WithClient 设置客户端信息
-	WithClient(name, version string) NoteService
+	WithClient(clientType, name, version string) NoteService
 
 	// PatchFrontmatter patches note frontmatter
 	// PatchFrontmatter 修改笔记 Frontmatter
@@ -134,6 +134,7 @@ type noteService struct {
 	folderService  FolderService              // Folder service // 文件夹服务
 	syncLogService SyncLogService             // Sync log service // 同步日志服务
 	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
+	clientType     string                     // Client type // 客户端类型
 	clientName     string                     // Client name // 客户端名称
 	clientVer      string                     // Client version // 客户端版本
 	config         *ServiceConfig             // Service configuration // 服务配置
@@ -163,7 +164,7 @@ func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLink
 
 // WithClient sets client info, returns new NoteService instance
 // WithClient 设置客户端信息，返回新 NoteService 实例
-func (s *noteService) WithClient(name, version string) NoteService {
+func (s *noteService) WithClient(clientType, name, version string) NoteService {
 	return &noteService{
 		noteRepo:       s.noteRepo,
 		noteLinkRepo:   s.noteLinkRepo,
@@ -173,6 +174,7 @@ func (s *noteService) WithClient(name, version string) NoteService {
 		folderService:  s.folderService,
 		syncLogService: s.syncLogService,
 		sf:             s.sf,
+		clientType:     clientType,
 		clientName:     name,
 		clientVer:      version,
 		config:         s.config,
@@ -333,7 +335,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 				note.Mtime = params.Mtime
 				// Log mtime-only update // 记录仅 mtime 变更日志
 				if s.syncLogService != nil {
-					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "mtime", note.Path, note.PathHash, s.clientName, note.Size)
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "mtime", note.Path, note.PathHash, s.clientType, s.clientName, s.clientVer, note.Size)
 				}
 				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
 			}
@@ -367,7 +369,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 			// Log content modify // 记录内容变更日志
 			if s.syncLogService != nil {
-				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientName, updated.Size)
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionModify, "content,mtime", updated.Path, updated.PathHash, s.clientType, s.clientName, s.clientVer, updated.Size)
 			}
 
 			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
@@ -407,7 +409,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 		// Log create // 记录新建日志
 		if s.syncLogService != nil {
-			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientName, created.Size)
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionCreate, "", created.Path, created.PathHash, s.clientType, s.clientName, s.clientVer, created.Size)
 		}
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
@@ -465,7 +467,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 
 	// Log soft delete // 记录软删除日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientName, note.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientType, s.clientName, s.clientVer, note.Size)
 	}
 
 	// Re-fetch the updated note // 重新获取更新后的笔记
@@ -521,7 +523,7 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 
 	// Log restore // 记录恢复日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRestore, "", note.Path, note.PathHash, s.clientName, note.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRestore, "", note.Path, note.PathHash, s.clientType, s.clientName, s.clientVer, note.Size)
 	}
 
 	// Re-fetch the updated note
@@ -648,7 +650,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 
 		// Log rename // 记录重命名日志
 		if s.syncLogService != nil {
-			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRename, "path", newNoteCreated.Path, newNoteCreated.PathHash, s.clientName, newNoteCreated.Size)
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionRename, "path", newNoteCreated.Path, newNoteCreated.PathHash, s.clientType, s.clientName, s.clientVer, newNoteCreated.Size)
 		}
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
@@ -1263,14 +1265,33 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Capture items to be deleted for detailed logging
+	// 捕获待删除的项目以便进行详细日志记录
+	var notesToDelete []*domain.Note
+	if params.PathHash != "" {
+		note, _ := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, true)
+		if note != nil {
+			notesToDelete = append(notesToDelete, note)
+			if params.Path == "" {
+				params.Path = note.Path
+			}
+		}
+	} else {
+		// Clear all: retrieve all notes in recycle bin (using a large page size)
+		// 清理全部：获取回收站中的所有笔记（使用较大的分页限制）
+		notesToDelete, _ = s.noteRepo.List(ctx, vaultID, 1, 10000, uid, "", true, "", false, "", "", nil)
+	}
+
 	err = s.noteRepo.RecycleClear(ctx, params.Path, params.PathHash, vaultID, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Log permanent delete // 记录彻底删除日志
+	// Log permanent delete for each item // 为每一项记录彻底删除日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionDelete, "", params.Path, params.PathHash, s.clientName, 0)
+		for _, n := range notesToDelete {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionDelete, "", n.Path, n.PathHash, s.clientType, s.clientName, s.clientVer, n.Size)
+		}
 	}
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)

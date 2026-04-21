@@ -81,7 +81,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
@@ -418,7 +418,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteModifyCheck", params.Path, params.Vault)
 
@@ -495,7 +495,7 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
@@ -552,7 +552,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRename", params.Path, params.Vault)
 
 	uid := c.User.UID
-	oldNote, newNote, err := h.App.GetNoteService(c.ClientName, c.ClientVersion).Rename(c.Context(), uid, params)
+	oldNote, newNote, err := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion).Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorRenameNoteTargetExist, err, "websocket_router.note.NoteRename.Rename")
 		return
@@ -585,7 +585,7 @@ func (h *NoteWSHandler) NoteRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRePush", params.Path, params.Vault)
 
 	uid := c.User.UID
-	note, err := h.App.GetNoteService(c.ClientName, c.ClientVersion).Get(c.Context(), uid, params)
+	note, err := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion).Get(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorNoteNotFound, err, "websocket_router.note.NoteRePush.Get")
 		return
@@ -640,7 +640,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteSync", "", params.Vault)
 
