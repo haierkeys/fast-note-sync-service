@@ -2,7 +2,7 @@
 // Package dto 定义数据传输对象（请求参数和响应结构体）
 package dto
 
-import "time"
+import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 // SyncLogListRequest Request parameters for listing sync logs
 // SyncLogListRequest 查询同步日志列表的请求参数
@@ -28,5 +28,5 @@ type SyncLogDTO struct {
 	ClientVersion string    `json:"clientVersion"` // Client version // 客户端版本
 	Status        int       `json:"status"`        // Status: 1 success, 2 failed // 状态
 	Message       string    `json:"message"`       // Additional message // 附加消息
-	CreatedAt     time.Time `json:"createdAt"`     // Log creation time // 创建时间
+	CreatedAt     timex.Time `json:"createdAt"`     // Log creation time // 创建时间
 }

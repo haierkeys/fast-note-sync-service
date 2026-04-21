@@ -4,7 +4,7 @@ package service
 
 import (
 	"context"
-	"time"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -83,7 +83,7 @@ func (s *syncLogService) Log(
 			ClientName:    clientName,
 			ClientVersion: clientVersion,
 			Status:        1, // success // 成功
-			CreatedAt:     time.Now(),
+			CreatedAt:     timex.Now(),
 		}
 		if err := s.repo.Create(ctx, entry, uid); err != nil {
 			zap.L().Warn("SyncLogService.Log: failed to create sync log",
