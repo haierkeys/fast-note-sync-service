@@ -221,6 +221,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 			// Admin config interface
 			// 管理员配置接口
+			auth.GET("/admin/check", adminControlHandler.CheckAdmin)
 			auth.GET("/admin/config", adminControlHandler.GetConfig)
 			auth.POST("/admin/config", adminControlHandler.UpdateConfig)
 			auth.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)

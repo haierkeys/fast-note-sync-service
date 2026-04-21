@@ -65,6 +65,33 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(data))
 }
 
+// CheckAdmin checks if current user has admin privileges
+// @Summary Check admin permission
+// @Description Check if the current logged-in user has system admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=dto.AdminCheckResponse} "Success"
+// @Router /api/admin/check [get]
+func (h *AdminControlHandler) CheckAdmin(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	isAdmin := false
+	if uid != 0 {
+		// AdminUID 0 means no restriction, otherwise must match AdminUID
+		// AdminUID 为 0 表示不限制，否则必须匹配 AdminUID
+		if cfg.User.AdminUID == 0 || uid == int64(cfg.User.AdminUID) {
+			isAdmin = true
+		}
+	}
+
+	response.ToResponse(code.Success.WithData(dto.AdminCheckResponse{
+		IsAdmin: isAdmin,
+	}))
+}
+
 // GetConfig retrieves admin configuration (requires admin privileges)
 // @Summary Get full admin config
 // @Description Get full system configuration information, requires admin privileges
