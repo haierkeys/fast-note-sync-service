@@ -157,6 +157,8 @@ jobs:
         run: go install github.com/mitchellh/gox@latest
 
       - name: Go Build Multi-platform
+        env:
+          COMMIT_MSG: ${{ needs.prepare-message.outputs.commit_msg }}
         run: make gox-all
 
       - name: Create Changelog

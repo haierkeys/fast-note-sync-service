@@ -140,6 +140,7 @@ func (a *App) Version() pkgapp.VersionInfo {
 		Version:   Version,
 		GitTag:    GitTag,
 		BuildTime: BuildTime,
+		Changelog: strings.ReplaceAll(Changelog, "@@@", "\n"),
 	}
 }
 

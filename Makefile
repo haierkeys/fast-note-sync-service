@@ -28,7 +28,10 @@ GitVersionDesc  = $(shell git log -1 --format=%s)
 BuildTime       = $(shell date +%FT%T%z)
 
 # LDFLAGS: 注入版本信息到二进制
-LDFLAGS = -ldflags '-X ${REPO}/internal/app.Version=$(GitTag) -X "${REPO}/internal/app.GitTag=$(GitVersion)" -X ${REPO}/internal/app.BuildTime=$(BuildTime)'
+# 获取提交信息，并处理掉换行符（用 @@@ 占位）以便安全地注入到 ldflags
+COMMIT_MSG_CLEAN = $(shell echo "$(COMMIT_MSG)" | tr '\n' '^' | sed 's/\^/@@@/g' | sed 's/"/\\"/g')
+Changelog       ?= $(COMMIT_MSG_CLEAN)
+LDFLAGS = -ldflags '-X ${REPO}/internal/app.Version=$(GitTag) -X "${REPO}/internal/app.GitTag=$(GitVersion)" -X ${REPO}/internal/app.BuildTime=$(BuildTime) -X "${REPO}/internal/app.Changelog=$(Changelog)"'
 
 # go 命令封装
 gob = go build ${LDFLAGS}

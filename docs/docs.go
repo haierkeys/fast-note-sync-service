@@ -23,6 +23,43 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/admin/check": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Check if the current logged-in user has system admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Check admin permission",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AdminCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/cloudflared_tunnel_download": {
             "get": {
                 "security": [
@@ -836,6 +873,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "example": 1,
+                        "description": "ID // ID",
                         "name": "id",
                         "in": "query"
                     }
@@ -1013,6 +1051,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "example": 1,
+                        "description": "Config ID // 配置 ID",
                         "name": "configId",
                         "in": "query",
                         "required": true
@@ -1020,12 +1059,14 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page number // 页码",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "Page size // 每页大小",
                         "name": "pageSize",
                         "in": "query"
                     }
@@ -4874,7 +4915,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "note",
-                        "description": "Resource type: note / file / setting // 资源类型",
+                        "description": "Resource type: note / file / setting / folder // 资源类型",
                         "name": "type",
                         "in": "query"
                     },
@@ -5580,6 +5621,15 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.AdminCheckResponse": {
+            "type": "object",
+            "properties": {
+                "isAdmin": {
+                    "description": "Whether have admin privileges // 是否具有管理员权限",
+                    "type": "boolean"
+                }
+            }
+        },
         "dto.AdminCloudflareConfig": {
             "type": "object",
             "properties": {
@@ -5707,12 +5757,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "load1": {
+                    "description": "Load 1 min // 1分钟负载",
                     "type": "number"
                 },
                 "load15": {
+                    "description": "Load 15 min // 15分钟负载",
                     "type": "number"
                 },
                 "load5": {
+                    "description": "Load 5 min // 5分钟负载",
                     "type": "number"
                 }
             }
@@ -5771,23 +5824,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "cpuPercent": {
-                    "description": "CPU Usage percentage",
+                    "description": "CPU Usage percentage // CPU 使用率",
                     "type": "number"
                 },
                 "memoryPercent": {
-                    "description": "Memory Usage percentage",
+                    "description": "Memory Usage percentage // 内存使用率",
                     "type": "number"
                 },
                 "name": {
-                    "description": "Process Name",
+                    "description": "Process Name // 进程名称",
                     "type": "string"
                 },
                 "pid": {
-                    "description": "Process ID",
+                    "description": "Process ID // 进程 ID",
                     "type": "integer"
                 },
                 "ppid": {
-                    "description": "Parent Process ID",
+                    "description": "Parent Process ID // 父进程 ID",
                     "type": "integer"
                 }
             }
@@ -6009,67 +6062,67 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
-                    "description": "创建时间",
+                    "description": "Created at // 创建时间",
                     "type": "string"
                 },
                 "cronExpression": {
-                    "description": "Cron表达式",
+                    "description": "Cron expression // Cron表达式",
                     "type": "string"
                 },
                 "cronStrategy": {
-                    "description": "定时策略",
+                    "description": "Cron strategy // 定时策略",
                     "type": "string"
                 },
                 "id": {
-                    "description": "配置ID",
+                    "description": "Config ID // 配置ID",
                     "type": "integer"
                 },
                 "includeVaultName": {
-                    "description": "同步路径是否包含仓库名",
+                    "description": "Whether sync path includes vault name // 同步路径是否包含仓库名",
                     "type": "boolean"
                 },
                 "isEnabled": {
-                    "description": "是否启用",
+                    "description": "Is enabled // 是否启用",
                     "type": "boolean"
                 },
                 "lastMessage": {
-                    "description": "上次运行结果消息",
+                    "description": "Last run result message // 上次运行结果消息",
                     "type": "string"
                 },
                 "lastRunTime": {
-                    "description": "上次运行时间",
+                    "description": "Last run time // 上次运行时间",
                     "type": "string"
                 },
                 "lastStatus": {
-                    "description": "上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)",
+                    "description": "Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped) // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)",
                     "type": "integer"
                 },
                 "nextRunTime": {
-                    "description": "下次运行时间",
+                    "description": "Next run time // 下次运行时间",
                     "type": "string"
                 },
                 "retentionDays": {
-                    "description": "保留天数",
+                    "description": "Retention days // 保留天数",
                     "type": "integer"
                 },
                 "storageIds": {
-                    "description": "存储ID列表",
+                    "description": "Storage ID list // 存储ID列表",
                     "type": "string"
                 },
                 "type": {
-                    "description": "备份类型 (full, incremental, sync)",
+                    "description": "Backup type (full, incremental, sync) // 备份类型 (full, incremental, sync)",
                     "type": "string"
                 },
                 "uid": {
-                    "description": "用户ID",
+                    "description": "User UID // 用户ID",
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "description": "更新时间",
+                    "description": "Updated at // 更新时间",
                     "type": "string"
                 },
                 "vault": {
-                    "description": "关联库名称",
+                    "description": "Associated vault name // 关联库名称",
                     "type": "string"
                 }
             }
@@ -6083,10 +6136,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "cronExpression": {
+                    "description": "Cron expression // Cron 表达式",
                     "type": "string",
                     "example": "0 0 * * *"
                 },
                 "cronStrategy": {
+                    "description": "Cron strategy // 定时策略",
                     "type": "string",
                     "enum": [
                         "daily",
@@ -6097,27 +6152,33 @@ const docTemplate = `{
                     "example": "daily"
                 },
                 "id": {
+                    "description": "ID // ID",
                     "type": "integer",
                     "example": 1
                 },
                 "includeVaultName": {
+                    "description": "Include vault name // 同步路径是否包含仓库名",
                     "type": "boolean",
                     "example": false
                 },
                 "isEnabled": {
+                    "description": "Is enabled // 是否启用",
                     "type": "boolean",
                     "example": true
                 },
                 "retentionDays": {
+                    "description": "Retention days // 保留天数",
                     "type": "integer",
                     "minimum": -1,
                     "example": 7
                 },
                 "storageIds": {
+                    "description": "Storage IDs // 存储 ID 列表",
                     "type": "string",
                     "example": "[1, 2]"
                 },
                 "type": {
+                    "description": "Backup type // 备份类型",
                     "type": "string",
                     "enum": [
                         "full",
@@ -6127,6 +6188,7 @@ const docTemplate = `{
                     "example": "sync"
                 },
                 "vault": {
+                    "description": "Vault name // 仓库名称",
                     "type": "string",
                     "example": "test"
                 }
@@ -6136,6 +6198,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "ID // ID",
                     "type": "integer",
                     "example": 1
                 }
@@ -6145,59 +6208,59 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "configId": {
-                    "description": "配置ID",
+                    "description": "Config ID // 配置ID",
                     "type": "integer"
                 },
                 "createdAt": {
-                    "description": "创建时间",
+                    "description": "Created at // 创建时间",
                     "type": "string"
                 },
                 "endTime": {
-                    "description": "结束时间",
+                    "description": "End time // 结束时间",
                     "type": "string"
                 },
                 "fileCount": {
-                    "description": "文件数量",
+                    "description": "File count // 文件数量",
                     "type": "integer"
                 },
                 "filePath": {
-                    "description": "文件路径",
+                    "description": "File path // 文件路径",
                     "type": "string"
                 },
                 "fileSize": {
-                    "description": "文件大小",
+                    "description": "File size // 文件大小",
                     "type": "integer"
                 },
                 "id": {
-                    "description": "历史记录ID",
+                    "description": "History record ID // 历史记录ID",
                     "type": "integer"
                 },
                 "message": {
-                    "description": "结果消息",
+                    "description": "Result message // 结果消息",
                     "type": "string"
                 },
                 "startTime": {
-                    "description": "开始时间",
+                    "description": "Start time // 开始时间",
                     "type": "string"
                 },
                 "status": {
-                    "description": "状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)",
+                    "description": "Status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped) // 状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)",
                     "type": "integer"
                 },
                 "storageId": {
-                    "description": "存储ID",
+                    "description": "Storage ID // 存储ID",
                     "type": "integer"
                 },
                 "type": {
-                    "description": "备份类型",
+                    "description": "Backup type // 备份类型",
                     "type": "string"
                 },
                 "uid": {
-                    "description": "用户ID",
+                    "description": "User UID // 用户ID",
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "description": "更新时间",
+                    "description": "Updated at // 更新时间",
                     "type": "string"
                 }
             }
@@ -6470,63 +6533,63 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "branch": {
-                    "description": "分支",
+                    "description": "Branch // 分支",
                     "type": "string"
                 },
                 "createdAt": {
-                    "description": "创建时间",
+                    "description": "Created at // 创建时间",
                     "type": "string"
                 },
                 "delay": {
-                    "description": "延迟时间（秒）",
+                    "description": "Delay time (seconds) // 延迟时间（秒）",
                     "type": "integer"
                 },
                 "id": {
-                    "description": "任务ID",
+                    "description": "Task ID // 任务ID",
                     "type": "integer"
                 },
                 "isEnabled": {
-                    "description": "是否启用",
+                    "description": "Is enabled // 是否启用",
                     "type": "boolean"
                 },
                 "lastMessage": {
-                    "description": "上次运行结果消息",
+                    "description": "Last run result message // 上次运行结果消息",
                     "type": "string"
                 },
                 "lastStatus": {
-                    "description": "上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)",
+                    "description": "Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown) // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)",
                     "type": "integer"
                 },
                 "lastSyncTime": {
-                    "description": "上次同步时间",
+                    "description": "Last sync time // 上次同步时间",
                     "type": "string"
                 },
                 "password": {
-                    "description": "密码",
+                    "description": "Password // 密码",
                     "type": "string"
                 },
                 "repoUrl": {
-                    "description": "仓库地址",
+                    "description": "Repository URL // 仓库地址",
                     "type": "string"
                 },
                 "retentionDays": {
-                    "description": "历史记录保留天数",
+                    "description": "History retention days // 历史记录保留天数",
                     "type": "integer"
                 },
                 "uid": {
-                    "description": "用户ID",
+                    "description": "User ID // 用户ID",
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "description": "更新时间",
+                    "description": "Updated at // 更新时间",
                     "type": "string"
                 },
                 "username": {
-                    "description": "用户名",
+                    "description": "Username // 用户名",
                     "type": "string"
                 },
                 "vault": {
-                    "description": "关联库名称",
+                    "description": "Associated vault name // 关联库名称",
                     "type": "string"
                 }
             }
@@ -6541,7 +6604,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "delay": {
-                    "description": "延迟时间（秒）",
+                    "description": "Delay time (seconds) // 延迟时间（秒）",
                     "type": "integer"
                 },
                 "id": {
@@ -6563,7 +6626,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vault": {
-                    "description": "关联笔记本名称",
+                    "description": "Associated vault name // 关联笔记本名称",
                     "type": "string"
                 }
             }
@@ -6670,6 +6733,18 @@ const docTemplate = `{
         "dto.NoteDTO": {
             "type": "object",
             "properties": {
+                "clientName": {
+                    "description": "Client name // 客户端名称",
+                    "type": "string"
+                },
+                "clientType": {
+                    "description": "Client type // 客户端类型",
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "description": "Client version // 客户端版本",
+                    "type": "string"
+                },
                 "content": {
                     "description": "Note content // 笔记内容",
                     "type": "string"
@@ -6721,6 +6796,14 @@ const docTemplate = `{
             "properties": {
                 "clientName": {
                     "description": "Client that made changes // 产生变更的客户端",
+                    "type": "string"
+                },
+                "clientType": {
+                    "description": "Client type // 客户端类型",
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "description": "Client version // 客户端版本",
                     "type": "string"
                 },
                 "content": {
@@ -6901,6 +6984,18 @@ const docTemplate = `{
         "dto.NoteNoContentDTO": {
             "type": "object",
             "properties": {
+                "clientName": {
+                    "description": "Client name // 客户端名称",
+                    "type": "string"
+                },
+                "clientType": {
+                    "description": "Client type // 客户端类型",
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "description": "Client version // 客户端版本",
+                    "type": "string"
+                },
                 "createdAt": {
                     "description": "Created at time // 创建时间",
                     "type": "string"
@@ -7451,6 +7546,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Created at // 创建时间",
                     "type": "string"
                 },
                 "expiresAt": {
@@ -7500,6 +7596,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "description": "Updated at // 更新时间",
                     "type": "string"
                 },
                 "url": {
@@ -7585,48 +7682,63 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "accessKeyId": {
+                    "description": "Access key ID // 访问密钥 ID",
                     "type": "string"
                 },
                 "accessKeySecret": {
+                    "description": "Access key secret // 访问密钥秘密",
                     "type": "string"
                 },
                 "accessUrlPrefix": {
+                    "description": "Access URL prefix // 访问地址前缀",
                     "type": "string"
                 },
                 "accountId": {
+                    "description": "Account ID // 账户 ID",
                     "type": "string"
                 },
                 "bucketName": {
+                    "description": "Bucket name // 存储桶名称",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "Created at // 创建时间",
                     "type": "string"
                 },
                 "customPath": {
+                    "description": "Custom path // 自定义路径",
                     "type": "string"
                 },
                 "endpoint": {
+                    "description": "Endpoint // 访问端点",
                     "type": "string"
                 },
                 "id": {
+                    "description": "ID // ID",
                     "type": "integer"
                 },
                 "isEnabled": {
+                    "description": "Is enabled // 是否启用",
                     "type": "boolean"
                 },
                 "password": {
+                    "description": "Password // 密码",
                     "type": "string"
                 },
                 "region": {
+                    "description": "Region // 区域",
                     "type": "string"
                 },
                 "type": {
+                    "description": "Storage type // 存储类型",
                     "type": "string"
                 },
                 "updatedAt": {
+                    "description": "Updated at // 更新时间",
                     "type": "string"
                 },
                 "user": {
+                    "description": "Username // 用户名",
                     "type": "string"
                 }
             }
@@ -7639,70 +7751,70 @@ const docTemplate = `{
             ],
             "properties": {
                 "accessKeyId": {
-                    "description": "访问密钥ID",
+                    "description": "Access key ID // 访问密钥ID",
                     "type": "string",
                     "example": ""
                 },
                 "accessKeySecret": {
-                    "description": "访问密钥秘密",
+                    "description": "Access key secret // 访问密钥秘密",
                     "type": "string",
                     "example": ""
                 },
                 "accessUrlPrefix": {
-                    "description": "访问地址前缀",
+                    "description": "Access URL prefix // 访问地址前缀",
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 2,
                     "example": "https://cdn.com"
                 },
                 "accountId": {
-                    "description": "账户ID r2",
+                    "description": "Account ID (R2) // 账户ID r2",
                     "type": "string",
                     "example": "123456789"
                 },
                 "bucketName": {
-                    "description": "存储桶名称",
+                    "description": "Bucket name // 存储桶名称",
                     "type": "string",
                     "example": "my-bucket"
                 },
                 "customPath": {
-                    "description": "自定义路径",
+                    "description": "Custom path // 自定义路径",
                     "type": "string",
                     "example": "/backups"
                 },
                 "endpoint": {
-                    "description": "端点 oss",
+                    "description": "Endpoint (OSS) // 端点 oss",
                     "type": "string",
                     "example": "oss-cn-hangzhou.aliyuncs.com"
                 },
                 "id": {
-                    "description": "ID",
+                    "description": "ID // ID",
                     "type": "integer",
                     "example": 1
                 },
                 "isEnabled": {
-                    "description": "是否启用",
+                    "description": "Is enabled // 是否启用",
                     "type": "integer",
                     "example": 1
                 },
                 "password": {
-                    "description": "密码",
+                    "description": "Password // 密码",
                     "type": "string",
                     "example": "secret_password"
                 },
                 "region": {
-                    "description": "区域 s3",
+                    "description": "Region (S3) // 区域 s3",
                     "type": "string",
                     "example": "us-east-1"
                 },
                 "type": {
-                    "description": "类型",
+                    "description": "Storage type // 类型",
                     "type": "string",
                     "minLength": 1,
                     "example": "local-fs"
                 },
                 "user": {
-                    "description": "访问用户名",
+                    "description": "Username // 访问用户名",
                     "type": "string",
                     "example": "admin"
                 }
@@ -7723,13 +7835,17 @@ const docTemplate = `{
                     "description": "Client name // 客户端名称",
                     "type": "string"
                 },
+                "clientType": {
+                    "description": "Client type // 客户端类型",
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "description": "Client version // 客户端版本",
+                    "type": "string"
+                },
                 "createdAt": {
                     "description": "Log creation time // 创建时间",
                     "type": "string"
-                },
-                "id": {
-                    "description": "Record ID // 记录 ID",
-                    "type": "integer"
                 },
                 "message": {
                     "description": "Additional message // 附加消息",
