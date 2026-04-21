@@ -8,6 +8,7 @@ var (
 	Version   string = "2.12.5"
 	GitTag    string = "2000.01.01.release"
 	BuildTime string = "2000-01-01T00:00:00+0800"
+	Changelog string = ""
 )
 
 // Application name constants

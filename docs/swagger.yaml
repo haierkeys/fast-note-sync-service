@@ -110,6 +110,12 @@ definitions:
         description: Physical cores // 物理核心数
         type: integer
     type: object
+  dto.AdminCheckResponse:
+    properties:
+      isAdmin:
+        description: Whether have admin privileges // 是否具有管理员权限
+        type: boolean
+    type: object
   dto.AdminCloudflareConfig:
     properties:
       enabled:
@@ -205,10 +211,13 @@ definitions:
   dto.AdminLoadInfo:
     properties:
       load1:
+        description: Load 1 min // 1分钟负载
         type: number
       load5:
+        description: Load 5 min // 5分钟负载
         type: number
       load15:
+        description: Load 15 min // 15分钟负载
         type: number
     type: object
   dto.AdminMemoryInfo:
@@ -250,19 +259,19 @@ definitions:
   dto.AdminProcessInfo:
     properties:
       cpuPercent:
-        description: CPU Usage percentage
+        description: CPU Usage percentage // CPU 使用率
         type: number
       memoryPercent:
-        description: Memory Usage percentage
+        description: Memory Usage percentage // 内存使用率
         type: number
       name:
-        description: Process Name
+        description: Process Name // 进程名称
         type: string
       pid:
-        description: Process ID
+        description: Process ID // 进程 ID
         type: integer
       ppid:
-        description: Parent Process ID
+        description: Parent Process ID // 父进程 ID
         type: integer
     type: object
   dto.AdminRuntimeInfo:
@@ -417,60 +426,64 @@ definitions:
   dto.BackupConfigDTO:
     properties:
       createdAt:
-        description: 创建时间
+        description: Created at // 创建时间
         type: string
       cronExpression:
-        description: Cron表达式
+        description: Cron expression // Cron表达式
         type: string
       cronStrategy:
-        description: 定时策略
+        description: Cron strategy // 定时策略
         type: string
       id:
-        description: 配置ID
+        description: Config ID // 配置ID
         type: integer
       includeVaultName:
-        description: 同步路径是否包含仓库名
+        description: Whether sync path includes vault name // 同步路径是否包含仓库名
         type: boolean
       isEnabled:
-        description: 是否启用
+        description: Is enabled // 是否启用
         type: boolean
       lastMessage:
-        description: 上次运行结果消息
+        description: Last run result message // 上次运行结果消息
         type: string
       lastRunTime:
-        description: 上次运行时间
+        description: Last run time // 上次运行时间
         type: string
       lastStatus:
-        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+        description: Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+          // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
         type: integer
       nextRunTime:
-        description: 下次运行时间
+        description: Next run time // 下次运行时间
         type: string
       retentionDays:
-        description: 保留天数
+        description: Retention days // 保留天数
         type: integer
       storageIds:
-        description: 存储ID列表
+        description: Storage ID list // 存储ID列表
         type: string
       type:
-        description: 备份类型 (full, incremental, sync)
+        description: Backup type (full, incremental, sync) // 备份类型 (full, incremental,
+          sync)
         type: string
       uid:
-        description: 用户ID
+        description: User UID // 用户ID
         type: integer
       updatedAt:
-        description: 更新时间
+        description: Updated at // 更新时间
         type: string
       vault:
-        description: 关联库名称
+        description: Associated vault name // 关联库名称
         type: string
     type: object
   dto.BackupConfigRequest:
     properties:
       cronExpression:
+        description: Cron expression // Cron 表达式
         example: 0 0 * * *
         type: string
       cronStrategy:
+        description: Cron strategy // 定时策略
         enum:
         - daily
         - weekly
@@ -479,22 +492,28 @@ definitions:
         example: daily
         type: string
       id:
+        description: ID // ID
         example: 1
         type: integer
       includeVaultName:
+        description: Include vault name // 同步路径是否包含仓库名
         example: false
         type: boolean
       isEnabled:
+        description: Is enabled // 是否启用
         example: true
         type: boolean
       retentionDays:
+        description: Retention days // 保留天数
         example: 7
         minimum: -1
         type: integer
       storageIds:
+        description: Storage IDs // 存储 ID 列表
         example: '[1, 2]'
         type: string
       type:
+        description: Backup type // 备份类型
         enum:
         - full
         - incremental
@@ -502,6 +521,7 @@ definitions:
         example: sync
         type: string
       vault:
+        description: Vault name // 仓库名称
         example: test
         type: string
     required:
@@ -512,52 +532,54 @@ definitions:
   dto.BackupExecuteRequest:
     properties:
       id:
+        description: ID // ID
         example: 1
         type: integer
     type: object
   dto.BackupHistoryDTO:
     properties:
       configId:
-        description: 配置ID
+        description: Config ID // 配置ID
         type: integer
       createdAt:
-        description: 创建时间
+        description: Created at // 创建时间
         type: string
       endTime:
-        description: 结束时间
+        description: End time // 结束时间
         type: string
       fileCount:
-        description: 文件数量
+        description: File count // 文件数量
         type: integer
       filePath:
-        description: 文件路径
+        description: File path // 文件路径
         type: string
       fileSize:
-        description: 文件大小
+        description: File size // 文件大小
         type: integer
       id:
-        description: 历史记录ID
+        description: History record ID // 历史记录ID
         type: integer
       message:
-        description: 结果消息
+        description: Result message // 结果消息
         type: string
       startTime:
-        description: 开始时间
+        description: Start time // 开始时间
         type: string
       status:
-        description: 状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
+        description: Status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped) //
+          状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
         type: integer
       storageId:
-        description: 存储ID
+        description: Storage ID // 存储ID
         type: integer
       type:
-        description: 备份类型
+        description: Backup type // 备份类型
         type: string
       uid:
-        description: 用户ID
+        description: User UID // 用户ID
         type: integer
       updatedAt:
-        description: 更新时间
+        description: Updated at // 更新时间
         type: string
     type: object
   dto.FileDTO:
@@ -757,49 +779,50 @@ definitions:
   dto.GitSyncConfigDTO:
     properties:
       branch:
-        description: 分支
+        description: Branch // 分支
         type: string
       createdAt:
-        description: 创建时间
+        description: Created at // 创建时间
         type: string
       delay:
-        description: 延迟时间（秒）
+        description: Delay time (seconds) // 延迟时间（秒）
         type: integer
       id:
-        description: 任务ID
+        description: Task ID // 任务ID
         type: integer
       isEnabled:
-        description: 是否启用
+        description: Is enabled // 是否启用
         type: boolean
       lastMessage:
-        description: 上次运行结果消息
+        description: Last run result message // 上次运行结果消息
         type: string
       lastStatus:
-        description: 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)
+        description: Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)
+          // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)
         type: integer
       lastSyncTime:
-        description: 上次同步时间
+        description: Last sync time // 上次同步时间
         type: string
       password:
-        description: 密码
+        description: Password // 密码
         type: string
       repoUrl:
-        description: 仓库地址
+        description: Repository URL // 仓库地址
         type: string
       retentionDays:
-        description: 历史记录保留天数
+        description: History retention days // 历史记录保留天数
         type: integer
       uid:
-        description: 用户ID
+        description: User ID // 用户ID
         type: integer
       updatedAt:
-        description: 更新时间
+        description: Updated at // 更新时间
         type: string
       username:
-        description: 用户名
+        description: Username // 用户名
         type: string
       vault:
-        description: 关联库名称
+        description: Associated vault name // 关联库名称
         type: string
     type: object
   dto.GitSyncConfigRequest:
@@ -807,7 +830,7 @@ definitions:
       branch:
         type: string
       delay:
-        description: 延迟时间（秒）
+        description: Delay time (seconds) // 延迟时间（秒）
         type: integer
       id:
         type: integer
@@ -822,7 +845,7 @@ definitions:
       username:
         type: string
       vault:
-        description: 关联笔记本名称
+        description: Associated vault name // 关联笔记本名称
         type: string
     required:
     - repoUrl
@@ -897,6 +920,15 @@ definitions:
     type: object
   dto.NoteDTO:
     properties:
+      clientName:
+        description: Client name // 客户端名称
+        type: string
+      clientType:
+        description: Client type // 客户端类型
+        type: string
+      clientVersion:
+        description: Client version // 客户端版本
+        type: string
       content:
         description: Note content // 笔记内容
         type: string
@@ -935,6 +967,12 @@ definitions:
     properties:
       clientName:
         description: Client that made changes // 产生变更的客户端
+        type: string
+      clientType:
+        description: Client type // 客户端类型
+        type: string
+      clientVersion:
+        description: Client version // 客户端版本
         type: string
       content:
         description: Full historical content // 完整历史内容
@@ -1070,6 +1108,15 @@ definitions:
     type: object
   dto.NoteNoContentDTO:
     properties:
+      clientName:
+        description: Client name // 客户端名称
+        type: string
+      clientType:
+        description: Client type // 客户端类型
+        type: string
+      clientVersion:
+        description: Client version // 客户端版本
+        type: string
       createdAt:
         description: Created at time // 创建时间
         type: string
@@ -1482,6 +1529,7 @@ definitions:
   dto.ShareListItem:
     properties:
       createdAt:
+        description: Created at // 创建时间
         type: string
       expiresAt:
         description: Expiration time // 过期时间
@@ -1518,6 +1566,7 @@ definitions:
         description: User ID // 用户 ID
         type: integer
       updatedAt:
+        description: Updated at // 更新时间
         type: string
       url:
         description: 'Share URL (path format: /id/token) // 分享 URL (路径格式: /id/token)'
@@ -1583,91 +1632,106 @@ definitions:
   dto.StorageDTO:
     properties:
       accessKeyId:
+        description: Access key ID // 访问密钥 ID
         type: string
       accessKeySecret:
+        description: Access key secret // 访问密钥秘密
         type: string
       accessUrlPrefix:
+        description: Access URL prefix // 访问地址前缀
         type: string
       accountId:
+        description: Account ID // 账户 ID
         type: string
       bucketName:
+        description: Bucket name // 存储桶名称
         type: string
       createdAt:
+        description: Created at // 创建时间
         type: string
       customPath:
+        description: Custom path // 自定义路径
         type: string
       endpoint:
+        description: Endpoint // 访问端点
         type: string
       id:
+        description: ID // ID
         type: integer
       isEnabled:
+        description: Is enabled // 是否启用
         type: boolean
       password:
+        description: Password // 密码
         type: string
       region:
+        description: Region // 区域
         type: string
       type:
+        description: Storage type // 存储类型
         type: string
       updatedAt:
+        description: Updated at // 更新时间
         type: string
       user:
+        description: Username // 用户名
         type: string
     type: object
   dto.StoragePostRequest:
     properties:
       accessKeyId:
-        description: 访问密钥ID
+        description: Access key ID // 访问密钥ID
         example: ""
         type: string
       accessKeySecret:
-        description: 访问密钥秘密
+        description: Access key secret // 访问密钥秘密
         example: ""
         type: string
       accessUrlPrefix:
-        description: 访问地址前缀
+        description: Access URL prefix // 访问地址前缀
         example: https://cdn.com
         maxLength: 100
         minLength: 2
         type: string
       accountId:
-        description: 账户ID r2
+        description: Account ID (R2) // 账户ID r2
         example: "123456789"
         type: string
       bucketName:
-        description: 存储桶名称
+        description: Bucket name // 存储桶名称
         example: my-bucket
         type: string
       customPath:
-        description: 自定义路径
+        description: Custom path // 自定义路径
         example: /backups
         type: string
       endpoint:
-        description: 端点 oss
+        description: Endpoint (OSS) // 端点 oss
         example: oss-cn-hangzhou.aliyuncs.com
         type: string
       id:
-        description: ID
+        description: ID // ID
         example: 1
         type: integer
       isEnabled:
-        description: 是否启用
+        description: Is enabled // 是否启用
         example: 1
         type: integer
       password:
-        description: 密码
+        description: Password // 密码
         example: secret_password
         type: string
       region:
-        description: 区域 s3
+        description: Region (S3) // 区域 s3
         example: us-east-1
         type: string
       type:
-        description: 类型
+        description: Storage type // 类型
         example: local-fs
         minLength: 1
         type: string
       user:
-        description: 访问用户名
+        description: Username // 访问用户名
         example: admin
         type: string
     required:
@@ -1685,12 +1749,15 @@ definitions:
       clientName:
         description: Client name // 客户端名称
         type: string
+      clientType:
+        description: Client type // 客户端类型
+        type: string
+      clientVersion:
+        description: Client version // 客户端版本
+        type: string
       createdAt:
         description: Log creation time // 创建时间
         type: string
-      id:
-        description: Record ID // 记录 ID
-        type: integer
       message:
         description: Additional message // 附加消息
         type: string
@@ -1889,6 +1956,26 @@ info:
   title: Fast Note Sync Service HTTP API
   version: "1.0"
 paths:
+  /api/admin/check:
+    get:
+      description: Check if the current logged-in user has system admin privileges
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AdminCheckResponse'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Check admin permission
+      tags:
+      - Config
   /api/admin/cloudflared_tunnel_download:
     get:
       description: Trigger the download of cloudflared binary for the current platform
@@ -2325,7 +2412,8 @@ paths:
         name: token
         required: true
         type: string
-      - example: 1
+      - description: ID // ID
+        example: 1
         in: query
         name: id
         type: integer
@@ -2478,16 +2566,19 @@ paths:
         name: token
         required: true
         type: string
-      - example: 1
+      - description: Config ID // 配置 ID
+        example: 1
         in: query
         name: configId
         required: true
         type: integer
-      - example: 1
+      - description: Page number // 页码
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: Page size // 每页大小
+        example: 10
         in: query
         name: pageSize
         type: integer
@@ -4842,7 +4933,7 @@ paths:
         in: query
         name: action
         type: string
-      - description: 'Resource type: note / file / setting // 资源类型'
+      - description: 'Resource type: note / file / setting / folder // 资源类型'
         example: note
         in: query
         name: type

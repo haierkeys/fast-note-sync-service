@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"golang.org/x/sync/singleflight"
@@ -628,7 +628,7 @@ type ValidatorInterface interface {
 }
 
 type WebsocketServer struct {
-	app AppContainer // App Container (Required) // App Container（必须）
+	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
@@ -817,6 +817,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			"version":   versionInfo.Version,
 			"gitTag":    versionInfo.GitTag,
 			"buildTime": versionInfo.BuildTime,
+			"changelog": versionInfo.Changelog,
 		}), "Authorization")
 		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(c.UserClients)))
 		go c.PingLoop(w.config.PingInterval)

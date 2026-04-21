@@ -14,6 +14,7 @@ type VersionInfo struct {
 	Version   string `json:"version"`
 	GitTag    string `json:"gitTag"`
 	BuildTime string `json:"buildTime"`
+	Changelog string `json:"changelog"`
 }
 
 type CheckVersionInfo struct {
