@@ -43,7 +43,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	checkParams := convert.StructAssign(params, &dto.SettingUpdateCheckRequest{}).(*dto.SettingUpdateCheckRequest)
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, checkParams)
@@ -107,7 +107,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, params)
 	if err != nil {
@@ -155,7 +155,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	setting, err := settingSvc.Delete(ctx, c.User.UID, params)
 	if err != nil {
@@ -191,7 +191,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
 
 	list, err := settingSvc.Sync(ctx, c.User.UID, params)
 	if err != nil {
@@ -486,7 +486,7 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingClear", "", params.Vault)
 
-	err := h.App.GetSettingService(c.ClientName, c.ClientVersion).ClearByVault(ctx, c.User.UID, params.Vault)
+	err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).ClearByVault(ctx, c.User.UID, params.Vault)
 	if err != nil {
 		h.respondError(c, code.ErrorSettingDeleteFailed, err, "websocket_router.setting.SettingClear.ClearByVault")
 		return

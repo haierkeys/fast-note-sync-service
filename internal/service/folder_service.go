@@ -32,7 +32,7 @@ type FolderService interface {
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 	GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error)
 	CleanDuplicateFolders(ctx context.Context, uid int64, vaultID int64) error
-	WithClient(clientName, clientVersion string) FolderService
+	WithClient(clientType, clientName, clientVersion string) FolderService
 }
 
 type folderService struct {
@@ -44,6 +44,7 @@ type folderService struct {
 	backupService  BackupService
 	pool           *workerpool.Pool
 	syncLogService SyncLogService
+	clientType     string
 	clientName     string
 	clientVersion  string
 }
@@ -80,8 +81,9 @@ func (s *folderService) domainToDTO(f *domain.Folder) *dto.FolderDTO {
 	}
 }
 
-func (s *folderService) WithClient(clientName, clientVersion string) FolderService {
+func (s *folderService) WithClient(clientType, clientName, clientVersion string) FolderService {
 	ns := *s
+	ns.clientType = clientType
 	ns.clientName = clientName
 	ns.clientVersion = clientVersion
 	return &ns
@@ -151,7 +153,7 @@ func (s *folderService) UpdateOrCreate(ctx context.Context, uid int64, params *d
 	}
 
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientName, 0)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
 	}
 
 	return s.domainToDTO(f), nil
@@ -194,7 +196,7 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 	}
 
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionDelete, "", f.Path, f.PathHash, s.clientName, 0)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionDelete, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
 	}
 
 	return s.domainToDTO(f), nil
@@ -307,7 +309,7 @@ func (s *folderService) Rename(ctx context.Context, uid int64, params *dto.Folde
 	}
 
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRename, "path", newFolderCreated.Path, newFolderCreated.PathHash, s.clientName, 0)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRename, "path", newFolderCreated.Path, newFolderCreated.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
 	}
 
 	return s.domainToDTO(oldFolder), s.domainToDTO(newFolderCreated), nil
@@ -494,7 +496,7 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 					}
 
 					if s.syncLogService != nil {
-						s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientName, 0)
+						s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
 					}
 					return f.ID, nil
 				}
@@ -509,7 +511,7 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 				}
 
 				if s.syncLogService != nil {
-					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRestore, "", f.Path, f.PathHash, s.clientName, 0)
+					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRestore, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
 				}
 				return f.ID, nil
 			}

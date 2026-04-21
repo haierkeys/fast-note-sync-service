@@ -24,6 +24,8 @@ type SyncLogDTO struct {
 	PathHash      string    `json:"pathHash"`      // Resource path hash // 路径哈希
 	Size          int64     `json:"size"`          // Size in bytes // 大小（字节）
 	ClientName    string    `json:"clientName"`    // Client name // 客户端名称
+	ClientType    string    `json:"clientType"`    // Client type // 客户端类型
+	ClientVersion string    `json:"clientVersion"` // Client version // 客户端版本
 	Status        int       `json:"status"`        // Status: 1 success, 2 failed // 状态
 	Message       string    `json:"message"`       // Additional message // 附加消息
 	CreatedAt     time.Time `json:"createdAt"`     // Log creation time // 创建时间

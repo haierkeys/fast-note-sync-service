@@ -151,7 +151,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
 	// 检查文件更新状态
-	fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 	updateMode, fileSvc, err := fileService.UploadCheck(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -340,7 +340,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 		// Update or create file record (DAO layer will automatically move temp file from SavePath to f_{id} folder)
 		// 更新或创建 file 记录 (DAO 层会自动将 SavePath 里的临时文件移动到 f_{id} 文件夹)
-		fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+		fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 		_, fileSvc, err := fileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
@@ -404,7 +404,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	// Execute deletion logic
 	// 执行删除逻辑
-	fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 	fileSvc, err := fileService.Delete(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -439,7 +439,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	}
 
 	uid := c.User.UID
-	fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 	oldFile, newFile, err := fileService.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFileRenameFailed, err, "websocket_router.file.FileRename.Rename")
@@ -489,7 +489,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// Get file info
 	// 获取文件信息
-	fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 	fileSvc, err := fileService.Get(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -565,7 +565,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	// Get list of changed files after last sync
 	// 获取最后一次同步后的变更文件列表
-	fileService := h.App.GetFileService(c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
 	list, err := fileService.ListByLastTime(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -1137,7 +1137,7 @@ func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	fileSvc, err := h.App.GetFileService(c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	fileSvc, err := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFileGetFailed, err, "websocket_router.file.FileRePush.Get")
 		return

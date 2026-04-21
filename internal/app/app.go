@@ -25,14 +25,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Client name constants
-// 客户端名称常量
-const (
-	// WebClientName Web client name
-	// WebClientName Web 客户端名称
-	WebClientName = "Web"
-)
-
 // App application container, encapsulates all dependencies and services
 // App 应用容器，封装所有依赖和服务
 type App struct {
@@ -252,33 +244,33 @@ func (a *App) WriteQueueManager() *writequeue.Manager {
 
 // GetNoteService gets NoteService, supports setting client info
 // GetNoteService 获取 NoteService，支持设置客户端信息
-func (a *App) GetNoteService(clientName, clientVersion string) service.NoteService {
-	if clientName != "" || clientVersion != "" {
-		return a.NoteService.WithClient(clientName, clientVersion)
+func (a *App) GetNoteService(clientType, clientName, clientVersion string) service.NoteService {
+	if clientType != "" || clientName != "" || clientVersion != "" {
+		return a.NoteService.WithClient(clientType, clientName, clientVersion)
 	}
 	return a.NoteService
 }
 
 // GetFolderService returns FolderService instance with client information
 // GetFolderService 返回带有客户端信息的 FolderService 示例
-func (a *App) GetFolderService(clientName, clientVersion string) service.FolderService {
-	return a.FolderService.WithClient(clientName, clientVersion)
+func (a *App) GetFolderService(clientType, clientName, clientVersion string) service.FolderService {
+	return a.FolderService.WithClient(clientType, clientName, clientVersion)
 }
 
 // GetFileService gets FileService, supports setting client info
 // GetFileService 获取 FileService，支持设置客户端信息
-func (a *App) GetFileService(clientName, clientVersion string) service.FileService {
-	if clientName != "" || clientVersion != "" {
-		return a.FileService.WithClient(clientName, clientVersion)
+func (a *App) GetFileService(clientType, clientName, clientVersion string) service.FileService {
+	if clientType != "" || clientName != "" || clientVersion != "" {
+		return a.FileService.WithClient(clientType, clientName, clientVersion)
 	}
 	return a.FileService
 }
 
 // GetSettingService gets SettingService, supports setting client info
 // GetSettingService 获取 SettingService，支持设置客户端信息
-func (a *App) GetSettingService(clientName, clientVersion string) service.SettingService {
-	if clientName != "" || clientVersion != "" {
-		return a.SettingService.WithClient(clientName, clientVersion)
+func (a *App) GetSettingService(clientType, clientName, clientVersion string) service.SettingService {
+	if clientType != "" || clientName != "" || clientVersion != "" {
+		return a.SettingService.WithClient(clientType, clientName, clientVersion)
 	}
 	return a.SettingService
 }
