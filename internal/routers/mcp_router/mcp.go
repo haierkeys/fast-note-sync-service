@@ -45,12 +45,16 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 			if clientType := r.Header.Get("X-Client"); clientType != "" {
 				ctx = context.WithValue(ctx, "client_type", clientType)
 			}
-			if clientName := r.Header.Get("X-Client-Name"); clientName != "" {
+			clientName := r.Header.Get("X-Client-Name")
+			if clientName == "" {
+				clientName = "MCP"
+			} else {
 				if decoded, err := url.QueryUnescape(clientName); err == nil {
 					clientName = decoded
 				}
-				ctx = context.WithValue(ctx, "client_name", clientName)
+				clientName = "MCP " + clientName
 			}
+			ctx = context.WithValue(ctx, "client_name", clientName)
 			if clientVersion := r.Header.Get("X-Client-Version"); clientVersion != "" {
 				ctx = context.WithValue(ctx, "client_version", clientVersion)
 			}

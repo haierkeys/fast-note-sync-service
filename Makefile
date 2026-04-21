@@ -57,7 +57,9 @@ all: test build-all
 # -------------------------
 sup:
 	node scripts/process_support_csv.js
-	python3 scripts/process_support.py
+	@if [ ! -d ".venv" ]; then python3 -m venv .venv; fi
+	.venv/bin/pip install -q deep-translator
+	.venv/bin/python scripts/process_support.py
 	node scripts/gen_support_md.js
 
 sup-md:
