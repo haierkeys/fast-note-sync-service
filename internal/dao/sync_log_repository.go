@@ -76,10 +76,10 @@ func (r *syncLogRepository) Create(ctx context.Context, log *domain.SyncLog, uid
 			ClientVersion: log.ClientVersion,
 			Status:        log.Status,
 			Message:       log.Message,
-			CreatedAt:     timex.Time(log.CreatedAt),
+			CreatedAt:     log.CreatedAt,
 		}
 		if m.CreatedAt.IsZero() {
-			m.CreatedAt = timex.Time(time.Now())
+			m.CreatedAt = timex.Now()
 		}
 		return r.db(uid).WithContext(ctx).Create(m).Error
 	})
@@ -133,7 +133,7 @@ func (r *syncLogRepository) List(ctx context.Context, uid int64, logType, action
 			ClientVersion: m.ClientVersion,
 			Status:        m.Status,
 			Message:       m.Message,
-			CreatedAt:     time.Time(m.CreatedAt),
+			CreatedAt:     m.CreatedAt,
 		})
 	}
 	return results, total, nil

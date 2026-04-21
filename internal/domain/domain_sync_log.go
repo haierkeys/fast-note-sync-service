@@ -4,7 +4,8 @@ package domain
 
 import (
 	"context"
-	"time"
+
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 )
 
 // SyncLogType represents the type of resource being synchronized
@@ -74,7 +75,7 @@ type SyncLog struct {
 	ClientVersion string        // Client version // 客户端版本
 	Status        int           // 1: success, 2: failed // 状态：1 成功，2 失败
 	Message       string        // Additional message or error detail // 附加消息或错误详情
-	CreatedAt     time.Time     // Log creation time // 日志创建时间
+	CreatedAt     timex.Time    // Log creation time // 日志创建时间
 }
 
 // SyncLogRepository defines the data access interface for sync logs
