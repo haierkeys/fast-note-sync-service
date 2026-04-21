@@ -38,7 +38,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Page:     pkgapp.GetPage(1),
 			PageSize: pkgapp.GetPageSize(100),
 		}
-		files, _, err := fileSvc.List(ctx, uid, &dto.FileListRequest{
+		files, _, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.FileListRequest{
 			Vault:   vault,
 			Keyword: keyword,
 		}, pager)
@@ -69,7 +69,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		file, err := fileSvc.Get(ctx, uid, &dto.FileGetRequest{
+		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Get(ctx, uid, &dto.FileGetRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -98,7 +98,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		reader, _, _, _, err := fileSvc.GetContent(ctx, uid, &dto.FileGetRequest{
+		reader, _, _, _, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).GetContent(ctx, uid, &dto.FileGetRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -132,7 +132,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		file, err := fileSvc.Delete(ctx, uid, &dto.FileDeleteRequest{
+		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Delete(ctx, uid, &dto.FileDeleteRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -163,7 +163,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
 
-		oldFile, newFile, err := fileSvc.Rename(ctx, uid, &dto.FileRenameRequest{
+		oldFile, newFile, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Rename(ctx, uid, &dto.FileRenameRequest{
 			Vault:       vault,
 			OldPath:     oldPath,
 			OldPathHash: util.EncodeHash32(oldPath),
@@ -204,7 +204,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		file, err := fileSvc.Restore(ctx, uid, &dto.FileRestoreRequest{
+		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Restore(ctx, uid, &dto.FileRestoreRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -233,7 +233,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		err := fileSvc.RecycleClear(ctx, uid, &dto.FileRecycleClearRequest{
+		err := fileSvc.WithClient(getClientInfoFromContext(ctx)).RecycleClear(ctx, uid, &dto.FileRecycleClearRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),

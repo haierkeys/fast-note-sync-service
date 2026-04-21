@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,20 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 			if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
 				ctx = context.WithValue(ctx, "default_vault_name", vaultName)
 			}
+
+			// Extract client info
+			if clientType := r.Header.Get("X-Client"); clientType != "" {
+				ctx = context.WithValue(ctx, "client_type", clientType)
+			}
+			if clientName := r.Header.Get("X-Client-Name"); clientName != "" {
+				if decoded, err := url.QueryUnescape(clientName); err == nil {
+					clientName = decoded
+				}
+				ctx = context.WithValue(ctx, "client_name", clientName)
+			}
+			if clientVersion := r.Header.Get("X-Client-Version"); clientVersion != "" {
+				ctx = context.WithValue(ctx, "client_version", clientVersion)
+			}
 			return ctx
 		}))
 
@@ -54,6 +69,20 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
 	if vaultName := c.GetHeader("X-Default-Vault-Name"); vaultName != "" {
 		ctx = context.WithValue(ctx, "default_vault_name", vaultName)
+	}
+
+	// Extract client info
+	if clientType := c.GetHeader("X-Client"); clientType != "" {
+		ctx = context.WithValue(ctx, "client_type", clientType)
+	}
+	if clientName := c.GetHeader("X-Client-Name"); clientName != "" {
+		if decoded, err := url.QueryUnescape(clientName); err == nil {
+			clientName = decoded
+		}
+		ctx = context.WithValue(ctx, "client_name", clientName)
+	}
+	if clientVersion := c.GetHeader("X-Client-Version"); clientVersion != "" {
+		ctx = context.WithValue(ctx, "client_version", clientVersion)
 	}
 
 	// Set SSE headers

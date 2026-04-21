@@ -18,6 +18,20 @@ func getUIDFromContext(ctx context.Context) int64 {
 	return 1
 }
 
+func getClientInfoFromContext(ctx context.Context) (string, string, string) {
+	var cType, cName, cVer string
+	if val := ctx.Value("client_type"); val != nil {
+		cType, _ = val.(string)
+	}
+	if val := ctx.Value("client_name"); val != nil {
+		cName, _ = val.(string)
+	}
+	if val := ctx.Value("client_version"); val != nil {
+		cVer, _ = val.(string)
+	}
+	return cType, cName, cVer
+}
+
 func getDefaultVaultName(ctx context.Context, appContainer *app.App) string {
 	// 1. From context (Header X-Default-Vault-Name)
 	if val := ctx.Value("default_vault_name"); val != nil {

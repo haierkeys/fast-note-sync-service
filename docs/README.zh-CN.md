@@ -234,6 +234,10 @@ FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
 - **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp/sse`
 - **鉴权 Header**：`Authorization: Bearer <您的 API Token>`（在 WebGUI 的复制 API 配置中获取）
 - **可选 Header**：`X-Default-Vault-Name: <笔记库名称>`（用于指定 MCP 操作的默认笔记库，若工具调用时未指定 `vault` 参数，则使用此值）
+- **可选 Header**：`X-Client: <客户端类型>`（用于连接MCP的客户端类型，如：Cherry Studio / OpenClaw）
+- **可选 Header**：`X-Client-Version: <客户端类型版本>`（用于连接MCP的客户端类型版本，如：1.1）
+- **可选 Header**：`X-Client-Name: <客户端名称>`（用于连接MCP的客户端名称，如： Mac）
+
 
 
 #### 示例：Cherry Studio / Cursor / Cline 等
@@ -250,7 +254,10 @@ FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
       "headers": {
         "Content-Type": "application/json",
         "Authorization": "Bearer <Token>",
-        "X-Default-Vault-Name": "<VaultName>"
+        "X-Default-Vault-Name": "<VaultName>",
+        "X-Client": "<Client>",
+        "X-Client-Version": "<ClientVersion>",
+        "X-Client-Name": "<ClientName>"
       }
     }
   }
