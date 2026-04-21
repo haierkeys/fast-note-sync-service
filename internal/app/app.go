@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
@@ -292,6 +293,7 @@ func (a *App) loadSupportRecords(efs embed.FS) {
 	for _, entry := range entries {
 		name := entry.Name()
 		if !entry.IsDir() && strings.HasPrefix(name, "Support.") && strings.HasSuffix(name, ".json") {
+
 			// Extract language from Support.{lang}.json
 			// 从 Support.{lang}.json 提取语言
 			parts := strings.Split(name, ".")
@@ -299,6 +301,8 @@ func (a *App) loadSupportRecords(efs embed.FS) {
 				continue
 			}
 			lang := strings.ToLower(parts[1])
+
+			dump.P(lang)
 
 			data, err := efs.ReadFile(docsPath + "/" + name)
 			if err != nil {
@@ -316,6 +320,7 @@ func (a *App) loadSupportRecords(efs embed.FS) {
 			a.logger.Debug("Loaded support records", zap.String("lang", lang), zap.Int("count", len(records)))
 		}
 	}
+
 }
 
 // GetSupportRecords gets all support records
@@ -358,6 +363,9 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 			case "amount":
 				amountI, _ := strconv.ParseFloat(sortedRecords[i].Amount, 64)
 				amountJ, _ := strconv.ParseFloat(sortedRecords[j].Amount, 64)
+				if amountI == amountJ {
+					return sortedRecords[i].Time > sortedRecords[j].Time
+				}
 				less = amountI < amountJ
 			case "name":
 				less = sortedRecords[i].Name < sortedRecords[j].Name
