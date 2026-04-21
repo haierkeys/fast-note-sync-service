@@ -38,7 +38,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Page:     pkgapp.GetPage(1),
 			PageSize: pkgapp.GetPageSize(100),
 		}
-		notes, _, err := noteSvc.List(ctx, uid, &dto.NoteListRequest{
+		notes, _, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.NoteListRequest{
 			Vault:   vault,
 			Keyword: keyword,
 		}, pager)
@@ -70,7 +70,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
-		note, err := noteSvc.Get(ctx, uid, &dto.NoteGetRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Get(ctx, uid, &dto.NoteGetRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: pathHash,
@@ -103,7 +103,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		contentHash := util.EncodeHash32(content)
 
 		now := time.Now().UnixMilli()
-		_, note, err := noteSvc.ModifyOrCreate(ctx, uid, &dto.NoteModifyOrCreateRequest{
+		_, note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).ModifyOrCreate(ctx, uid, &dto.NoteModifyOrCreateRequest{
 			Vault:       vault,
 			Path:        path,
 			PathHash:    pathHash,
@@ -137,7 +137,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
-		note, err := noteSvc.Delete(ctx, uid, &dto.NoteDeleteRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Delete(ctx, uid, &dto.NoteDeleteRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: pathHash,
@@ -168,7 +168,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
 
-		oldNote, newNote, err := noteSvc.Rename(ctx, uid, &dto.NoteRenameRequest{
+		oldNote, newNote, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Rename(ctx, uid, &dto.NoteRenameRequest{
 			Vault:       vault,
 			OldPath:     oldPath,
 			OldPathHash: util.EncodeHash32(oldPath),
@@ -209,7 +209,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		note, err := noteSvc.Restore(ctx, uid, &dto.NoteRestoreRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Restore(ctx, uid, &dto.NoteRestoreRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -238,7 +238,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		path, _ := args["path"].(string)
 
-		err := noteSvc.RecycleClear(ctx, uid, &dto.NoteRecycleClearRequest{
+		err := noteSvc.WithClient(getClientInfoFromContext(ctx)).RecycleClear(ctx, uid, &dto.NoteRecycleClearRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -284,7 +284,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			}
 		}
 
-		note, err := noteSvc.PatchFrontmatter(ctx, uid, &dto.NotePatchFrontmatterRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).PatchFrontmatter(ctx, uid, &dto.NotePatchFrontmatterRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -317,7 +317,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
 
-		note, err := noteSvc.AppendContent(ctx, uid, &dto.NoteAppendRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).AppendContent(ctx, uid, &dto.NoteAppendRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -349,7 +349,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
 
-		note, err := noteSvc.PrependContent(ctx, uid, &dto.NotePrependRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).PrependContent(ctx, uid, &dto.NotePrependRequest{
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
@@ -398,7 +398,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			failIfNoMatch = true
 		}
 
-		res, err := noteSvc.ReplaceContent(ctx, uid, &dto.NoteReplaceRequest{
+		res, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).ReplaceContent(ctx, uid, &dto.NoteReplaceRequest{
 			Vault:         vault,
 			Path:          path,
 			PathHash:      util.EncodeHash32(path),
@@ -439,7 +439,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			overwrite = false
 		}
 
-		note, err := noteSvc.Move(ctx, uid, &dto.NoteMoveRequest{
+		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Move(ctx, uid, &dto.NoteMoveRequest{
 			Vault:       vault,
 			Path:        path,
 			PathHash:    util.EncodeHash32(path),
