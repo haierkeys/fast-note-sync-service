@@ -10,6 +10,12 @@ type AdminWebGUIConfig struct {
 	AdminUID         int    `json:"adminUid"`         // Admin UID // 管理员 UID
 }
 
+// AdminCheckResponse Admin check response structure
+// AdminCheckResponse 管理员权限检查响应结构
+type AdminCheckResponse struct {
+	IsAdmin bool `json:"isAdmin"` // Whether have admin privileges // 是否具有管理员权限
+}
+
 // AdminConfig Admin configuration structure (admin interface)
 // AdminConfig 管理员配置结构（管理员接口）
 type AdminConfig struct {

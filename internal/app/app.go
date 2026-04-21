@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
@@ -301,8 +300,6 @@ func (a *App) loadSupportRecords(efs embed.FS) {
 				continue
 			}
 			lang := strings.ToLower(parts[1])
-
-			dump.P(lang)
 
 			data, err := efs.ReadFile(docsPath + "/" + name)
 			if err != nil {
