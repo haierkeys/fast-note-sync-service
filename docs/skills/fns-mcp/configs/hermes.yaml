@@ -1,0 +1,9 @@
+mcp_servers:
+  fns-service:
+    url: "http://<YOUR_DOMAIN>:9000/api/mcp/sse"
+    headers:
+      Authorization: "Bearer <YOUR_AUTH_TOKEN>"
+      X-Default-Vault-Name: "Default"
+      X-Client: "Hermes"
+      X-Client-Name: "Hermes Agent"
+      X-Client-Version: "1.0.0"
