@@ -62,6 +62,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			// 从配置读取，默认 64MB
 		},
 	}, appContainer)
+	appContainer.SetWSS(wss)
 
 	// Create WebSocket Handlers (injected App Container)
 	// 创建 WebSocket Handlers（注入 App Container）

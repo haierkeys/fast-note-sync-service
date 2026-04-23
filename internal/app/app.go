@@ -42,6 +42,7 @@ type App struct {
 	checkVersion     pkgapp.CheckVersionInfo
 	supportRecordsMu sync.RWMutex
 	supportRecords   map[string][]pkgapp.SupportRecord
+	wss              *pkgapp.WebsocketServer // WebSocket server reference // WebSocket 服务器引用
 }
 
 // NewApp creates application container instance
@@ -181,6 +182,20 @@ func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
 	a.checkVersionMu.Lock()
 	defer a.checkVersionMu.Unlock()
 	a.checkVersion = info
+}
+
+// SetWSS sets WebSocket server reference
+// SetWSS 设置 WebSocket 服务器引用
+func (a *App) SetWSS(wss *pkgapp.WebsocketServer) {
+	a.wss = wss
+}
+
+// BroadcastClientInfo broadcasts version information to all connected clients
+// BroadcastClientInfo 向所有连接的客户端广播版本信息
+func (a *App) BroadcastClientInfo() {
+	if a.wss != nil {
+		a.wss.BroadcastClientInfo()
+	}
 }
 
 // Validator gets validator
