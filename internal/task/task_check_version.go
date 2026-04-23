@@ -125,6 +125,9 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	// 更新 App 中的版本信息
 	t.app.SetCheckVersionInfo(info)
 
+	// 推送版本信息给所有已连接客户端
+	t.app.BroadcastClientInfo()
+
 	return nil
 }
 

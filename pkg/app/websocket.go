@@ -859,6 +859,29 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 	c.ToResponse(code.Success.WithData(checkVersionInfo), "ClientInfo")
 }
 
+// BroadcastClientInfo broadcasts version information to all connected clients
+// BroadcastClientInfo 向所有连接的客户端广播版本信息
+func (w *WebsocketServer) BroadcastClientInfo() {
+	w.mu.RLock()
+	clients := make([]*WebsocketClient, 0, len(w.clients))
+	for _, c := range w.clients {
+		clients = append(clients, c)
+	}
+	w.mu.RUnlock()
+
+	for _, c := range clients {
+		if c.User == nil {
+			continue
+		}
+		checkVersionInfo := w.app.CheckVersion(c.ClientVersion)
+		// Only push if there's a new version (server or plugin)
+		// 只有当有新版本（服务端或插件）时才推送
+		if checkVersionInfo.VersionIsNew || checkVersionInfo.PluginVersionIsNew {
+			c.ToResponse(code.Success.WithData(checkVersionInfo), "ClientInfo")
+		}
+	}
+}
+
 func (w *WebsocketServer) GetClient(conn *gws.Conn) *WebsocketClient {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
