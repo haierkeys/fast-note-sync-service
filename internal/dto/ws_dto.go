@@ -130,6 +130,12 @@ const (
 	// NoteSyncNeedPush indicates client needs to push note content
 	// NoteSyncNeedPush 表示客户端需要推送笔记内容
 	NoteSyncNeedPush WebSocketSendAction = "NoteSyncNeedPush"
+	// NoteModifyAck note modify operation ack
+	// NoteModifyAck 笔记修改操作 ack
+	NoteModifyAck WebSocketSendAction = "NoteModifyAck"
+	// NoteRenameAck note rename operation ack
+	// NoteRenameAck 笔记重命名操作 ack
+	NoteRenameAck WebSocketSendAction = "NoteRenameAck"
 
 	// ---------------- File ----------------
 

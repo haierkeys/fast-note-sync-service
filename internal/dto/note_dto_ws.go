@@ -62,3 +62,16 @@ type NoteSyncDeleteMessage struct {
 	Size             int64  `json:"size" form:"size" example:"1024"`                       // File size // 文件大小
 	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
+
+// NoteModifyAckMessage note modify operation ACK, sent back to sender after server processes NoteModify
+// NoteModifyAckMessage 笔记修改操作 ACK，服务端处理完 NoteModify 后回发给发送方
+type NoteModifyAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Note path // 笔记路径
+}
+
+// NoteRenameAckMessage note rename operation ACK, sent back to sender after server processes NoteRename
+// NoteRenameAckMessage 笔记重命名操作 ACK，服务端处理完 NoteRename 后回发给发送方
+type NoteRenameAckMessage struct {
+	LastTime int64 `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+}

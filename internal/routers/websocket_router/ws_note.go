@@ -351,10 +351,12 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			return
 		}
 
-		// Notify all clients to update mtime
-		// 通知所有客户端更新mtime
-
-		c.ToResponse(code.Success)
+		// 通知发送方上传已确认，携带 lastTime 和 path 供客户端更新 hashManager
+		// Notify sender of successful write with lastTime and path for client hashManager update
+		c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
+			LastTime: note.UpdatedTimestamp,
+			Path:     note.Path,
+		}).WithVault(params.Vault), string(dto.NoteModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.NoteSyncModifyMessage{
 				Path:             note.Path,
@@ -558,7 +560,11 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	c.ToResponse(code.Success)
+	// 通知发送方重命名已确认，携带 lastTime 供客户端 FIFO 队列更新 hashManager
+	// Notify sender of successful rename with lastTime for client FIFO queue hashManager update
+	c.ToResponse(code.Success.WithData(dto.NoteRenameAckMessage{
+		LastTime: newNote.UpdatedTimestamp,
+	}).WithVault(params.Vault), string(dto.NoteRenameAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncRenameMessage{
 			Path:             newNote.Path,
