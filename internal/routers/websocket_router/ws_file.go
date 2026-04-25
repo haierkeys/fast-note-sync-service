@@ -453,6 +453,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 回复发送方携带服务端时间戳的 ack，让客户端可以更新 lastFileSyncTime
 	c.ToResponse(code.Success.WithData(dto.FileRenameAckMessage{
 		LastTime: newFile.UpdatedTimestamp,
+		Path:     newFile.Path,
 	}), string(dto.FileRenameAck))
 
 	c.BroadcastResponse(code.Success.WithData(

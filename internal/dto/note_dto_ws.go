@@ -73,7 +73,8 @@ type NoteModifyAckMessage struct {
 // NoteRenameAckMessage note rename operation ACK, sent back to sender after server processes NoteRename
 // NoteRenameAckMessage 笔记重命名操作 ACK，服务端处理完 NoteRename 后回发给发送方
 type NoteRenameAckMessage struct {
-	LastTime int64 `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // New note path after rename // 重命名后的笔记新路径
 }
 
 // NoteDeleteAckMessage note delete operation ACK, sent back to sender after server processes NoteDelete
