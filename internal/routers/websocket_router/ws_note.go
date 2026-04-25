@@ -116,7 +116,12 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					zap.Int64(logger.FieldUID, c.User.UID),
 					zap.String(logger.FieldPath, params.Path),
 					zap.String("contentHash", contentHash))
-				c.ToResponse(code.SuccessNoUpdate)
+				// 内容已存在，仍需发 NoteModifyAck 以便客户端消费 pendingNoteModifies，避免无限重传
+				// Content already exists; still send NoteModifyAck so client can consume pendingNoteModifies and avoid infinite re-upload
+				c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
+					LastTime: nodeCheck.UpdatedTimestamp,
+					Path:     params.Path,
+				}).WithVault(params.Vault), string(dto.NoteModifyAck))
 				return
 			}
 
@@ -383,7 +388,16 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		).WithVault(params.Vault), dto.NoteSyncMtime)
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate)
+		// SuccessNoUpdate 场景也需发 NoteModifyAck，避免客户端 pendingNoteModifies 条目泄漏导致无限重传
+		// SuccessNoUpdate also needs NoteModifyAck to prevent client pendingNoteModifies leak causing infinite re-upload
+		if nodeCheck != nil {
+			c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
+				LastTime: nodeCheck.UpdatedTimestamp,
+				Path:     params.Path,
+			}).WithVault(params.Vault), string(dto.NoteModifyAck))
+		} else {
+			c.ToResponse(code.SuccessNoUpdate)
+		}
 		return
 	}
 }
