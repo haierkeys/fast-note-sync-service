@@ -412,7 +412,10 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	c.ToResponse(code.Success)
+	c.ToResponse(code.Success.WithData(dto.FileDeleteAckMessage{
+		LastTime: fileSvc.UpdatedTimestamp,
+		Path:     fileSvc.Path,
+	}).WithVault(params.Vault), string(dto.FileDeleteAck))
 
 	// Broadcast file deletion message
 	// 广播文件删除消息

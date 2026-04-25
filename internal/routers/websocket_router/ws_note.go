@@ -524,7 +524,10 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		return
 	}
 
-	c.ToResponse(code.Success)
+	c.ToResponse(code.Success.WithData(dto.NoteDeleteAckMessage{
+		LastTime: note.UpdatedTimestamp,
+		Path:     note.Path,
+	}).WithVault(params.Vault), string(dto.NoteDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncDeleteMessage{
 			Path:             note.Path,
