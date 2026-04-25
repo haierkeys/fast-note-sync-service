@@ -581,6 +581,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// Notify sender of successful rename with lastTime for client FIFO queue hashManager update
 	c.ToResponse(code.Success.WithData(dto.NoteRenameAckMessage{
 		LastTime: newNote.UpdatedTimestamp,
+		Path:     newNote.Path,
 	}).WithVault(params.Vault), string(dto.NoteRenameAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncRenameMessage{
