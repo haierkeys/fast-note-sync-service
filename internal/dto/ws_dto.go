@@ -136,6 +136,9 @@ const (
 	// NoteRenameAck note rename operation ack
 	// NoteRenameAck 笔记重命名操作 ack
 	NoteRenameAck WebSocketSendAction = "NoteRenameAck"
+	// NoteDeleteAck note delete operation ack
+	// NoteDeleteAck 笔记删除操作 ack
+	NoteDeleteAck WebSocketSendAction = "NoteDeleteAck"
 
 	// ---------------- File ----------------
 
@@ -166,6 +169,9 @@ const (
 	// FileUploadAck file upload complete ack
 	// FileUploadAck 文件上传完成 ack
 	FileUploadAck WebSocketSendAction = "FileUploadAck"
+	// FileDeleteAck file delete operation ack
+	// FileDeleteAck 文件删除操作 ack
+	FileDeleteAck WebSocketSendAction = "FileDeleteAck"
 
 	// ---------------- Setting ----------------
 

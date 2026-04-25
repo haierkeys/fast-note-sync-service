@@ -75,3 +75,10 @@ type NoteModifyAckMessage struct {
 type NoteRenameAckMessage struct {
 	LastTime int64 `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
 }
+
+// NoteDeleteAckMessage note delete operation ACK, sent back to sender after server processes NoteDelete
+// NoteDeleteAckMessage 笔记删除操作 ACK，服务端处理完 NoteDelete 后回发给发送方
+type NoteDeleteAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Note path // 笔记路径
+}

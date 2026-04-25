@@ -75,6 +75,13 @@ type FileUploadAckMessage struct {
 	Path     string `json:"path"`     // File path // 文件路径
 }
 
+// FileDeleteAckMessage file delete operation ACK, sent back to sender after server processes FileDelete
+// FileDeleteAckMessage 文件删除操作 ACK，服务端处理完 FileDelete 后回发给发送方
+type FileDeleteAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // File path // 文件路径
+}
+
 // FileSyncRenameMessage message structure for file rename during sync
 // FileSyncRenameMessage 同步过程中文件重命名的消息结构
 type FileSyncRenameMessage struct {
