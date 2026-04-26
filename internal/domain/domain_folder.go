@@ -66,5 +66,8 @@ type FolderRepository interface {
 	List(ctx context.Context, vaultID int64, uid int64) ([]*Folder, error)
 	// ListAll 获取该用户所有的文件夹
 	ListAll(ctx context.Context, uid int64) ([]*Folder, error)
+
+	// DeleteByVaultID 删除仓库下的所有文件夹记录
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

@@ -311,6 +311,15 @@ func (r *backupRepository) DeleteOldHistory(ctx context.Context, uid int64, conf
 	})
 }
 
+// DisableByVaultID 禁用仓库下的备份任务
+func (r *backupRepository) DisableByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		q := r.backup(uid).BackupConfig
+		_, err := q.WithContext(ctx).Where(q.VaultID.Eq(vaultID), q.UID.Eq(uid)).UpdateSimple(q.IsEnabled.Value(0))
+		return err
+	})
+}
+
 // Ensure backupRepository implements domain.BackupRepository interface
 // 确保 backupRepository 实现了 domain.BackupRepository 接口
 var _ domain.BackupRepository = (*backupRepository)(nil)

@@ -36,5 +36,8 @@ type NoteLinkRepository interface {
 
 	// GetOutlinks gets all links from a source note
 	GetOutlinks(ctx context.Context, sourceNoteID, uid int64) ([]*NoteLink, error)
+
+	// DeleteByVaultID deletes all links for a vault
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

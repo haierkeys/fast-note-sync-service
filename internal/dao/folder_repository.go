@@ -230,6 +230,15 @@ func (r *folderRepository) ListAll(ctx context.Context, uid int64) ([]*domain.Fo
 	}
 	return res, nil
 }
+// DeleteByVaultID removes all folder records for a specific vault
+// DeleteByVaultID 删除指定仓库的所有文件夹记录
+func (r *folderRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.Dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		f := r.folder(uid).Folder
+		_, err := f.WithContext(ctx).Where(f.VaultID.Eq(vaultID)).Delete()
+		return err
+	})
+}
 
 // Ensure folderRepository implements domain.FolderRepository interface
 // 确保 folderRepository 实现了 domain.FolderRepository 接口

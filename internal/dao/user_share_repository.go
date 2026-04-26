@@ -345,6 +345,27 @@ func (r *userShareRepository) MigrateResID(ctx context.Context, uid int64, oldRe
 	})
 }
 
+// DeleteByVaultID deletes all shares belonging to a vault (notes/files in that vault)
+// DeleteByVaultID 删除属于该仓库的所有分享记录（仓库下的笔记或文件）
+func (r *userShareRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+
+		// 子查询：找到该仓库下的所有笔记 ID
+		subNote := db.Table("note").Select("id").Where("vault_id = ?", vaultID)
+		// 子查询：找到该仓库下的所有文件 ID
+		subFile := db.Table("file").Select("id").Where("vault_id = ?", vaultID)
+
+		// 删除笔记分享
+		if err := us.WithContext(ctx).UnderlyingDB().Where("res_type = ? AND res_id IN (?)", "note", subNote).Delete(&model.UserShare{}).Error; err != nil {
+			return err
+		}
+
+		// 删除文件分享
+		return us.WithContext(ctx).UnderlyingDB().Where("res_type = ? AND res_id IN (?)", "file", subFile).Delete(&model.UserShare{}).Error
+	})
+}
+
 // Ensure userShareRepository implements domain.UserShareRepository interface
 // 确保 userShareRepository 实现了 domain.UserShareRepository 接口
 var _ domain.UserShareRepository = (*userShareRepository)(nil)

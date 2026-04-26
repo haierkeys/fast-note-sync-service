@@ -1106,3 +1106,44 @@ func (r *noteRepository) searchFTSCount(db *gorm.DB, keyword string, vaultID int
 	err := db.Table("(?) AS sub", subQuery).Count(&count).Error
 	return count, err
 }
+
+// DeleteByVaultID physically deletes all notes in a vault
+// DeleteByVaultID 物理删除仓库下的所有笔记
+func (r *noteRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.note(uid).Note
+
+		// 查找该仓库下的所有笔记 ID
+		notes, err := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Select(u.ID).Find()
+		if err != nil {
+			return err
+		}
+
+		if len(notes) == 0 {
+			return nil
+		}
+
+		var ids []int64
+		for _, n := range notes {
+			ids = append(ids, n.ID)
+		}
+
+		// 从数据库删除
+		_, err = u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除物理文件夹
+		for _, id := range ids {
+			folder := r.dao.GetNoteFolderPath(uid, id)
+			_ = r.dao.RemoveContentFolder(folder)
+		}
+
+		return nil
+	})
+}
+
+// Ensure noteRepository implements domain.NoteRepository interface
+// 确保 noteRepository 实现了 domain.NoteRepository 接口
+var _ domain.NoteRepository = (*noteRepository)(nil)

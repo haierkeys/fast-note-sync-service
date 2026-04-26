@@ -92,6 +92,11 @@ func (m *MockFolderRepository) ListAll(ctx context.Context, uid int64) ([]*domai
 	return args.Get(0).([]*domain.Folder), args.Error(1)
 }
 
+func (m *MockFolderRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockFolderRepository must implement domain.FolderRepository.
 // 编译时检查：MockFolderRepository 必须实现 domain.FolderRepository 接口。
 var _ domain.FolderRepository = (*MockFolderRepository)(nil)

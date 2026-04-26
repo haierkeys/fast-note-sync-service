@@ -410,9 +410,9 @@ func (r *settingRepository) ListByUpdatedTimestamp(ctx context.Context, timestam
 	return results, nil
 }
 
-// DeleteByVault physically deletes all settings of the specified notebook for this user
-// DeleteByVault 物理删除该用户指定笔记本的所有配置
-func (r *settingRepository) DeleteByVault(ctx context.Context, vaultID, uid int64) error {
+// DeleteByVaultID physically deletes all settings of the specified notebook for this user
+// DeleteByVaultID 物理删除该用户指定笔记本的所有配置
+func (r *settingRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.setting(uid).Setting
 

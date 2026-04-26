@@ -49,6 +49,11 @@ func (m *MockNoteLinkRepository) GetOutlinks(ctx context.Context, sourceNoteID, 
 	return args.Get(0).([]*domain.NoteLink), args.Error(1)
 }
 
+func (m *MockNoteLinkRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockNoteLinkRepository must implement domain.NoteLinkRepository.
 // 编译时检查：MockNoteLinkRepository 必须实现 domain.NoteLinkRepository 接口。
 var _ domain.NoteLinkRepository = (*MockNoteLinkRepository)(nil)

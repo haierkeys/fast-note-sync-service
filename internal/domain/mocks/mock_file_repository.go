@@ -188,6 +188,11 @@ func (m *MockFileRepository) ListByPathPrefix(ctx context.Context, pathPrefix st
 	return args.Get(0).([]*domain.File), args.Error(1)
 }
 
+func (m *MockFileRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 func (m *MockFileRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
 	args := m.Called(ctx, path, pathHash, vaultID, uid)
 	return args.Error(0)

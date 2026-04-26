@@ -93,7 +93,7 @@ func (m *MockSettingRepository) ListByUpdatedTimestamp(ctx context.Context, time
 	return args.Get(0).([]*domain.Setting), args.Error(1)
 }
 
-func (m *MockSettingRepository) DeleteByVault(ctx context.Context, vaultID, uid int64) error {
+func (m *MockSettingRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
 	args := m.Called(ctx, vaultID, uid)
 	return args.Error(0)
 }

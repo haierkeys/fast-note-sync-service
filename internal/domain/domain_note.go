@@ -158,5 +158,8 @@ type NoteRepository interface {
 
 	// RecycleClear 清理回收站
 	RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error
+
+	// DeleteByVaultID 物理删除仓库下的所有笔记
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

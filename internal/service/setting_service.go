@@ -544,7 +544,7 @@ func (s *settingService) ClearByVault(ctx context.Context, uid int64, vaultName 
 	if err != nil {
 		return err
 	}
-	return s.settingRepo.DeleteByVault(ctx, vaultID, uid)
+	return s.settingRepo.DeleteByVaultID(ctx, vaultID, uid)
 }
 
 // CleanDuplicateSettings cleans up duplicate configuration records

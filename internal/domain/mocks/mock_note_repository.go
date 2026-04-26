@@ -208,7 +208,12 @@ func (m *MockNoteRepository) ListByPathPrefix(ctx context.Context, pathPrefix st
 }
 
 func (m *MockNoteRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
-	args := m.Called(ctx, path, pathHash, vaultID, uid)
+	args := m.Called(path, pathHash, vaultID, uid)
+	return args.Error(0)
+}
+
+func (m *MockNoteRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
 	return args.Error(0)
 }
 

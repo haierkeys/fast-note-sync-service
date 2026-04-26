@@ -96,4 +96,7 @@ type SyncLogRepository interface {
 	// CleanupByTimeAll removes sync logs older than the given timestamp for all users
 	// CleanupByTimeAll 清理所有用户在指定时间戳之前的同步日志
 	CleanupByTimeAll(ctx context.Context, timestamp int64) error
+
+	// DeleteByVaultID 删除指定仓库的所有同步日志
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
