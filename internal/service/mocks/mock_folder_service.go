@@ -111,3 +111,8 @@ func (m *MockFolderService) CleanDuplicateFolders(ctx context.Context, uid int64
 	args := m.Called(ctx, uid, vaultID)
 	return args.Error(0)
 }
+
+func (m *MockFolderService) WithClient(clientType, name, version string) service.FolderService {
+	args := m.Called(clientType, name, version)
+	return args.Get(0).(service.FolderService)
+}

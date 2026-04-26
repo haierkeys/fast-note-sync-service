@@ -432,8 +432,6 @@ func (s *settingService) List(ctx context.Context, uid int64, params *dto.Settin
 	return results, total, nil
 }
 
-// Rename renames a configuration
-// Rename 重命名配置
 func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.SettingRenameRequest) (*dto.SettingDTO, error) {
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
@@ -441,7 +439,7 @@ func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.Sett
 	}
 
 	// 1. Find the old setting
-	setting, err := s.settingRepo.GetByPathHash(ctx, params.OldPathHash, vaultID, uid)
+	n, err := s.settingRepo.GetByPathHash(ctx, params.OldPathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorSettingNotFound
@@ -450,28 +448,61 @@ func (s *settingService) Rename(ctx context.Context, uid int64, params *dto.Sett
 	}
 
 	// 2. Check if new path already exists
-	existing, _ := s.settingRepo.GetByPathHash(ctx, params.NewPathHash, vaultID, uid)
-	if existing != nil && existing.Action != domain.SettingActionDelete {
+	existSetting, _ := s.settingRepo.GetByPathHash(ctx, params.NewPathHash, vaultID, uid)
+	if existSetting != nil && existSetting.Action != domain.SettingActionDelete {
 		return nil, code.ErrorSettingExist
 	}
 
-	// 3. Update path and pathHash
-	setting.Path = params.NewPath
-	setting.PathHash = params.NewPathHash
-	setting.Action = domain.SettingActionModify
-	// Mtime and UpdatedTimestamp are handled in Update
+	// 3. Mark old setting as deleted with rename flag
+	n.Action = domain.SettingActionDelete
+	n.Rename = 1
+	n.UpdatedTimestamp = timex.Now().UnixMilli()
+	_, err = s.settingRepo.Update(ctx, n, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
 
-	updated, err := s.settingRepo.Update(ctx, setting, uid)
+	// 4. Create new or reuse setting record
+	var newSettingCreated *domain.Setting
+	if existSetting != nil {
+		existSetting.Action = domain.SettingActionModify
+		existSetting.Path = params.NewPath
+		existSetting.PathHash = params.NewPathHash
+		existSetting.Content = n.Content
+		existSetting.ContentHash = n.ContentHash
+		existSetting.Size = n.Size
+		existSetting.Ctime = n.Ctime
+		existSetting.Mtime = n.Mtime // Preserve original mtime
+		existSetting.Rename = 0
+		existSetting.UpdatedTimestamp = timex.Now().UnixMilli()
+		newSettingCreated, err = s.settingRepo.Update(ctx, existSetting, uid)
+	} else {
+		newSetting := &domain.Setting{
+			VaultID:          vaultID,
+			Action:           domain.SettingActionCreate,
+			Path:             params.NewPath,
+			PathHash:         params.NewPathHash,
+			Content:          n.Content,
+			ContentHash:      n.ContentHash,
+			Size:             n.Size,
+			Ctime:            n.Ctime,
+			Mtime:            n.Mtime, // Preserve original mtime
+			Rename:           0,
+			UpdatedTimestamp: timex.Now().UnixMilli(),
+		}
+		newSettingCreated, err = s.settingRepo.Create(ctx, newSetting, uid)
+	}
+
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
 	// Log rename // 记录重命名日志
 	if s.syncLogService != nil {
-		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionRename, "path", updated.Path, updated.PathHash, s.clientType, s.clientName, s.clientVer, updated.Size)
+		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeSetting, domain.SyncLogActionRename, "path", newSettingCreated.Path, newSettingCreated.PathHash, s.clientType, s.clientName, s.clientVer, newSettingCreated.Size)
 	}
 
-	return s.domainToDTO(updated), nil
+	return s.domainToDTO(newSettingCreated), nil
 }
 
 // Cleanup cleans up expired soft-deleted configurations

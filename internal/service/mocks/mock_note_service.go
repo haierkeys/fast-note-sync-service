@@ -129,8 +129,8 @@ func (m *MockNoteService) MigratePush(oldNoteID, newNoteID int64, uid int64) {
 	m.Called(oldNoteID, newNoteID, uid)
 }
 
-func (m *MockNoteService) WithClient(name, version string) service.NoteService {
-	args := m.Called(name, version)
+func (m *MockNoteService) WithClient(clientType, name, version string) service.NoteService {
+	args := m.Called(clientType, name, version)
 	return args.Get(0).(service.NoteService)
 }
 
@@ -166,13 +166,6 @@ func (m *MockNoteService) ReplaceContent(ctx context.Context, uid int64, params 
 	return nil, args.Error(1)
 }
 
-func (m *MockNoteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error) {
-	args := m.Called(ctx, uid, params)
-	if v := args.Get(0); v != nil {
-		return v.(*dto.NoteDTO), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
 
 func (m *MockNoteService) UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
 	m.Called(ctx, noteID, content, vaultID, uid)

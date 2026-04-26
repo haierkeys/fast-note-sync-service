@@ -143,6 +143,7 @@ CREATE TABLE "setting" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "vault_id" integer NOT NULL DEFAULT 0,
     "action" text DEFAULT '',
+    "rename" integer DEFAULT 0,
     "path" text DEFAULT '',
     "path_hash" text DEFAULT '',
     "content" text DEFAULT '',

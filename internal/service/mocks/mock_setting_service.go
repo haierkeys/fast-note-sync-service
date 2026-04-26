@@ -120,3 +120,8 @@ func (m *MockSettingService) ClearByVault(ctx context.Context, uid int64, vaultN
 	args := m.Called(ctx, uid, vaultName)
 	return args.Error(0)
 }
+
+func (m *MockSettingService) WithClient(clientType, name, version string) service.SettingService {
+	args := m.Called(clientType, name, version)
+	return args.Get(0).(service.SettingService)
+}

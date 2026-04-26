@@ -106,10 +106,6 @@ type NoteService interface {
 	// ReplaceContent 在笔记中执行替换
 	ReplaceContent(ctx context.Context, uid int64, params *dto.NoteReplaceRequest) (*dto.NoteReplaceResponse, error)
 
-	// Move moves a note to a new path
-	// Move 移动笔记
-	Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error)
-
 	// UpdateNoteLinks extracts wiki links from content and updates the link index
 	// UpdateNoteLinks 从内容中提取 Wiki 链接并更新链接索引
 	UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64)
@@ -606,9 +602,10 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
 
-		// 3. Mark old note as deleted
-		// 3. 标记旧笔记删除
+		// 3. Mark old note as deleted with rename flag
+		// 3. 标记旧笔记删除并带上重命名标志
 		n.Action = domain.NoteActionDelete
+		n.Rename = 1
 		n.ClientName = s.clientName
 		n.ClientType = s.clientType
 		n.ClientVersion = s.clientVer
@@ -634,7 +631,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			existNote.Content = n.Content
 			existNote.ContentHash = n.ContentHash
 			existNote.Version = n.Version
-			existNote.Mtime = timex.Now().UnixMilli()
+			existNote.Mtime = n.Mtime // Preserve original mtime // 保留原始修改时间
 			existNote.ClientName = s.clientName
 			existNote.ClientType = s.clientType
 			existNote.ClientVersion = s.clientVer
@@ -649,7 +646,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 				PathHash:         newPathHash,
 				FID:              n.FID,
 				Ctime:            n.Ctime,
-				Mtime:            timex.Now().UnixMilli(),
+				Mtime:            n.Mtime, // Preserve original mtime // 保留原始修改时间
 				ClientName:       s.clientName,
 				ClientType:       s.clientType,
 				ClientVersion:    s.clientVer,
@@ -1145,98 +1142,6 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 		MatchCount: matchCount,
 		Note:       result,
 	}, nil
-}
-
-// Move moves a note to a new path
-// Move 移动笔记
-func (s *noteService) Move(ctx context.Context, uid int64, params *dto.NoteMoveRequest) (*dto.NoteDTO, error) {
-	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
-	if err != nil {
-		return nil, err
-	}
-
-	if params.PathHash == "" {
-		params.PathHash = util.EncodeHash32(params.Path)
-	}
-
-	// Get source note
-	// Get source note
-	// 获取源笔记
-	sourceNote, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, code.ErrorNoteNotFound
-		}
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	destPathHash := util.EncodeHash32(params.Destination)
-
-	// Check if destination exists
-	// Check if destination exists
-	// 检查目标位置是否已存在
-	destNote, _ := s.noteRepo.GetByPathHash(ctx, destPathHash, vaultID, uid)
-	if destNote != nil {
-		if !params.Overwrite {
-			return nil, code.ErrorNoteConflict
-		}
-		// Delete destination if overwrite is allowed
-		// Delete destination if overwrite is allowed
-		// 如果允许覆盖，则删除目标笔记
-		deleteParams := &dto.NoteDeleteRequest{
-			Vault:    params.Vault,
-			Path:     params.Destination,
-			PathHash: destPathHash,
-		}
-		_, err = s.Delete(ctx, uid, deleteParams)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Create new note at destination with same content
-	// 在目标位置创建同内容的新笔记
-	modifyParams := &dto.NoteModifyOrCreateRequest{
-		Vault:       params.Vault,
-		Path:        params.Destination,
-		PathHash:    destPathHash,
-		Content:     sourceNote.Content,
-		ContentHash: sourceNote.ContentHash,
-		Mtime:       time.Now().UnixMilli(),
-		Ctime:       sourceNote.Ctime,
-	}
-
-	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// Delete source note
-	// Delete source note
-	// 删除源笔记
-	deleteParams := &dto.NoteDeleteRequest{
-		Vault:    params.Vault,
-		Path:     params.Path,
-		PathHash: params.PathHash,
-	}
-	_, err = s.Delete(ctx, uid, deleteParams)
-	if err != nil {
-		// Log but don't fail - the move already succeeded
-		zap.L().Warn("Move: failed to delete source note",
-			zap.Int64(logger.FieldUID, uid),
-			zap.String("path", params.Path),
-			zap.Error(err),
-		)
-	}
-
-	// Trigger history migration
-	// Trigger history migration
-	// 触发历史记录迁移
-	if result != nil {
-		s.MigratePush(sourceNote.ID, result.ID, uid)
-	}
-
-	return result, nil
 }
 
 // UpdateNoteLinks extracts wiki links from content and updates the link index

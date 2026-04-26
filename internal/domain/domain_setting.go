@@ -26,6 +26,7 @@ type Setting struct {
 	Content          string
 	ContentHash      string
 	Size             int64
+	Rename           int64
 	Ctime            int64
 	Mtime            int64
 	UpdatedTimestamp int64

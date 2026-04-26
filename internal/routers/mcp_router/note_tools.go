@@ -417,45 +417,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultText(fmt.Sprintf("Replaced %d occurrences", res.MatchCount)), nil
 	})
 
-	// 7. Move
-	toolMove := mcp.NewTool("note_move",
-		mcp.WithDescription("Move a note to a new path"),
-		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
-		mcp.WithString("path", mcp.Required(), mcp.Description("Current note path")),
-		mcp.WithString("destination", mcp.Required(), mcp.Description("Destination path")),
-		mcp.WithBoolean("overwrite", mcp.Description("Overwrite if destination exists (default false)")),
-	)
-	srv.AddTool(toolMove, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		uid := getUIDFromContext(ctx)
-		args := getArgs(req)
-		vault, _ := args["vault"].(string)
-		if vault == "" || strings.EqualFold(vault, "default") {
-			vault = getDefaultVaultName(ctx, appContainer)
-		}
-		path, _ := args["path"].(string)
-		destination, _ := args["destination"].(string)
-		overwrite, okOverwrite := args["overwrite"].(bool)
-		if !okOverwrite {
-			overwrite = false
-		}
-
-		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Move(ctx, uid, &dto.NoteMoveRequest{
-			Vault:       vault,
-			Path:        path,
-			PathHash:    util.EncodeHash32(path),
-			Destination: destination,
-			Overwrite:   overwrite,
-		})
-
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Moved note to %s", note.Path)), nil
-	})
-
-	// 8. Get Backlinks
+	// 7. Get Backlinks
 	toolGetBacklinks := mcp.NewTool("note_get_backlinks",
 		mcp.WithDescription("Get backlinks to a note"),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
@@ -488,7 +450,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultText(string(b)), nil
 	})
 
-	// 9. Get Outlinks
+	// 8. Get Outlinks
 	toolGetOutlinks := mcp.NewTool("note_get_outlinks",
 		mcp.WithDescription("Get outlinks from a note"),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
