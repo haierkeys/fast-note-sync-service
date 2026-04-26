@@ -143,8 +143,8 @@ func (m *MockFileService) Rename(ctx context.Context, uid int64, params *dto.Fil
 	return old, newF, args.Error(2)
 }
 
-func (m *MockFileService) WithClient(name, version string) service.FileService {
-	args := m.Called(name, version)
+func (m *MockFileService) WithClient(clientType, name, version string) service.FileService {
+	args := m.Called(clientType, name, version)
 	return args.Get(0).(service.FileService)
 }
 

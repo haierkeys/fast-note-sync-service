@@ -823,7 +823,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 			existFile.ContentHash = f.ContentHash
 			existFile.SavePath = f.SavePath
 			existFile.Size = f.Size
-			existFile.Mtime = timex.Now().UnixMilli()
+			existFile.Mtime = f.Mtime // Preserve original mtime // 保留原始修改时间
 			existFile.UpdatedTimestamp = timex.Now().UnixMilli()
 			newFileCreated, err = s.fileRepo.Update(ctx, existFile, uid)
 		} else {
@@ -835,7 +835,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 				PathHash:         newPathHash,
 				FID:              f.FID,
 				Ctime:            f.Ctime,
-				Mtime:            timex.Now().UnixMilli(),
+				Mtime:            f.Mtime, // Preserve original mtime // 保留原始修改时间
 				UpdatedTimestamp: timex.Now().UnixMilli(),
 				ContentHash:      f.ContentHash,
 				SavePath:         f.SavePath,

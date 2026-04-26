@@ -267,7 +267,6 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.POST("/note/append", noteHandler.Append)
 			auth.POST("/note/prepend", noteHandler.Prepend)
 			auth.POST("/note/replace", noteHandler.Replace)
-			auth.POST("/note/move", noteHandler.Move)
 
 			// Note link operations
 			auth.GET("/note/backlinks", noteHandler.GetBacklinks)
