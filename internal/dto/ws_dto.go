@@ -109,6 +109,15 @@ const (
 	// FolderRename folder rename action
 	// FolderRename 文件夹重命名动作
 	FolderSyncRename WebSocketSendAction = "FolderSyncRename"
+	// FolderModifyAck folder modify operation ack
+	// FolderModifyAck 文件夹修改操作 ack
+	FolderModifyAck WebSocketSendAction = "FolderModifyAck"
+	// FolderRenameAck folder rename operation ack
+	// FolderRenameAck 文件夹重命名操作 ack
+	FolderRenameAck WebSocketSendAction = "FolderRenameAck"
+	// FolderDeleteAck folder delete operation ack
+	// FolderDeleteAck 文件夹删除操作 ack
+	FolderDeleteAck WebSocketSendAction = "FolderDeleteAck"
 
 	// ---------------- Note ----------------
 
@@ -193,6 +202,12 @@ const (
 	// SettingSyncClear sync clear all settings
 	// SettingSyncClear 同步清理所有设置
 	SettingSyncClear WebSocketSendAction = "SettingSyncClear"
+	// SettingModifyAck setting modify operation ack
+	// SettingModifyAck 设置修改操作 ack
+	SettingModifyAck WebSocketSendAction = "SettingModifyAck"
+	// SettingDeleteAck setting delete operation ack
+	// SettingDeleteAck 设置删除操作 ack
+	SettingDeleteAck WebSocketSendAction = "SettingDeleteAck"
 
 	// ---------------- Share ----------------
 

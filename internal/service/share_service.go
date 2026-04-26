@@ -1146,9 +1146,9 @@ func (s *shareService) GetSharedFile(ctx context.Context, shareToken string, fil
 		contentType = http.DetectContentType(content)
 	}
 
-	// Compute etag in real-time
-	// 实时计算 etag
-	etag = util.EncodeHash32(string(content))
+	// Compute etag in real-time using byte-based hash for consistency with binary files
+	// 使用基于字节的哈希实时计算 etag，确保与二进制文件一致
+	etag = util.EncodeHash32Bytes(content)
 
 	return content, contentType, file.Mtime, etag, file.Path, nil
 

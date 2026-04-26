@@ -121,7 +121,8 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
 					LastTime: nodeCheck.UpdatedTimestamp,
 					Path:     params.Path,
-				}).WithVault(params.Vault), string(dto.NoteModifyAck))
+					PathHash: params.PathHash,
+				}), string(dto.NoteModifyAck))
 				return
 			}
 
@@ -361,7 +362,8 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
 			LastTime: note.UpdatedTimestamp,
 			Path:     note.Path,
-		}).WithVault(params.Vault), string(dto.NoteModifyAck))
+			PathHash: note.PathHash,
+		}), string(dto.NoteModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.NoteSyncModifyMessage{
 				Path:             note.Path,
@@ -394,7 +396,8 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
 				LastTime: nodeCheck.UpdatedTimestamp,
 				Path:     params.Path,
-			}).WithVault(params.Vault), string(dto.NoteModifyAck))
+				PathHash: params.PathHash,
+			}), string(dto.NoteModifyAck))
 		} else {
 			c.ToResponse(code.SuccessNoUpdate)
 		}
@@ -458,7 +461,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Path:     nodeCheck.Path,
 				PathHash: nodeCheck.PathHash,
 			},
-		).WithVault(params.Vault), dto.NoteSyncNeedPush)
+		), dto.NoteSyncNeedPush)
 		return
 	case "UpdateMtime":
 		// Force client to update mtime without transferring note content
@@ -470,7 +473,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.NoteSyncMtime)
+		), dto.NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -527,7 +530,8 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success.WithData(dto.NoteDeleteAckMessage{
 		LastTime: note.UpdatedTimestamp,
 		Path:     note.Path,
-	}).WithVault(params.Vault), string(dto.NoteDeleteAck))
+		PathHash: note.PathHash,
+	}), string(dto.NoteDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncDeleteMessage{
 			Path:             note.Path,
@@ -582,7 +586,8 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success.WithData(dto.NoteRenameAckMessage{
 		LastTime: newNote.UpdatedTimestamp,
 		Path:     newNote.Path,
-	}).WithVault(params.Vault), string(dto.NoteRenameAck))
+		PathHash: newNote.PathHash,
+	}), string(dto.NoteRenameAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncRenameMessage{
 			Path:             newNote.Path,

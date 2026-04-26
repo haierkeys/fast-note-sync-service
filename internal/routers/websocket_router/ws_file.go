@@ -175,7 +175,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				SessionID: session.ID,
 				ChunkSize: session.ChunkSize,
 			},
-		).WithVault(session.Vault), dto.FileUpload)
+		), dto.FileUpload)
 		return
 
 	case "UpdateMtime":
@@ -187,7 +187,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            fileSvc.Mtime,
 				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.FileSyncMtime)
+		), dto.FileSyncMtime)
 		return
 	default:
 		// 无需更新
@@ -359,7 +359,8 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		c.ToResponse(code.Success.WithData(dto.FileUploadAckMessage{
 			LastTime: fileSvc.UpdatedTimestamp,
 			Path:     session.Path,
-		}), string(dto.FileUploadAck))
+			PathHash: session.PathHash,
+		}).WithVault(session.Vault), string(dto.FileUploadAck))
 
 		// Mark as completed and remove from global server
 		// 标记为已完成并从全局服务器移除
@@ -415,7 +416,8 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success.WithData(dto.FileDeleteAckMessage{
 		LastTime: fileSvc.UpdatedTimestamp,
 		Path:     fileSvc.Path,
-	}).WithVault(params.Vault), string(dto.FileDeleteAck))
+		PathHash: fileSvc.PathHash,
+	}), string(dto.FileDeleteAck))
 
 	// Broadcast file deletion message
 	// 广播文件删除消息
@@ -454,7 +456,8 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	c.ToResponse(code.Success.WithData(dto.FileRenameAckMessage{
 		LastTime: newFile.UpdatedTimestamp,
 		Path:     newFile.Path,
-	}), string(dto.FileRenameAck))
+		PathHash: newFile.PathHash,
+	}).WithVault(params.Vault), string(dto.FileRenameAck))
 
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FileSyncRenameMessage{
@@ -540,7 +543,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 			TotalChunks: session.TotalChunks,
 			Size:        session.Size,
 		},
-	).WithVault(params.Vault), dto.FileSyncChunkDownload)
+	), dto.FileSyncChunkDownload)
 
 	// Start chunk sending, pass timeout and logger
 	// 启动分片发送,传入超时时间和 logger

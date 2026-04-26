@@ -37,3 +37,26 @@ type FolderSyncModifyMessage struct {
 	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
 	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
+// FolderModifyAckMessage folder modify operation ACK
+// FolderModifyAckMessage 文件夹修改操作 ACK
+type FolderModifyAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Folder path // 文件夹路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
+}
+
+// FolderRenameAckMessage folder rename operation ACK
+// FolderRenameAckMessage 文件夹重命名操作 ACK
+type FolderRenameAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // New folder path // 文件夹新路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
+}
+
+// FolderDeleteAckMessage folder delete operation ACK
+// FolderDeleteAckMessage 文件夹删除操作 ACK
+type FolderDeleteAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Folder path // 文件夹路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
+}

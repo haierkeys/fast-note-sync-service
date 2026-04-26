@@ -68,6 +68,7 @@ type NoteSyncDeleteMessage struct {
 type NoteModifyAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
 	Path     string `json:"path"`     // Note path // 笔记路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }
 
 // NoteRenameAckMessage note rename operation ACK, sent back to sender after server processes NoteRename
@@ -75,6 +76,7 @@ type NoteModifyAckMessage struct {
 type NoteRenameAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
 	Path     string `json:"path"`     // New note path after rename // 重命名后的笔记新路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }
 
 // NoteDeleteAckMessage note delete operation ACK, sent back to sender after server processes NoteDelete
@@ -82,4 +84,5 @@ type NoteRenameAckMessage struct {
 type NoteDeleteAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
 	Path     string `json:"path"`     // Note path // 笔记路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }

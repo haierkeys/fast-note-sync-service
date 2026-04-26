@@ -67,6 +67,7 @@ type FileSyncDeleteMessage struct {
 type FileRenameAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server timestamp after rename // 重命名后的服务端时间戳
 	Path     string `json:"path"`     // New file path after rename // 重命名后的文件新路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }
 
 // FileUploadAckMessage ack message for file upload complete, carries server timestamp and file path
@@ -74,6 +75,7 @@ type FileRenameAckMessage struct {
 type FileUploadAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server timestamp after upload // 上传完成后的服务端时间戳
 	Path     string `json:"path"`     // File path // 文件路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }
 
 // FileDeleteAckMessage file delete operation ACK, sent back to sender after server processes FileDelete
@@ -81,6 +83,7 @@ type FileUploadAckMessage struct {
 type FileDeleteAckMessage struct {
 	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
 	Path     string `json:"path"`     // File path // 文件路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
 }
 
 // FileSyncRenameMessage message structure for file rename during sync

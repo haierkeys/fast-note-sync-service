@@ -60,7 +60,11 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			return
 		}
 
-		c.ToResponse(code.Success)
+		c.ToResponse(code.Success.WithData(dto.SettingModifyAckMessage{
+			LastTime: setting.UpdatedTimestamp,
+			Path:     setting.Path,
+			PathHash: setting.PathHash,
+		}), string(dto.SettingModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.SettingSyncModifyMessage{
 				Vault:            params.Vault,
@@ -76,14 +80,11 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 		return
 
 	case "UpdateMtime":
-		c.ToResponse(code.Success.WithData(
-			dto.SettingSyncMtimeMessage{
-				Path:             settingCheck.Path,
-				Ctime:            settingCheck.Ctime,
-				Mtime:            settingCheck.Mtime,
-				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
-			},
-		).WithVault(params.Vault), dto.SettingSyncMtime)
+		c.ToResponse(code.Success.WithData(dto.SettingModifyAckMessage{
+			LastTime: settingCheck.UpdatedTimestamp,
+			Path:     settingCheck.Path,
+			PathHash: settingCheck.PathHash,
+		}), string(dto.SettingModifyAck))
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -121,7 +122,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 			dto.SettingSyncNeedUploadMessage{
 				Path: settingCheck.Path,
 			},
-		).WithVault(params.Vault), dto.SettingSyncNeedUpload)
+		), dto.SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
@@ -131,7 +132,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 				Mtime:            settingCheck.Mtime,
 				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.SettingSyncMtime)
+		), dto.SettingSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate)
@@ -163,7 +164,11 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		return
 	}
 
-	c.ToResponse(code.Success)
+	c.ToResponse(code.Success.WithData(dto.SettingDeleteAckMessage{
+		LastTime: setting.UpdatedTimestamp,
+		Path:     setting.Path,
+		PathHash: setting.PathHash,
+	}), string(dto.SettingDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
 			Path:             setting.Path,
@@ -463,12 +468,12 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
 		},
-	).WithVault(params.Vault).WithContext(params.Context), dto.SettingSyncEnd)
+	).WithContext(params.Context), dto.SettingSyncEnd)
 
 	// Send queued messages individually
 	// 逐条发送队列中的消息
 	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+		c.ToResponse(code.Success.WithData(item.Data).WithContext(params.Context), item.Action)
 	}
 }
 
