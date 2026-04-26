@@ -130,6 +130,15 @@ const (
 	// NoteSyncNeedPush indicates client needs to push note content
 	// NoteSyncNeedPush 表示客户端需要推送笔记内容
 	NoteSyncNeedPush WebSocketSendAction = "NoteSyncNeedPush"
+	// NoteModifyAck note modify operation ack
+	// NoteModifyAck 笔记修改操作 ack
+	NoteModifyAck WebSocketSendAction = "NoteModifyAck"
+	// NoteRenameAck note rename operation ack
+	// NoteRenameAck 笔记重命名操作 ack
+	NoteRenameAck WebSocketSendAction = "NoteRenameAck"
+	// NoteDeleteAck note delete operation ack
+	// NoteDeleteAck 笔记删除操作 ack
+	NoteDeleteAck WebSocketSendAction = "NoteDeleteAck"
 
 	// ---------------- File ----------------
 
@@ -160,6 +169,9 @@ const (
 	// FileUploadAck file upload complete ack
 	// FileUploadAck 文件上传完成 ack
 	FileUploadAck WebSocketSendAction = "FileUploadAck"
+	// FileDeleteAck file delete operation ack
+	// FileDeleteAck 文件删除操作 ack
+	FileDeleteAck WebSocketSendAction = "FileDeleteAck"
 
 	// ---------------- Setting ----------------
 
