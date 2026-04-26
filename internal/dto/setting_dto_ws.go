@@ -47,3 +47,18 @@ type SettingSyncDeleteMessage struct {
 	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
 	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
+// SettingModifyAckMessage setting modify operation ACK
+// SettingModifyAckMessage 配置修改操作 ACK
+type SettingModifyAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Setting path // 配置路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
+}
+
+// SettingDeleteAckMessage setting delete operation ACK
+// SettingDeleteAckMessage 配置删除操作 ACK
+type SettingDeleteAckMessage struct {
+	LastTime int64  `json:"lastTime"` // Server write timestamp // 服务端写入时间戳
+	Path     string `json:"path"`     // Setting path // 配置路径
+	PathHash string `json:"pathHash"` // Path hash // 路径哈希值
+}
