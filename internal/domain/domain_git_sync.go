@@ -71,5 +71,8 @@ type GitSyncRepository interface {
 	DeleteHistory(ctx context.Context, uid int64, configID int64) error
 	// DeleteOldHistory 删除指定时间之前的同步历史记录
 	DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error
+
+	// DisableByVaultID 禁用仓库下的 Git 同步任务
+	DisableByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

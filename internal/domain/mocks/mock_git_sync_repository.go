@@ -95,6 +95,11 @@ func (m *MockGitSyncRepository) DeleteOldHistory(ctx context.Context, uid int64,
 	return args.Error(0)
 }
 
+func (m *MockGitSyncRepository) DisableByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockGitSyncRepository must implement domain.GitSyncRepository.
 // 编译时检查：MockGitSyncRepository 必须实现 domain.GitSyncRepository 接口。
 var _ domain.GitSyncRepository = (*MockGitSyncRepository)(nil)

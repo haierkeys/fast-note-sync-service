@@ -87,6 +87,11 @@ func (m *MockBackupRepository) DeleteOldHistory(ctx context.Context, uid int64, 
 	return args.Error(0)
 }
 
+func (m *MockBackupRepository) DisableByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockBackupRepository must implement domain.BackupRepository.
 // 编译时检查：MockBackupRepository 必须实现 domain.BackupRepository 接口。
 var _ domain.BackupRepository = (*MockBackupRepository)(nil)

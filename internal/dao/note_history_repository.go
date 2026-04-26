@@ -389,6 +389,43 @@ func (r *noteHistoryRepository) Delete(ctx context.Context, id, uid int64) error
 	})
 }
 
+// DeleteByVaultID physically deletes all history in a vault
+// DeleteByVaultID 物理删除仓库下的所有历史记录
+func (r *noteHistoryRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.noteHistory(uid).NoteHistory
+
+		// 查找该仓库下的所有历史记录 ID
+		histories, err := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Select(u.ID).Find()
+		if err != nil {
+			return err
+		}
+
+		if len(histories) == 0 {
+			return nil
+		}
+
+		var ids []int64
+		for _, h := range histories {
+			ids = append(ids, h.ID)
+		}
+
+		// 从数据库删除
+		_, err = u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除物理文件夹
+		for _, id := range ids {
+			folder := r.dao.GetNoteHistoryFolderPath(uid, id)
+			_ = r.dao.RemoveContentFolder(folder)
+		}
+
+		return nil
+	})
+}
+
 // Ensure noteHistoryRepository implements domain.NoteHistoryRepository interface
 // 确保 noteHistoryRepository 实现了 domain.NoteHistoryRepository 接口
 var _ domain.NoteHistoryRepository = (*noteHistoryRepository)(nil)

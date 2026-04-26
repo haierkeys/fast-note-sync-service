@@ -56,5 +56,8 @@ type NoteHistoryRepository interface {
 
 	// Delete 删除指定ID的历史记录
 	Delete(ctx context.Context, id, uid int64) error
+
+	// DeleteByVaultID 删除仓库下的所有历史记录（包含物理目录）
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

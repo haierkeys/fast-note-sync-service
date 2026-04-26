@@ -162,5 +162,14 @@ func (r *noteLinkRepository) GetOutlinks(ctx context.Context, sourceNoteID, uid 
 	return results, nil
 }
 
+// DeleteByVaultID deletes all links for a vault
+func (r *noteLinkRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		nl := r.noteLink(uid).NoteLink
+		_, err := nl.WithContext(ctx).Where(nl.VaultID.Eq(vaultID)).Delete()
+		return err
+	})
+}
+
 // Ensure noteLinkRepository implements domain.NoteLinkRepository interface
 var _ domain.NoteLinkRepository = (*noteLinkRepository)(nil)

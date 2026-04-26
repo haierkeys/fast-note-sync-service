@@ -6,41 +6,22 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"gorm.io/gorm"
 )
 
-// NoteFTSRepository FTS full-text search repository interface
-// NoteFTSRepository FTS 全文搜索仓库接口
-type NoteFTSRepository interface {
-	// Upsert inserts or updates FTS index
-	// Upsert 插入或更新 FTS 索引
-	Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error
-	// Delete deletes FTS index
-	// Delete 删除 FTS 索引
-	Delete(ctx context.Context, noteID int64, uid int64) error
-	// Search full-text search, returns list of matching note_id
-	// Search 全文搜索，返回匹配的 note_id 列表
-	Search(ctx context.Context, keyword string, vaultID, uid int64, limit, offset int) ([]int64, error)
-	// SearchCount full-text search count
-	// SearchCount 全文搜索计数
-	SearchCount(ctx context.Context, keyword string, vaultID, uid int64) (int64, error)
-	// RebuildIndex rebuilds index (reads all note content from file system)
-	// RebuildIndex 重建索引（从文件系统读取所有笔记内容）
-	RebuildIndex(ctx context.Context, uid int64) error
-}
-
-// noteFTSRepository implements NoteFTSRepository interface
-// noteFTSRepository 实现 NoteFTSRepository 接口
+// noteFTSRepository implements domain.NoteFTSRepository interface
+// noteFTSRepository 实现 domain.NoteFTSRepository 接口
 type noteFTSRepository struct {
 	dao             *Dao
 	customPrefixKey string
 }
 
-// NewNoteFTSRepository creates NoteFTSRepository instance
-// NewNoteFTSRepository 创建 NoteFTSRepository 实例
-func NewNoteFTSRepository(dao *Dao) NoteFTSRepository {
+// NewNoteFTSRepository creates domain.NoteFTSRepository instance
+// NewNoteFTSRepository 创建 domain.NoteFTSRepository 实例
+func NewNoteFTSRepository(dao *Dao) domain.NoteFTSRepository {
 	return &noteFTSRepository{dao: dao, customPrefixKey: "user_note_history_"}
 }
 
@@ -244,6 +225,31 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 	})
 }
 
-// Ensure noteFTSRepository implements NoteFTSRepository interface
-// 确保 noteFTSRepository 实现了 NoteFTSRepository 接口
-var _ NoteFTSRepository = (*noteFTSRepository)(nil)
+// DeleteByVaultID deletes all FTS records for a vault
+// DeleteByVaultID 删除指定仓库的所有 FTS 记录
+func (r *noteFTSRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		// 先在 note 表找到该仓库的所有笔记 ID
+		var noteIDs []int64
+		err := db.Table("note").Where("vault_id = ?", vaultID).Pluck("id", &noteIDs).Error
+		if err != nil {
+			return err
+		}
+
+		if len(noteIDs) == 0 {
+			return nil
+		}
+
+		// 从 NoteFTS 删除
+		if err := db.Where("note_id IN ?", noteIDs).Delete(&model.NoteFTS{}).Error; err != nil {
+			return err
+		}
+
+		// 从 NoteFTSToken 删除
+		return db.Where("note_id IN ?", noteIDs).Delete(&model.NoteFTSToken{}).Error
+	})
+}
+
+// Ensure noteFTSRepository implements domain.NoteFTSRepository interface
+// 确保 noteFTSRepository 实现了 domain.NoteFTSRepository 接口
+var _ domain.NoteFTSRepository = (*noteFTSRepository)(nil)

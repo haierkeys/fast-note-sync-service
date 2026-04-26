@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
@@ -65,16 +66,54 @@ type VaultService interface {
 // vaultService implementation of VaultService interface
 // vaultService 实现 VaultService 接口
 type vaultService struct {
-	repo domain.VaultRepository
-	sf   *singleflight.Group
+	repo        domain.VaultRepository
+	noteRepo    domain.NoteRepository
+	fileRepo    domain.FileRepository
+	folderRepo  domain.FolderRepository
+	logRepo     domain.SyncLogRepository
+	historyRepo domain.NoteHistoryRepository
+	linkRepo    domain.NoteLinkRepository
+	settingRepo domain.SettingRepository
+	ftsRepo     domain.NoteFTSRepository
+	shareRepo   domain.UserShareRepository
+	gitRepo     domain.GitSyncRepository
+	backupRepo  domain.BackupRepository
+	logger      *zap.Logger
+	sf          *singleflight.Group
 }
 
 // NewVaultService creates VaultService instance
 // NewVaultService 创建 VaultService 实例
-func NewVaultService(repo domain.VaultRepository) VaultService {
+func NewVaultService(
+	repo domain.VaultRepository,
+	noteRepo domain.NoteRepository,
+	fileRepo domain.FileRepository,
+	folderRepo domain.FolderRepository,
+	logRepo domain.SyncLogRepository,
+	historyRepo domain.NoteHistoryRepository,
+	linkRepo domain.NoteLinkRepository,
+	settingRepo domain.SettingRepository,
+	ftsRepo domain.NoteFTSRepository,
+	shareRepo domain.UserShareRepository,
+	gitRepo domain.GitSyncRepository,
+	backupRepo domain.BackupRepository,
+	logger *zap.Logger,
+) VaultService {
 	return &vaultService{
-		repo: repo,
-		sf:   &singleflight.Group{},
+		repo:        repo,
+		noteRepo:    noteRepo,
+		fileRepo:    fileRepo,
+		folderRepo:  folderRepo,
+		logRepo:     logRepo,
+		historyRepo: historyRepo,
+		linkRepo:    linkRepo,
+		settingRepo: settingRepo,
+		ftsRepo:     ftsRepo,
+		shareRepo:   shareRepo,
+		gitRepo:     gitRepo,
+		backupRepo:  backupRepo,
+		logger:      logger,
+		sf:          &singleflight.Group{},
 	}
 }
 
@@ -245,9 +284,65 @@ func (s *vaultService) List(ctx context.Context, uid int64) ([]*dto.VaultDTO, er
 	return results, nil
 }
 
-// Delete deletes Vault
-// Delete 删除 Vault
+// Delete deletes Vault and all its associated resources
+// Delete 删除 Vault 及其所有关联资源
 func (s *vaultService) Delete(ctx context.Context, uid int64, id int64) error {
+	// 1. 清理笔记及物理内容
+	if err := s.noteRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup notes when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 2. 清理文件及物理内容
+	if err := s.fileRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup files when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 3. 清理文件夹记录
+	if err := s.folderRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup folders when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 4. 清理同步日志
+	if err := s.logRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup sync logs when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 5. 清理历史记录及物理内容
+	if err := s.historyRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup history when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 6. 清理笔记链接
+	if err := s.linkRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup links when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 7. 清理全文搜索索引
+	if err := s.ftsRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup FTS index when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 8. 清理分享记录
+	if err := s.shareRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup shares when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 9. 禁用 Git 同步
+	if err := s.gitRepo.DisableByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to disable git sync when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 10. 禁用备份任务
+	if err := s.backupRepo.DisableByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to disable backup when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 11. 清理配置
+	if err := s.settingRepo.DeleteByVaultID(ctx, id, uid); err != nil {
+		s.logger.Warn("failed to cleanup settings when deleting vault", zap.Int64("vaultID", id), zap.Error(err))
+	}
+
+	// 最后删除仓库本身
 	err := s.repo.Delete(ctx, id, uid)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())

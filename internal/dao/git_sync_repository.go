@@ -315,6 +315,15 @@ func (r *gitSyncRepository) DeleteOldHistory(ctx context.Context, uid int64, con
 	})
 }
 
+// DisableByVaultID 禁用仓库下的 Git 同步任务
+func (r *gitSyncRepository) DisableByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		q := r.gitSync(uid).GitSyncConfig
+		_, err := q.WithContext(ctx).Where(q.VaultID.Eq(vaultID), q.UID.Eq(uid)).UpdateSimple(q.IsEnabled.Value(0))
+		return err
+	})
+}
+
 // Ensure gitSyncRepository implements domain.GitSyncRepository interface
 // 确保 gitSyncRepository 实现了 domain.GitSyncRepository 接口
 var _ domain.GitSyncRepository = (*gitSyncRepository)(nil)

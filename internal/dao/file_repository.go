@@ -749,3 +749,40 @@ func buildFileOrderClause(sortBy, sortOrder string) string {
 
 	return field + " " + sortOrder
 }
+
+// DeleteByVaultID physically deletes all files in a vault
+// DeleteByVaultID 物理删除仓库下的所有文件
+func (r *fileRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		u := r.file(uid).File
+
+		// 查找该仓库下的所有文件 ID
+		files, err := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Select(u.ID).Find()
+		if err != nil {
+			return err
+		}
+
+		if len(files) == 0 {
+			return nil
+		}
+
+		var ids []int64
+		for _, f := range files {
+			ids = append(ids, f.ID)
+		}
+
+		// 从数据库删除
+		_, err = u.WithContext(ctx).Where(u.VaultID.Eq(vaultID)).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 删除物理文件夹
+		for _, id := range ids {
+			folderPath := r.dao.GetFileFolderPath(uid, id)
+			_ = r.dao.RemoveContentFolder(folderPath)
+		}
+
+		return nil
+	})
+}

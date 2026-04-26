@@ -166,6 +166,14 @@ func (r *syncLogRepository) CleanupByTimeAll(ctx context.Context, timestamp int6
 	return nil
 }
 
+// DeleteByVaultID removes all sync logs for a specific vault
+// DeleteByVaultID 删除指定仓库的所有同步日志
+func (r *syncLogRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		return r.db(uid).WithContext(ctx).Where("vault_id = ?", vaultID).Delete(&model.SyncLog{}).Error
+	})
+}
+
 // Ensure syncLogRepository implements domain.SyncLogRepository
 // 确保 syncLogRepository 实现了 domain.SyncLogRepository 接口
 var _ domain.SyncLogRepository = (*syncLogRepository)(nil)

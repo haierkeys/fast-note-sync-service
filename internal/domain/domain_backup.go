@@ -78,5 +78,8 @@ type BackupRepository interface {
 	// DeleteOldHistory Delete old history records created before cutoffTime
 	// 删除早于 cutoffTime 的历史记录
 	DeleteOldHistory(ctx context.Context, uid int64, configID int64, cutoffTime time.Time) error
+
+	// DisableByVaultID 禁用仓库下的备份任务
+	DisableByVaultID(ctx context.Context, vaultID, uid int64) error
 }
 

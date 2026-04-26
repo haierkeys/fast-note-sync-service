@@ -61,4 +61,8 @@ type UserShareRepository interface {
 	// MigrateResID updates res_id and resources JSON for a share when a note/file is renamed.
 	// MigrateResID 在笔记/文件重命名时更新分享记录的资源 ID 和资源列表。
 	MigrateResID(ctx context.Context, uid int64, oldResID int64, newResID int64) error
+
+	// DeleteByVaultID deletes all shares belonging to a vault (notes/files in that vault)
+	// DeleteByVaultID 删除属于该仓库的所有分享记录（仓库下的笔记或文件）
+	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }

@@ -75,6 +75,11 @@ func (m *MockNoteHistoryRepository) Delete(ctx context.Context, id, uid int64) e
 	return args.Error(0)
 }
 
+func (m *MockNoteHistoryRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockNoteHistoryRepository must implement domain.NoteHistoryRepository.
 // 编译时检查：MockNoteHistoryRepository 必须实现 domain.NoteHistoryRepository 接口。
 var _ domain.NoteHistoryRepository = (*MockNoteHistoryRepository)(nil)

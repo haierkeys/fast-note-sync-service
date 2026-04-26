@@ -113,6 +113,11 @@ func (m *MockUserShareRepository) MigrateResID(ctx context.Context, uid int64, o
 	return args.Error(0)
 }
 
+func (m *MockUserShareRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	args := m.Called(ctx, vaultID, uid)
+	return args.Error(0)
+}
+
 // Compile-time check: MockUserShareRepository must implement domain.UserShareRepository.
 // 编译时检查：MockUserShareRepository 必须实现 domain.UserShareRepository 接口。
 var _ domain.UserShareRepository = (*MockUserShareRepository)(nil)

@@ -46,7 +46,21 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 	}
 
 	s := &Services{}
-	s.VaultService = service.NewVaultService(repos.VaultRepo)
+	s.VaultService = service.NewVaultService(
+		repos.VaultRepo,
+		repos.NoteRepo,
+		repos.FileRepo,
+		repos.FolderRepo,
+		repos.SyncLogRepo,
+		repos.NoteHistoryRepo,
+		repos.NoteLinkRepo,
+		repos.SettingRepo,
+		repos.NoteFTSRepo,
+		repos.ShareRepo,
+		repos.GitSyncRepo,
+		repos.BackupRepo,
+		logger,
+	)
 	s.StorageService = service.NewStorageService(repos.StorageRepo, &cfg.Storage)
 	s.BackupService = service.NewBackupService(repos.BackupRepo, repos.NoteRepo, repos.FolderRepo, repos.FileRepo, repos.VaultRepo, s.StorageService, &cfg.Storage, logger)
 	s.GitSyncService = service.NewGitSyncService(repos.GitSyncRepo, repos.NoteRepo, repos.FolderRepo, repos.FileRepo, repos.VaultRepo, &cfg.Git, logger)
