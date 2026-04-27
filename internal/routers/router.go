@@ -129,6 +129,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	frontendShareContent, _ := frontendFiles.ReadFile("frontend/share.html")
 
 	r := gin.New()
+	r.Use(middleware.Proxy())
 	r.Use(middleware.Cors())
 
 	r.GET("/", func(c *gin.Context) {

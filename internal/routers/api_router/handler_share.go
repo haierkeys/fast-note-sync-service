@@ -348,15 +348,7 @@ func (h *ShareHandler) CreateShortLink(c *gin.Context) {
 	// Only compute baseURL when client did not provide the full share URL
 	baseURL := ""
 	if params.URL == "" {
-		scheme := "http"
-		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		host := c.GetHeader("X-Forwarded-Host")
-		if host == "" {
-			host = c.Request.Host
-		}
-		baseURL = fmt.Sprintf("%s://%s", scheme, host)
+		baseURL = fmt.Sprintf("%s://%s", c.Request.URL.Scheme, c.Request.Host)
 	}
 
 	shortURL, err := h.App.ShareService.CreateShortLink(ctx, uid, params.Vault, params.Path, params.PathHash, baseURL, params.URL, params.IsForce)
