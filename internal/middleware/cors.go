@@ -15,17 +15,13 @@ func Cors() gin.HandlerFunc {
 
 		origin := c.GetHeader("Origin")
 		allowedOrigin := ""
-		if origin != "" && (strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://")) {
-			xForwardedProto := c.GetHeader("X-Forwarded-Proto")
-			if xForwardedProto == "" {
-				if c.Request.TLS != nil {
-					xForwardedProto = "https"
-				} else {
-					xForwardedProto = "http"
-				}
-			}
-			if origin == xForwardedProto+"://"+c.Request.Host {
+		if origin != "" {
+			if strings.HasPrefix(origin, "app://") {
 				allowedOrigin = origin
+			} else if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
+				if origin == c.Request.URL.Scheme+"://"+c.Request.Host {
+					allowedOrigin = origin
+				}
 			}
 		}
 
