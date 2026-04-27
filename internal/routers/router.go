@@ -32,6 +32,24 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 		Capacity:     10,
 		Quantum:      10,
 	},
+	limiter.BucketRule{
+		Key:          "/api/user/login",
+		FillInterval: time.Second,
+		Capacity:     5,
+		Quantum:      1,
+	},
+	limiter.BucketRule{
+		Key:          "/api/share/verify",
+		FillInterval: time.Second,
+		Capacity:     10,
+		Quantum:      1,
+	},
+	limiter.BucketRule{
+		Key:          "/api/share/note",
+		FillInterval: time.Second,
+		Capacity:     10,
+		Quantum:      1,
+	},
 )
 
 func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalTranslator) *gin.Engine {

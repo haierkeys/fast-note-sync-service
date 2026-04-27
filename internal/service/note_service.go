@@ -471,7 +471,14 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	}
 
 	// If note has active share, automatically revoke (to prevent count residue) // 若笔记有 active 分享，自动撤销（防止计数残留）
-	_ = s.shareRepo.UpdateStatusByRes(ctx, uid, "note", note.ID, domain.UserShareStatusRevoked)
+	if err := s.shareRepo.UpdateStatusByRes(ctx, uid, "note", note.ID, domain.UserShareStatusRevoked); err != nil {
+		zap.L().Warn("Failed to revoke share on note deletion",
+			zap.Int64("uid", uid),
+			zap.Int64("noteId", note.ID),
+			zap.String("pathHash", params.PathHash),
+			zap.Error(err),
+		)
+	}
 
 	// Log soft delete // 记录软删除日志
 	if s.syncLogService != nil {
