@@ -13,19 +13,19 @@ func Cors() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
-		var domain string
-		if s, exist := c.GetQuery("domain"); exist {
-			domain = s
-		} else {
-			domain = c.GetHeader("domain")
-		}
-
-		if domain != "" && !strings.HasPrefix(domain, "http"+"://") {
+		origin := c.GetHeader("Origin")
+		allowedOrigin := ""
+		if origin != "" && (strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://")) {
 			xForwardedProto := c.GetHeader("X-Forwarded-Proto")
-			if xForwardedProto == "https" {
-				domain = "https" + "://" + domain
-			} else {
-				domain = "http" + "://" + domain
+			if xForwardedProto == "" {
+				if c.Request.TLS != nil {
+					xForwardedProto = "https"
+				} else {
+					xForwardedProto = "http"
+				}
+			}
+			if origin == xForwardedProto+"://"+c.Request.Host {
+				allowedOrigin = origin
 			}
 		}
 
@@ -33,10 +33,8 @@ func Cors() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, X-CSRF-Token, X-Client, X-Client-Name, X-Client-Version, X-Default-Vault-Name, AccessToken, Authorization, Debug, Domain, Token, Share-Token, Lang, Content-Type, Content-Length, Accept")
 
-		if domain != "" {
-			c.Header("Access-Control-Allow-Origin", domain)
-		} else {
-			c.Header("Access-Control-Allow-Origin", "*")
+		if allowedOrigin != "" {
+			c.Header("Access-Control-Allow-Origin", allowedOrigin)
 		}
 
 		// Allow OPTIONS requests to pass
