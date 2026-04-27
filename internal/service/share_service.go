@@ -284,6 +284,9 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 		return nil, domain.ErrShareCancelled
 	}
 
+	// 添加限速延迟防止暴力枚举攻击
+	time.Sleep(time.Millisecond * 100)
+
 	// Add password verification logic
 	// 增加密码校验逻辑
 	if share.Password != "" {
