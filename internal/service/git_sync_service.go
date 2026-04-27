@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -556,6 +557,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		r, err = git.PlainClone(wsPath, false, &git.CloneOptions{
 			URL:           conf.RepoURL,
 			Auth:          auth,
+			Proxy:         http.ProxyFromEnvironment,
 			ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 			SingleBranch:  true,
 			Depth:         1,
@@ -597,6 +599,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	s.logger.Info("Pulling latest changes", zap.Int64("configId", conf.ID))
 	err = wt.Pull(&git.PullOptions{
 		Auth:          auth,
+		Proxy:         http.ProxyFromEnvironment,
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
@@ -659,7 +662,8 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 
 	s.logger.Info("Pushing changes", zap.Int64("configId", conf.ID))
 	err = r.Push(&git.PushOptions{
-		Auth: auth,
+		Auth:  auth,
+		Proxy: http.ProxyFromEnvironment,
 	})
 	if err != nil {
 		return fmt.Errorf("git push failed: %w", err)
