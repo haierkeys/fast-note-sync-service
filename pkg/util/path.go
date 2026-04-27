@@ -4,7 +4,9 @@ package util
 
 import (
 	"io"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -58,11 +60,41 @@ func GeneratePathVariations(path string) []string {
 }
 
 // ValidatePath checks if a path is safe (no directory traversal).
-// Returns true if the path is valid, false if it contains "..".
+// Returns true if the path is valid, false if it contains "..", is absolute, or contains null bytes.
 // ValidatePath 检查路径是否安全（无目录遍历）。
-// 如果路径有效则返回 true，如果包含 ".." 则返回 false。
+// 如果路径有效则返回 true，如果包含 ".."、是绝对路径或包含空字节则返回 false。
 func ValidatePath(path string) bool {
-	return !strings.Contains(path, "..")
+	if path == "" {
+		return false
+	}
+	if strings.Contains(path, "\x00") {
+		return false
+	}
+	decoded, err := url.QueryUnescape(path)
+	if err != nil {
+		return false
+	}
+	if decoded != path {
+		path = decoded
+	}
+	if filepath.IsAbs(path) {
+		return false
+	}
+	cleaned := filepath.Clean(path)
+	return !strings.Contains(cleaned, "..") && !strings.HasPrefix(cleaned, "/")
+}
+
+// NormalizePath normalizes path for cross-platform compatibility.
+// Converts backslashes to forward slashes and cleans the path.
+// NormalizePath 规范化路径以实现跨平台兼容性。
+// 将反斜杠转换为正斜杠并清理路径。
+func NormalizePath(path string) string {
+	path = strings.ReplaceAll(path, "\\", "/")
+	path = filepath.Clean(path)
+	if strings.HasSuffix(path, "/") && len(path) > 1 {
+		path = strings.TrimSuffix(path, "/")
+	}
+	return path
 }
 
 // CopyFile copies a file from src to dst
