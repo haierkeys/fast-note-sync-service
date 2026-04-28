@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,7 +17,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	appconfig "github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -219,7 +218,7 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 		branch = "main"
 	}
 
-	auth := &http.BasicAuth{
+	auth := &githttp.BasicAuth{
 		Username: params.Username,
 		Password: params.Password,
 	}
@@ -542,7 +541,7 @@ func (s *gitSyncService) scheduleGC() {
 
 func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig) error {
 	wsPath := s.getWorkspacePath(conf.UID, conf.ID)
-	auth := &http.BasicAuth{
+	auth := &githttp.BasicAuth{
 		Username: conf.Username,
 		Password: conf.Password,
 	}
@@ -557,7 +556,6 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		r, err = git.PlainClone(wsPath, false, &git.CloneOptions{
 			URL:           conf.RepoURL,
 			Auth:          auth,
-			Proxy:         http.ProxyFromEnvironment,
 			ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 			SingleBranch:  true,
 			Depth:         1,
@@ -599,7 +597,6 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	s.logger.Info("Pulling latest changes", zap.Int64("configId", conf.ID))
 	err = wt.Pull(&git.PullOptions{
 		Auth:          auth,
-		Proxy:         http.ProxyFromEnvironment,
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
@@ -663,7 +660,6 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 	s.logger.Info("Pushing changes", zap.Int64("configId", conf.ID))
 	err = r.Push(&git.PushOptions{
 		Auth:  auth,
-		Proxy: http.ProxyFromEnvironment,
 	})
 	if err != nil {
 		return fmt.Errorf("git push failed: %w", err)
