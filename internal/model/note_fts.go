@@ -6,7 +6,7 @@ import (
 )
 
 // FTS 表版本号，修改此值会触发重建索引
-const NoteFTSVersion = 3
+const NoteFTSVersion = 4
 
 // NoteFTS 存储笔记全文搜索的快照数据
 type NoteFTS struct {
@@ -24,7 +24,7 @@ func (*NoteFTS) TableName() string {
 type NoteFTSToken struct {
 	ID     int64  `gorm:"column:id;primaryKey;autoIncrement"`
 	NoteID int64  `gorm:"column:note_id;index:idx_fts_note_id;index:idx_fts_token_note_id,priority:2"`
-	Token  string `gorm:"column:token;type:varchar(255);index:idx_fts_token;index:idx_fts_token_note_id,priority:1"`
+	Token  string `gorm:"column:token;type:text;index:idx_fts_token;index:idx_fts_token_note_id,priority:1"`
 }
 
 func (*NoteFTSToken) TableName() string {
