@@ -40,7 +40,7 @@ func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
 
 	// Use onceKeys to ensure it is created only once
 	// 使用 onceKeys 确保只创建一次
-	onceKey := key + "#note_fts_v3"
+	onceKey := key + "#note_fts_v4"
 	if _, loaded := r.dao.onceKeys.LoadOrStore(onceKey, true); !loaded {
 		_ = model.CreateNoteFTSTable(db)
 	}
