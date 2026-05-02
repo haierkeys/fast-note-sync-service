@@ -292,6 +292,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			auth.GET("/note/outlinks", noteHandler.GetOutlinks)
 
 			auth.GET("/file", fileHandler.GetInfo)
+			auth.POST("/file", fileHandler.Upload)
 			auth.OPTIONS("/file", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 			auth.GET("/file/info", fileHandler.Get)
 			auth.OPTIONS("/file/info", func(c *gin.Context) { c.Status(http.StatusNoContent) })
