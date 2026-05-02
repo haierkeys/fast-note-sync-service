@@ -172,6 +172,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		c.ToResponse(code.Success.WithData(
 			dto.FileSyncUploadMessage{
 				Path:      session.Path,
+				PathHash:  session.PathHash,
 				SessionID: session.ID,
 				ChunkSize: session.ChunkSize,
 			},
@@ -647,11 +648,12 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				// 将删除消息广播给其他客户端
 				c.BroadcastResponse(code.Success.WithData(
 					dto.FileSyncDeleteMessage{
-						Path:     fileSvc.Path,
-						PathHash: fileSvc.PathHash,
-						Ctime:    fileSvc.Ctime,
-						Mtime:    fileSvc.Mtime,
-						Size:     fileSvc.Size,
+						Path:             fileSvc.Path,
+						PathHash:         fileSvc.PathHash,
+						Ctime:            fileSvc.Ctime,
+						Mtime:            fileSvc.Mtime,
+						Size:             fileSvc.Size,
+						UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 					},
 				).WithVault(params.Vault), true, dto.FileSyncDelete)
 
@@ -671,11 +673,12 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				// 使用现有信息(Path/PathHash)广播删除
 				c.BroadcastResponse(code.Success.WithData(
 					dto.FileSyncDeleteMessage{
-						Path:     delFile.Path,
-						PathHash: delFile.PathHash,
-						Ctime:    0,
-						Mtime:    0,
-						Size:     0,
+						Path:             delFile.Path,
+						PathHash:         delFile.PathHash,
+						Ctime:            0,
+						Mtime:            0,
+						Size:             0,
+						UpdatedTimestamp: 0,
 					},
 				).WithVault(params.Vault), true, dto.FileSyncDelete)
 			}
@@ -794,6 +797,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 							Action: dto.FileUpload,
 							Data: dto.FileSyncUploadMessage{
 								Path:      session.Path,
+								PathHash:  session.PathHash,
 								SessionID: session.ID,
 								ChunkSize: session.ChunkSize,
 							},
@@ -859,6 +863,7 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				Action: dto.FileUpload,
 				Data: dto.FileSyncUploadMessage{
 					Path:      session.Path,
+					PathHash:  session.PathHash,
 					SessionID: session.ID,
 					ChunkSize: session.ChunkSize,
 				},

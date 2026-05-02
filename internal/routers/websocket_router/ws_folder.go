@@ -80,10 +80,11 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 				// Broadcast deletion to other clients
 				c.BroadcastResponse(code.Success.WithData(
 					dto.FolderSyncDeleteMessage{
-						Path:     folder.Path,
-						PathHash: folder.PathHash,
-						Ctime:    folder.Ctime,
-						Mtime:    folder.Mtime,
+						Path:             folder.Path,
+						PathHash:         folder.PathHash,
+						Ctime:            folder.Ctime,
+						Mtime:            folder.Mtime,
+						UpdatedTimestamp: folder.UpdatedTimestamp,
 					},
 				).WithVault(params.Vault).WithContext(params.Context), true, dto.FolderSyncDelete)
 			} else {
@@ -95,10 +96,11 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 				// Broadcast deletion with available info
 				c.BroadcastResponse(code.Success.WithData(
 					dto.FolderSyncDeleteMessage{
-						Path:     delFolder.Path,
-						PathHash: delFolder.PathHash,
-						Ctime:    0,
-						Mtime:    0,
+						Path:             delFolder.Path,
+						PathHash:         delFolder.PathHash,
+						Ctime:            0,
+						Mtime:            0,
+						UpdatedTimestamp: 0,
 					},
 				).WithVault(params.Vault).WithContext(params.Context), true, dto.FolderSyncDelete)
 			}
@@ -161,10 +163,11 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			messageQueue = append(messageQueue, dto.WSQueuedMessage{
 				Action: dto.FolderSyncDelete,
 				Data: dto.FolderSyncDeleteMessage{
-					Path:     folder.Path,
-					PathHash: folder.PathHash,
-					Ctime:    folder.Ctime,
-					Mtime:    folder.Mtime,
+					Path:             folder.Path,
+					PathHash:         folder.PathHash,
+					Ctime:            folder.Ctime,
+					Mtime:            folder.Mtime,
+					UpdatedTimestamp: folder.UpdatedTimestamp,
 				},
 			})
 			needDeleteCount++
@@ -286,10 +289,11 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}), string(dto.FolderDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FolderSyncDeleteMessage{
-			Path:     folder.Path,
-			PathHash: folder.PathHash,
-			Ctime:    folder.Ctime,
-			Mtime:    folder.Mtime,
+			Path:             folder.Path,
+			PathHash:         folder.PathHash,
+			Ctime:            folder.Ctime,
+			Mtime:            folder.Mtime,
+			UpdatedTimestamp: folder.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), true, dto.FolderSyncDelete)
 }
@@ -333,12 +337,13 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	c.BroadcastResponse(code.Success.WithData(dto.FolderSyncRenameMessage{
-		Path:        newFolder.Path,
-		PathHash:    newFolder.PathHash,
-		Ctime:       newFolder.Ctime,
-		Mtime:       newFolder.Mtime,
-		OldPath:     oldFolder.Path,
-		OldPathHash: oldFolder.PathHash,
+		Path:             newFolder.Path,
+		PathHash:         newFolder.PathHash,
+		Ctime:            newFolder.Ctime,
+		Mtime:            newFolder.Mtime,
+		OldPath:          oldFolder.Path,
+		OldPathHash:      oldFolder.PathHash,
+		UpdatedTimestamp: newFolder.UpdatedTimestamp,
 	}).WithVault(params.Vault), true, dto.FolderSyncRename)
 
 }

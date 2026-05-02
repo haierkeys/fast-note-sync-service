@@ -748,11 +748,12 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				// 将删除消息广播给其他客户端
 				c.BroadcastResponse(code.Success.WithData(
 					dto.NoteSyncDeleteMessage{
-						Path:     note.Path,
-						PathHash: note.PathHash,
-						Ctime:    note.Ctime,
-						Mtime:    note.Mtime,
-						Size:     note.Size,
+						Path:             note.Path,
+						PathHash:         note.PathHash,
+						Ctime:            note.Ctime,
+						Mtime:            note.Mtime,
+						Size:             note.Size,
+						UpdatedTimestamp: note.UpdatedTimestamp,
 					},
 				).WithVault(params.Vault), true, dto.NoteSyncDelete)
 
@@ -772,11 +773,12 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 				// 使用现有信息(Path/PathHash)广播删除
 				c.BroadcastResponse(code.Success.WithData(
 					dto.NoteSyncDeleteMessage{
-						Path:     delNote.Path,
-						PathHash: delNote.PathHash,
-						Ctime:    0,
-						Mtime:    0,
-						Size:     0,
+						Path:             delNote.Path,
+						PathHash:         delNote.PathHash,
+						Ctime:            0,
+						Mtime:            0,
+						Size:             0,
+						UpdatedTimestamp: 0,
 					},
 				).WithVault(params.Vault), true, dto.NoteSyncDelete)
 			}
