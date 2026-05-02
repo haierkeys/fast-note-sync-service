@@ -16,7 +16,7 @@ func Cors() gin.HandlerFunc {
 		origin := c.GetHeader("Origin")
 		allowedOrigin := ""
 		if origin != "" {
-			if strings.HasPrefix(origin, "app://") {
+			if strings.HasPrefix(origin, "app://") || strings.HasPrefix(origin, "capacitor://") {
 				allowedOrigin = origin
 			} else if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
 				if origin == c.Request.URL.Scheme+"://"+c.Request.Host {
