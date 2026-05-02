@@ -573,6 +573,11 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// Get list of changed files after last sync
 	// 获取最后一次同步后的变更文件列表
 	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+
+	// Record sync start time before querying to avoid missing writes that occur during query processing.
+	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
+	syncStartTime := timex.Now().UnixMilli()
+
 	list, err := fileService.ListByLastTime(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -832,11 +837,10 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
-	// Use current time as lastTime regardless of whether list is empty,
-	// ensuring lastTime > all returned files' updated_timestamp (mirrors FolderSync design)
-	// 无论 list 是否为空，均取当前时间作为 lastTime，
-	// 确保 lastTime > 所有返回文件的 updated_timestamp（与 FolderSync 保持一致）
-	lastTime = timex.Now().UnixMilli()
+	// Use syncStartTime (recorded before query) as lastTime to prevent writes that occurred
+	// during query processing from being permanently missed on the next incremental sync.
+	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
+	lastTime = syncStartTime
 	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {

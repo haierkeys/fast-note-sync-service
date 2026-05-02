@@ -139,6 +139,12 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	}
 
 	// Get updated folders from server
+	// 获取服务端更新的文件夹列表
+
+	// Record sync start time before querying to avoid missing writes that occur during query processing.
+	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
+	syncStartTime := timex.Now().UnixMilli()
+
 	list, err := folderSvc.ListByUpdatedTimestamp(ctx, uid, params.Vault, params.LastTime)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderListFailed, err, "websocket_router.folder.FolderSync.ListByUpdatedTimestamp")
@@ -210,7 +216,9 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// Send FolderSyncEnd message
 	// 发送 FolderSyncEnd 消息
 	c.ToResponse(code.Success.WithData(&dto.FolderSyncEndMessage{
-		LastTime:        timex.Now().UnixMilli(),
+		// Use syncStartTime (recorded before query) to prevent writes during query processing from being missed.
+		// 使用查询前记录的 syncStartTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
+		LastTime:        syncStartTime,
 		NeedModifyCount: needModifyCount,
 		NeedDeleteCount: needDeleteCount,
 	}).WithContext(params.Context), dto.FolderSyncEnd)
