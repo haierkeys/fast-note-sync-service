@@ -16,17 +16,27 @@ type FileUpdateCheckRequest struct {
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required" example:"1700000000"`     // Modification timestamp // 修改时间戳
 }
 
+// FileUploadRequest Request parameters for direct file upload (Internal/Public isolation)
+// 用于直接文件上传的请求参数（实现内外隔离）
+type FileUploadRequest struct {
+	Vault    string `form:"vault" binding:"required" example:"MyVault"`   // Vault name // 保险库名称
+	Path     string `form:"path" binding:"required" example:"Image.png"`  // File path // 文件路径
+	PathHash string `form:"pathHash" example:"fhash123"`                  // Path hash // 路径哈希
+	Ctime    int64  `form:"ctime" example:"1700000000"`                   // Creation timestamp // 创建时间戳
+	Mtime    int64  `form:"mtime" example:"1700000000"`                   // Modification timestamp // 修改时间戳
+}
+
 // FileUpdateRequest Request parameters for creating or modifying a file
 // 用于创建或修改文件的请求参数
 type FileUpdateRequest struct {
-	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`          // Vault name // 保险库名称
-	Path        string `json:"path" form:"path" binding:"required" example:"Image.png"`          // File path // 文件路径
-	PathHash    string `json:"pathHash" form:"pathHash" example:"fhash123"`                      // Path hash // 路径哈希
-	ContentHash string `json:"contentHash" form:"contentHash" binding:"" example:"chash456"`     // Content hash // 内容哈希
-	SavePath    string `json:"savePath" form:"savePath" binding:"" example:"/uploads/Image.png"` // Save path on server // 服务器保存路径
-	Size        int64  `json:"size" form:"size" example:"1024"`                                  // File size // 文件大小
-	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                          // Creation timestamp // 创建时间戳
-	Mtime       int64  `json:"mtime" form:"mtime" example:"1700000000"`                          // Modification timestamp // 修改时间戳
+	Vault       string `json:"vault" form:"vault" binding:"required" example:"MyVault"`      // Vault name // 保险库名称
+	Path        string `json:"path" form:"path" binding:"required" example:"Image.png"`      // File path // 文件路径
+	PathHash    string `json:"pathHash" form:"pathHash" example:"fhash123"`                  // Path hash // 路径哈希
+	ContentHash string `json:"contentHash" form:"contentHash" binding:"" example:"chash456"` // Content hash // 内容哈希
+	SavePath    string `json:"-"`                                                            // Save path on server (Internal only) // 服务器保存路径（仅内部使用）
+	Size        int64  `json:"size" form:"size" example:"1024"`                              // File size // 文件大小
+	Ctime       int64  `json:"ctime" form:"ctime" example:"1700000000"`                      // Creation timestamp // 创建时间戳
+	Mtime       int64  `json:"mtime" form:"mtime" example:"1700000000"`                      // Modification timestamp // 修改时间戳
 }
 
 // FileDeleteRequest Parameters required for deleting a file
