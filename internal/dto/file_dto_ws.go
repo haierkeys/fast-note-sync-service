@@ -26,6 +26,7 @@ type FileSyncEndMessage struct {
 // FileSyncUploadMessage 定义服务端通知客户端需要上传文件的消息结构
 type FileSyncUploadMessage struct {
 	Path      string `json:"path" example:"Image.png"`        // File path // 文件路径
+	PathHash  string `json:"pathHash" example:"fhash123"`     // Path hash // 路径哈希值
 	SessionID string `json:"sessionId" example:"sess_123456"` // Session ID // 会话 ID
 	ChunkSize int64  `json:"chunkSize" example:"1048576"`     // Chunk size // 分块大小
 }

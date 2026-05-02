@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -263,6 +264,7 @@ type WebsocketClient struct {
 	DiffMergePaths      map[string]DiffMergeEntry // File paths needing merging // 需要合并的文件路径，包含创建时间用于超时清理
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
 	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
+	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -560,7 +562,15 @@ func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
 			continue
 		}
 
-		_ = b.Broadcast(uc.conn)
+		// Track consecutive broadcast failures and close half-broken connections proactively.
+		// 追踪连续广播失败次数，主动关闭半断开的连接（TCP keepalive 未超时但已无法通信）。
+		if err := b.Broadcast(uc.conn); err != nil {
+			if uc.failCount.Add(1) == 4 {
+				uc.conn.WriteClose(1000, []byte("broadcast failed"))
+			}
+		} else {
+			uc.failCount.Store(0)
+		}
 	}
 }
 
@@ -1171,6 +1181,12 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 		if uc.conn == nil {
 			continue
 		}
-		_ = b.Broadcast(uc.conn)
+		if err := b.Broadcast(uc.conn); err != nil {
+			if uc.failCount.Add(1) == 4 {
+				uc.conn.WriteClose(1000, []byte("broadcast failed"))
+			}
+		} else {
+			uc.failCount.Store(0)
+		}
 	}
 }
