@@ -677,6 +677,10 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
+	// Record sync start time before querying to avoid missing writes that occur during query processing.
+	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
+	syncStartTime := timex.Now().UnixMilli()
+
 	list, err := noteSvc.ListByLastTime(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -967,11 +971,10 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		}
 	}
 
-	// Use current time as lastTime regardless of whether list is empty,
-	// ensuring lastTime > all returned notes' updated_timestamp (mirrors FolderSync design)
-	// 无论 list 是否为空，均取当前时间作为 lastTime，
-	// 确保 lastTime > 所有返回笔记的 updated_timestamp（与 FolderSync 保持一致）
-	lastTime = timex.Now().UnixMilli()
+	// Use syncStartTime (recorded before query) as lastTime to prevent writes that occurred
+	// during query processing from being permanently missed on the next incremental sync.
+	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
+	lastTime = syncStartTime
 	if len(cNotesKeys) > 0 {
 		for pathHash := range cNotesKeys {
 			note := cNotes[pathHash]

@@ -198,6 +198,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 
 	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
 
+	// Record sync start time before querying to avoid missing writes that occur during query processing.
+	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
+	syncStartTime := timex.Now().UnixMilli()
+
 	list, err := settingSvc.Sync(ctx, c.User.UID, params)
 	if err != nil {
 		h.respondError(c, code.ErrorSettingListFailed, err, "websocket_router.setting.SettingSync.Sync")
@@ -328,9 +332,6 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			continue
 		}
 
-		if s.UpdatedTimestamp >= lastTime {
-			lastTime = s.UpdatedTimestamp
-		}
 		if s.Action == "delete" {
 			// Server already deleted, notify client to delete (regardless of whether client has it)
 			// 服务端已经删除，通知客户端删除（不再检查客户端是否存在）
@@ -444,9 +445,10 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		}
 	}
 
-	if list == nil {
-		lastTime = timex.Now().UnixMilli()
-	}
+	// Use syncStartTime (recorded before query) as lastTime to prevent writes that occurred
+	// during query processing from being permanently missed on the next incremental sync.
+	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
+	lastTime = syncStartTime
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
 		// Add message to queue instead of sending immediately
