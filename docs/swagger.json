@@ -1183,6 +1183,88 @@
                     }
                 }
             },
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Upload a file as an attachment",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "Upload attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "vault",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File path",
+                        "name": "path",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Creation timestamp",
+                        "name": "ctime",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Modification timestamp",
+                        "name": "mtime",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FileDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -3180,64 +3262,6 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/dto.NoteHistoryRestoreRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.Res"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.NoteDTO"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/note/move": {
-            "post": {
-                "security": [
-                    {
-                        "UserAuthToken": []
-                    }
-                ],
-                "description": "Move a note to a new path",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Note"
-                ],
-                "summary": "Move note",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Move Parameters",
-                        "name": "params",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.NoteMoveRequest"
                         }
                     }
                 ],
@@ -6932,41 +6956,6 @@
                     "description": "Path hash // 路径哈希",
                     "type": "string",
                     "example": "hash123"
-                },
-                "vault": {
-                    "description": "Vault name // 保险库名称",
-                    "type": "string",
-                    "example": "MyVault"
-                }
-            }
-        },
-        "dto.NoteMoveRequest": {
-            "type": "object",
-            "required": [
-                "destination",
-                "path",
-                "vault"
-            ],
-            "properties": {
-                "destination": {
-                    "description": "Destination path // 目标路径",
-                    "type": "string",
-                    "example": "Folder/Source.md"
-                },
-                "overwrite": {
-                    "description": "Overwrite existing // 覆盖现有",
-                    "type": "boolean",
-                    "example": false
-                },
-                "path": {
-                    "description": "Current path // 当前路径",
-                    "type": "string",
-                    "example": "Source.md"
-                },
-                "pathHash": {
-                    "description": "Current path hash // 当前路径哈希",
-                    "type": "string",
-                    "example": "src_hash123"
                 },
                 "vault": {
                     "description": "Vault name // 保险库名称",

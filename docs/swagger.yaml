@@ -1079,33 +1079,6 @@ definitions:
     - path
     - vault
     type: object
-  dto.NoteMoveRequest:
-    properties:
-      destination:
-        description: Destination path // 目标路径
-        example: Folder/Source.md
-        type: string
-      overwrite:
-        description: Overwrite existing // 覆盖现有
-        example: false
-        type: boolean
-      path:
-        description: Current path // 当前路径
-        example: Source.md
-        type: string
-      pathHash:
-        description: Current path hash // 当前路径哈希
-        example: src_hash123
-        type: string
-      vault:
-        description: Vault name // 保险库名称
-        example: MyVault
-        type: string
-    required:
-    - destination
-    - path
-    - vault
-    type: object
   dto.NoteNoContentDTO:
     properties:
       clientName:
@@ -2706,6 +2679,58 @@ paths:
       summary: Get attachment content
       tags:
       - File
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file as an attachment
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Vault name
+        in: formData
+        name: vault
+        required: true
+        type: string
+      - description: File path
+        in: formData
+        name: path
+        required: true
+        type: string
+      - description: Creation timestamp
+        format: int64
+        in: formData
+        name: ctime
+        type: integer
+      - description: Modification timestamp
+        format: int64
+        in: formData
+        name: mtime
+        type: integer
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FileDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Upload attachment
+      tags:
+      - File
   /api/file/info:
     get:
       description: Get attachment metadata (FileDTO) by path
@@ -3902,40 +3927,6 @@ paths:
       summary: Restore note from history
       tags:
       - Note History
-  /api/note/move:
-    post:
-      consumes:
-      - application/json
-      description: Move a note to a new path
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
-      - description: Move Parameters
-        in: body
-        name: params
-        required: true
-        schema:
-          $ref: '#/definitions/dto.NoteMoveRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            allOf:
-            - $ref: '#/definitions/app.Res'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.NoteDTO'
-              type: object
-      security:
-      - UserAuthToken: []
-      summary: Move note
-      tags:
-      - Note
   /api/note/outlinks:
     get:
       description: Get other notes that the specified note links to

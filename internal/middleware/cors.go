@@ -15,7 +15,11 @@ func Cors() gin.HandlerFunc {
 
 		origin := c.GetHeader("Origin")
 		allowedOrigin := ""
-		if origin != "" {
+		isHealthCheck := c.Request.URL.Path == "/api/health"
+
+		if isHealthCheck {
+			allowedOrigin = "*"
+		} else if origin != "" {
 			if strings.HasPrefix(origin, "app://") ||
 				strings.HasPrefix(origin, "capacitor://") ||
 				strings.HasPrefix(origin, "http://") ||
@@ -24,12 +28,16 @@ func Cors() gin.HandlerFunc {
 			}
 		}
 
-		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, X-CSRF-Token, X-Client, X-Client-Name, X-Client-Version, X-Default-Vault-Name, AccessToken, Authorization, Debug, Domain, Token, Share-Token, Lang, Content-Type, Content-Length, Accept")
 
 		if allowedOrigin != "" {
 			c.Header("Access-Control-Allow-Origin", allowedOrigin)
+			// When Access-Control-Allow-Origin is *, Access-Control-Allow-Credentials cannot be true
+			// 当 Access-Control-Allow-Origin 为 * 时，Access-Control-Allow-Credentials 不能为 true
+			if allowedOrigin != "*" {
+				c.Header("Access-Control-Allow-Credentials", "true")
+			}
 		}
 
 		// Allow OPTIONS requests to pass
