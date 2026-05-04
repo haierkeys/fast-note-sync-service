@@ -25,7 +25,7 @@ func (t *DbCleanTask) Name() string {
 
 // LoopInterval 返回执行间隔
 func (t *DbCleanTask) LoopInterval() time.Duration {
-	return 10 * time.Minute
+	return 12 * time.Hour
 }
 
 // IsStartupRun 是否立即执行一次
