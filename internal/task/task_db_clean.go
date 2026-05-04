@@ -104,6 +104,31 @@ func (t *DbCleanTask) Run(ctx context.Context) error {
 			zap.String("service", "SyncLogService"))
 	}
 
+	// 清理重复记录 (按 Path)
+	if err := t.app.NoteService.CleanDuplicateNotesAll(ctx); err != nil {
+		errs = append(errs, err)
+		t.logger.Error("cleanup duplicate failed",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteService"),
+			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup duplicate success",
+			zap.String("task", t.Name()),
+			zap.String("service", "NoteService"))
+	}
+
+	if err := t.app.FileService.CleanDuplicateFilesAll(ctx); err != nil {
+		errs = append(errs, err)
+		t.logger.Error("cleanup duplicate failed",
+			zap.String("task", t.Name()),
+			zap.String("service", "FileService"),
+			zap.Error(err))
+	} else {
+		t.logger.Info("cleanup duplicate success",
+			zap.String("task", t.Name()),
+			zap.String("service", "FileService"))
+	}
+
 	// 清理闲置数据库连接 (保持 1 小时闲置)
 	t.app.Dao.CleanupConnections(time.Hour)
 

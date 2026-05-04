@@ -102,11 +102,16 @@ type FileService interface {
 	// CleanDuplicateFiles cleans up duplicate file records
 	// CleanDuplicateFiles 清理重复的文件记录
 	CleanDuplicateFiles(ctx context.Context, uid int64, vaultID int64) error
+
+	// CleanDuplicateFilesAll cleans up duplicate file records for all users
+	// CleanDuplicateFilesAll 清理所有用户的重复文件记录
+	CleanDuplicateFilesAll(ctx context.Context) error
 }
 
 // fileService implementation of FileService interface
 // fileService 实现 FileService 接口
 type fileService struct {
+	userRepo       domain.UserRepository // User repository // 用户仓库
 	fileRepo       domain.FileRepository // File repository // 文件仓库
 	noteRepo       domain.NoteRepository // Note repository // 笔记仓库
 	vaultService   VaultService          // Vault service // 仓库服务
@@ -124,8 +129,9 @@ type fileService struct {
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
-func NewFileService(fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) FileService {
+func NewFileService(userRepo domain.UserRepository, fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) FileService {
 	return &fileService{
+		userRepo:       userRepo,
 		fileRepo:       fileRepo,
 		noteRepo:       noteRepo,
 		vaultService:   vaultSvc,
@@ -952,18 +958,19 @@ func (s *fileService) CleanDuplicateFiles(ctx context.Context, uid int64, vaultI
 		return err
 	}
 
-	// 按 PathHash 分组
+	// Group by Path
+	// 按 Path 分组
 	grouped := make(map[string][]*domain.File)
 	for _, f := range files {
-		grouped[f.PathHash] = append(grouped[f.PathHash], f)
+		grouped[f.Path] = append(grouped[f.Path], f)
 	}
 
-	for pathHash, list := range grouped {
+	for _, list := range grouped {
 		if len(list) <= 1 {
 			continue
 		}
 
-		//保留规则：
+		// 保留规则：
 		// 1. 优先保留 Action != delete 的记录
 		// 2. 如果有多个活跃记录，保留 UpdatedTimestamp 最大（最新）的一条
 		// 3. 如果时间戳一致，保留 ID 最大的记录
@@ -996,14 +1003,33 @@ func (s *fileService) CleanDuplicateFiles(ctx context.Context, uid int64, vaultI
 		for _, f := range list {
 			if f.ID != bestFile.ID {
 				// 清除 singleflight 缓存，防止残留
-				s.sf.Forget(fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, pathHash))
-				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash))
+				s.sf.Forget(fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, f.PathHash))
+				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, f.PathHash))
 
 				_ = s.fileRepo.Delete(ctx, f.ID, uid)
 			}
 		}
 	}
 
+	return nil
+}
+
+// CleanDuplicateFilesAll 清理所有用户的重复文件记录
+func (s *fileService) CleanDuplicateFilesAll(ctx context.Context) error {
+	uids, err := s.userRepo.GetAllUIDs(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, uid := range uids {
+		vaults, err := s.vaultService.List(ctx, uid)
+		if err != nil {
+			continue
+		}
+		for _, vault := range vaults {
+			_ = s.CleanDuplicateFiles(ctx, uid, vault.ID)
+		}
+	}
 	return nil
 }
 

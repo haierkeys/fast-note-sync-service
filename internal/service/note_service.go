@@ -117,11 +117,16 @@ type NoteService interface {
 	// CleanDuplicateNotes cleans up duplicate note records
 	// CleanDuplicateNotes 清理重复的笔记记录
 	CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error
+
+	// CleanDuplicateNotesAll cleans up duplicate note records for all users
+	// CleanDuplicateNotesAll 清理所有用户的重复笔记记录
+	CleanDuplicateNotesAll(ctx context.Context) error
 }
 
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
+	userRepo       domain.UserRepository      // User repository // 用户仓库
 	noteRepo       domain.NoteRepository      // Note repository // 笔记仓库
 	noteLinkRepo   domain.NoteLinkRepository  // Note link repository // 笔记链接仓库
 	fileRepo       domain.FileRepository      // File repository // 文件仓库
@@ -141,8 +146,9 @@ type noteService struct {
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
+func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
 	return &noteService{
+		userRepo:       userRepo,
 		noteRepo:       noteRepo,
 		noteLinkRepo:   noteLinkRepo,
 		fileRepo:       fileRepo,
@@ -1235,21 +1241,20 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 
 // CleanDuplicateNotes 清理重复的笔记记录
 func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
-	// Get all notes (including deleted ones for global deduplication)
 	// 获取所有笔记（包含已删除，以便全局去重）
 	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
 
-	// Group by PathHash
-	// 按 PathHash 分组
+	// Group by Path
+	// 按 Path 分组
 	grouped := make(map[string][]*domain.Note)
 	for _, n := range notes {
-		grouped[n.PathHash] = append(grouped[n.PathHash], n)
+		grouped[n.Path] = append(grouped[n.Path], n)
 	}
 
-	for pathHash, list := range grouped {
+	for _, list := range grouped {
 		if len(list) <= 1 {
 			continue
 		}
@@ -1289,20 +1294,38 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 		}
 
 		// Delete all records except the bestNote
-		// Delete all records except the bestNote
 		// 删除非 bestNote 的所有记录
 		for _, n := range list {
 			if n.ID != bestNote.ID {
 				// Clear singleflight cache to prevent residual data
 				// 清除 singleflight 缓存，防止残留
-				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
-				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, pathHash)) // 虽然 rename key 不同，但以防万一
+				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, n.PathHash))
+				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, n.PathHash))
 				
 				_ = s.noteRepo.Delete(ctx, n.ID, uid)
 			}
 		}
 	}
 
+	return nil
+}
+
+// CleanDuplicateNotesAll 清理所有用户的重复笔记记录
+func (s *noteService) CleanDuplicateNotesAll(ctx context.Context) error {
+	uids, err := s.userRepo.GetAllUIDs(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, uid := range uids {
+		vaults, err := s.vaultService.List(ctx, uid)
+		if err != nil {
+			continue
+		}
+		for _, vault := range vaults {
+			_ = s.CleanDuplicateNotes(ctx, uid, vault.ID)
+		}
+	}
 	return nil
 }
 
