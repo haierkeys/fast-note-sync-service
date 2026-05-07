@@ -63,6 +63,13 @@ func (m *MockUserService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 	return args.Get(0).([]int64), args.Error(1)
 }
 
+// IsRegisterEnabled checks if registration is allowed.
+// IsRegisterEnabled 检查是否允许注册。
+func (m *MockUserService) IsRegisterEnabled(ctx context.Context) bool {
+	args := m.Called(ctx)
+	return args.Bool(0)
+}
+
 // Compile-time check: MockUserService must implement service.UserService.
 // 编译时检查：MockUserService 必须实现 service.UserService 接口。
 var _ service.UserService = (*MockUserService)(nil)

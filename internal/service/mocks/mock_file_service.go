@@ -157,3 +157,8 @@ func (m *MockFileService) CleanDuplicateFiles(ctx context.Context, uid int64, va
 	args := m.Called(ctx, uid, vaultID)
 	return args.Error(0)
 }
+
+func (m *MockFileService) CleanDuplicateFilesAll(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

@@ -180,3 +180,8 @@ func (m *MockNoteService) CleanDuplicateNotes(ctx context.Context, uid int64, va
 	args := m.Called(ctx, uid, vaultID)
 	return args.Error(0)
 }
+
+func (m *MockNoteService) CleanDuplicateNotesAll(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

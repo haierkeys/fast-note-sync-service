@@ -38,6 +38,10 @@ type UserService interface {
 	// GetAllUIDs retrieves all user UIDs
 	// GetAllUIDs 获取所有用户的 UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
+
+	// IsRegisterEnabled checks if registration is allowed
+	// IsRegisterEnabled 检查是否允许注册
+	IsRegisterEnabled(ctx context.Context) bool
 }
 
 // userService implementation of UserService interface
@@ -82,17 +86,8 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error) {
 	// Check if registration is enabled
 	// 检查注册是否启用
-	if s.config == nil || !s.config.User.RegisterIsEnable {
+	if !s.IsRegisterEnabled(ctx) {
 		return nil, code.ErrorUserRegisterIsDisable
-	}
-
-	// Check if admin-uid is 0 and there are already users, then prohibit registration
-	// 当 admin-uid == 0 且用户数大于 0 时，禁止注册
-	if s.config != nil && s.config.User.AdminUID == 0 {
-		uids, err := s.userRepo.GetAllUIDs(ctx)
-		if err == nil && len(uids) > 0 {
-			return nil, code.ErrorUserRegisterIsDisable
-		}
 	}
 
 	// Validate username format
@@ -265,6 +260,27 @@ func (s *userService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return uids, nil
+}
+
+// IsRegisterEnabled checks if registration is allowed
+// IsRegisterEnabled 检查是否允许注册
+func (s *userService) IsRegisterEnabled(ctx context.Context) bool {
+	// Check if registration is enabled in config
+	// 检查配置中是否启用了注册
+	if s.config == nil || !s.config.User.RegisterIsEnable {
+		return false
+	}
+
+	// If AdminUID is 0, registration is only allowed if there are no users
+	// 如果 AdminUID 为 0，则仅在没有用户时允许注册
+	if s.config.User.AdminUID == 0 {
+		uids, err := s.userRepo.GetAllUIDs(ctx)
+		if err == nil && len(uids) > 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Verify userService implements UserService interface
