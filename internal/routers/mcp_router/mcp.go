@@ -1,10 +1,12 @@
 package mcp_router
 
 import (
+	"bytes"
 	"context"
-
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +15,30 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 )
+
+// endpointRewriter is an http.ResponseWriter wrapper that rewrites the
+// SSE endpoint event from a relative path to an absolute URL.
+// This fixes compatibility with MCP clients (e.g., Hermes/Anthropic Python SDK)
+// that cannot resolve relative endpoint paths returned by mark3labs/mcp-go SSEServer.
+type endpointRewriter struct {
+	http.ResponseWriter
+	absoluteBase string // e.g. "http://192.168.1.89:9000"
+	endpointDone bool
+}
+
+func (w *endpointRewriter) Write(data []byte) (int, error) {
+	if !w.endpointDone && bytes.Contains(data, []byte("event: endpoint")) {
+		w.endpointDone = true
+		// Replace relative path with absolute URL in the endpoint event
+		data = []byte(strings.Replace(
+			string(data),
+			"/api/mcp/message?",
+			w.absoluteBase+"/api/mcp/message?",
+			1,
+		))
+	}
+	return w.ResponseWriter.Write(data)
+}
 
 type MCPHandler struct {
 	mcpServer       *mcpserver.MCPServer
@@ -107,8 +133,22 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 		return
 	}
 
-	// Let SSEServer handle the SSE connection
-	h.sseServer.SSEHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
+	// Build absolute URL from the incoming request to fix MCP clients
+	// (e.g., Hermes/Anthropic Python SDK) that cannot resolve relative
+	// endpoint paths returned by mark3labs/mcp-go SSEServer.
+	// See: https://github.com/haierkeys/fast-note-sync-service/issues/258
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	absoluteBase := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	// Let SSEServer handle the SSE connection, with endpoint URL rewriting
+	rewriter := &endpointRewriter{
+		ResponseWriter: c.Writer,
+		absoluteBase:   absoluteBase,
+	}
+	h.sseServer.SSEHandler().ServeHTTP(rewriter, c.Request.WithContext(ctx))
 }
 
 func (h *MCPHandler) HandleMessage(c *gin.Context) {
