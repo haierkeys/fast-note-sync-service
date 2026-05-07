@@ -634,6 +634,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		if existNote != nil {
 			// Reuse deleted record // 复用已删除的记录
 			existNote.Action = domain.NoteActionCreate
+			existNote.Rename = 0 // Reset rename flag to ensure correct note count statistics
 			existNote.Path = newPath
 			existNote.PathHash = newPathHash
 			newPathDir := ""
