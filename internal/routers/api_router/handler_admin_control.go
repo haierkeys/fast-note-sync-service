@@ -27,6 +27,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/process"
 	"go.uber.org/zap"
+	"golang.org/x/mod/semver"
 )
 
 // AdminControlHandler Admin control configuration API router handler
@@ -800,6 +801,20 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	if ok, validErrs := pkgapp.BindAndValid(c, &upgradeReq); !ok {
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(validErrs.Errors()...))
 		return
+	}
+
+	// Filter and validate Version parameter
+	// 过滤并验证 Version 参数
+	if upgradeReq.Version != "latest" {
+		v := upgradeReq.Version
+		if !strings.HasPrefix(v, "v") {
+			v = "v" + v
+		}
+		if !semver.IsValid(v) {
+			h.App.Logger().Warn("apiRouter.AdminControl.Upgrade invalid version format", zap.String("version", upgradeReq.Version))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("invalid version format"))
+			return
+		}
 	}
 
 	checkInfo := h.App.CheckVersion("")
