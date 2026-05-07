@@ -819,6 +819,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		if existFile != nil {
 			// 复用已删除的记录
 			existFile.Action = domain.FileActionCreate
+			existFile.Rename = 0 // Reset rename flag to ensure correct file count statistics
 			existFile.Path = newPath
 			existFile.PathHash = newPathHash
 			newPathDir := ""
