@@ -59,7 +59,7 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 	cfg := h.App.Config()
 	data := dto.AdminWebGUIConfig{
 		FontSet:          cfg.WebGUI.FontSet,
-		RegisterIsEnable: cfg.User.RegisterIsEnable,
+		RegisterIsEnable: h.App.UserService.IsRegisterEnabled(c),
 		AdminUID:         cfg.User.AdminUID,
 	}
 	response.ToResponse(code.Success.WithData(data))

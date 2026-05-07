@@ -273,3 +273,45 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 }
+
+// --- IsRegisterEnabled ---
+
+// TestUserService_IsRegisterEnabled verifies the logic for allowing/disallowing registration.
+// TestUserService_IsRegisterEnabled 验证是否允许注册的逻辑。
+func TestUserService_IsRegisterEnabled(t *testing.T) {
+	t.Run("ConfigDisabled", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: false, AdminUID: 0},
+		})
+		assert.False(t, svc.IsRegisterEnabled(context.Background()))
+	})
+
+	t.Run("AdminUIDSet_Enabled", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 1},
+		})
+		assert.True(t, svc.IsRegisterEnabled(context.Background()))
+	})
+
+	t.Run("AdminUIDZero_NoUsers", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		mockRepo.On("GetAllUIDs", mock.Anything).Return([]int64{}, nil)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 0},
+		})
+		assert.True(t, svc.IsRegisterEnabled(context.Background()))
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("AdminUIDZero_WithUsers", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		mockRepo.On("GetAllUIDs", mock.Anything).Return([]int64{1}, nil)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 0},
+		})
+		assert.False(t, svc.IsRegisterEnabled(context.Background()))
+		mockRepo.AssertExpectations(t)
+	})
+}
