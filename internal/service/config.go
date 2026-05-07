@@ -13,6 +13,7 @@ type ServiceConfig struct {
 // UserServiceConfig 用户服务配置
 type UserServiceConfig struct {
 	RegisterIsEnable bool // Whether registration is enabled // 注册是否启用
+	AdminUID         int  // Admin UID, 0 means no restriction // 管理员 UID，0 表示不限制
 }
 
 // AppServiceConfig app service configuration

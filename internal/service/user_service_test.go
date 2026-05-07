@@ -40,7 +40,7 @@ func (m *mockTokenManager) GetSecretKey() string        { return "test-key" }
 // newUserSvc 创建带 mock 依赖的 userService 用于测试。
 func newUserSvc(repo domain.UserRepository, registerEnabled bool) UserService {
 	return NewUserService(repo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
-		User: UserServiceConfig{RegisterIsEnable: registerEnabled},
+		User: UserServiceConfig{RegisterIsEnable: registerEnabled, AdminUID: 1},
 	})
 }
 

@@ -81,7 +81,7 @@ app:
   ws-parallel-enabled: true
   # WebSocket 并行处理的最大协程限制
   # Maximum goroutine limit for WebSocket parallel processing
-  ws-parallel-golimit: 8
+  ws-parallel-golimit: 3
   # 是否对 WebSocket 消息进行 UTF-8 校验
   # Whether to perform UTF-8 validation on WebSocket messages
   ws-check-utf8-enabled: true

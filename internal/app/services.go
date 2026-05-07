@@ -30,6 +30,7 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 	svcConfig := &service.ServiceConfig{
 		User: service.UserServiceConfig{
 			RegisterIsEnable: cfg.User.RegisterIsEnable,
+			AdminUID:         cfg.User.AdminUID,
 		},
 		App: service.AppServiceConfig{
 			SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
