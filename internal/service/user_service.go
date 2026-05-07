@@ -86,6 +86,15 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 		return nil, code.ErrorUserRegisterIsDisable
 	}
 
+	// Check if admin-uid is 0 and there are already users, then prohibit registration
+	// 当 admin-uid == 0 且用户数大于 0 时，禁止注册
+	if s.config != nil && s.config.User.AdminUID == 0 {
+		uids, err := s.userRepo.GetAllUIDs(ctx)
+		if err == nil && len(uids) > 0 {
+			return nil, code.ErrorUserRegisterIsDisable
+		}
+	}
+
 	// Validate username format
 	// 验证用户名格式
 	if !util.IsValidUsername(params.Username) {
