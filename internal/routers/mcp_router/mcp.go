@@ -40,6 +40,17 @@ func (w *endpointRewriter) Write(data []byte) (int, error) {
 	return w.ResponseWriter.Write(data)
 }
 
+// Flush implements http.Flusher by delegating to the underlying ResponseWriter.
+// This is required for SSE streaming: mark3labs/mcp-go SSEServer checks for
+// http.Flusher and returns "Streaming unsupported" if it is not implemented.
+// Flush 实现 http.Flusher 接口，透传到底层 ResponseWriter。
+// 这是 SSE 流所必需的：mcp-go SSEServer 会检测 http.Flusher，若未实现则返回 "Streaming unsupported"。
+func (w *endpointRewriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 type MCPHandler struct {
 	mcpServer        *mcpserver.MCPServer
 	sseServer        *mcpserver.SSEServer
