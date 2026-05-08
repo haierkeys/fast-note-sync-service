@@ -322,6 +322,7 @@ CREATE TABLE "backup_history" (
     "message" text DEFAULT '',
     "file_path" text DEFAULT '',
     -- remote path/key
+    "password" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );

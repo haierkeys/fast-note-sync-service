@@ -40,6 +40,7 @@ func newBackupHistory(db *gorm.DB, opts ...gen.DOOption) backupHistory {
 	_backupHistory.FileCount = field.NewInt64(tableName, "file_count")
 	_backupHistory.Message = field.NewString(tableName, "message")
 	_backupHistory.FilePath = field.NewString(tableName, "file_path")
+	_backupHistory.Password = field.NewString(tableName, "password")
 	_backupHistory.CreatedAt = field.NewField(tableName, "created_at")
 	_backupHistory.UpdatedAt = field.NewField(tableName, "updated_at")
 
@@ -64,6 +65,7 @@ type backupHistory struct {
 	FileCount field.Int64
 	Message   field.String
 	FilePath  field.String
+	Password  field.String
 	CreatedAt field.Field
 	UpdatedAt field.Field
 
@@ -94,6 +96,7 @@ func (b *backupHistory) updateTableName(table string) *backupHistory {
 	b.FileCount = field.NewInt64(table, "file_count")
 	b.Message = field.NewString(table, "message")
 	b.FilePath = field.NewString(table, "file_path")
+	b.Password = field.NewString(table, "password")
 	b.CreatedAt = field.NewField(table, "created_at")
 	b.UpdatedAt = field.NewField(table, "updated_at")
 
@@ -137,6 +140,7 @@ func (b *backupHistory) fillFieldMap() {
 	b.fieldMap["file_count"] = b.FileCount
 	b.fieldMap["message"] = b.Message
 	b.fieldMap["file_path"] = b.FilePath
+	b.fieldMap["password"] = b.Password
 	b.fieldMap["created_at"] = b.CreatedAt
 	b.fieldMap["updated_at"] = b.UpdatedAt
 }

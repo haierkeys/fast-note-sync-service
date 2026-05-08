@@ -1,16 +1,22 @@
 package util
 
 import (
-	"archive/zip"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/yeka/zip"
 )
 
 // Zip compresses files or directories into a zip file
 // source: path to file or directory
 // target: path to output zip file
 func Zip(source, target string) error {
+	return ZipWithPassword(source, target, "")
+}
+
+// ZipWithPassword compresses files or directories into a zip file with password
+func ZipWithPassword(source, target, password string) error {
 	zipFile, err := os.Create(target)
 	if err != nil {
 		return err
@@ -24,7 +30,7 @@ func Zip(source, target string) error {
 		return err
 	}
 
-	filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -42,6 +48,10 @@ func Zip(source, target string) error {
 			return nil
 		}
 
+		// Use / as separator in zip file (Standard requirements)
+		// ZIP 文件内必须使用 / 作为路径分隔符
+		relPath = filepath.ToSlash(relPath)
+
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			return err
@@ -56,7 +66,19 @@ func Zip(source, target string) error {
 			header.Method = zip.Deflate
 		}
 
-		writer, err := archive.CreateHeader(header)
+		var writer io.Writer
+		if password != "" && !info.IsDir() {
+			// Set password and encryption method
+			// 设置密码和加密方法
+			header.SetPassword(password)
+			// StandardEncryption is more compatible with Windows built-in ZIP tool
+			// StandardEncryption 对 Windows 自带 ZIP 工具兼容性更好
+			header.SetEncryptionMethod(zip.StandardEncryption)
+			writer, err = archive.CreateHeader(header)
+		} else {
+			writer, err = archive.CreateHeader(header)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -74,8 +96,6 @@ func Zip(source, target string) error {
 		_, err = io.Copy(writer, file)
 		return err
 	})
-
-	return err
 }
 
 // ZipBytes creates a zip archive from a map of filenames and their contents (bytes)
@@ -102,3 +122,5 @@ func ZipBytes(files map[string][]byte, target string) error {
 
 	return nil
 }
+
+

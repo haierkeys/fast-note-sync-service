@@ -66,6 +66,7 @@ type BackupHistoryDTO struct {
 	FileCount int64      `json:"fileCount"` // File count // 文件数量
 	Message   string     `json:"message"`   // Result message // 结果消息
 	FilePath  string     `json:"filePath"`  // File path // 文件路径
+	Password  string     `json:"password"`  // Password // 密码
 	CreatedAt timex.Time `json:"createdAt"` // Created at // 创建时间
 	UpdatedAt timex.Time `json:"updatedAt"` // Updated at // 更新时间
 }

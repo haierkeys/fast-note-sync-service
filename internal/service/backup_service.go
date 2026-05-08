@@ -245,6 +245,7 @@ func (s *backupService) historyToDTO(d *domain.BackupHistory) *dto.BackupHistory
 		FileCount: d.FileCount,
 		Message:   d.Message,
 		FilePath:  d.FilePath,
+		Password:  d.Password,
 		CreatedAt: timex.Time(d.CreatedAt),
 		UpdatedAt: timex.Time(d.UpdatedAt),
 	}
@@ -515,7 +516,8 @@ func (s *backupService) runArchive(ctx context.Context, config *domain.BackupCon
 
 	// 2. Zip archive
 	// 2. 压缩打包
-	if err := util.Zip(tempDir, zipPath); err != nil {
+	password := util.GetRandomString(12)
+	if err := util.ZipWithPassword(tempDir, zipPath, password); err != nil {
 		return 0, 0, err
 	}
 
@@ -536,7 +538,7 @@ func (s *backupService) runArchive(ctx context.Context, config *domain.BackupCon
 			s.logger.Info("Storage is disabled, skipping", zap.Int64("sid", sid))
 			continue
 		}
-		s.uploadArchive(ctx, uid, config.ID, st, zipPath, zipName, config.Type, startTime, count, size)
+		s.uploadArchive(ctx, uid, config.ID, st, zipPath, zipName, config.Type, password, startTime, count, size)
 	}
 
 	return count, size, nil
@@ -729,7 +731,7 @@ func (s *backupService) exportArchiveFiles(ctx context.Context, uid, vaultID int
 
 // uploadArchive Upload the archived ZIP file to specified storage target
 // 将打包好的 ZIP 文件上传到指定的存储目标
-func (s *backupService) uploadArchive(ctx context.Context, uid, configId int64, stDTO *dto.StorageDTO, filePath, fileName, bType string, startTime time.Time, count, size int64) {
+func (s *backupService) uploadArchive(ctx context.Context, uid, configId int64, stDTO *dto.StorageDTO, filePath, fileName, bType, password string, startTime time.Time, count, size int64) {
 	h := &domain.BackupHistory{
 		UID:       uid,
 		ConfigID:  configId,
@@ -740,6 +742,7 @@ func (s *backupService) uploadArchive(ctx context.Context, uid, configId int64, 
 		FileCount: count,
 		FileSize:  size,
 		FilePath:  fileName,
+		Password:  password,
 	}
 
 	h, err := s.backupRepo.CreateHistory(ctx, h, uid)

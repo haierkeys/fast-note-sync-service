@@ -49,6 +49,7 @@ type BackupHistory struct {
 	FileCount int64
 	Message   string
 	FilePath  string
+	Password  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
