@@ -106,9 +106,7 @@
 
 ## 🗺️ 路线图 (Roadmap)
 
-- [ ] 增加 **Mock**测试, 覆盖到 各层级.
 - [ ] 增加 WebSocket `Protobuf` 传输格式的支持, 强化同步传输效率.
-- [ ] 后端增加 同步日志 & 操作日志 等各类操作日志的查询.
 - [ ] 对现有授权机制进行隔离以及优化,  提升整体安全性.
 - [ ] 增加 WebGui 笔记实时更新
 - [ ] 增加客户端 点对点 消息传送(非笔记&附件,类似localsend功能,不支持客户端保存, 可保存到服务端)
@@ -224,25 +222,62 @@ docker compose up -d
 
 ## 🧰 MCP (模型上下文协议) 支持
 
-FNS 现已原生支持 **MCP (Model Context Protocol)**。
+FNS 现已原生支持 **MCP (Model Context Protocol)**，并同时提供 **SSE** 和 **StreamableHTTP** 两种传输协议。
 
-您可以将 FNS 作为 MCP 服务端直接接入 Cherry Studio、Cursor 等兼容的 AI 客户端。接入后，AI 即可具备读写私人笔记和附件的能力。同时，所有由 MCP 产生的修改，都会通过 WebSocket 实时同步到您的各个设备终端。
+您可以将 FNS 作为 MCP 服务端直接接入 Cherry Studio、Cursor、Claude Code、hermes-agent 等兼容的 AI 客户端。接入后，AI 即可具备读写私人笔记和附件的能力。同时，所有由 MCP 产生的修改，都会通过 WebSocket 实时同步到您的各个设备终端。
 
-### 接入配置 (SSE 模式)
+### 通用请求头参数
 
-FNS 通过 **SSE 协议**提供 MCP 接口，通用参数要求如下：
-- **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp/sse`
+无论使用哪种传输模式，均支持以下请求头：
+
 - **鉴权 Header**：`Authorization: Bearer <您的 API Token>`（在 WebGUI 的复制 API 配置中获取）
 - **可选 Header**：`X-Default-Vault-Name: <笔记库名称>`（用于指定 MCP 操作的默认笔记库，若工具调用时未指定 `vault` 参数，则使用此值）
-- **可选 Header**：`X-Client: <客户端类型>`（用于连接MCP的客户端类型，如：Cherry Studio / OpenClaw）
-- **可选 Header**：`X-Client-Version: <客户端类型版本>`（用于连接MCP的客户端类型版本，如：1.1）
-- **可选 Header**：`X-Client-Name: <客户端名称>`（用于连接MCP的客户端名称，如： Mac）
+- **可选 Header**：`X-Client: <客户端类型>`（用于连接 MCP 的客户端类型，如：Cherry Studio / OpenClaw）
+- **可选 Header**：`X-Client-Version: <客户端版本>`（用于连接 MCP 的客户端版本，如：1.1）
+- **可选 Header**：`X-Client-Name: <客户端名称>`（用于连接 MCP 的客户端名称，如：Mac）
 
+---
 
+### 接入配置：StreamableHTTP 模式（推荐）
 
-#### 示例：Cherry Studio / Cursor / Cline 等
+StreamableHTTP 是 MCP 生态的标准传输协议，单个端点即可完成请求，对防火墙更友好，被较新的 MCP 客户端（如 Claude Code、hermes-agent）原生支持。
 
-请在您的 MCP 客户端配置中参考如下配置：
+- **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp`
+- **请求方式**：`POST`（发送请求/通知）、`GET`（监听服务端推送）、`DELETE`（终止会话）
+
+#### 示例：Claude Code / hermes-agent / Cursor 等
+
+*(注：请将 `<ServerIP>`、`<Port>`、`<Token>` 和 `<VaultName>` 替换为您自己的实际信息)*
+
+```json
+{
+  "mcpServers": {
+    "fns": {
+      "url": "http://<ServerIP>:<Port>/api/mcp",
+      "type": "http",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <Token>",
+        "X-Default-Vault-Name": "<VaultName>",
+        "X-Client": "<Client>",
+        "X-Client-Version": "<ClientVersion>",
+        "X-Client-Name": "<ClientName>"
+      }
+    }
+  }
+}
+```
+
+---
+
+### 接入配置：SSE 模式（向后兼容）
+
+SSE 模式为旧版传输协议，仍完整保留以保持向后兼容，适用于仅支持 SSE 的 MCP 客户端（如 Cherry Studio）。
+
+- **接口地址**：`http://<您的服务器IP或域名>:<端口>/api/mcp/sse`
+
+#### 示例：Cherry Studio / Cline 等
+
 *(注：请将 `<ServerIP>`、`<Port>`、`<Token>` 和 `<VaultName>` 替换为您自己的实际信息)*
 
 ```json

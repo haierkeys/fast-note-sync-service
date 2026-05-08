@@ -29,8 +29,13 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		mcpGroup := api.Group("/mcp")
 		mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
 		{
+			// Legacy SSE transport (backward compatible) / 旧版 SSE 传输（向后兼容）
 			mcpGroup.Match([]string{http.MethodGet, http.MethodHead}, "/sse", mcpHandler.HandleSSE)
 			mcpGroup.POST("/message", mcpHandler.HandleMessage)
+
+			// StreamableHTTP transport: POST (request), GET (listen), DELETE (terminate session)
+			// StreamableHTTP 传输: POST（请求）、GET（监听通知）、DELETE（终止会话）
+			mcpGroup.Any("", mcpHandler.HandleStreamableHTTP)
 		}
 
 		api.Use(middleware.ContextTimeout(time.Duration(cfg.App.DefaultContextTimeout) * time.Second))

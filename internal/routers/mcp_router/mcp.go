@@ -41,9 +41,10 @@ func (w *endpointRewriter) Write(data []byte) (int, error) {
 }
 
 type MCPHandler struct {
-	mcpServer       *mcpserver.MCPServer
-	sseServer       *mcpserver.SSEServer
-	ssePingInterval time.Duration // SSE heartbeat interval / SSE 心跳间隔
+	mcpServer        *mcpserver.MCPServer
+	sseServer        *mcpserver.SSEServer
+	streamableServer *mcpserver.StreamableHTTPServer // StreamableHTTP transport server / StreamableHTTP 传输协议服务
+	ssePingInterval  time.Duration                   // SSE heartbeat interval / SSE 心跳间隔
 }
 
 func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandler {
@@ -87,10 +88,46 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 			return ctx
 		}))
 
+	// StreamableHTTP server shares the same MCPServer instance as SSEServer.
+	// StreamableHTTP 服务与 SSEServer 共享同一 MCPServer 实例。
+	streamableSrv := mcpserver.NewStreamableHTTPServer(srv,
+		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+			// uid is pre-injected into the request context by HandleStreamableHTTP
+			// before calling ServeHTTP, so we forward it here.
+			// uid 已由 HandleStreamableHTTP 在调用 ServeHTTP 前注入请求上下文，此处直接透传。
+			if val := r.Context().Value("uid"); val != nil {
+				ctx = context.WithValue(ctx, "uid", val)
+			}
+			if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
+				ctx = context.WithValue(ctx, "default_vault_name", vaultName)
+			}
+
+			// Extract client info / 提取客户端信息
+			if clientType := r.Header.Get("X-Client"); clientType != "" {
+				ctx = context.WithValue(ctx, "client_type", clientType)
+			}
+			clientName := r.Header.Get("X-Client-Name")
+			if clientName == "" {
+				clientName = "MCP"
+			} else {
+				if decoded, err := url.QueryUnescape(clientName); err == nil {
+					clientName = decoded
+				}
+				clientName = "MCP " + clientName
+			}
+			ctx = context.WithValue(ctx, "client_name", clientName)
+			if clientVersion := r.Header.Get("X-Client-Version"); clientVersion != "" {
+				ctx = context.WithValue(ctx, "client_version", clientVersion)
+			}
+			return ctx
+		}),
+	)
+
 	return &MCPHandler{
-		mcpServer:       srv,
-		sseServer:       sseSrv,
-		ssePingInterval: pingInterval,
+		mcpServer:        srv,
+		sseServer:        sseSrv,
+		streamableServer: streamableSrv,
+		ssePingInterval:  pingInterval,
 	}
 }
 
@@ -154,4 +191,16 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 func (h *MCPHandler) HandleMessage(c *gin.Context) {
 	// Let SSEServer handle the message
 	h.sseServer.MessageHandler().ServeHTTP(c.Writer, c.Request)
+}
+
+// HandleStreamableHTTP handles the MCP StreamableHTTP transport protocol.
+// It accepts POST (request/notification), GET (SSE listening), and DELETE (session termination).
+// HandleStreamableHTTP 处理 MCP StreamableHTTP 传输协议。
+// 支持 POST（请求/通知）、GET（SSE 监听）和 DELETE（终止会话）。
+func (h *MCPHandler) HandleStreamableHTTP(c *gin.Context) {
+	uid := pkgapp.GetUID(c)
+	// Pre-inject uid into the request context so that WithHTTPContextFunc can forward it.
+	// 将 uid 预注入请求 context，以便 WithHTTPContextFunc 能够透传。
+	ctx := context.WithValue(c.Request.Context(), "uid", uid)
+	h.streamableServer.ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
