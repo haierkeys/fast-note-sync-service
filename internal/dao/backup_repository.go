@@ -120,6 +120,7 @@ func (r *backupRepository) historyToDomain(m *model.BackupHistory) *domain.Backu
 		FileCount: m.FileCount,
 		Message:   m.Message,
 		FilePath:  m.FilePath,
+		Password:  m.Password,
 		CreatedAt: time.Time(m.CreatedAt),
 		UpdatedAt: time.Time(m.UpdatedAt),
 	}
@@ -142,6 +143,7 @@ func (r *backupRepository) historyToModel(d *domain.BackupHistory) *model.Backup
 		FileCount: d.FileCount,
 		Message:   d.Message,
 		FilePath:  d.FilePath,
+		Password:  d.Password,
 		CreatedAt: timex.Time(d.CreatedAt),
 		UpdatedAt: timex.Time(d.UpdatedAt),
 	}
