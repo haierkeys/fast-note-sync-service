@@ -1302,7 +1302,7 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, n.PathHash))
 				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, n.PathHash))
-				
+
 				_ = s.noteRepo.Delete(ctx, n.ID, uid)
 			}
 		}

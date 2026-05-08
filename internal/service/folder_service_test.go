@@ -20,9 +20,9 @@ func TestCleanDuplicateFolders(t *testing.T) {
 	vaultID := int64(1)
 
 	tests := []struct {
-		name           string                // test case name / 测试用例名称
-		folders        []*domain.Folder      // input folders / 输入的文件夹列表
-		wantDeletedIDs []int64               // expected deleted IDs (order-insensitive) / 期望被删除的 ID（顺序无关）
+		name           string           // test case name / 测试用例名称
+		folders        []*domain.Folder // input folders / 输入的文件夹列表
+		wantDeletedIDs []int64          // expected deleted IDs (order-insensitive) / 期望被删除的 ID（顺序无关）
 	}{
 		{
 			// When a hash has both delete and create records, the active ones should be deleted.

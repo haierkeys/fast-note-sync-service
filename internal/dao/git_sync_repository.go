@@ -155,8 +155,8 @@ func (r *gitSyncRepository) toDomain(m *model.GitSyncConfig) *domain.GitSyncConf
 			_ = json.Unmarshal([]byte(m.ConfigSyncRules), &rules)
 			return rules
 		}(),
-		CreatedAt:     time.Time(m.CreatedAt),
-		UpdatedAt:     time.Time(m.UpdatedAt),
+		CreatedAt: time.Time(m.CreatedAt),
+		UpdatedAt: time.Time(m.UpdatedAt),
 	}
 }
 
@@ -196,8 +196,8 @@ func (r *gitSyncRepository) toModel(d *domain.GitSyncConfig) *model.GitSyncConfi
 			b, _ := json.Marshal(d.ConfigSyncRules)
 			return string(b)
 		}(),
-		CreatedAt:     timex.Time(d.CreatedAt),
-		UpdatedAt:     timex.Time(d.UpdatedAt),
+		CreatedAt: timex.Time(d.CreatedAt),
+		UpdatedAt: timex.Time(d.UpdatedAt),
 	}
 }
 

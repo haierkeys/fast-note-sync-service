@@ -122,5 +122,3 @@ func ZipBytes(files map[string][]byte, target string) error {
 
 	return nil
 }
-
-

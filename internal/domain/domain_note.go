@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 // NoteAction 定义笔记操作类型
 type NoteAction string
 
@@ -162,4 +161,3 @@ type NoteRepository interface {
 	// DeleteByVaultID 物理删除仓库下的所有笔记
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

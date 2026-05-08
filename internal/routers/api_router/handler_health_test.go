@@ -36,7 +36,7 @@ func TestHealthHandler_Check_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	
+
 	assert.Contains(t, w.Body.String(), `"status":"healthy"`)
 	assert.Contains(t, w.Body.String(), `"database":"connected"`)
 }

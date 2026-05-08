@@ -166,7 +166,6 @@ func (m *MockNoteService) ReplaceContent(ctx context.Context, uid int64, params 
 	return nil, args.Error(1)
 }
 
-
 func (m *MockNoteService) UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
 	m.Called(ctx, noteID, content, vaultID, uid)
 }

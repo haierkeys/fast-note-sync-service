@@ -50,10 +50,10 @@ func TestPool_SubmitAsync(t *testing.T) {
 
 func TestPool_Shutdown(t *testing.T) {
 	pool := New(&Config{MaxWorkers: 2, QueueSize: 10}, nil)
-	
+
 	err := pool.Shutdown(context.Background())
 	assert.NoError(t, err)
-	
+
 	assert.True(t, pool.IsClosed())
 
 	errSubmit := pool.Submit(context.Background(), func(ctx context.Context) error { return nil })

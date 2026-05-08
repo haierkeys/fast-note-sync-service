@@ -36,11 +36,11 @@ type FolderService interface {
 }
 
 type folderService struct {
-	folderRepo    domain.FolderRepository
-	noteRepo      domain.NoteRepository
-	fileRepo      domain.FileRepository
-	vaultService  VaultService
-	sf            singleflight.Group
+	folderRepo     domain.FolderRepository
+	noteRepo       domain.NoteRepository
+	fileRepo       domain.FileRepository
+	vaultService   VaultService
+	sf             singleflight.Group
 	backupService  BackupService
 	pool           *workerpool.Pool
 	syncLogService SyncLogService

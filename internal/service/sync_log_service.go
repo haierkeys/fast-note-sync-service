@@ -78,7 +78,7 @@ func (s *syncLogService) Log(
 			ChangedFields: changedFields,
 			Path:          path,
 			PathHash:      pathHash,
-			Size:           size,
+			Size:          size,
 			ClientType:    clientType,
 			ClientName:    clientName,
 			ClientVersion: clientVersion,

@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // FolderAction 定义文件夹操作类型
 type FolderAction string
 
@@ -70,4 +69,3 @@ type FolderRepository interface {
 	// DeleteByVaultID 删除仓库下的所有文件夹记录
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

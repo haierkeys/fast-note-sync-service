@@ -30,13 +30,13 @@ import (
 // attachmentRegex regular expression for attachment links
 // attachmentRegex 附件链接正则表达式
 var (
-	attachmentRegex    = regexp.MustCompile(`!\[\[(.*?)\]\]`)
+	attachmentRegex = regexp.MustCompile(`!\[\[(.*?)\]\]`)
 	// markdownImageRegex regular expression for markdown images
 	// markdownImageRegex markdown 图片正则表达式
 	markdownImageRegex = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	// htmlImageRegex regular expression for html images
 	// htmlImageRegex html 图片正则表达式
-	htmlImageRegex     = regexp.MustCompile(`(?i)<img\b([^>]*?)\bsrc\s*=\s*(['"])(.*?)['"]([^>]*)>`)
+	htmlImageRegex = regexp.MustCompile(`(?i)<img\b([^>]*?)\bsrc\s*=\s*(['"])(.*?)['"]([^>]*)>`)
 )
 
 // ShareService defines the share business service interface
@@ -183,9 +183,9 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 			} else {
 				for _, file := range fileRefs {
 					fileIDStr := strconv.FormatInt(file.ID, 10)
-			// Avoid duplicate authorization
-			// 避免重复授权
-			if !util.Inarray(resolvedResources["file"], fileIDStr) {
+					// Avoid duplicate authorization
+					// 避免重复授权
+					if !util.Inarray(resolvedResources["file"], fileIDStr) {
 						resolvedResources["file"] = append(resolvedResources["file"], fileIDStr)
 					}
 				}

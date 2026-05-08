@@ -46,19 +46,19 @@ func newTestNoteHistoryHandler(historySvc *svcmocks.MockNoteHistoryService) *Not
 // TestNoteHistoryHandler_Get_Success verifies successful history fetch
 func TestNoteHistoryHandler_Get_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockNoteHistoryService)
-	
+
 	mockData := &dto.NoteHistoryDTO{
-		ID:       10,
-		NoteID:   1,
-		Path:     "note1.md",
-		Content:  "old content",
+		ID:      10,
+		NoteID:  1,
+		Path:    "note1.md",
+		Content: "old content",
 	}
 
 	mockSvc.On("Get", mock.Anything, int64(1), int64(10)).Return(mockData, nil)
 
 	handler := newTestNoteHistoryHandler(mockSvc)
 	c, w := newNoteHistoryTestContext("GET", "/api/note/history?id=10", "", 1)
-	
+
 	handler.Get(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -69,7 +69,7 @@ func TestNoteHistoryHandler_Get_Success(t *testing.T) {
 // TestNoteHistoryHandler_List_Success verifies successful history list fetch
 func TestNoteHistoryHandler_List_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockNoteHistoryService)
-	
+
 	listData := []*dto.NoteHistoryNoContentDTO{
 		{ID: 10, NoteID: 1, Path: "note1.md"},
 		{ID: 11, NoteID: 1, Path: "note1.md"},
@@ -80,7 +80,7 @@ func TestNoteHistoryHandler_List_Success(t *testing.T) {
 
 	handler := newTestNoteHistoryHandler(mockSvc)
 	c, w := newNoteHistoryTestContext("GET", "/api/note/histories?vault=main&path=note1.md", "", 1)
-	
+
 	handler.List(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -91,7 +91,7 @@ func TestNoteHistoryHandler_List_Success(t *testing.T) {
 // TestNoteHistoryHandler_Restore_Success verifies successful restore from history
 func TestNoteHistoryHandler_Restore_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockNoteHistoryService)
-	
+
 	restoredNote := &dto.NoteDTO{ID: 1, Path: "note1.md", Action: ""}
 	mockSvc.On("RestoreFromHistory", mock.Anything, int64(1), int64(10)).
 		Return(restoredNote, nil)

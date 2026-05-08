@@ -54,24 +54,24 @@ func newGitSyncConfig(db *gorm.DB, opts ...gen.DOOption) gitSyncConfig {
 type gitSyncConfig struct {
 	gitSyncConfigDo gitSyncConfigDo
 
-	ALL           field.Asterisk
-	ID            field.Int64
-	UID           field.Int64
-	VaultID       field.Int64
-	RepoURL       field.String
-	Username      field.String
-	Password      field.String
-	Branch        field.String
-	IsEnabled     field.Int64
-	Delay         field.Int64
-	RetentionDays field.Int64
-	LastSyncTime  field.Time
-	LastStatus    field.Int64
-	LastMessage   field.String
-	IncludeConfig field.Int64
+	ALL             field.Asterisk
+	ID              field.Int64
+	UID             field.Int64
+	VaultID         field.Int64
+	RepoURL         field.String
+	Username        field.String
+	Password        field.String
+	Branch          field.String
+	IsEnabled       field.Int64
+	Delay           field.Int64
+	RetentionDays   field.Int64
+	LastSyncTime    field.Time
+	LastStatus      field.Int64
+	LastMessage     field.String
+	IncludeConfig   field.Int64
 	ConfigSyncRules field.String
-	CreatedAt     field.Field
-	UpdatedAt     field.Field
+	CreatedAt       field.Field
+	UpdatedAt       field.Field
 
 	fieldMap map[string]field.Expr
 }

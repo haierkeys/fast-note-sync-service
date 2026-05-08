@@ -35,6 +35,7 @@ func EncodeHash32(content string) string {
 	}
 	return strconv.Itoa(int(hash))
 }
+
 const (
 	// FileHashThreshold defines the size threshold (100MB) above which partial hashing is used
 	// FileHashThreshold 定义触发分段哈希的阈值 (100MB)

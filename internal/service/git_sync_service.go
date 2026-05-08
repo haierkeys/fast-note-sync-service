@@ -50,22 +50,22 @@ type GitSyncService interface {
 }
 
 type gitSyncService struct {
-	repo       domain.GitSyncRepository
-	noteRepo   domain.NoteRepository
-	folderRepo domain.FolderRepository
-	fileRepo   domain.FileRepository
-	vaultRepo  domain.VaultRepository
+	repo        domain.GitSyncRepository
+	noteRepo    domain.NoteRepository
+	folderRepo  domain.FolderRepository
+	fileRepo    domain.FileRepository
+	vaultRepo   domain.VaultRepository
 	settingRepo domain.SettingRepository
-	gitConf    *appconfig.GitConfig
-	logger     *zap.Logger
-	mu         sync.Mutex
-	running    map[int64]context.CancelFunc // configID -> cancelFunc
-	timers     map[int64]*time.Timer        // configID -> timer
-	ctx        context.Context
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
-	gcTimer    *time.Timer // Timer for delayed GC // 延迟 GC 定时器
-	gcMu       sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
+	gitConf     *appconfig.GitConfig
+	logger      *zap.Logger
+	mu          sync.Mutex
+	running     map[int64]context.CancelFunc // configID -> cancelFunc
+	timers      map[int64]*time.Timer        // configID -> timer
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
+	gcTimer     *time.Timer // Timer for delayed GC // 延迟 GC 定时器
+	gcMu        sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
 }
 
 // NewGitSyncService creates a GitSyncService instance
@@ -73,18 +73,18 @@ type gitSyncService struct {
 func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, settingRepo domain.SettingRepository, gitConf *appconfig.GitConfig, logger *zap.Logger) GitSyncService {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &gitSyncService{
-		repo:       repo,
-		noteRepo:   noteRepo,
-		folderRepo: folderRepo,
-		fileRepo:   fileRepo,
-		vaultRepo:  vaultRepo,
+		repo:        repo,
+		noteRepo:    noteRepo,
+		folderRepo:  folderRepo,
+		fileRepo:    fileRepo,
+		vaultRepo:   vaultRepo,
 		settingRepo: settingRepo,
-		gitConf:    gitConf,
-		logger:     logger,
-		running:    make(map[int64]context.CancelFunc),
-		timers:     make(map[int64]*time.Timer),
-		ctx:        ctx,
-		cancel:     cancel,
+		gitConf:     gitConf,
+		logger:      logger,
+		running:     make(map[int64]context.CancelFunc),
+		timers:      make(map[int64]*time.Timer),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 }
 
@@ -93,21 +93,21 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 		return nil
 	}
 	res := &dto.GitSyncConfigDTO{
-		ID:            conf.ID,
-		UID:           conf.UID,
-		RepoURL:       conf.RepoURL,
-		Username:      conf.Username,
-		Password:      conf.Password,
-		Branch:        conf.Branch,
-		IsEnabled:     conf.IsEnabled,
-		Delay:         conf.Delay,
-		RetentionDays: conf.RetentionDays,
-		LastStatus:    conf.LastStatus,
-		LastMessage:   conf.LastMessage,
-		IncludeConfig: conf.IncludeConfig,
+		ID:              conf.ID,
+		UID:             conf.UID,
+		RepoURL:         conf.RepoURL,
+		Username:        conf.Username,
+		Password:        conf.Password,
+		Branch:          conf.Branch,
+		IsEnabled:       conf.IsEnabled,
+		Delay:           conf.Delay,
+		RetentionDays:   conf.RetentionDays,
+		LastStatus:      conf.LastStatus,
+		LastMessage:     conf.LastMessage,
+		IncludeConfig:   conf.IncludeConfig,
 		ConfigSyncRules: conf.ConfigSyncRules,
-		CreatedAt:     timex.Time(conf.CreatedAt),
-		UpdatedAt:     timex.Time(conf.UpdatedAt),
+		CreatedAt:       timex.Time(conf.CreatedAt),
+		UpdatedAt:       timex.Time(conf.UpdatedAt),
 	}
 	if conf.LastSyncTime != nil {
 		res.LastSyncTime = timex.Time(*conf.LastSyncTime)
@@ -665,7 +665,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 
 	s.logger.Info("Pushing changes", zap.Int64("configId", conf.ID))
 	err = r.Push(&git.PushOptions{
-		Auth:  auth,
+		Auth: auth,
 	})
 	if err != nil {
 		return fmt.Errorf("git push failed: %w", err)

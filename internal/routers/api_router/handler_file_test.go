@@ -47,7 +47,7 @@ func newTestFileHandler(fileSvc *svcmocks.MockFileService) *FileHandler {
 func TestFileHandler_Get_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
 	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
-	
+
 	mockData := &dto.FileDTO{
 		ID:       1,
 		Path:     "file1.jpg",
@@ -59,7 +59,7 @@ func TestFileHandler_Get_Success(t *testing.T) {
 
 	handler := newTestFileHandler(mockSvc)
 	c, w := newFileTestContext("GET", "/api/file/info?vault=main&path=file1.jpg", "", 1)
-	
+
 	handler.Get(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -71,7 +71,7 @@ func TestFileHandler_Get_Success(t *testing.T) {
 func TestFileHandler_List_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
 	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
-	
+
 	listData := []*dto.FileDTO{
 		{ID: 1, Path: "f1.jpg"},
 		{ID: 2, Path: "f2.png"},
@@ -82,7 +82,7 @@ func TestFileHandler_List_Success(t *testing.T) {
 
 	handler := newTestFileHandler(mockSvc)
 	c, w := newFileTestContext("GET", "/api/files?vault=main&page=1", "", 1)
-	
+
 	handler.List(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -94,7 +94,7 @@ func TestFileHandler_List_Success(t *testing.T) {
 func TestFileHandler_Delete_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
 	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
-	
+
 	deletedFile := &dto.FileDTO{ID: 3, Path: "f3.zip"}
 	mockSvc.On("Delete", mock.Anything, int64(1), mock.AnythingOfType("*dto.FileDeleteRequest")).
 		Return(deletedFile, nil)

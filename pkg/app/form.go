@@ -3,10 +3,10 @@ package app
 import (
 	"strings"
 
-	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 )
 
 type ValidError struct {

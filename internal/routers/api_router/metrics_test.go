@@ -19,7 +19,7 @@ func TestExpvar_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Header().Get("Content-Type"), "application/json")
-	
+
 	// expvar should at least contain "cmdline" and "memstats" by default in Go
 	assert.Contains(t, w.Body.String(), "cmdline")
 	assert.Contains(t, w.Body.String(), "memstats")

@@ -47,6 +47,7 @@ type SettingSyncDeleteMessage struct {
 	Mtime            int64  `json:"mtime" form:"mtime" example:"1700000000"`               // Modification timestamp // 修改时间戳
 	UpdatedTimestamp int64  `json:"lastTime" form:"updatedTimestamp" example:"1700000000"` // Record update timestamp // 记录更新时间戳
 }
+
 // SettingModifyAckMessage setting modify operation ACK
 // SettingModifyAckMessage 配置修改操作 ACK
 type SettingModifyAckMessage struct {

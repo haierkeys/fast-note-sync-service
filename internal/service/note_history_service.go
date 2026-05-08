@@ -116,18 +116,18 @@ func (s *noteHistoryService) domainToDTO(history *domain.NoteHistory) *dto.NoteH
 	diffResults := dmp.DiffMain(content, restoredNewVersion, false)
 
 	return &dto.NoteHistoryDTO{
-		ID:          history.ID,
-		NoteID:      history.NoteID,
-		VaultID:     history.VaultID,
-		Path:        history.Path,
-		Diffs:       diffResults,
-		Content:     history.Content,
-		ContentHash: history.ContentHash,
-		ClientName:  history.ClientName,
-		ClientType:  history.ClientType,
+		ID:            history.ID,
+		NoteID:        history.NoteID,
+		VaultID:       history.VaultID,
+		Path:          history.Path,
+		Diffs:         diffResults,
+		Content:       history.Content,
+		ContentHash:   history.ContentHash,
+		ClientName:    history.ClientName,
+		ClientType:    history.ClientType,
 		ClientVersion: history.ClientVersion,
-		Version:     history.Version,
-		CreatedAt:   timex.Time(history.CreatedAt),
+		Version:       history.Version,
+		CreatedAt:     timex.Time(history.CreatedAt),
 	}
 }
 
@@ -138,15 +138,15 @@ func (s *noteHistoryService) domainToNoContentDTO(history *domain.NoteHistory) *
 		return nil
 	}
 	return &dto.NoteHistoryNoContentDTO{
-		ID:         history.ID,
-		NoteID:     history.NoteID,
-		VaultID:    history.VaultID,
-		Path:       history.Path,
-		ClientName: history.ClientName,
-		ClientType: history.ClientType,
+		ID:            history.ID,
+		NoteID:        history.NoteID,
+		VaultID:       history.VaultID,
+		Path:          history.Path,
+		ClientName:    history.ClientName,
+		ClientType:    history.ClientType,
 		ClientVersion: history.ClientVersion,
-		Version:    history.Version,
-		CreatedAt:  timex.Time(history.CreatedAt),
+		Version:       history.Version,
+		CreatedAt:     timex.Time(history.CreatedAt),
 	}
 }
 
@@ -267,17 +267,17 @@ func (s *noteHistoryService) ProcessDelay(ctx context.Context, noteID int64, uid
 	}
 
 	history := &domain.NoteHistory{
-		NoteID:      note.ID,
-		VaultID:     note.VaultID,
-		Path:        note.Path,
-		DiffPatch:   patchText,
-		Content:     note.ContentLastSnapshot,
-		ContentHash: note.ContentLastSnapshotHash,
-		ClientName:  note.ClientName,
-		ClientType:  note.ClientType,
+		NoteID:        note.ID,
+		VaultID:       note.VaultID,
+		Path:          note.Path,
+		DiffPatch:     patchText,
+		Content:       note.ContentLastSnapshot,
+		ContentHash:   note.ContentLastSnapshotHash,
+		ClientName:    note.ClientName,
+		ClientType:    note.ClientType,
 		ClientVersion: note.ClientVersion,
-		Version:     latestVersion + 1,
-		CreatedAt:   note.UpdatedAt,
+		Version:       latestVersion + 1,
+		CreatedAt:     note.UpdatedAt,
 	}
 
 	_, err = s.historyRepo.Create(ctx, history, uid)

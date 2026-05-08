@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 const (
 	BackupStatusIdle     = 0
 	BackupStatusRunning  = 1
@@ -83,4 +82,3 @@ type BackupRepository interface {
 	// DisableByVaultID 禁用仓库下的备份任务
 	DisableByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

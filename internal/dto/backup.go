@@ -5,15 +5,15 @@ import "github.com/haierkeys/fast-note-sync-service/pkg/timex"
 // BackupConfigRequest backup configuration request
 // BackupConfigRequest 备份配置请求
 type BackupConfigRequest struct {
-	ID               int64  `json:"id" form:"id" example:"1"`                                             // ID // ID
-	Vault            string `json:"vault" form:"vault" example:"test"`                                    // Vault name // 仓库名称
-	Type             string `json:"type" form:"type" binding:"required,oneof=full incremental sync" example:"sync"` // Backup type // 备份类型
-	StorageIds       string `json:"storageIds" form:"storageIds" binding:"required" example:"[1, 2]"`     // Storage IDs // 存储 ID 列表
-	IsEnabled        bool   `json:"isEnabled" form:"isEnabled" example:"true"`                            // Is enabled // 是否启用
+	ID               int64  `json:"id" form:"id" example:"1"`                                                                              // ID // ID
+	Vault            string `json:"vault" form:"vault" example:"test"`                                                                     // Vault name // 仓库名称
+	Type             string `json:"type" form:"type" binding:"required,oneof=full incremental sync" example:"sync"`                        // Backup type // 备份类型
+	StorageIds       string `json:"storageIds" form:"storageIds" binding:"required" example:"[1, 2]"`                                      // Storage IDs // 存储 ID 列表
+	IsEnabled        bool   `json:"isEnabled" form:"isEnabled" example:"true"`                                                             // Is enabled // 是否启用
 	CronStrategy     string `json:"cronStrategy" form:"cronStrategy" binding:"required,oneof=daily weekly monthly custom" example:"daily"` // Cron strategy // 定时策略
-	CronExpression   string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`              // Cron expression // Cron 表达式
-	RetentionDays    int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`      // Retention days // 保留天数
-	IncludeVaultName bool   `json:"includeVaultName" form:"includeVaultName" example:"false"`              // Include vault name // 同步路径是否包含仓库名
+	CronExpression   string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`                                              // Cron expression // Cron 表达式
+	RetentionDays    int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`                                       // Retention days // 保留天数
+	IncludeVaultName bool   `json:"includeVaultName" form:"includeVaultName" example:"false"`                                              // Include vault name // 同步路径是否包含仓库名
 }
 
 // BackupExecuteRequest backup execution request
@@ -26,8 +26,8 @@ type BackupExecuteRequest struct {
 // BackupHistoryListRequest 备份历史列表请求
 type BackupHistoryListRequest struct {
 	ConfigID int64 `json:"configId" form:"configId" binding:"required" example:"1"` // Config ID // 配置 ID
-	Page     int   `json:"page" form:"page" example:"1"`                           // Page number // 页码
-	PageSize int   `json:"pageSize" form:"pageSize" example:"10"`                  // Page size // 每页大小
+	Page     int   `json:"page" form:"page" example:"1"`                            // Page number // 页码
+	PageSize int   `json:"pageSize" form:"pageSize" example:"10"`                   // Page size // 每页大小
 }
 
 // BackupConfigDTO backup configuration DTO

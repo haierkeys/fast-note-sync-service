@@ -8,7 +8,7 @@ import (
 
 func TestRandomStrSliceOne(t *testing.T) {
 	slice := []string{"apple", "banana", "cherry"}
-	
+
 	// Ensure the returned string is one of the slice elements
 	// 确保返回的字符串是切片中的元素之一
 	for i := 0; i < 10; i++ {

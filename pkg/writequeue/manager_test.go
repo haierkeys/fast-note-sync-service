@@ -38,7 +38,7 @@ func TestManager_MultipleUsers(t *testing.T) {
 	defer manager.Shutdown(context.Background())
 
 	ch := make(chan bool, 2)
-	
+
 	// They don't block each other
 	go func() {
 		manager.Execute(context.Background(), "user-1", func() error {
@@ -63,7 +63,7 @@ func TestManager_MultipleUsers(t *testing.T) {
 
 func TestManager_Shutdown(t *testing.T) {
 	manager := New(&Config{QueueCapacity: 10, WriteTimeout: time.Second}, nil)
-	
+
 	manager.Shutdown(context.Background())
 	assert.True(t, manager.IsClosed())
 

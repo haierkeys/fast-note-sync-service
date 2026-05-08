@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 const (
 	GitSyncStatusIdle     = 0
 	GitSyncStatusRunning  = 1
@@ -16,23 +15,23 @@ const (
 
 // GitSyncConfig Git 仓库同步任务
 type GitSyncConfig struct {
-	ID            int64      `json:"id"`
-	UID           int64      `json:"uid"`
-	VaultID       int64      `json:"vaultId"`
-	RepoURL       string     `json:"repoUrl"`
-	Username      string     `json:"username"`
-	Password      string     `json:"password"`
-	Branch        string     `json:"branch"`
-	IsEnabled     bool       `json:"isEnabled"`
-	Delay         int64      `json:"delay"` // 延迟时间（秒）
-	RetentionDays int64      `json:"retentionDays"`
-	LastSyncTime  *time.Time `json:"lastSyncTime"`
-	LastStatus    int64      `json:"lastStatus"` // 0: 闲置, 1: 运行中, 2: 成功, 3: 失败, 4: 系统关闭
-	LastMessage   string     `json:"lastMessage"`
-	IncludeConfig bool       `json:"includeConfig" gorm:"column:include_config"`
-	ConfigSyncRules []string `json:"configSyncRules" gorm:"column:config_sync_rules;type:text;serializer:json"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	ID              int64      `json:"id"`
+	UID             int64      `json:"uid"`
+	VaultID         int64      `json:"vaultId"`
+	RepoURL         string     `json:"repoUrl"`
+	Username        string     `json:"username"`
+	Password        string     `json:"password"`
+	Branch          string     `json:"branch"`
+	IsEnabled       bool       `json:"isEnabled"`
+	Delay           int64      `json:"delay"` // 延迟时间（秒）
+	RetentionDays   int64      `json:"retentionDays"`
+	LastSyncTime    *time.Time `json:"lastSyncTime"`
+	LastStatus      int64      `json:"lastStatus"` // 0: 闲置, 1: 运行中, 2: 成功, 3: 失败, 4: 系统关闭
+	LastMessage     string     `json:"lastMessage"`
+	IncludeConfig   bool       `json:"includeConfig" gorm:"column:include_config"`
+	ConfigSyncRules []string   `json:"configSyncRules" gorm:"column:config_sync_rules;type:text;serializer:json"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
 }
 
 // GitSyncHistory Git 同步历史
@@ -77,4 +76,3 @@ type GitSyncRepository interface {
 	// DisableByVaultID 禁用仓库下的 Git 同步任务
 	DisableByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-
