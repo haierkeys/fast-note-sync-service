@@ -27,6 +27,8 @@ type GitSyncConfig struct {
 	LastSyncTime  time.Time  `gorm:"column:last_sync_time" json:"lastSyncTime" form:"lastSyncTime"`
 	LastStatus    int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
 	LastMessage   string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
+	IncludeConfig int64      `gorm:"column:include_config;default:0" json:"includeConfig" form:"includeConfig"`
+	ConfigSyncRules string   `gorm:"column:config_sync_rules;type:TEXT;default:''" json:"configSyncRules" form:"configSyncRules"`
 	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt     timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

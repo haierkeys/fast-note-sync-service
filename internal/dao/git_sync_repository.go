@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -148,6 +149,12 @@ func (r *gitSyncRepository) toDomain(m *model.GitSyncConfig) *domain.GitSyncConf
 		LastSyncTime:  lastSyncTime,
 		LastStatus:    m.LastStatus,
 		LastMessage:   m.LastMessage,
+		IncludeConfig: m.IncludeConfig == 1,
+		ConfigSyncRules: func() []string {
+			var rules []string
+			_ = json.Unmarshal([]byte(m.ConfigSyncRules), &rules)
+			return rules
+		}(),
 		CreatedAt:     time.Time(m.CreatedAt),
 		UpdatedAt:     time.Time(m.UpdatedAt),
 	}
@@ -179,6 +186,16 @@ func (r *gitSyncRepository) toModel(d *domain.GitSyncConfig) *model.GitSyncConfi
 		LastSyncTime:  lastSyncTime,
 		LastStatus:    d.LastStatus,
 		LastMessage:   d.LastMessage,
+		IncludeConfig: func() int64 {
+			if d.IncludeConfig {
+				return 1
+			}
+			return 0
+		}(),
+		ConfigSyncRules: func() string {
+			b, _ := json.Marshal(d.ConfigSyncRules)
+			return string(b)
+		}(),
 		CreatedAt:     timex.Time(d.CreatedAt),
 		UpdatedAt:     timex.Time(d.UpdatedAt),
 	}

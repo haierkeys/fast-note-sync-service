@@ -13,7 +13,9 @@ type GitSyncConfigRequest struct {
 	Branch        string `json:"branch" form:"branch"`
 	IsEnabled     bool   `json:"isEnabled" form:"isEnabled"`
 	Delay         int64  `json:"delay" form:"delay"` // Delay time (seconds) // 延迟时间（秒）
-	RetentionDays int64  `json:"retentionDays" form:"retentionDays"`
+	RetentionDays int64    `json:"retentionDays" form:"retentionDays"`
+	IncludeConfig bool     `json:"includeConfig" form:"includeConfig"`
+	ConfigSyncRules []string `json:"configSyncRules" form:"configSyncRules"`
 }
 
 // GitSyncValidateRequest git repository sync task parameter validation request
@@ -59,6 +61,8 @@ type GitSyncConfigDTO struct {
 	LastSyncTime  timex.Time `json:"lastSyncTime"`  // Last sync time // 上次同步时间
 	LastStatus    int64      `json:"lastStatus"`    // Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown) // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Shutdown)
 	LastMessage   string     `json:"lastMessage"`   // Last run result message // 上次运行结果消息
+	IncludeConfig bool       `json:"includeConfig"` // Include config sync // 是否开启配置同步
+	ConfigSyncRules []string `json:"configSyncRules"` // Config sync rules // 配置同步规则
 	CreatedAt     timex.Time `json:"createdAt"`     // Created at // 创建时间
 	UpdatedAt     timex.Time `json:"updatedAt"`     // Updated at // 更新时间
 }
