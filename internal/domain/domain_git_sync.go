@@ -29,6 +29,8 @@ type GitSyncConfig struct {
 	LastSyncTime  *time.Time `json:"lastSyncTime"`
 	LastStatus    int64      `json:"lastStatus"` // 0: 闲置, 1: 运行中, 2: 成功, 3: 失败, 4: 系统关闭
 	LastMessage   string     `json:"lastMessage"`
+	IncludeConfig bool       `json:"includeConfig" gorm:"column:include_config"`
+	ConfigSyncRules []string `json:"configSyncRules" gorm:"column:config_sync_rules;type:text;serializer:json"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
 }

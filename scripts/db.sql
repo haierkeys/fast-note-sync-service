@@ -360,6 +360,10 @@ CREATE TABLE "git_sync_config" (
     -- 0: 闲置, 1: 运行中, 2: 成功, 3: 失败
     "last_message" text DEFAULT '',
     -- 同步结果或错误信息
+    "include_config" integer DEFAULT 0,
+    -- 是否开启配置同步
+    "config_sync_rules" text DEFAULT '',
+    -- 存储规则列表的 JSON 数组 (例如 [".obsidian/appearance.json", ".obsidian/plugins/"])
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
