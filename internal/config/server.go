@@ -25,8 +25,12 @@ type ServerConfig struct {
 	// SharePort 独立分享页面端口
 	SharePort string `yaml:"share-port"`
 	// ExtApiUrl external API URL
+	// ExtApiUrl external API URL
 	// ExtApiUrl 外部访问 API 的地址
 	ExtApiUrl string `yaml:"ext-api-url"`
+	// ShareBaseUrl external share page base URL
+	// ShareBaseUrl 外部分享页面基础 URL
+	ShareBaseUrl string `yaml:"share-base-url"`
 	// MCPSSEPingInterval MCP SSE ping interval (seconds)
 	// MCPSSEPingInterval MCP SSE 保活心跳间隔（秒）
 	MCPSSEPingInterval int `yaml:"mcp-sse-ping-interval" default:"30"`
