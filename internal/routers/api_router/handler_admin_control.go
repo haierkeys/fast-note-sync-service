@@ -61,7 +61,6 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 	data := dto.AdminWebGUIConfig{
 		FontSet:          cfg.WebGUI.FontSet,
 		RegisterIsEnable: h.App.UserService.IsRegisterEnabled(c),
-		AdminUID:         cfg.User.AdminUID,
 	}
 	response.ToResponse(code.Success.WithData(data))
 }
@@ -123,20 +122,20 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 	}
 
 	data := &dto.AdminConfig{
-		FontSet:                 cfg.WebGUI.FontSet,
-		RegisterIsEnable:        cfg.User.RegisterIsEnable,
-		FileChunkSize:           cfg.App.FileChunkSize,
-		SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
-		UploadSessionTimeout:    cfg.App.UploadSessionTimeout,
-		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
-		HistorySaveDelay:        cfg.App.HistorySaveDelay,
-		// DefaultAPIFolder:        cfg.App.DefaultAPIFolder,
-		AdminUID:         cfg.User.AdminUID,
-		AuthTokenKey:     cfg.Security.AuthTokenKey,
-		TokenExpiry:      cfg.Security.TokenExpiry,
-		ShareTokenKey:    cfg.Security.ShareTokenKey,
-		ShareTokenExpiry: cfg.Security.ShareTokenExpiry,
-		PullSource:       cfg.App.PullSource,
+		FontSet:                 &cfg.WebGUI.FontSet,
+		RegisterIsEnable:        &cfg.User.RegisterIsEnable,
+		FileChunkSize:           &cfg.App.FileChunkSize,
+		SoftDeleteRetentionTime: &cfg.App.SoftDeleteRetentionTime,
+		UploadSessionTimeout:    &cfg.App.UploadSessionTimeout,
+		HistoryKeepVersions:     &cfg.App.HistoryKeepVersions,
+		HistorySaveDelay:        &cfg.App.HistorySaveDelay,
+		// DefaultAPIFolder:        &cfg.App.DefaultAPIFolder,
+		AdminUID:         &cfg.User.AdminUID,
+		AuthTokenKey:     &cfg.Security.AuthTokenKey,
+		TokenExpiry:      &cfg.Security.TokenExpiry,
+		ShareTokenKey:    &cfg.Security.ShareTokenKey,
+		ShareTokenExpiry: &cfg.Security.ShareTokenExpiry,
+		PullSource:       &cfg.App.PullSource,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -183,26 +182,26 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 
 	// Validate historyKeepVersions cannot be less than 100
 	// 验证 historyKeepVersions 不能小于 100
-	if params.HistoryKeepVersions > 0 && params.HistoryKeepVersions < 100 {
+	if params.HistoryKeepVersions != nil && *params.HistoryKeepVersions > 0 && *params.HistoryKeepVersions < 100 {
 		logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historyKeepVersions",
-			zap.Int("value", params.HistoryKeepVersions))
+			zap.Int("value", *params.HistoryKeepVersions))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails("historyKeepVersions must be at least 100"))
 		return
 	}
 
 	// Validate historySaveDelay cannot be less than 10 seconds
 	// 验证 historySaveDelay 不能小于 10 秒
-	if params.HistorySaveDelay != "" {
-		delay, err := util.ParseDuration(params.HistorySaveDelay)
+	if params.HistorySaveDelay != nil && *params.HistorySaveDelay != "" {
+		delay, err := util.ParseDuration(*params.HistorySaveDelay)
 		if err != nil {
 			logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historySaveDelay format",
-				zap.String("value", params.HistorySaveDelay))
+				zap.String("value", *params.HistorySaveDelay))
 			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay format invalid, e.g. 10s, 1m"))
 			return
 		}
 		if delay < 10*time.Second {
 			logger.Warn("apiRouter.WebGUI.UpdateConfig historySaveDelay too small",
-				zap.String("value", params.HistorySaveDelay))
+				zap.String("value", *params.HistorySaveDelay))
 			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay must be at least 10s"))
 			return
 		}
@@ -210,20 +209,45 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 
 	// Update configuration
 	// 更新配置
-	cfg.WebGUI.FontSet = params.FontSet
-	cfg.User.RegisterIsEnable = params.RegisterIsEnable
-	cfg.App.FileChunkSize = params.FileChunkSize
-	cfg.App.SoftDeleteRetentionTime = params.SoftDeleteRetentionTime
-	cfg.App.UploadSessionTimeout = params.UploadSessionTimeout
-	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
-	cfg.App.HistorySaveDelay = params.HistorySaveDelay
-	//cfg.App.DefaultAPIFolder = params.DefaultAPIFolder
-	cfg.User.AdminUID = params.AdminUID
-	cfg.Security.AuthTokenKey = params.AuthTokenKey
-	cfg.Security.TokenExpiry = params.TokenExpiry
-	cfg.Security.ShareTokenKey = params.ShareTokenKey
-	cfg.Security.ShareTokenExpiry = params.ShareTokenExpiry
-	cfg.App.PullSource = params.PullSource
+	if params.FontSet != nil {
+		cfg.WebGUI.FontSet = *params.FontSet
+	}
+	if params.RegisterIsEnable != nil {
+		cfg.User.RegisterIsEnable = *params.RegisterIsEnable
+	}
+	if params.FileChunkSize != nil {
+		cfg.App.FileChunkSize = *params.FileChunkSize
+	}
+	if params.SoftDeleteRetentionTime != nil {
+		cfg.App.SoftDeleteRetentionTime = *params.SoftDeleteRetentionTime
+	}
+	if params.UploadSessionTimeout != nil {
+		cfg.App.UploadSessionTimeout = *params.UploadSessionTimeout
+	}
+	if params.HistoryKeepVersions != nil {
+		cfg.App.HistoryKeepVersions = *params.HistoryKeepVersions
+	}
+	if params.HistorySaveDelay != nil {
+		cfg.App.HistorySaveDelay = *params.HistorySaveDelay
+	}
+	if params.AdminUID != nil {
+		cfg.User.AdminUID = *params.AdminUID
+	}
+	if params.AuthTokenKey != nil {
+		cfg.Security.AuthTokenKey = *params.AuthTokenKey
+	}
+	if params.TokenExpiry != nil {
+		cfg.Security.TokenExpiry = *params.TokenExpiry
+	}
+	if params.ShareTokenKey != nil {
+		cfg.Security.ShareTokenKey = *params.ShareTokenKey
+	}
+	if params.ShareTokenExpiry != nil {
+		cfg.Security.ShareTokenExpiry = *params.ShareTokenExpiry
+	}
+	if params.PullSource != nil {
+		cfg.App.PullSource = *params.PullSource
+	}
 
 	// Save configuration to file
 	// 保存配置到文件

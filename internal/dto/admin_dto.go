@@ -7,7 +7,6 @@ import "time"
 type AdminWebGUIConfig struct {
 	FontSet          string `json:"fontSet"`          // Font set // 字体设置
 	RegisterIsEnable bool   `json:"registerIsEnable"` // Registration enablement // 是否开启注册
-	AdminUID         int    `json:"adminUid"`         // Admin UID // 管理员 UID
 }
 
 // AdminCheckResponse Admin check response structure
@@ -19,20 +18,20 @@ type AdminCheckResponse struct {
 // AdminConfig Admin configuration structure (admin interface)
 // AdminConfig 管理员配置结构（管理员接口）
 type AdminConfig struct {
-	FontSet                 string `json:"fontSet" form:"fontSet"`                                           // Font set // 字体设置
-	RegisterIsEnable        bool   `json:"registerIsEnable" form:"registerIsEnable"`                         // Registration enablement // 是否开启注册
-	FileChunkSize           string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`                     // File chunk size // 文件分块大小
-	SoftDeleteRetentionTime string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"` // Soft delete retention time // 软删除保留时间
-	UploadSessionTimeout    string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`       // Upload session timeout // 上传会话超时时间
-	HistoryKeepVersions     int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`         // History versions to keep // 历史版本保留数
-	HistorySaveDelay        string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`               // History save delay // 历史保存延迟
-	DefaultAPIFolder        string `json:"defaultApiFolder,omitempty" form:"defaultApiFolder"`               // Default API folder // 默认 API 目录
-	AdminUID                int    `json:"adminUid" form:"adminUid"`                                         // Admin UID // 管理员 UID
-	AuthTokenKey            string `json:"authTokenKey" form:"authTokenKey"`                                 // Auth token key // 认证 Token 密钥
-	TokenExpiry             string `json:"tokenExpiry" form:"tokenExpiry"`                                   // Token expiry // Token 有效期
-	ShareTokenKey           string `json:"shareTokenKey" form:"shareTokenKey"`                               // Share token key // 分享 Token 密钥
-	ShareTokenExpiry        string `json:"shareTokenExpiry" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
-	PullSource              string `json:"pullSource" form:"pullSource"`                                     // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
+	FontSet                 *string `json:"fontSet,omitempty" form:"fontSet"`                                           // Font set // 字体设置
+	RegisterIsEnable        *bool   `json:"registerIsEnable,omitempty" form:"registerIsEnable"`                         // Registration enablement // 是否开启注册
+	FileChunkSize           *string `json:"fileChunkSize,omitempty" form:"fileChunkSize"`                     // File chunk size // 文件分块大小
+	SoftDeleteRetentionTime *string `json:"softDeleteRetentionTime,omitempty" form:"softDeleteRetentionTime"` // Soft delete retention time // 软删除保留时间
+	UploadSessionTimeout    *string `json:"uploadSessionTimeout,omitempty" form:"uploadSessionTimeout"`       // Upload session timeout // 上传会话超时时间
+	HistoryKeepVersions     *int    `json:"historyKeepVersions,omitempty" form:"historyKeepVersions"`         // History versions to keep // 历史版本保留数
+	HistorySaveDelay        *string `json:"historySaveDelay,omitempty" form:"historySaveDelay"`               // History save delay // 历史保存延迟
+	DefaultAPIFolder        *string `json:"defaultApiFolder,omitempty" form:"defaultApiFolder"`               // Default API folder // 默认 API 目录
+	AdminUID                *int    `json:"adminUid,omitempty" form:"adminUid"`                                         // Admin UID // 管理员 UID
+	AuthTokenKey            *string `json:"authTokenKey,omitempty" form:"authTokenKey"`                                 // Auth token key // 认证 Token 密钥
+	TokenExpiry             *string `json:"tokenExpiry,omitempty" form:"tokenExpiry"`                                   // Token expiry // Token 有效期
+	ShareTokenKey           *string `json:"shareTokenKey,omitempty" form:"shareTokenKey"`                               // Share token key // 分享 Token 密钥
+	ShareTokenExpiry        *string `json:"shareTokenExpiry,omitempty" form:"shareTokenExpiry"`                         // Share token expiry // 分享 Token 有效期
+	PullSource              *string `json:"pullSource,omitempty" form:"pullSource"`                                     // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
 }
 
 // AdminUserDatabaseConfig User database configuration structure

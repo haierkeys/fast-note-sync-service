@@ -4,7 +4,7 @@ server:
   run-mode: release
   # HTTP 端口 (默认 :9000)。格式为 :port 或 IP:port
   # HTTP Port (default :9000). Format: :port or IP:port
-  http-port: :9000
+  http-port: ":9000"
   # 读取超时时间(秒)
   # Read timeout duration (seconds)
   read-timeout: 60
