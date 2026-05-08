@@ -82,7 +82,15 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	// Register Static routes
 	// 注册静态资源路由
-	registerStaticRoutes(r, frontendFiles, appContainer)
+	// If independent ports are configured, the main port only provides necessary static files (for API/compatibility)
+	// 如果配置了独立端口，则主端口仅提供必要的静态资源，不再提供 Web/Share 页面访问
+	registerStaticFiles(r, frontendFiles, appContainer)
+	if cfg.Server.WebGuiPort == "" {
+		registerWebGuiRoutes(r, frontendFiles, appContainer)
+	}
+	if cfg.Server.SharePort == "" {
+		registerShareRoutes(r, frontendFiles, appContainer)
+	}
 
 	// Register API routes
 	// 注册 API 路由
@@ -94,5 +102,29 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 	r.NoRoute(middleware.NoFound())
 
+	return r
+}
+
+func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
+	r := gin.New()
+	r.Use(middleware.Proxy())
+	r.Use(middleware.Cors())
+
+	registerStaticFiles(r, frontendFiles, appContainer)
+	registerWebGuiRoutes(r, frontendFiles, appContainer)
+
+	r.NoRoute(middleware.NoFound())
+	return r
+}
+
+func NewShareRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
+	r := gin.New()
+	r.Use(middleware.Proxy())
+	r.Use(middleware.Cors())
+
+	registerStaticFiles(r, frontendFiles, appContainer)
+	registerShareRoutes(r, frontendFiles, appContainer)
+
+	r.NoRoute(middleware.NoFound())
 	return r
 }

@@ -17,6 +17,15 @@ server:
   # SSE 保活心跳间隔（秒）
   # MCP SSE ping interval (seconds)
   mcp-sse-ping-interval: 30
+  # 独立 Web 界面端口。留空则不开启。格式: :port
+  # Independent WebGUI port. Leave empty to disable. Format: :port
+  webgui-port: ""
+  # 独立分享页面端口。留空则不开启。格式: :port
+  # Independent share page port. Leave empty to disable. Format: :port
+  share-port: ""
+  # 外部访问 API 的地址（例如 http://api.example.com:9000）。用于 Web 界面定位。
+  # External API URL (e.g., http://api.example.com:9000). Used for Web interface positioning.
+  ext-api-url: ""
 
 app:
   # 默认每页显示的项目数

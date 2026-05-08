@@ -18,6 +18,15 @@ type ServerConfig struct {
 	// PrivateHttpListen private HTTP listen address
 	// PrivateHttpListen 私有 HTTP 监听地址
 	PrivateHttpListen string `yaml:"private-http-listen"`
+	// WebGuiPort independent WebGUI port
+	// WebGuiPort 独立 Web 界面端口
+	WebGuiPort string `yaml:"webgui-port"`
+	// SharePort independent share page port
+	// SharePort 独立分享页面端口
+	SharePort string `yaml:"share-port"`
+	// ExtApiUrl external API URL
+	// ExtApiUrl 外部访问 API 的地址
+	ExtApiUrl string `yaml:"ext-api-url"`
 	// MCPSSEPingInterval MCP SSE ping interval (seconds)
 	// MCPSSEPingInterval MCP SSE 保活心跳间隔（秒）
 	MCPSSEPingInterval int `yaml:"mcp-sse-ping-interval" default:"30"`
