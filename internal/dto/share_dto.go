@@ -96,7 +96,7 @@ type ShareListItem struct {
 	LastViewedAt time.Time           `json:"lastViewedAt"` // Last viewed time // 最后访问时间
 	ExpiresAt    time.Time           `json:"expiresAt"`    // Expiration time // 过期时间
 	ShortLink    string              `json:"shortLink"`    // Short link // 短链
-	CreatedAt    time.Time           `json:"createdAt"` // Created at // 创建时间
+	CreatedAt    time.Time           `json:"createdAt"`    // Created at // 创建时间
 	UpdatedAt    time.Time           `json:"updatedAt"`    // Updated at // 更新时间
 	BaseUrl      string              `json:"baseUrl"`      // Base URL for sharing // 分享基础 URL
 }

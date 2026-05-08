@@ -469,4 +469,3 @@ func (h *ShareHandler) getShareBaseUrl(c *gin.Context) string {
 
 	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }
-

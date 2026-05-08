@@ -15,18 +15,18 @@ type SyncLogListRequest struct {
 // SyncLogDTO Sync log data transfer object
 // SyncLogDTO 同步日志数据传输对象
 type SyncLogDTO struct {
-	ID            int64     `json:"-"`             // Record ID // 记录 ID
-	VaultID       int64     `json:"vaultId"`       // Vault ID // 笔记本 ID
-	Type          string    `json:"type"`          // Resource type // 资源类型
-	Action        string    `json:"action"`        // Action type // 操作类型
-	ChangedFields string    `json:"changedFields"` // Changed fields // 变更字段
-	Path          string    `json:"path"`          // Resource path // 资源路径
-	PathHash      string    `json:"pathHash"`      // Resource path hash // 路径哈希
-	Size          int64     `json:"size"`          // Size in bytes // 大小（字节）
-	ClientName    string    `json:"clientName"`    // Client name // 客户端名称
-	ClientType    string    `json:"clientType"`    // Client type // 客户端类型
-	ClientVersion string    `json:"clientVersion"` // Client version // 客户端版本
-	Status        int       `json:"status"`        // Status: 1 success, 2 failed // 状态
-	Message       string    `json:"message"`       // Additional message // 附加消息
+	ID            int64      `json:"-"`             // Record ID // 记录 ID
+	VaultID       int64      `json:"vaultId"`       // Vault ID // 笔记本 ID
+	Type          string     `json:"type"`          // Resource type // 资源类型
+	Action        string     `json:"action"`        // Action type // 操作类型
+	ChangedFields string     `json:"changedFields"` // Changed fields // 变更字段
+	Path          string     `json:"path"`          // Resource path // 资源路径
+	PathHash      string     `json:"pathHash"`      // Resource path hash // 路径哈希
+	Size          int64      `json:"size"`          // Size in bytes // 大小（字节）
+	ClientName    string     `json:"clientName"`    // Client name // 客户端名称
+	ClientType    string     `json:"clientType"`    // Client type // 客户端类型
+	ClientVersion string     `json:"clientVersion"` // Client version // 客户端版本
+	Status        int        `json:"status"`        // Status: 1 success, 2 failed // 状态
+	Message       string     `json:"message"`       // Additional message // 附加消息
 	CreatedAt     timex.Time `json:"createdAt"`     // Log creation time // 创建时间
 }

@@ -4,8 +4,8 @@ import (
 	"embed"
 	"net/http"
 
-	_ "github.com/haierkeys/fast-note-sync-service/docs"
 	"github.com/gin-gonic/gin"
+	_ "github.com/haierkeys/fast-note-sync-service/docs"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

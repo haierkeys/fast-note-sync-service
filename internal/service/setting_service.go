@@ -608,7 +608,7 @@ func (s *settingService) CleanDuplicateSettings(ctx context.Context, uid int64, 
 				// Clear singleflight cache to prevent residue
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash))
-				
+
 				_ = s.settingRepo.Delete(ctx, s_.ID, uid)
 			}
 		}

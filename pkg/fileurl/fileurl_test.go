@@ -10,7 +10,7 @@ func TestFileUrlConversions(t *testing.T) {
 	assert.Equal(t, ".png", GetFileExt("image.png"))
 	assert.Equal(t, "image.png", GetFileName("image.png"))
 	assert.Equal(t, "file.tar.gz", GetFileName("file.tar.gz"))
-	
+
 	// Check random name override for "image.png"
 	randName := GetFileNameOrRandom("image.png")
 	assert.NotEqual(t, "image.png", randName)

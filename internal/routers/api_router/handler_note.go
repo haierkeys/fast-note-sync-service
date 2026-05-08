@@ -648,7 +648,6 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	}
 }
 
-
 // Rename renames a note
 // @Summary Rename note
 // @Description Rename a note to a new path

@@ -640,7 +640,7 @@ func (s *backupService) finishTask(ctx context.Context, config *domain.BackupCon
 				s.logger.Error("Failed to list old backup history for cleanup", zap.Error(err))
 			} else {
 				// 2. Delete corresponding files in storage for non-sync backups
-			// 2. 对于非同步备份，删除存储中对应的文件
+				// 2. 对于非同步备份，删除存储中对应的文件
 				for _, history := range oldHistories {
 					if history.Type != "sync" && history.FilePath != "" {
 						st, err := s.storageService.Get(saveCtx, history.UID, history.StorageID)

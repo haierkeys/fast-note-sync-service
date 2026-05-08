@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // Vault 仓库领域模型
 type Vault struct {
 	ID        int64
@@ -61,4 +60,3 @@ type VaultRepository interface {
 	// Delete 删除仓库（软删除）
 	Delete(ctx context.Context, id, uid int64) error
 }
-

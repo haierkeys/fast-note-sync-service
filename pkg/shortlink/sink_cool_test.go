@@ -37,7 +37,7 @@ func TestSinkCoolClient_Create(t *testing.T) {
 
 	// Use mock server URL
 	client := NewSinkCoolClient(mockServer.URL, "test-api-key")
-	
+
 	// Test creating link
 	expiresAt := time.Now().Add(24 * time.Hour)
 	shortLink, err := client.Create("https://example.com/long-url", expiresAt, "my-pass", true, "Test Title")

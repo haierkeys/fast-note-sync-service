@@ -12,7 +12,7 @@ func TestCode_Immutability_And_Methods(t *testing.T) {
 	codeVal := 999901
 	msgZh := "测试错误"
 	msgEn := "Test Error"
-	
+
 	zh_cn_messages[codeVal] = msgZh
 	en_messages[codeVal] = msgEn
 
@@ -21,7 +21,7 @@ func TestCode_Immutability_And_Methods(t *testing.T) {
 	assert.False(t, c.Status())
 	// Default language logic depends on getLang config, let's just make sure Msg() won't panic
 	assert.NotEmpty(t, c.Msg())
-	
+
 	// Test Immutability
 	cWithData := c.WithData(map[string]string{"foo": "bar"})
 	assert.NotEqual(t, fmt.Sprintf("%p", c), fmt.Sprintf("%p", cWithData))

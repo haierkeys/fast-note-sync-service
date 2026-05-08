@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // FileAction 定义文件操作类型
 type FileAction string
 
@@ -135,4 +134,3 @@ type FileRepository interface {
 	// DeleteByVaultID 物理删除仓库下的所有文件
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

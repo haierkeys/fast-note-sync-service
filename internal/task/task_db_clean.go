@@ -11,11 +11,11 @@ import (
 
 // DbCleanTask 清理任务
 type DbCleanTask struct {
-	app                 *app.App
-	logger              *zap.Logger
-	retentionDuration         time.Duration
-	syncLogRetentionDuration  time.Duration
-	historyKeepVersions       int
+	app                      *app.App
+	logger                   *zap.Logger
+	retentionDuration        time.Duration
+	syncLogRetentionDuration time.Duration
+	historyKeepVersions      int
 }
 
 // Name 返回任务名称
@@ -171,11 +171,11 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 	}
 
 	return &DbCleanTask{
-		app:                       appContainer,
-		logger:                    appContainer.Logger(),
-		retentionDuration:         duration,
-		syncLogRetentionDuration:  syncLogDuration,
-		historyKeepVersions:       historyKeepVersions,
+		app:                      appContainer,
+		logger:                   appContainer.Logger(),
+		retentionDuration:        duration,
+		syncLogRetentionDuration: syncLogDuration,
+		historyKeepVersions:      historyKeepVersions,
 	}, nil
 }
 

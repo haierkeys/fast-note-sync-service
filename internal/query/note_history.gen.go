@@ -50,20 +50,20 @@ func newNoteHistory(db *gorm.DB, opts ...gen.DOOption) noteHistory {
 type noteHistory struct {
 	noteHistoryDo noteHistoryDo
 
-	ALL         field.Asterisk
-	ID          field.Int64
-	NoteID      field.Int64
-	VaultID     field.Int64
-	Path        field.String
-	Content     field.String
-	ContentHash field.String
-	DiffPatch   field.String
-	ClientName  field.String
-	ClientType  field.String
+	ALL           field.Asterisk
+	ID            field.Int64
+	NoteID        field.Int64
+	VaultID       field.Int64
+	Path          field.String
+	Content       field.String
+	ContentHash   field.String
+	DiffPatch     field.String
+	ClientName    field.String
+	ClientType    field.String
 	ClientVersion field.String
-	Version     field.Int64
-	CreatedAt   field.Field
-	UpdatedAt   field.Field
+	Version       field.Int64
+	CreatedAt     field.Field
+	UpdatedAt     field.Field
 
 	fieldMap map[string]field.Expr
 }

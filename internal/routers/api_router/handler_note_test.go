@@ -68,7 +68,7 @@ func TestNoteHandler_Get_Success(t *testing.T) {
 
 	handler := newTestNoteHandler(mockNoteSvc, mockFileSvc)
 	c, w := newNoteTestContext("GET", "/api/note", "", 1)
-	
+
 	// Simulate binding query params
 	c.Request.URL.RawQuery = "vault=main&path=test.md"
 	handler.Get(c)
@@ -93,7 +93,7 @@ func TestNoteHandler_List_Success(t *testing.T) {
 	handler := newTestNoteHandler(mockNoteSvc, nil)
 	c, w := newNoteTestContext("GET", "/api/notes", "", 1)
 	c.Request.URL.RawQuery = "vault=main&page=1&size=10"
-	
+
 	handler.List(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)

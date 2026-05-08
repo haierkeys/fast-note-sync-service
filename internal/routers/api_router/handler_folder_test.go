@@ -45,7 +45,7 @@ func newTestFolderHandler(folderSvc *svcmocks.MockFolderService) *FolderHandler 
 // TestFolderHandler_Get_Success verifies successful folder fetch
 func TestFolderHandler_Get_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFolderService)
-	
+
 	mockData := &dto.FolderDTO{
 		ID:       1,
 		Path:     "folder1",
@@ -58,7 +58,7 @@ func TestFolderHandler_Get_Success(t *testing.T) {
 	handler := newTestFolderHandler(mockSvc)
 	c, w := newFolderTestContext("GET", "/api/folder", "", 1)
 	c.Request.URL.RawQuery = "vault=main&path=folder1"
-	
+
 	handler.Get(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -69,7 +69,7 @@ func TestFolderHandler_Get_Success(t *testing.T) {
 // TestFolderHandler_List_Success verifies successful folder list fetch
 func TestFolderHandler_List_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFolderService)
-	
+
 	listData := []*dto.FolderDTO{
 		{ID: 1, Path: "f1"},
 		{ID: 2, Path: "f2"},
@@ -81,7 +81,7 @@ func TestFolderHandler_List_Success(t *testing.T) {
 	handler := newTestFolderHandler(mockSvc)
 	c, w := newFolderTestContext("GET", "/api/folders", "", 1)
 	c.Request.URL.RawQuery = "vault=main"
-	
+
 	handler.List(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -92,7 +92,7 @@ func TestFolderHandler_List_Success(t *testing.T) {
 // TestFolderHandler_Create_Success verifies successful folder creation
 func TestFolderHandler_Create_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFolderService)
-	
+
 	createdFolder := &dto.FolderDTO{ID: 3, Path: "f3"}
 	mockSvc.On("UpdateOrCreate", mock.Anything, int64(1), mock.AnythingOfType("*dto.FolderCreateRequest")).
 		Return(createdFolder, nil)
@@ -111,7 +111,7 @@ func TestFolderHandler_Create_Success(t *testing.T) {
 // TestFolderHandler_Delete_Success verifies successful folder deletion
 func TestFolderHandler_Delete_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFolderService)
-	
+
 	mockSvc.On("Delete", mock.Anything, int64(1), mock.AnythingOfType("*dto.FolderDeleteRequest")).
 		Return((*dto.FolderDTO)(nil), nil)
 
