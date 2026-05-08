@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gookit/goutil/dump"
 	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
@@ -50,6 +51,8 @@ type Server struct {
 	ut                *ut.UniversalTranslator // Translator // 翻译器
 	httpServer        *http.Server
 	privateHttpServer *http.Server
+	webGuiServer      *http.Server
+	shareServer       *http.Server
 	sc                *safe_close.SafeClose
 	app               *internalApp.App // App Container
 }
@@ -250,6 +253,70 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 				// 停止 HTTP 服务器
 				if err := s.privateHttpServer.Shutdown(ctx); err != nil {
 					s.logger.Error("private api service shutdown error", zap.Error(err))
+				}
+			}
+		})
+	}
+
+	if httpAddr := appConfig.Server.WebGuiPort; len(httpAddr) > 0 {
+
+		dump.P(appConfig.Server.WebGuiPort)
+
+		s.logger.Info("webgui_server", zap.String("config.server.WebGuiPort", appConfig.Server.WebGuiPort))
+		s.webGuiServer = &http.Server{
+			Addr:           appConfig.Server.WebGuiPort,
+			Handler:        routers.NewWebGuiRouter(frontendFiles, s.app),
+			ReadTimeout:    time.Duration(appConfig.Server.ReadTimeout) * time.Second,
+			WriteTimeout:   time.Duration(appConfig.Server.WriteTimeout) * time.Second,
+			MaxHeaderBytes: 1 << 20,
+		}
+
+		s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+			defer done()
+			errChan := make(chan error, 1)
+			go func() {
+				errChan <- s.webGuiServer.ListenAndServe()
+			}()
+			select {
+			case err := <-errChan:
+				s.logger.Error("webgui service err", zap.Error(err))
+				s.sc.SendCloseSignal(err)
+			case <-closeSignal:
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := s.webGuiServer.Shutdown(ctx); err != nil {
+					s.logger.Error("webgui service shutdown error", zap.Error(err))
+				}
+			}
+		})
+	}
+
+	if httpAddr := appConfig.Server.SharePort; len(httpAddr) > 0 {
+
+		s.logger.Info("share_server", zap.String("config.server.SharePort", appConfig.Server.SharePort))
+		s.shareServer = &http.Server{
+			Addr:           appConfig.Server.SharePort,
+			Handler:        routers.NewShareRouter(frontendFiles, s.app),
+			ReadTimeout:    time.Duration(appConfig.Server.ReadTimeout) * time.Second,
+			WriteTimeout:   time.Duration(appConfig.Server.WriteTimeout) * time.Second,
+			MaxHeaderBytes: 1 << 20,
+		}
+
+		s.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+			defer done()
+			errChan := make(chan error, 1)
+			go func() {
+				errChan <- s.shareServer.ListenAndServe()
+			}()
+			select {
+			case err := <-errChan:
+				s.logger.Error("share service err", zap.Error(err))
+				s.sc.SendCloseSignal(err)
+			case <-closeSignal:
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := s.shareServer.Shutdown(ctx); err != nil {
+					s.logger.Error("share service shutdown error", zap.Error(err))
 				}
 			}
 		})
