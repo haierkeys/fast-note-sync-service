@@ -26,7 +26,7 @@ type BackupHistory struct {
 	FileCount int64      `gorm:"column:file_count;default:0" json:"fileCount" form:"fileCount"`
 	Message   string     `gorm:"column:message;default:''" json:"message" form:"message"`
 	FilePath  string     `gorm:"column:file_path;default:''" json:"filePath" form:"filePath"`
-	Password  string     `gorm:"column:password;default:''" json:"password" form:"password"`
+	Password  string     `gorm:"column:password;type:TEXT;default:''" json:"password" form:"password"`
 	CreatedAt timex.Time `gorm:"column:created_at;index:idx_backup_history_uid,priority:2;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

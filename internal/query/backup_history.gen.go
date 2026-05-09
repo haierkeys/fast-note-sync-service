@@ -127,7 +127,7 @@ func (b *backupHistory) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (b *backupHistory) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 14)
+	b.fieldMap = make(map[string]field.Expr, 15)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["uid"] = b.UID
 	b.fieldMap["config_id"] = b.ConfigID

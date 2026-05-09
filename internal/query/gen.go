@@ -29,6 +29,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		NoteLink:       newNoteLink(db, opts...),
 		Setting:        newSetting(db, opts...),
 		Storage:        newStorage(db, opts...),
+		SyncLog:        newSyncLog(db, opts...),
 		User:           newUser(db, opts...),
 		UserShare:      newUserShare(db, opts...),
 		Vault:          newVault(db, opts...),
@@ -49,6 +50,7 @@ type Query struct {
 	NoteLink       noteLink
 	Setting        setting
 	Storage        storage
+	SyncLog        syncLog
 	User           user
 	UserShare      userShare
 	Vault          vault
@@ -70,6 +72,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		NoteLink:       q.NoteLink.clone(db),
 		Setting:        q.Setting.clone(db),
 		Storage:        q.Storage.clone(db),
+		SyncLog:        q.SyncLog.clone(db),
 		User:           q.User.clone(db),
 		UserShare:      q.UserShare.clone(db),
 		Vault:          q.Vault.clone(db),
@@ -98,6 +101,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		NoteLink:       q.NoteLink.replaceDB(db),
 		Setting:        q.Setting.replaceDB(db),
 		Storage:        q.Storage.replaceDB(db),
+		SyncLog:        q.SyncLog.replaceDB(db),
 		User:           q.User.replaceDB(db),
 		UserShare:      q.UserShare.replaceDB(db),
 		Vault:          q.Vault.replaceDB(db),
@@ -116,6 +120,7 @@ type queryCtx struct {
 	NoteLink       INoteLinkDo
 	Setting        ISettingDo
 	Storage        IStorageDo
+	SyncLog        ISyncLogDo
 	User           IUserDo
 	UserShare      IUserShareDo
 	Vault          IVaultDo
@@ -134,6 +139,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		NoteLink:       q.NoteLink.WithContext(ctx),
 		Setting:        q.Setting.WithContext(ctx),
 		Storage:        q.Storage.WithContext(ctx),
+		SyncLog:        q.SyncLog.WithContext(ctx),
 		User:           q.User.WithContext(ctx),
 		UserShare:      q.UserShare.WithContext(ctx),
 		Vault:          q.Vault.WithContext(ctx),

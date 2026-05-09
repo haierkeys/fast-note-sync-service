@@ -31,6 +31,7 @@ func newSetting(db *gorm.DB, opts ...gen.DOOption) setting {
 	_setting.ID = field.NewInt64(tableName, "id")
 	_setting.VaultID = field.NewInt64(tableName, "vault_id")
 	_setting.Action = field.NewString(tableName, "action")
+	_setting.Rename = field.NewInt64(tableName, "rename")
 	_setting.Path = field.NewString(tableName, "path")
 	_setting.PathHash = field.NewString(tableName, "path_hash")
 	_setting.Content = field.NewString(tableName, "content")
@@ -54,6 +55,7 @@ type setting struct {
 	ID               field.Int64
 	VaultID          field.Int64
 	Action           field.String
+	Rename           field.Int64
 	Path             field.String
 	PathHash         field.String
 	Content          field.String
@@ -83,6 +85,7 @@ func (s *setting) updateTableName(table string) *setting {
 	s.ID = field.NewInt64(table, "id")
 	s.VaultID = field.NewInt64(table, "vault_id")
 	s.Action = field.NewString(table, "action")
+	s.Rename = field.NewInt64(table, "rename")
 	s.Path = field.NewString(table, "path")
 	s.PathHash = field.NewString(table, "path_hash")
 	s.Content = field.NewString(table, "content")
@@ -117,10 +120,11 @@ func (s *setting) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *setting) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 13)
+	s.fieldMap = make(map[string]field.Expr, 14)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["vault_id"] = s.VaultID
 	s.fieldMap["action"] = s.Action
+	s.fieldMap["rename"] = s.Rename
 	s.fieldMap["path"] = s.Path
 	s.fieldMap["path_hash"] = s.PathHash
 	s.fieldMap["content"] = s.Content
