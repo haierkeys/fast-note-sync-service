@@ -10,14 +10,19 @@ const TableNameAuthTokenLog = "auth_token_log"
 
 // AuthTokenLog mapped from table <auth_token_log>
 type AuthTokenLog struct {
-	ID         int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	TokenID    int64      `gorm:"column:token_id;not null;index:idx_auth_token_log_token_id,priority:1;default:0" json:"tokenId" form:"tokenId"`
-	UID        int64      `gorm:"column:uid;not null;index:idx_auth_token_log_uid,priority:1;default:0" json:"uid" form:"uid"`
-	Path       string     `gorm:"column:path;not null;default:''" json:"path" form:"path"`
-	Method     string     `gorm:"column:method;not null;default:''" json:"method" form:"method"`
-	IP         string     `gorm:"column:ip;not null;default:''" json:"ip" form:"ip"`
-	StatusCode int64      `gorm:"column:status_code;not null;default:0" json:"statusCode" form:"statusCode"`
-	CreatedAt  timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	ID            int64      `gorm:"column:id;default:0" json:"id" form:"id"`
+	TokenID       int64      `gorm:"column:token_id;index:idx_auth_token_log_token_id,priority:1;default:0" json:"tokenId" form:"tokenId"`
+	UID           int64      `gorm:"column:uid;index:idx_auth_token_log_uid,priority:1;default:0" json:"uid" form:"uid"`
+	Protocol      string     `gorm:"column:protocol;type:TEXT;default:''" json:"protocol" form:"protocol"`
+	Client        string     `gorm:"column:client;type:TEXT;default:''" json:"client" form:"client"`
+	ClientName    string     `gorm:"column:client_name;type:TEXT;default:''" json:"clientName" form:"clientName"`
+	ClientVersion string     `gorm:"column:client_version;type:TEXT;default:''" json:"clientVersion" form:"clientVersion"`
+	Path          string     `gorm:"column:path;type:TEXT;default:''" json:"path" form:"path"`
+	Method        string     `gorm:"column:method;type:TEXT;default:''" json:"method" form:"method"`
+	IP            string     `gorm:"column:ip;type:TEXT;default:''" json:"ip" form:"ip"`
+	Ua            string     `gorm:"column:ua;type:TEXT;default:''" json:"ua" form:"ua"`
+	StatusCode    int64      `gorm:"column:status_code;default:0" json:"statusCode" form:"statusCode"`
+	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 }
 
 // TableName AuthTokenLog's table name

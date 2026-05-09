@@ -17,6 +17,8 @@ type AuthToken struct {
 	UserAgent   string    // User Agent // 用户代理
 	Status      int64     // Status (1: Active, 0: Revoked) // 状态 (1: 活跃, 0: 注销)
 	ExpiredAt   time.Time // Expiration Time // 过期时间
+	IssueType   int       // Issue Type (1: Login, 2: Manual) // 签发类型 (1: 登录, 2: 手动)
+	LastUsedAt  time.Time // Last Used Time // 最后使用时间
 	CreatedAt   time.Time // Creation Time // 创建时间
 	UpdatedAt   time.Time // Update Time // 更新时间
 }
@@ -24,14 +26,19 @@ type AuthToken struct {
 // AuthTokenLog defines the token access log domain model
 // AuthTokenLog 定义令牌访问日志领域模型
 type AuthTokenLog struct {
-	ID         int64     // Primary Key // 主键
-	TokenID    int64     // Token ID // 令牌 ID
-	UID        int64     // User ID // 用户 ID
-	Path       string    // Request Path // 请求路径
-	Method     string    // Request Method // 请求方法
-	IP         string    // Request IP // 请求 IP
-	StatusCode int64     // HTTP Status Code // HTTP 状态码
-	CreatedAt  time.Time // Creation Time // 创建时间
+	ID            int64     // Primary Key // 主键
+	TokenID       int64     // Token ID // 令牌 ID
+	UID           int64     // User ID // 用户 ID
+	Protocol      string    // Protocol (rest, ws, mcp) // 协议
+	Client        string    // Client (webgui, obsidian) // 客户端
+	ClientName    string    // Client Name // 客户端名称
+	ClientVersion string    // Client Version // 客户端版本
+	Path          string    // Request Path // 请求路径
+	Method        string    // Request Method // 请求方法
+	IP            string    // Request IP // 请求 IP
+	UA            string    // User Agent // 用户代理
+	StatusCode    int64     // HTTP Status Code // HTTP 状态码
+	CreatedAt     time.Time // Creation Time // 创建时间
 }
 
 // AuthTokenRepository defines the AuthToken repository interface
@@ -57,6 +64,10 @@ type AuthTokenRepository interface {
 	// UpdateScope 更新令牌的权限范围
 	UpdateScope(ctx context.Context, id int64, scope string) error
 
+	// UpdateLastUsedAt updates the last used time of a token
+	// UpdateLastUsedAt 更新令牌的最后使用时间
+	UpdateLastUsedAt(ctx context.Context, id int64) error
+
 	// Revoke revokes a token
 	// Revoke 注销令牌
 	Revoke(ctx context.Context, id int64) error
@@ -66,10 +77,11 @@ type AuthTokenRepository interface {
 	RevokeAllByUID(ctx context.Context, uid int64) error
 }
 
-// AuthTokenLogRepository defines the AuthTokenLog repository interface
-// AuthTokenLogRepository 定义认证令牌日志仓储接口
 type AuthTokenLogRepository interface {
 	// Create creates a new access log
 	// Create 创建新的访问日志
 	Create(ctx context.Context, log *AuthTokenLog) error
+	// ListByTokenID lists access logs for a specific token with pagination
+	// ListByTokenID 为特定令牌列出带有分页的访问日志
+	ListByTokenID(ctx context.Context, tokenID int64, page, pageSize int) ([]*AuthTokenLog, int64, error)
 }

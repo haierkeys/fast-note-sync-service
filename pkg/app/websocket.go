@@ -644,7 +644,7 @@ type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqUserAgent, reqIP string) error
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -764,12 +764,24 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 			StartTime: timex.Now(),
 		}
 
+		// Extract client info from query parameters
+		// 从查询参数中提取客户端信息
+		client.ClientType = c.Query("client")
+		client.ClientName = c.Query("clientName")
+		client.ClientVersion = c.Query("clientVersion")
+
 		// Initialize long-lifecycle context for WebSocket connection
 		// 初始化 WebSocket 连接的长生命周期 context
 		client.initContext(traceID)
 
 		w.AddClient(client)
-		log(LogInfo, "WS Start", zap.String("type", "ReadLoop"), zap.String("traceID", traceID))
+		log(LogInfo, "WS Start",
+			zap.String("type", "ReadLoop"),
+			zap.String("traceID", traceID),
+			zap.String("client", client.ClientType),
+			zap.String("clientName", client.ClientName),
+			zap.String("clientVersion", client.ClientVersion),
+		)
 		go socket.ReadLoop()
 	}
 }
@@ -782,7 +794,7 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
-func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqUserAgent, reqIP string) error) {
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error) {
 	w.tokenVerifyHandler = handler
 }
 
@@ -816,10 +828,13 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		// 通过注入的处理函数验证 3D RBAC 权限
 		if w.tokenVerifyHandler != nil {
 			reqClientType := c.Ctx.GetHeader("x-client")
+			if reqClientType == "" {
+				reqClientType = c.Ctx.Query("client")
+			}
 			reqUserAgent := c.Ctx.GetHeader("User-Agent")
 			reqIP := c.Ctx.ClientIP()
 
-			err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, reqUserAgent, reqIP)
+			err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
 				c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")

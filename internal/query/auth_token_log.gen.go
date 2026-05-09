@@ -31,9 +31,14 @@ func newAuthTokenLog(db *gorm.DB, opts ...gen.DOOption) authTokenLog {
 	_authTokenLog.ID = field.NewInt64(tableName, "id")
 	_authTokenLog.TokenID = field.NewInt64(tableName, "token_id")
 	_authTokenLog.UID = field.NewInt64(tableName, "uid")
+	_authTokenLog.Protocol = field.NewString(tableName, "protocol")
+	_authTokenLog.Client = field.NewString(tableName, "client")
+	_authTokenLog.ClientName = field.NewString(tableName, "client_name")
+	_authTokenLog.ClientVersion = field.NewString(tableName, "client_version")
 	_authTokenLog.Path = field.NewString(tableName, "path")
 	_authTokenLog.Method = field.NewString(tableName, "method")
 	_authTokenLog.IP = field.NewString(tableName, "ip")
+	_authTokenLog.Ua = field.NewString(tableName, "ua")
 	_authTokenLog.StatusCode = field.NewInt64(tableName, "status_code")
 	_authTokenLog.CreatedAt = field.NewField(tableName, "created_at")
 
@@ -45,15 +50,20 @@ func newAuthTokenLog(db *gorm.DB, opts ...gen.DOOption) authTokenLog {
 type authTokenLog struct {
 	authTokenLogDo authTokenLogDo
 
-	ALL        field.Asterisk
-	ID         field.Int64
-	TokenID    field.Int64
-	UID        field.Int64
-	Path       field.String
-	Method     field.String
-	IP         field.String
-	StatusCode field.Int64
-	CreatedAt  field.Field
+	ALL           field.Asterisk
+	ID            field.Int64
+	TokenID       field.Int64
+	UID           field.Int64
+	Protocol      field.String
+	Client        field.String
+	ClientName    field.String
+	ClientVersion field.String
+	Path          field.String
+	Method        field.String
+	IP            field.String
+	Ua            field.String
+	StatusCode    field.Int64
+	CreatedAt     field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -73,9 +83,14 @@ func (a *authTokenLog) updateTableName(table string) *authTokenLog {
 	a.ID = field.NewInt64(table, "id")
 	a.TokenID = field.NewInt64(table, "token_id")
 	a.UID = field.NewInt64(table, "uid")
+	a.Protocol = field.NewString(table, "protocol")
+	a.Client = field.NewString(table, "client")
+	a.ClientName = field.NewString(table, "client_name")
+	a.ClientVersion = field.NewString(table, "client_version")
 	a.Path = field.NewString(table, "path")
 	a.Method = field.NewString(table, "method")
 	a.IP = field.NewString(table, "ip")
+	a.Ua = field.NewString(table, "ua")
 	a.StatusCode = field.NewInt64(table, "status_code")
 	a.CreatedAt = field.NewField(table, "created_at")
 
@@ -106,13 +121,18 @@ func (a *authTokenLog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (a *authTokenLog) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 8)
+	a.fieldMap = make(map[string]field.Expr, 13)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["token_id"] = a.TokenID
 	a.fieldMap["uid"] = a.UID
+	a.fieldMap["protocol"] = a.Protocol
+	a.fieldMap["client"] = a.Client
+	a.fieldMap["client_name"] = a.ClientName
+	a.fieldMap["client_version"] = a.ClientVersion
 	a.fieldMap["path"] = a.Path
 	a.fieldMap["method"] = a.Method
 	a.fieldMap["ip"] = a.IP
+	a.fieldMap["ua"] = a.Ua
 	a.fieldMap["status_code"] = a.StatusCode
 	a.fieldMap["created_at"] = a.CreatedAt
 }

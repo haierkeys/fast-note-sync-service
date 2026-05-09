@@ -2,6 +2,7 @@ package app
 
 import (
 	"strings"
+	"github.com/gookit/goutil/dump"
 )
 
 // VerifyPermissions verifies if the given scope matches the required protocol, client, and function.
@@ -34,13 +35,60 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 		}
 	}
 
-	matchP := (scopeP == "*" || strings.EqualFold(scopeP, p))
-	matchC := (scopeC == "*" || strings.EqualFold(scopeC, c))
-	
+	// Match Protocol (supports comma-separated list, e.g. "rest,ws")
+	matchP := scopeP == "*" || strings.EqualFold(scopeP, p)
+	if !matchP && scopeP != "" {
+		pList := strings.Split(scopeP, ",")
+		for _, item := range pList {
+			if strings.EqualFold(strings.TrimSpace(item), p) {
+				matchP = true
+				break
+			}
+		}
+	}
+
+	// Match Client (Only if scope specifies a client)
+	matchC := true
+	if scopeC != "" && scopeC != "*" {
+		matchC = strings.EqualFold(scopeC, c)
+	}
+
 	matchF := true
 	if f != "" {
 		matchF = (scopeF == "*" || strings.EqualFold(scopeF, f))
 	}
 
+	dump.P(map[string]any{
+		"step": "VerifyPermissions",
+		"input": map[string]string{
+			"scope": scope,
+			"protocol": p,
+			"client": c,
+			"function": f,
+		},
+		"extracted": map[string]string{
+			"scopeP": scopeP,
+			"scopeC": scopeC,
+			"scopeF": scopeF,
+		},
+		"matches": map[string]bool{
+			"matchP": matchP,
+			"matchC": matchC,
+			"matchF": matchF,
+		},
+		"result": matchP && matchC && matchF,
+	})
+
 	return matchP && matchC && matchF
+}
+
+// MatchWildcard checks if a value matches a pattern with an optional wildcard suffix '*'
+func MatchWildcard(pattern, value string) bool {
+	if pattern == "" || pattern == "*" {
+		return true
+	}
+	if strings.HasSuffix(pattern, "*") {
+		return strings.HasPrefix(value, strings.TrimSuffix(pattern, "*"))
+	}
+	return pattern == value
 }

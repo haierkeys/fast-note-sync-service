@@ -432,6 +432,8 @@ CREATE TABLE "auth_token" (
     "bound_ip" text NOT NULL DEFAULT '',
     "user_agent" text NOT NULL DEFAULT '',
     "status" integer NOT NULL DEFAULT 1,
+    "issue_type" integer NOT NULL DEFAULT 1,
+    "last_used_at" datetime DEFAULT NULL,
     "expired_at" datetime DEFAULT NULL,
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
@@ -449,9 +451,14 @@ CREATE TABLE "auth_token_log" (
     "id" integer PRIMARY KEY AUTOINCREMENT,
     "token_id" integer NOT NULL DEFAULT 0,
     "uid" integer NOT NULL DEFAULT 0,
+    "protocol" text NOT NULL DEFAULT '',
+    "client" text NOT NULL DEFAULT '',
+    "client_name" text NOT NULL DEFAULT '',
+    "client_version" text NOT NULL DEFAULT '',
     "path" text NOT NULL DEFAULT '',
     "method" text NOT NULL DEFAULT '',
     "ip" text NOT NULL DEFAULT '',
+    "ua" text NOT NULL DEFAULT '',
     "status_code" integer NOT NULL DEFAULT 0,
     "created_at" datetime DEFAULT NULL
 );

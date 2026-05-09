@@ -91,7 +91,7 @@ ver:
 	@:
 
 gen:
-	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db.sqlite3
+	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db_full.sqlite3
 	go run -v ./cmd/model_gen/gen.go
 
 docs:

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gookit/goutil/dump"
 	internalApp "github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers"
@@ -259,8 +258,6 @@ func NewServer(runEnv *runFlags) (*Server, error) {
 	}
 
 	if httpAddr := appConfig.Server.WebGuiPort; len(httpAddr) > 0 {
-
-		dump.P(appConfig.Server.WebGuiPort)
 
 		s.logger.Info("webgui_server", zap.String("config.server.WebGuiPort", appConfig.Server.WebGuiPort))
 		s.webGuiServer = &http.Server{

@@ -36,6 +36,8 @@ func newAuthToken(db *gorm.DB, opts ...gen.DOOption) authToken {
 	_authToken.BoundIP = field.NewString(tableName, "bound_ip")
 	_authToken.UserAgent = field.NewString(tableName, "user_agent")
 	_authToken.Status = field.NewInt64(tableName, "status")
+	_authToken.IssueType = field.NewInt64(tableName, "issue_type")
+	_authToken.LastUsedAt = field.NewTime(tableName, "last_used_at")
 	_authToken.ExpiredAt = field.NewTime(tableName, "expired_at")
 	_authToken.CreatedAt = field.NewField(tableName, "created_at")
 	_authToken.UpdatedAt = field.NewField(tableName, "updated_at")
@@ -57,6 +59,8 @@ type authToken struct {
 	BoundIP     field.String
 	UserAgent   field.String
 	Status      field.Int64
+	IssueType   field.Int64
+	LastUsedAt  field.Time
 	ExpiredAt   field.Time
 	CreatedAt   field.Field
 	UpdatedAt   field.Field
@@ -84,6 +88,8 @@ func (a *authToken) updateTableName(table string) *authToken {
 	a.BoundIP = field.NewString(table, "bound_ip")
 	a.UserAgent = field.NewString(table, "user_agent")
 	a.Status = field.NewInt64(table, "status")
+	a.IssueType = field.NewInt64(table, "issue_type")
+	a.LastUsedAt = field.NewTime(table, "last_used_at")
 	a.ExpiredAt = field.NewTime(table, "expired_at")
 	a.CreatedAt = field.NewField(table, "created_at")
 	a.UpdatedAt = field.NewField(table, "updated_at")
@@ -113,7 +119,7 @@ func (a *authToken) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *authToken) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 11)
+	a.fieldMap = make(map[string]field.Expr, 13)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["uid"] = a.UID
 	a.fieldMap["token_string"] = a.TokenString
@@ -122,6 +128,8 @@ func (a *authToken) fillFieldMap() {
 	a.fieldMap["bound_ip"] = a.BoundIP
 	a.fieldMap["user_agent"] = a.UserAgent
 	a.fieldMap["status"] = a.Status
+	a.fieldMap["issue_type"] = a.IssueType
+	a.fieldMap["last_used_at"] = a.LastUsedAt
 	a.fieldMap["expired_at"] = a.ExpiredAt
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt

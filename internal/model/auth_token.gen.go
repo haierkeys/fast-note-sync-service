@@ -16,12 +16,14 @@ const TableNameAuthToken = "auth_token"
 type AuthToken struct {
 	ID          int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
 	UID         int64      `gorm:"column:uid;not null;index:idx_auth_token_uid,priority:1;default:0" json:"uid" form:"uid"`
-	TokenString string     `gorm:"column:token_string;not null;index:idx_auth_token_token_string,priority:1;default:''" json:"tokenString" form:"tokenString"`
+	TokenString string     `gorm:"column:token_string;type:varchar(255);not null;index:idx_auth_token_token_string,priority:1;default:''" json:"tokenString" form:"tokenString"`
 	Scope       string     `gorm:"column:scope;not null;default:''" json:"scope" form:"scope"`
 	ClientType  string     `gorm:"column:client_type;not null;default:''" json:"clientType" form:"clientType"`
 	BoundIP     string     `gorm:"column:bound_ip;not null;default:''" json:"boundIp" form:"boundIp"`
 	UserAgent   string     `gorm:"column:user_agent;not null;default:''" json:"userAgent" form:"userAgent"`
 	Status      int64      `gorm:"column:status;not null;default:1" json:"status" form:"status"`
+	IssueType   int64      `gorm:"column:issue_type;not null;default:1" json:"issueType" form:"issueType"`
+	LastUsedAt  time.Time  `gorm:"column:last_used_at" json:"lastUsedAt" form:"lastUsedAt"`
 	ExpiredAt   time.Time  `gorm:"column:expired_at" json:"expiredAt" form:"expiredAt"`
 	CreatedAt   timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt   timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`

@@ -63,6 +63,8 @@ func (r *authTokenRepository) toDomain(m *model.AuthToken) *domain.AuthToken {
 		UserAgent:   m.UserAgent,
 		Status:      int64(m.Status),
 		ExpiredAt:   m.ExpiredAt,
+		IssueType:   int(m.IssueType),
+		LastUsedAt:  m.LastUsedAt,
 		CreatedAt:   time.Time(m.CreatedAt),
 		UpdatedAt:   time.Time(m.UpdatedAt),
 	}
@@ -79,6 +81,8 @@ func (r *authTokenRepository) Create(ctx context.Context, token *domain.AuthToke
 		UserAgent:   token.UserAgent,
 		Status:      token.Status,
 		ExpiredAt:   token.ExpiredAt,
+		IssueType:   int64(token.IssueType),
+		LastUsedAt:  token.LastUsedAt,
 		CreatedAt:   timex.Now(),
 		UpdatedAt:   timex.Now(),
 	}
@@ -149,6 +153,14 @@ func (r *authTokenRepository) RevokeAllByUID(ctx context.Context, uid int64) err
 	return err
 }
 
+func (r *authTokenRepository) UpdateLastUsedAt(ctx context.Context, id int64) error {
+	u := r.authToken().AuthToken
+	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
+		u.LastUsedAt.Value(time.Now()),
+	)
+	return err
+}
+
 type authTokenLogRepository struct {
 	dao *Dao
 }
@@ -172,13 +184,58 @@ func (r *authTokenLogRepository) authTokenLog() *query.Query {
 func (r *authTokenLogRepository) Create(ctx context.Context, log *domain.AuthTokenLog) error {
 	u := r.authTokenLog().AuthTokenLog
 	m := &model.AuthTokenLog{
-		TokenID:    log.TokenID,
-		UID:        log.UID,
-		Path:       log.Path,
-		Method:     log.Method,
-		IP:         log.IP,
-		StatusCode: log.StatusCode,
-		CreatedAt:  timex.Now(),
+		TokenID:       log.TokenID,
+		UID:           log.UID,
+		Protocol:      log.Protocol,
+		Client:        log.Client,
+		ClientName:    log.ClientName,
+		ClientVersion: log.ClientVersion,
+		Path:          log.Path,
+		Method:        log.Method,
+		IP:            log.IP,
+		Ua:            log.UA,
+		StatusCode:    log.StatusCode,
+		CreatedAt:     timex.Now(),
 	}
 	return u.WithContext(ctx).Create(m)
+}
+
+func (r *authTokenLogRepository) ListByTokenID(ctx context.Context, tokenID int64, page, pageSize int) ([]*domain.AuthTokenLog, int64, error) {
+	u := r.authTokenLog().AuthTokenLog
+	q := u.WithContext(ctx).Where(u.TokenID.Eq(tokenID))
+
+	count, err := q.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	models, err := q.Order(u.CreatedAt.Desc()).Limit(pageSize).Offset(offset).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var res []*domain.AuthTokenLog
+	for _, m := range models {
+		res = append(res, r.toDomain(m))
+	}
+	return res, count, nil
+}
+
+func (r *authTokenLogRepository) toDomain(m *model.AuthTokenLog) *domain.AuthTokenLog {
+	return &domain.AuthTokenLog{
+		ID:            m.ID,
+		TokenID:       m.TokenID,
+		UID:           m.UID,
+		Protocol:      m.Protocol,
+		Client:        m.Client,
+		ClientName:    m.ClientName,
+		ClientVersion: m.ClientVersion,
+		Path:          m.Path,
+		Method:        m.Method,
+		IP:            m.IP,
+		UA:            m.Ua,
+		StatusCode:    m.StatusCode,
+		CreatedAt:     time.Time(m.CreatedAt),
+	}
 }

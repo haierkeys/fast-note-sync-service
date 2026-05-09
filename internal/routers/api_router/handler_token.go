@@ -126,6 +126,45 @@ func (h *TokenHandler) Revoke(c *gin.Context) {
 	response.ToResponse(code.Success)
 }
 
+// ListLogs lists access logs for a specific token
+// ListLogs 列出特定令牌的访问日志
+func (h *TokenHandler) ListLogs(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	
+	idStr := c.Param("id")
+	tokenID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("invalid id"))
+		return
+	}
+
+	params := &dto.TokenLogListRequest{}
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	if params.Page <= 0 {
+		params.Page = 1
+	}
+	if params.PageSize <= 0 {
+		params.PageSize = 10
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	logs, totalRows, err := h.App.TokenService.ListLogs(ctx, uid, tokenID, params.Page, params.PageSize)
+	if err != nil {
+		h.logError(ctx, "TokenHandler.ListLogs", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponseList(code.Success, logs, int(totalRows))
+}
+
 func (h *TokenHandler) logError(ctx context.Context, method string, err error) {
 	h.App.Logger().Error(method, zap.Error(err))
 }

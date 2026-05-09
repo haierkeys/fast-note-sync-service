@@ -2,6 +2,7 @@ package routers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/mcp_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
 func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.WebsocketServer, uni *ut.UniversalTranslator) {
@@ -199,12 +201,29 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			// 同步日志路由
 			auth.GET("/sync-logs", syncLogHandler.List)
 
-			// Token management routes
-			// 令牌管理路由
-			auth.GET("/tokens", tokenHandler.List)
-			auth.POST("/token", tokenHandler.Create)
-			auth.PUT("/token/:id", tokenHandler.UpdateScope)
-			auth.DELETE("/token/:id", tokenHandler.Revoke)
+			// Token management routes (Restricted to webgui)
+			// 令牌管理路由（限制仅 webgui 访问）
+			tokenGroup := auth.Group("")
+			tokenGroup.Use(func(c *gin.Context) {
+				client := c.GetHeader("x-client")
+				if client == "" {
+					client = c.Query("client")
+				}
+				if !strings.EqualFold(client, "webgui") {
+					response := pkgapp.NewResponse(c)
+					response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Token management is only allowed from webgui"))
+					c.Abort()
+					return
+				}
+				c.Next()
+			})
+			{
+				tokenGroup.GET("/tokens", tokenHandler.List)
+				tokenGroup.POST("/token", tokenHandler.Create)
+				tokenGroup.PUT("/token/:id", tokenHandler.UpdateScope)
+				tokenGroup.DELETE("/token/:id", tokenHandler.Revoke)
+				tokenGroup.GET("/token/:id/logs", tokenHandler.ListLogs)
+			}
 		}
 	}
 }

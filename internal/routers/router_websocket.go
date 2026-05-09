@@ -8,7 +8,9 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"fmt"
 )
 
 func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
@@ -54,32 +56,52 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 
 	// Inject Token Verification to decouple pkg/app from internal/service
-	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqUserAgent, reqIP string) error {
+	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error {
 		dbToken, err := appContainer.TokenService.GetActiveToken(ctx, uid, tokenID)
 		if err != nil || dbToken == nil {
+			fmt.Printf("[WSDebug] Token not found in DB: uid=%d, tokenId=%d, err=%v\n", uid, tokenID, err)
 			return code.ErrorInvalidUserAuthToken
 		}
 
 		// 1. Verify Scope Permissions (Protocol: ws)
 		if !pkgapp.VerifyPermissions(dbToken.Scope, "ws", reqClientType, "") {
+			fmt.Printf("[WSDebug] Permission denied: scope=%s, protocol=%s, client=%s\n", dbToken.Scope, "ws", reqClientType)
 			return code.ErrorInvalidUserAuthToken
 		}
 
 		// 2. Verify Client Type
 		if reqClientType != "" && !strings.EqualFold(reqClientType, dbToken.ClientType) {
+			fmt.Printf("[WSDebug] ClientType mismatch: req=%s, db=%s\n", reqClientType, dbToken.ClientType)
 			return code.ErrorInvalidUserAuthToken
 		}
 
-		// 3. Verify User-Agent
-		if reqUserAgent != dbToken.UserAgent {
+		// 3. Verify User-Agent (Only if bound)
+		if dbToken.UserAgent != "" && !pkgapp.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
+			fmt.Printf("[WSDebug] User-Agent mismatch: req=%s, db=%s\n", reqUserAgent, dbToken.UserAgent)
 			return code.ErrorInvalidUserAuthToken
 		}
 
-		// 4. Verify IP
-		if reqIP != dbToken.BoundIP {
+		// 4. Verify IP (Only if bound)
+		if dbToken.BoundIP != "" && !pkgapp.MatchWildcard(dbToken.BoundIP, reqIP) {
+			fmt.Printf("[WSDebug] IP mismatch: req=%s, db=%s\n", reqIP, dbToken.BoundIP)
 			return code.ErrorInvalidUserAuthToken
 		}
 
+		// 5. Record Access Log (Success)
+		_ = appContainer.TokenService.RecordAccessLog(ctx, &domain.AuthTokenLog{
+			TokenID:       tokenID,
+			UID:           uid,
+			Protocol:      "ws",
+			Client:        reqClientType,
+			ClientName:    reqClientName,
+			ClientVersion: reqClientVersion,
+			Path:          "/ws",
+			Method:        "UPGRADE",
+			IP:            reqIP,
+			UA:            reqUserAgent,
+			StatusCode:    101, // Switching Protocols
+		})
+		
 		return nil
 	})
 }

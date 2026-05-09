@@ -11,10 +11,9 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 
 	"github.com/gin-gonic/gin"
+	"fmt"
 )
 
-// UserAuthTokenWithConfig user Token authentication middleware (using injected secret key and token service)
-// UserAuthTokenWithConfig 用户 Token 认证中间件（使用注入的密钥和 Token 服务）
 func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := app.NewResponse(c)
@@ -60,6 +59,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		ctx := c.Request.Context()
 		dbToken, err := tokenService.GetActiveToken(ctx, user.UID, user.TokenID)
 		if err != nil || dbToken == nil {
+			fmt.Printf("[AuthDebug] Token not found or inactive in DB: uid=%d, tokenId=%d, err=%v\n", user.UID, user.TokenID, err)
 			if appErr, ok := err.(*code.Code); ok {
 				response.ToResponse(appErr)
 			} else {
@@ -72,28 +72,39 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// 3. Verify Client, IP and User-Agent Binding
 		// 验证客户端类型、IP 和浏览器 User-Agent 的严格绑定
 		reqClientType := c.GetHeader("x-client")
-		if reqClientType != dbToken.ClientType {
+		if reqClientType == "" {
+			reqClientType = c.Query("client")
+		}
+		if !strings.EqualFold(reqClientType, dbToken.ClientType) {
+			fmt.Printf("[AuthDebug] ClientType mismatch: req=%s, db=%s\n", reqClientType, dbToken.ClientType)
 			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Client mismatch"))
 			c.Abort()
 			return
 		}
 
-		// 检查 User-Agent 防篡改/防盗用
-		if reqUserAgent := c.GetHeader("User-Agent"); reqUserAgent != dbToken.UserAgent {
-			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("User-Agent mismatch"))
-			c.Abort()
-			return
+		// 检查 User-Agent 防篡改/防盗用 (仅在数据库中有绑定时校验)
+		if dbToken.UserAgent != "" {
+			if reqUserAgent := c.GetHeader("User-Agent"); !app.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
+				fmt.Printf("[AuthDebug] User-Agent mismatch: req=%s, db=%s\n", reqUserAgent, dbToken.UserAgent)
+				response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("User-Agent mismatch"))
+				c.Abort()
+				return
+			}
 		}
 
-		// 检查 IP 防盗用
-		if reqIP := c.ClientIP(); reqIP != dbToken.BoundIP {
-			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("IP mismatch"))
-			c.Abort()
-			return
+		// 检查 IP 防盗用 (仅在数据库中有绑定时校验)
+		if dbToken.BoundIP != "" {
+			if reqIP := c.ClientIP(); !app.MatchWildcard(dbToken.BoundIP, reqIP) {
+				fmt.Printf("[AuthDebug] IP mismatch: req=%s, db=%s\n", reqIP, dbToken.BoundIP)
+				response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("IP mismatch"))
+				c.Abort()
+				return
+			}
 		}
 
 		// 4. Determine Function Dimension for RBAC
 		// 确定 RBAC 的功能维度
+		fmt.Printf("[AuthDebug] Validating permissions: scope=%s, protocol=%s, client=%s\n", dbToken.Scope, "rest", reqClientType)
 		path := c.Request.URL.Path
 		method := c.Request.Method
 		var function string
@@ -119,8 +130,9 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// Protocol is rest for this middleware
 		protocol := "rest"
 
-		// 5. Verify Permissions
-		if !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
+		// 5. Verify Permissions (Health check is always allowed for valid tokens)
+		if path != "/api/health" && !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
+			fmt.Printf("[AuthDebug] Permission denied: scope=%s, protocol=%s, client=%s, function=%s\n", dbToken.Scope, protocol, reqClientType, function)
 			response.ToResponse(code.ErrorInvalidAuthToken.WithDetails("Permission denied"))
 			c.Abort()
 			return
@@ -130,12 +142,17 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// 异步记录访问日志
 		go func() {
 			log := &domain.AuthTokenLog{
-				TokenID:    dbToken.ID,
-				UID:        dbToken.UID,
-				Path:       path,
-				Method:     method,
-				IP:         c.ClientIP(),
-				StatusCode: int64(c.Writer.Status()),
+				TokenID:       dbToken.ID,
+				UID:           dbToken.UID,
+				Protocol:      protocol,
+				Client:        reqClientType,
+				ClientName:    c.GetHeader("x-client-name"),
+				ClientVersion: c.GetHeader("x-client-version"),
+				Path:          path,
+				Method:        method,
+				IP:            c.ClientIP(),
+				UA:            c.GetHeader("User-Agent"),
+				StatusCode:    int64(c.Writer.Status()),
 			}
 			// Use background context for async operation
 			_ = tokenService.RecordAccessLog(context.Background(), log)
