@@ -56,6 +56,7 @@ type MCPHandler struct {
 	sseServer        *mcpserver.SSEServer
 	streamableServer *mcpserver.StreamableHTTPServer // StreamableHTTP transport server / StreamableHTTP 传输协议服务
 	ssePingInterval  time.Duration                   // SSE heartbeat interval / SSE 心跳间隔
+	extApiUrl        string                          // External API base URL (from config), used for SSE endpoint rewriting / 外部 API 基础 URL（来自配置），用于 SSE 端点重写
 }
 
 func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandler {
@@ -139,6 +140,7 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 		sseServer:        sseSrv,
 		streamableServer: streamableSrv,
 		ssePingInterval:  pingInterval,
+		extApiUrl:        strings.TrimSuffix(cfg.Server.ExtApiUrl, "/"),
 	}
 }
 
@@ -185,11 +187,19 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	// (e.g., Hermes/Anthropic Python SDK) that cannot resolve relative
 	// endpoint paths returned by mark3labs/mcp-go SSEServer.
 	// See: https://github.com/haierkeys/fast-note-sync-service/issues/258
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
+	// Priority 1: use the configured ExtApiUrl so that reverse-proxy deployments
+	// return the correct public URL instead of the internal host/port.
+	// Priority 2: fall back to reconstructing from the request (scheme + Host header).
+	// 优先级 1：使用配置的 ExtApiUrl，确保反向代理场景下返回正确的公网 URL。
+	// 优先级 2：回退到从请求重建（scheme + Host）。
+	absoluteBase := h.extApiUrl
+	if absoluteBase == "" {
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		absoluteBase = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 	}
-	absoluteBase := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 
 	// Let SSEServer handle the SSE connection, with endpoint URL rewriting
 	rewriter := &endpointRewriter{
@@ -200,8 +210,12 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 }
 
 func (h *MCPHandler) HandleMessage(c *gin.Context) {
-	// Let SSEServer handle the message
-	h.sseServer.MessageHandler().ServeHTTP(c.Writer, c.Request)
+	// Inject uid into the request context so the SSEContextFunc can propagate it
+	// to tool handlers during message processing.
+	// 将 uid 注入请求 context，使 SSEContextFunc 能在消息处理时将其传递给工具处理函数。
+	uid := pkgapp.GetUID(c)
+	ctx := context.WithValue(c.Request.Context(), "uid", uid)
+	h.sseServer.MessageHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
 
 // HandleStreamableHTTP handles the MCP StreamableHTTP transport protocol.
