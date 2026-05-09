@@ -133,7 +133,7 @@ func (g *gitSyncConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (g *gitSyncConfig) fillFieldMap() {
-	g.fieldMap = make(map[string]field.Expr, 15)
+	g.fieldMap = make(map[string]field.Expr, 17)
 	g.fieldMap["id"] = g.ID
 	g.fieldMap["uid"] = g.UID
 	g.fieldMap["vault_id"] = g.VaultID

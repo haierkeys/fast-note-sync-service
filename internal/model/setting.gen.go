@@ -13,12 +13,12 @@ type Setting struct {
 	ID               int64      `gorm:"column:id;primaryKey;index:idx_setting_id_path,priority:1;index:idx_setting_id_updated_timestamp,priority:1;index:idx_setting_id_updated_at,priority:1;index:idx_setting_id_path_hash,priority:1" json:"id" form:"id"`
 	VaultID          int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
 	Action           string     `gorm:"column:action;default:''" json:"action" form:"action"`
+	Rename           int64      `gorm:"column:rename;default:0" json:"rename" form:"rename"`
 	Path             string     `gorm:"column:path;type:varchar(255);index:idx_setting_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash         string     `gorm:"column:path_hash;type:varchar(255);index:idx_setting_id_path_hash,priority:2;default:''" json:"pathHash" form:"pathHash"`
 	Content          string     `gorm:"column:content;default:''" json:"content" form:"content"`
 	ContentHash      string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
 	Size             int64      `gorm:"column:size;default:0" json:"size" form:"size"`
-	Rename           int64      `gorm:"column:rename;default:0" json:"rename" form:"rename"`
 	Ctime            int64      `gorm:"column:ctime;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;default:0" json:"mtime" form:"mtime"`
 	UpdatedTimestamp int64      `gorm:"column:updated_timestamp;index:idx_setting_id_updated_timestamp,priority:2;default:0" json:"updatedTimestamp" form:"updatedTimestamp"`
