@@ -190,6 +190,12 @@ func (a *App) SetWSS(wss *pkgapp.WebsocketServer) {
 	a.wss = wss
 }
 
+// GetWSS gets WebSocket server reference
+// GetWSS 获取 WebSocket 服务器引用
+func (a *App) GetWSS() *pkgapp.WebsocketServer {
+	return a.wss
+}
+
 // BroadcastClientInfo broadcasts version information to all connected clients
 // BroadcastClientInfo 向所有连接的客户端广播版本信息
 func (a *App) BroadcastClientInfo() {

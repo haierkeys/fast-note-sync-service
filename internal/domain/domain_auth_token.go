@@ -33,8 +33,6 @@ type AuthTokenLog struct {
 	Client        string    // Client (webgui, obsidian) // 客户端
 	ClientName    string    // Client Name // 客户端名称
 	ClientVersion string    // Client Version // 客户端版本
-	Path          string    // Request Path // 请求路径
-	Method        string    // Request Method // 请求方法
 	IP            string    // Request IP // 请求 IP
 	UA            string    // User Agent // 用户代理
 	StatusCode    int64     // HTTP Status Code // HTTP 状态码

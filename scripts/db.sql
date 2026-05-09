@@ -453,13 +453,11 @@ CREATE TABLE "auth_token_log" (
     "uid" integer NOT NULL DEFAULT 0,
     "protocol" text NOT NULL DEFAULT '',
     "client" text NOT NULL DEFAULT '',
-    "client_name" text NOT NULL DEFAULT '',
-    "client_version" text NOT NULL DEFAULT '',
-    "path" text NOT NULL DEFAULT '',
-    "method" text NOT NULL DEFAULT '',
-    "ip" text NOT NULL DEFAULT '',
-    "ua" text NOT NULL DEFAULT '',
-    "status_code" integer NOT NULL DEFAULT 0,
+    "client_name" text DEFAULT '',
+    "client_version" text DEFAULT '',
+    "ip" text DEFAULT '',
+    "ua" text DEFAULT '',
+    "status_code" integer DEFAULT 0,
     "created_at" datetime DEFAULT NULL
 );
 

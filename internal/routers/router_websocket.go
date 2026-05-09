@@ -87,7 +87,6 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 			return code.ErrorInvalidUserAuthToken
 		}
 
-		// 5. Record Access Log (Success)
 		_ = appContainer.TokenService.RecordAccessLog(ctx, &domain.AuthTokenLog{
 			TokenID:       tokenID,
 			UID:           uid,
@@ -95,8 +94,6 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 			Client:        reqClientType,
 			ClientName:    reqClientName,
 			ClientVersion: reqClientVersion,
-			Path:          "/ws",
-			Method:        "UPGRADE",
 			IP:            reqIP,
 			UA:            reqUserAgent,
 			StatusCode:    101, // Switching Protocols

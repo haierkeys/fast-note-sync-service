@@ -36,6 +36,7 @@ type TokenResponse struct {
 	LastUsedAt timex.Time `json:"lastUsedAt"`
 	ExpiredAt  timex.Time `json:"expiredAt"`
 	CreatedAt  timex.Time `json:"createdAt"`
+	IsWsOnline bool       `json:"isWsOnline"`
 }
 
 // TokenCreateResponse defines the response structure when creating a token
@@ -53,8 +54,6 @@ type TokenLogResponse struct {
 	Client        string     `json:"client"`
 	ClientName    string     `json:"clientName"`
 	ClientVersion string     `json:"clientVersion"`
-	Path          string     `json:"path"`
-	Method        string     `json:"method"`
 	IP            string     `json:"ip"`
 	UA            string     `json:"ua"`
 	StatusCode    int64      `json:"statusCode"`

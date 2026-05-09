@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -695,10 +696,16 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			}
 			fileSvc, err := fileService.Get(ctx, c.User.UID, getParams)
 			if err != nil {
-				h.App.Logger().Warn("websocket_router.file.FileSync.FileService.Get",
-					zap.String(logger.FieldTraceID, c.TraceID),
-					zap.String("pathHash", missingFile.PathHash),
-					zap.Error(err))
+				if strings.Contains(err.Error(), "record not found") {
+					h.App.Logger().Debug("websocket_router.file.FileSync.FileService.Get: missing file not found on server",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.String("pathHash", missingFile.PathHash))
+				} else {
+					h.App.Logger().Warn("websocket_router.file.FileSync.FileService.Get",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.String("pathHash", missingFile.PathHash),
+						zap.Error(err))
+				}
 				continue
 			}
 

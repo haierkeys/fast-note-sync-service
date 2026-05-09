@@ -209,14 +209,15 @@ func (s *tokenService) Revoke(ctx context.Context, uid int64, tokenID int64) err
 func (s *tokenService) RecordAccessLog(ctx context.Context, log *domain.AuthTokenLog) error {
 	_ = s.tokenRepo.UpdateLastUsedAt(ctx, log.TokenID)
 
-	// Rate limiting: 30s per TokenID
-	// 只记录 30s 内的第一次访问
-	if lastTime, ok := s.lastLogMap.Load(log.TokenID); ok {
+	// Rate limiting: 30s per TokenID + Protocol
+	// 30秒内相同 Token 和协议的连续请求只记录一次
+	key := fmt.Sprintf("%d_%s", log.TokenID, log.Protocol)
+	if lastTime, ok := s.lastLogMap.Load(key); ok {
 		if time.Since(lastTime.(time.Time)) < 30*time.Second {
 			return nil
 		}
 	}
-	s.lastLogMap.Store(log.TokenID, time.Now())
+	s.lastLogMap.Store(key, time.Now())
 
 	return s.logRepo.Create(ctx, log)
 }
@@ -244,8 +245,6 @@ func (s *tokenService) ListLogs(ctx context.Context, uid, tokenID int64, page, p
 			Client:        l.Client,
 			ClientName:    l.ClientName,
 			ClientVersion: l.ClientVersion,
-			Path:          l.Path,
-			Method:        l.Method,
 			IP:            l.IP,
 			UA:            l.UA,
 			StatusCode:    l.StatusCode,

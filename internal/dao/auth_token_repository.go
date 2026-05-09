@@ -190,14 +190,12 @@ func (r *authTokenLogRepository) Create(ctx context.Context, log *domain.AuthTok
 		Client:        log.Client,
 		ClientName:    log.ClientName,
 		ClientVersion: log.ClientVersion,
-		Path:          log.Path,
-		Method:        log.Method,
 		IP:            log.IP,
 		Ua:            log.UA,
 		StatusCode:    log.StatusCode,
 		CreatedAt:     timex.Now(),
 	}
-	return u.WithContext(ctx).Create(m)
+	return u.WithContext(ctx).Omit(u.ID).Create(m)
 }
 
 func (r *authTokenLogRepository) ListByTokenID(ctx context.Context, tokenID int64, page, pageSize int) ([]*domain.AuthTokenLog, int64, error) {
@@ -231,8 +229,6 @@ func (r *authTokenLogRepository) toDomain(m *model.AuthTokenLog) *domain.AuthTok
 		Client:        m.Client,
 		ClientName:    m.ClientName,
 		ClientVersion: m.ClientVersion,
-		Path:          m.Path,
-		Method:        m.Method,
 		IP:            m.IP,
 		UA:            m.Ua,
 		StatusCode:    m.StatusCode,

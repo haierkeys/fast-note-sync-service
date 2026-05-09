@@ -265,6 +265,7 @@ type WebsocketClient struct {
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
 	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
+	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -856,8 +857,9 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		}
 
 		user.Nickname = userSelect.Nickname
+		c.TokenID = user.TokenID
 
-		log(LogInfo, "WS Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname))
+		log(LogInfo, "WS Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname), zap.Int64("TokenID", c.TokenID))
 		c.User = user
 		c.UserClients = w.AddUserClient(c)
 
@@ -953,11 +955,30 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 func (w *WebsocketServer) AddUserClient(c *WebsocketClient) ConnStorage {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.userClients[c.User.ID] == nil {
-		w.userClients[c.User.ID] = make(ConnStorage)
+	uid := c.User.ID
+	if _, ok := w.userClients[uid]; !ok {
+		w.userClients[uid] = make(ConnStorage)
 	}
-	w.userClients[c.User.ID][c.conn] = c
-	return w.userClients[c.User.ID]
+	w.userClients[uid][c.conn] = c
+	return w.userClients[uid]
+}
+
+// GetActiveTokenIDs gets all active token IDs for a specific user
+// GetActiveTokenIDs 获取特定用户的所有活动令牌 ID
+func (w *WebsocketServer) GetActiveTokenIDs(uid int64) map[int64]bool {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	activeTokens := make(map[int64]bool)
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID > 0 {
+				activeTokens[client.TokenID] = true
+			}
+		}
+	}
+	return activeTokens
 }
 
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {

@@ -41,6 +41,17 @@ func (h *TokenHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Cross-reference with active WebSocket connections
+	// 交叉引用活跃的 WebSocket 连接
+	if wss := h.App.GetWSS(); wss != nil {
+		activeTokenIDs := wss.GetActiveTokenIDs(uid)
+		for i := range tokens {
+			if activeTokenIDs[tokens[i].ID] {
+				tokens[i].IsWsOnline = true
+			}
+		}
+	}
+
 	response.ToResponse(code.Success.WithData(tokens))
 }
 
