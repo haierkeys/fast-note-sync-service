@@ -25,7 +25,7 @@ type UserService interface {
 
 	// Login user login
 	// Login 用户登录
-	Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string) (*dto.UserDTO, error)
+	Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
 
 	// ChangePassword change user password
 	// ChangePassword 修改密码
@@ -49,16 +49,18 @@ type UserService interface {
 type userService struct {
 	userRepo     domain.UserRepository // User repository // 用户仓库
 	tokenManager app.TokenManager      // Token manager // Token 管理器
+	tokenService TokenService          // Token service // Token 服务
 	logger       *zap.Logger           // Logger // 日志器
 	config       *ServiceConfig        // Service configuration // 服务配置
 }
 
 // NewUserService creates UserService instance
 // NewUserService 创建 UserService 实例
-func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager, logger *zap.Logger, config *ServiceConfig) UserService {
+func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager, tokenService TokenService, logger *zap.Logger, config *ServiceConfig) UserService {
 	return &userService{
 		userRepo:     userRepo,
 		tokenManager: tokenManager,
+		tokenService: tokenService,
 		logger:       logger,
 		config:       config,
 	}
@@ -142,21 +144,26 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 		return nil, code.ErrorUserRegister.WithDetails(err.Error())
 	}
 
-	// Generate Token
-	// 生成 Token
-	token, err := s.tokenManager.Generate(user.UID, "", "")
+	// Generate Token using old method or new? Old method is used here, maybe update it later.
+	// For registration, typically we might not even need to generate a token, or we generate a default one.
+	// Let's use CreateForLogin for registration as well.
+	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, "WebGui", "", "")
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
-	dto.Token = token
+	dto.Token = tokenStr
 	return dto, nil
 }
 
 // Login user login
 // Login 用户登录
-func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string) (*dto.UserDTO, error) {
+func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	if clientType != "WebGui" {
+		return nil, code.ErrorUserLoginFailed.WithDetails("Only WebGui is allowed for this login method")
+	}
+
 	var user *domain.User
 	var err error
 
@@ -180,15 +187,15 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 		return nil, code.ErrorUserLoginPasswordFailed
 	}
 
-	// Generate Token
+	// Generate Token via TokenService
 	// 生成 Token
-	token, err := s.tokenManager.Generate(user.UID, user.Username, clientIP)
+	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
-	dto.Token = token
+	dto.Token = tokenStr
 	return dto, nil
 }
 

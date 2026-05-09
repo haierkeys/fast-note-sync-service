@@ -27,7 +27,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		// MCP 路由 (无超时限制)
 		mcpHandler := mcp_router.NewMCPHandler(appContainer, wss)
 		mcpGroup := api.Group("/mcp")
-		mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
+		mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey, appContainer.TokenService))
 		{
 			// Legacy SSE transport (backward compatible) / 旧版 SSE 传输（向后兼容）
 			mcpGroup.Match([]string{http.MethodGet, http.MethodHead}, "/sse", mcpHandler.HandleSSE)
@@ -59,6 +59,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		gitSyncHandler := api_router.NewGitSyncHandler(appContainer)
 		settingHandler := api_router.NewSettingHandler(appContainer, wss)
 		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
+		tokenHandler := api_router.NewTokenHandler(appContainer)
 
 		api.POST("/user/register", userHandler.Register)
 		api.POST("/user/login", userHandler.Login)
@@ -89,7 +90,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		// Auth routing group (authentication required)
 		// 需要认证的路由组
 		auth := api.Group("/")
-		auth.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey))
+		auth.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey, appContainer.TokenService))
 		{
 			// Create share
 			// 创建分享
@@ -197,6 +198,13 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			// Sync log routes
 			// 同步日志路由
 			auth.GET("/sync-logs", syncLogHandler.List)
+
+			// Token management routes
+			// 令牌管理路由
+			auth.GET("/tokens", tokenHandler.List)
+			auth.POST("/token", tokenHandler.Create)
+			auth.PUT("/token/:id", tokenHandler.UpdateScope)
+			auth.DELETE("/token/:id", tokenHandler.Revoke)
 		}
 	}
 }

@@ -93,14 +93,16 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Get request context and client IP
-	// 获取请求上下文和客户端 IP
+	// Get request context, client IP, client type, and user agent
+	// 获取请求上下文、客户端 IP、客户端类型和用户代理
 	ctx := c.Request.Context()
 	clientIP := c.ClientIP()
+	clientType := c.GetHeader("x-client")
+	userAgent := c.GetHeader("User-Agent")
 
 	// Call UserService to perform login
 	// 调用 UserService 执行登录
-	userDTO, err := h.App.UserService.Login(ctx, params, clientIP)
+	userDTO, err := h.App.UserService.Login(ctx, params, clientIP, clientType, userAgent)
 	if err != nil {
 		h.logError(ctx, "UserHandler.Login", err)
 		apperrors.ErrorResponse(c, err)

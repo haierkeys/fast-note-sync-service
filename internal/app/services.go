@@ -10,6 +10,7 @@ type Services struct {
 	VaultService       service.VaultService
 	NoteService        service.NoteService
 	UserService        service.UserService
+	TokenService       service.TokenService
 	FileService        service.FileService
 	SettingService     service.SettingService
 	NoteHistoryService service.NoteHistoryService
@@ -72,7 +73,8 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 
 	s.FolderService = service.NewFolderService(repos.FolderRepo, repos.NoteRepo, repos.FileRepo, s.VaultService, s.BackupService, s.SyncLogService, infra.workerPool)
 	s.NoteService = service.NewNoteService(repos.UserRepo, repos.NoteRepo, repos.NoteLinkRepo, repos.FileRepo, repos.ShareRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
-	s.UserService = service.NewUserService(repos.UserRepo, infra.TokenManager, logger, svcConfig)
+	s.TokenService = service.NewTokenService(repos.AuthTokenRepo, repos.AuthTokenLogRepo, infra.TokenManager, logger)
+	s.UserService = service.NewUserService(repos.UserRepo, infra.TokenManager, s.TokenService, logger, svcConfig)
 	s.FileService = service.NewFileService(repos.UserRepo, repos.FileRepo, repos.NoteRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
 	s.SettingService = service.NewSettingService(repos.SettingRepo, s.VaultService, s.SyncLogService, svcConfig)
 	s.NoteHistoryService = service.NewNoteHistoryService(repos.NoteHistoryRepo, repos.NoteRepo, repos.UserRepo, s.VaultService, s.FolderService, s.NoteService, s.BackupService, s.GitSyncService, logger, &svcConfig.App)

@@ -1,4 +1,4 @@
-# sqlite3
+-- sqlite3
 PRAGMA foreign_keys = false;
 
 -- ----------------------------
@@ -417,3 +417,44 @@ CREATE TABLE "sync_log" (
 
 CREATE INDEX "idx_sync_log_uid_created_at"  ON "sync_log" ("uid", "created_at" DESC);
 CREATE INDEX "idx_sync_log_uid_type_action" ON "sync_log" ("uid", "type", "action");
+
+-- ----------------------------
+-- Table structure for auth_token
+-- ----------------------------
+DROP TABLE IF EXISTS "auth_token";
+
+CREATE TABLE "auth_token" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "token_string" text NOT NULL DEFAULT '',
+    "scope" text NOT NULL DEFAULT '',
+    "client_type" text NOT NULL DEFAULT '',
+    "bound_ip" text NOT NULL DEFAULT '',
+    "user_agent" text NOT NULL DEFAULT '',
+    "status" integer NOT NULL DEFAULT 1,
+    "expired_at" datetime DEFAULT NULL,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_auth_token_uid" ON "auth_token" ("uid");
+CREATE INDEX "idx_auth_token_token_string" ON "auth_token" ("token_string");
+
+-- ----------------------------
+-- Table structure for auth_token_log
+-- ----------------------------
+DROP TABLE IF EXISTS "auth_token_log";
+
+CREATE TABLE "auth_token_log" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "token_id" integer NOT NULL DEFAULT 0,
+    "uid" integer NOT NULL DEFAULT 0,
+    "path" text NOT NULL DEFAULT '',
+    "method" text NOT NULL DEFAULT '',
+    "ip" text NOT NULL DEFAULT '',
+    "status_code" integer NOT NULL DEFAULT 0,
+    "created_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_auth_token_log_token_id" ON "auth_token_log" ("token_id");
+CREATE INDEX "idx_auth_token_log_uid" ON "auth_token_log" ("uid");

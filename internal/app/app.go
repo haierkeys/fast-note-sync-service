@@ -230,6 +230,12 @@ func (a *App) IsProductionMode() bool {
 	return a.config.Log.Production
 }
 
+// GetTokenService gets TokenService
+// GetTokenService 获取 Token 服务
+func (a *App) GetTokenService() any {
+	return a.TokenService
+}
+
 // IsPullFromGitHub returns whether current source is GitHub
 // IsPullFromGitHub 返回当前拉取源是否为 GitHub
 func (a *App) IsPullFromGitHub() bool {
