@@ -53,13 +53,16 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Get request context (including Trace ID)
-	// 获取请求上下文（包含 Trace ID）
+	// Get request context (including Trace ID), client IP, client type, and user agent
+	// 获取请求上下文（包含 Trace ID）、客户端 IP、客户端类型和用户代理
 	ctx := c.Request.Context()
+	clientIP := c.ClientIP()
+	clientType := c.GetHeader("x-client")
+	userAgent := c.GetHeader("User-Agent")
 
 	// Call UserService to perform registration
 	// 调用 UserService 执行注册
-	userDTO, err := h.App.UserService.Register(ctx, params)
+	userDTO, err := h.App.UserService.Register(ctx, params, clientIP, clientType, userAgent)
 	if err != nil {
 		h.logError(ctx, "UserHandler.Register", err)
 		apperrors.ErrorResponse(c, err)

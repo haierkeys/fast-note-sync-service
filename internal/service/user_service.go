@@ -21,7 +21,7 @@ import (
 type UserService interface {
 	// Register user registration
 	// Register 用户注册
-	Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error)
+	Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
 
 	// Login user login
 	// Login 用户登录
@@ -85,7 +85,7 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 
 // Register user registration
 // Register 用户注册
-func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error) {
+func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
 	// Check if registration is enabled
 	// 检查注册是否启用
 	if !s.IsRegisterEnabled(ctx) {
@@ -144,10 +144,8 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 		return nil, code.ErrorUserRegister.WithDetails(err.Error())
 	}
 
-	// Generate Token using old method or new? Old method is used here, maybe update it later.
-	// For registration, typically we might not even need to generate a token, or we generate a default one.
-	// Let's use CreateForLogin for registration as well.
-	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, "WebGui", "", "")
+	// Generate Token with proper IP and UA binding
+	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
