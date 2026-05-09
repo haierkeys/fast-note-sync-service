@@ -10,7 +10,15 @@ entrypoint = [ "./build/fns_server" ]
 args_bin = [ "run" ]
 full_bin = ""
 include_ext = [ "go", "tpl", "tmpl", "html" ]
-exclude_dir = [ "assets", "tmp", "storage", "vendor" ]
+exclude_dir = [
+"assets",
+"tmp",
+"storage",
+"vendor",
+"scripts",
+"docker",
+"build"
+]
 include_dir = [ ]
 include_file = [ ]
 exclude_file = [ ]

@@ -92,8 +92,8 @@ func (s *tokenService) Create(ctx context.Context, uid int64, params *dto.TokenI
 }
 
 func (s *tokenService) CreateForLogin(ctx context.Context, uid int64, clientType, ip, userAgent string) (*domain.AuthToken, string, error) {
-	// Default scope for webgui login
-	scope := "p:rest c:webgui f:*"
+	// Restrict to REST protocol and bind to clientType
+	scope := "p:rest c:" + clientType + " f:*"
 	
 	t := &domain.AuthToken{
 		UID:        uid,
@@ -104,7 +104,7 @@ func (s *tokenService) CreateForLogin(ctx context.Context, uid int64, clientType
 		Status:     1,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		ExpiredAt:  time.Now().Add(30 * 24 * time.Hour), // Default 30 days
+		ExpiredAt:  time.Now().Add(7 * 24 * time.Hour), // 7 days
 	}
 
 	t, err := s.tokenRepo.Create(ctx, t)
@@ -179,6 +179,9 @@ func (s *tokenService) GetActiveToken(ctx context.Context, uid int64, tokenID in
 	}
 	if token.UID != uid || token.Status != 1 {
 		return nil, code.ErrorInvalidAuthToken
+	}
+	if time.Now().After(token.ExpiredAt) {
+		return nil, code.ErrorTokenExpired
 	}
 	return token, nil
 }

@@ -2,6 +2,7 @@
 /composer.phar
 /composer.lock
 
+*.exe
 # -- Editores -----------------------------------------
 # vim
 .*.sw[a-z]

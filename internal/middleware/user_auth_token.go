@@ -60,7 +60,11 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		ctx := c.Request.Context()
 		dbToken, err := tokenService.GetActiveToken(ctx, user.UID, user.TokenID)
 		if err != nil || dbToken == nil {
-			response.ToResponse(code.ErrorInvalidUserAuthToken)
+			if appErr, ok := err.(*code.Code); ok {
+				response.ToResponse(appErr)
+			} else {
+				response.ToResponse(code.ErrorInvalidUserAuthToken)
+			}
 			c.Abort()
 			return
 		}

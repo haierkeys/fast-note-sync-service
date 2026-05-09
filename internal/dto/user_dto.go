@@ -16,8 +16,8 @@ type UserCreateRequest struct {
 // UserLoginRequest User login request parameters
 // 用户登录请求参数
 type UserLoginRequest struct {
-	Credentials string `form:"credentials" binding:"required" example:"user@example.com"` // Username or Email // 登录凭证（用户名或邮件）
-	Password    string `form:"password" binding:"required" example:"password123"`         // Password // 密码
+	Credentials string `json:"credentials" form:"credentials" binding:"required" example:"user@example.com"` // Username or Email // 登录凭证（用户名或邮件）
+	Password    string `json:"password" form:"password" binding:"required" example:"password123"`            // Password // 密码
 }
 
 // UserRegisterSendEmailRequest Request parameters for sending registration email

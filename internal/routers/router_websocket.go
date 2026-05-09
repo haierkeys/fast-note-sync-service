@@ -1,10 +1,14 @@
 package routers
 
 import (
+	"context"
+	"strings"
+
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
 func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
@@ -48,4 +52,34 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.UseBinary(dto.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
 
 	wss.UseUserVerify(noteWSHandler.UserInfo)
+
+	// Inject Token Verification to decouple pkg/app from internal/service
+	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqUserAgent, reqIP string) error {
+		dbToken, err := appContainer.TokenService.GetActiveToken(ctx, uid, tokenID)
+		if err != nil || dbToken == nil {
+			return code.ErrorInvalidUserAuthToken
+		}
+
+		// 1. Verify Scope Permissions (Protocol: ws)
+		if !pkgapp.VerifyPermissions(dbToken.Scope, "ws", reqClientType, "") {
+			return code.ErrorInvalidUserAuthToken
+		}
+
+		// 2. Verify Client Type
+		if reqClientType != "" && !strings.EqualFold(reqClientType, dbToken.ClientType) {
+			return code.ErrorInvalidUserAuthToken
+		}
+
+		// 3. Verify User-Agent
+		if reqUserAgent != dbToken.UserAgent {
+			return code.ErrorInvalidUserAuthToken
+		}
+
+		// 4. Verify IP
+		if reqIP != dbToken.BoundIP {
+			return code.ErrorInvalidUserAuthToken
+		}
+
+		return nil
+	})
 }

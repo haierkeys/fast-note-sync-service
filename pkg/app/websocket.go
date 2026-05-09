@@ -642,8 +642,9 @@ type ValidatorInterface interface {
 
 type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
-	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
-	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
+	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqUserAgent, reqIP string) error
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -781,6 +782,10 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqUserAgent, reqIP string) error) {
+	w.tokenVerifyHandler = handler
+}
+
 func (w *WebsocketServer) UseBinary(prefix string, handler func(*WebsocketClient, []byte)) {
 	if len(prefix) != 2 {
 		panic("binary message prefix must be 2 characters")
@@ -807,29 +812,20 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			return
 		}
 
-		// Verify 3D RBAC permissions
-		// 验证 3D RBAC 权限
-		tokenServiceRaw := w.app.GetTokenService()
-		if tokenServiceRaw != nil {
-			// Fast dirty way: Since TokenService is from service package and we are in pkg/app,
-			// to avoid circular dependency, we either define an interface here or use duck typing via interface.
-			type tokenValidator interface {
-				GetActiveToken(ctx context.Context, uid int64, tokenID int64) (any, error)
-			}
-			
-			if ts, ok := tokenServiceRaw.(tokenValidator); ok {
-				dbTokenRaw, err := ts.GetActiveToken(c.Context(), uid, user.TokenID)
-				if err != nil || dbTokenRaw == nil {
-					log(LogError, "WS Authorization FAILD: Token not found or inactive")
-					c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
-					time.Sleep(2 * time.Second)
-					c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
-					return
-				}
-				
-				// We need scope and clientType from dbToken
-				// Another fast way is just to add a verify method to AppContainer
-				// Let's rely on a simpler approach: define a simpler interface.
+		// Verify 3D RBAC permissions via injected handler
+		// 通过注入的处理函数验证 3D RBAC 权限
+		if w.tokenVerifyHandler != nil {
+			reqClientType := c.Ctx.GetHeader("x-client")
+			reqUserAgent := c.Ctx.GetHeader("User-Agent")
+			reqIP := c.Ctx.ClientIP()
+
+			err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, reqUserAgent, reqIP)
+			if err != nil {
+				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
+				c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+				time.Sleep(2 * time.Second)
+				c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
+				return
 			}
 		}
 
