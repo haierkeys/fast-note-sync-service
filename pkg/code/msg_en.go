@@ -18,8 +18,11 @@ var en_messages = map[int]string{
 	307: "Not logged in. Please log in first.",
 	308: "Session expired, please log in again.",
 	309: "Your access is missing a user token",
-	310: "User token has expired",
+	310: "Auth token has expired",
 	311: "Token generation failed",
+	312: "Auth token IP restricted",
+	313: "Auth token Browser (UA) restricted",
+	314: "Auth token Client restricted",
 
 	// --- User Related (400-419) ---
 	400: "User registration failed",

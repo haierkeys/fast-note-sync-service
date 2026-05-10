@@ -202,9 +202,7 @@ func (s *tokenService) Update(ctx context.Context, uid int64, tokenID int64, par
 	if params.UserAgent != "" {
 		token.UserAgent = params.UserAgent
 	}
-	if params.ExpiredDays > 0 {
-		token.ExpiredAt = time.Now().Add(time.Duration(params.ExpiredDays) * 24 * time.Hour)
-	}
+	token.ExpiredAt = time.Now().Add(time.Duration(params.ExpiredDays) * 24 * time.Hour)
 
 	// Format scope
 	if params.Protocol != "" || params.Client != "" || params.Function != "" {

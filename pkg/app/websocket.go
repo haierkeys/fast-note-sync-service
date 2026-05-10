@@ -811,7 +811,11 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 	secretKey := w.app.GetAuthTokenKey()
 	if user, err := ParseTokenWithKey(string(msg.Data), secretKey); err != nil {
 		log(LogError, "WS Authorization FAILD", zap.Error(err))
-		c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+		if appErr, ok := err.(*code.Code); ok {
+			c.ToResponse(appErr, "Authorization")
+		} else {
+			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+		}
 		time.Sleep(2 * time.Second)
 		c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 	} else {
@@ -838,7 +842,11 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
-				c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+				if appErr, ok := err.(*code.Code); ok {
+					c.ToResponse(appErr, "Authorization")
+				} else {
+					c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+				}
 				time.Sleep(2 * time.Second)
 				c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 				return
@@ -850,7 +858,11 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 		userSelect, err := w.userVerifyHandler(c, uid)
 		if userSelect == nil || err != nil {
 			log(LogError, "WS Authorization FAILD USER Not Exist", zap.Error(err))
-			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			if appErr, ok := err.(*code.Code); ok {
+				c.ToResponse(appErr, "Authorization")
+			} else {
+				c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			}
 			time.Sleep(2 * time.Second)
 			c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 			return

@@ -2,9 +2,11 @@ package app
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"crypto/aes"
@@ -72,7 +74,6 @@ type UserSelectEntity struct {
 type UserEntity struct {
 	UID      int64  `json:"uid"`
 	Nickname string `json:"nickname"`
-	IP       string `json:"ip"`
 	TokenID  int64  `json:"tokenId"` // 数据库中的 auth_token.id
 	jwt.RegisteredClaims
 }
@@ -86,16 +87,12 @@ type ShareEntity struct {
 }
 
 // Generate generates a new JWT Token
-// Generate 生成一个新的 JWT Token
-func (t *tokenManager) Generate(uid int64, nickname, ip string, tokenID int64) (string, error) {
-	expirationTime := time.Now().Add(t.config.Expiry)
+func (t *tokenManager) Generate(uid int64, nickname, _ string, tokenID int64) (string, error) {
 	claims := &UserEntity{
 		UID:      uid,
 		Nickname: nickname,
-		IP:       ip,
 		TokenID:  tokenID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    t.config.Issuer,
@@ -261,6 +258,9 @@ func ParseTokenWithKey(tokenString string, secretKey string) (*UserEntity, error
 	})
 
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, code.ErrorTokenExpired
+		}
 		return nil, err
 	}
 
@@ -305,14 +305,9 @@ func GetShareEntity(ctx *gin.Context) (out *ShareEntity) {
 }
 
 // GetIP extracts the user IP from the request context.
+// Deprecated: IP is now managed statefully in the database.
 func GetIP(ctx *gin.Context) (out string) {
-	user, exist := ctx.Get("user_token")
-	if exist {
-		if userEntity, ok := user.(*UserEntity); ok {
-			out = userEntity.IP
-		}
-	}
-	return
+	return ""
 }
 
 // SetTokenToContextWithKey sets Token to Context with specified key

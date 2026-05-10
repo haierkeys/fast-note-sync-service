@@ -21,6 +21,9 @@ var (
 	ErrorInvalidToken         = NewError(309)
 	ErrorTokenExpired         = NewError(310)
 	ErrorTokenGenerate        = NewError(311)
+	ErrorAuthTokenIPRestricted     = NewError(312)
+	ErrorAuthTokenUARestricted     = NewError(313)
+	ErrorAuthTokenClientRestricted = NewError(314)
 
 	// --- User Related (400-419) ---
 	ErrorUserRegister            = NewError(400)

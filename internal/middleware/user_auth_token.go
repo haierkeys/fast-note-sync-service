@@ -48,7 +48,11 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 
 		user, err := app.ParseTokenWithKey(token, secretKey)
 		if err != nil {
-			response.ToResponse(code.ErrorInvalidUserAuthToken)
+			if appErr, ok := err.(*code.Code); ok {
+				response.ToResponse(appErr)
+			} else {
+				response.ToResponse(code.ErrorInvalidUserAuthToken)
+			}
 			c.Abort()
 			return
 		}
@@ -74,7 +78,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 			reqClientType = c.Query("client")
 		}
 		if !strings.EqualFold(reqClientType, dbToken.ClientType) {
-			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Client mismatch"))
+			response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch"))
 			c.Abort()
 			return
 		}
@@ -82,7 +86,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// 检查 User-Agent 防篡改/防盗用 (仅在数据库中有绑定时校验)
 		if dbToken.UserAgent != "" {
 			if reqUserAgent := c.GetHeader("User-Agent"); !app.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
-				response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("User-Agent mismatch"))
+				response.ToResponse(code.ErrorAuthTokenUARestricted.WithDetails("User-Agent mismatch"))
 				c.Abort()
 				return
 			}
@@ -91,7 +95,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// 检查 IP 防盗用 (仅在数据库中有绑定时校验)
 		if dbToken.BoundIP != "" {
 			if reqIP := c.ClientIP(); !app.MatchWildcard(dbToken.BoundIP, reqIP) {
-				response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("IP mismatch"))
+				response.ToResponse(code.ErrorAuthTokenIPRestricted.WithDetails("IP mismatch"))
 				c.Abort()
 				return
 			}
