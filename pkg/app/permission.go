@@ -92,3 +92,8 @@ func MatchWildcard(pattern, value string) bool {
 	}
 	return pattern == value
 }
+
+// Is3DRBACScope checks if the scope string follows the 3D-RBAC format (p: c: f:)
+func Is3DRBACScope(scope string) bool {
+	return strings.Contains(scope, "p:") || strings.Contains(scope, "c:") || strings.Contains(scope, "f:")
+}

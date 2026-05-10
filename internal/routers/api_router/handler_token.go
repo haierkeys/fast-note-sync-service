@@ -80,9 +80,9 @@ func (h *TokenHandler) Create(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(res))
 }
 
-// UpdateScope updates a token's scope
-// UpdateScope 更新令牌的权限范围
-func (h *TokenHandler) UpdateScope(c *gin.Context) {
+// Update updates a token's properties
+// Update 更新令牌的属性
+func (h *TokenHandler) Update(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
 	
 	idStr := c.Param("id")
@@ -102,9 +102,9 @@ func (h *TokenHandler) UpdateScope(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
 
-	err = h.App.TokenService.UpdateScope(ctx, uid, tokenID, params)
+	err = h.App.TokenService.Update(ctx, uid, tokenID, params)
 	if err != nil {
-		h.logError(ctx, "TokenHandler.UpdateScope", err)
+		h.logError(ctx, "TokenHandler.Update", err)
 		apperrors.ErrorResponse(c, err)
 		return
 	}

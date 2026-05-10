@@ -271,7 +271,18 @@ func ParseTokenWithKey(tokenString string, secretKey string) (*UserEntity, error
 	return claims, nil
 }
 
-// GetUid extracts the user ID from the request context.
+// GetTokenID extracts the token ID from the request context.
+func GetTokenID(ctx *gin.Context) (out int64) {
+	user, exist := ctx.Get("user_token")
+	if exist {
+		if userEntity, ok := user.(*UserEntity); ok {
+			out = userEntity.TokenID
+		}
+	}
+	return
+}
+
+// GetUID extracts the user ID from the request context.
 func GetUID(ctx *gin.Context) (out int64) {
 	user, exist := ctx.Get("user_token")
 	if exist {

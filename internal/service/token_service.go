@@ -22,8 +22,8 @@ type TokenService interface {
 	CreateForLogin(ctx context.Context, uid int64, clientType, ip, userAgent string) (*domain.AuthToken, string, error)
 	// ListByUser lists all active tokens for a user
 	ListByUser(ctx context.Context, uid int64) ([]*dto.TokenResponse, error)
-	// UpdateScope updates a token's scope
-	UpdateScope(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error
+	// Update updates a token's properties
+	Update(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error
 	// Revoke revokes a token
 	Revoke(ctx context.Context, uid int64, tokenID int64) error
 	// GetActiveToken gets an active token by ID
@@ -173,7 +173,7 @@ func (s *tokenService) ListByUser(ctx context.Context, uid int64) ([]*dto.TokenR
 	return res, nil
 }
 
-func (s *tokenService) UpdateScope(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error {
+func (s *tokenService) Update(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error {
 	// Need to check if token belongs to user first
 	token, err := s.tokenRepo.GetByID(ctx, tokenID)
 	if err != nil {
@@ -183,7 +183,54 @@ func (s *tokenService) UpdateScope(ctx context.Context, uid int64, tokenID int64
 		return code.ErrorInvalidAuthToken
 	}
 
-	err = s.tokenRepo.UpdateScope(ctx, tokenID, params.Scope)
+	// Only manual tokens can be fully edited
+	if token.IssueType != 2 {
+		// For login tokens, maybe only allow scope update or just deny
+		if params.Scope != "" {
+			return s.tokenRepo.UpdateScope(ctx, tokenID, params.Scope)
+		}
+		return code.ErrorInvalidAuthToken.WithDetails("Only manual tokens can be fully edited")
+	}
+
+	// Update fields if provided
+	if params.ClientType != "" {
+		token.ClientType = params.ClientType
+	}
+	if params.BoundIP != "" {
+		token.BoundIP = params.BoundIP
+	}
+	if params.UserAgent != "" {
+		token.UserAgent = params.UserAgent
+	}
+	if params.ExpiredDays > 0 {
+		token.ExpiredAt = time.Now().Add(time.Duration(params.ExpiredDays) * 24 * time.Hour)
+	}
+
+	// Format scope
+	if params.Protocol != "" || params.Client != "" || params.Function != "" {
+		p := params.Protocol
+		if p == "" {
+			p = "*"
+		}
+		c := params.Client
+		if c == "" {
+			c = "*"
+		}
+		f := params.Function
+		if f == "" {
+			f = "*"
+		}
+		token.Scope = fmt.Sprintf("p:%s c:%s f:%s", p, c, f)
+	} else if params.Scope != "" {
+		// If explicit scope is provided, we use it, but check if it's legacy
+		if !app.Is3DRBACScope(params.Scope) {
+			token.Scope = "p:" + params.Scope + " c:" + token.ClientType + " f:*"
+		} else {
+			token.Scope = params.Scope
+		}
+	}
+
+	err = s.tokenRepo.Update(ctx, token)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}

@@ -126,6 +126,19 @@ func (r *authTokenRepository) ListByUID(ctx context.Context, uid int64) ([]*doma
 	return res, nil
 }
 
+func (r *authTokenRepository) Update(ctx context.Context, token *domain.AuthToken) error {
+	u := r.authToken().AuthToken
+	_, err := u.WithContext(ctx).Where(u.ID.Eq(token.ID)).UpdateSimple(
+		u.Scope.Value(token.Scope),
+		u.ClientType.Value(token.ClientType),
+		u.BoundIP.Value(token.BoundIP),
+		u.UserAgent.Value(token.UserAgent),
+		u.ExpiredAt.Value(token.ExpiredAt),
+		u.UpdatedAt.Value(timex.Now()),
+	)
+	return err
+}
+
 func (r *authTokenRepository) UpdateScope(ctx context.Context, id int64, scope string) error {
 	u := r.authToken().AuthToken
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(

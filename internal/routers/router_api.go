@@ -96,6 +96,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		{
 			// Create share
 			// 创建分享
+			auth.POST("/auth/logout", userHandler.Logout)
 			auth.POST("/share", shareHandler.Create)
 			auth.POST("/share/password", shareHandler.UpdatePassword)
 			auth.GET("/share", shareHandler.Query)
@@ -220,7 +221,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			{
 				tokenGroup.GET("/tokens", tokenHandler.List)
 				tokenGroup.POST("/token", tokenHandler.Create)
-				tokenGroup.PUT("/token/:id", tokenHandler.UpdateScope)
+				tokenGroup.PUT("/token/:id", tokenHandler.Update)
 				tokenGroup.DELETE("/token/:id", tokenHandler.Revoke)
 				tokenGroup.GET("/token/:id/logs", tokenHandler.ListLogs)
 			}

@@ -18,10 +18,17 @@ type TokenIssueRequest struct {
 	UserAgent   string `json:"userAgent"`                     // Optional: User Agent // 可选：User Agent
 }
 
-// TokenUpdateRequest defines the request to update a token's scope
-// TokenUpdateRequest 定义更新令牌权限范围的请求
+// TokenUpdateRequest defines the request to update a token's properties
+// TokenUpdateRequest 定义更新令牌属性的请求
 type TokenUpdateRequest struct {
-	Scope string `json:"scope" binding:"required"` // Permission Scope // 权限范围
+	ClientType  string `json:"clientType"`           // Client Type // 客户端类型
+	Scope       string `json:"scope"`                // Permission Scope // 权限范围
+	Protocol    string `json:"protocol"`             // Optional: explicit protocol dimension (p:) // 可选：明确的协议维度
+	Client      string `json:"client"`               // Optional: explicit client dimension (c:) // 可选：明确的客户端维度
+	Function    string `json:"function"`             // Optional: explicit function dimension (f:) // 可选：明确的功能维度
+	ExpiredDays int    `json:"expiredDays"`          // Expired days // 过期天数
+	BoundIP     string `json:"boundIp"`              // Optional: Bound IP // 可选：绑定 IP
+	UserAgent   string `json:"userAgent"`            // Optional: User Agent // 可选：User Agent
 }
 
 // TokenResponse defines the response structure for a token

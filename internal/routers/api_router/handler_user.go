@@ -115,6 +115,36 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(userDTO))
 }
 
+// Logout user logout
+// @Summary User logout
+// @Description Handle user logout HTTP request, revoke current auth token.
+// @Description 处理用户退出登录 HTTP 请求，注销当前认证 Token。
+// @Tags User
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/auth/logout [post]
+func (h *UserHandler) Logout(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+
+	uid := pkgapp.GetUID(c)
+	tokenID := pkgapp.GetTokenID(c)
+
+	if uid == 0 || tokenID == 0 {
+		response.ToResponse(code.Success) // Already logged out or invalid token, just return success
+		return
+	}
+
+	ctx := c.Request.Context()
+	err := h.App.TokenService.Revoke(ctx, uid, tokenID)
+	if err != nil {
+		h.logError(ctx, "UserHandler.Logout", err)
+		// Even if revoke fails in DB, we want user to proceed with logout in UI
+	}
+
+	response.ToResponse(code.Success)
+}
+
 // UserChangePassword changes user password
 // @Summary Change user password
 // @Description Handle password change request for current user, validate old password and update new password.

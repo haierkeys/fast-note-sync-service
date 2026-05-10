@@ -58,6 +58,10 @@ type AuthTokenRepository interface {
 	// ListByUID 列出用户的所有活跃令牌
 	ListByUID(ctx context.Context, uid int64) ([]*AuthToken, error)
 
+	// Update updates all properties of a token
+	// Update 更新令牌的所有属性
+	Update(ctx context.Context, token *AuthToken) error
+	
 	// UpdateScope updates the scope of a token
 	// UpdateScope 更新令牌的权限范围
 	UpdateScope(ctx context.Context, id int64, scope string) error
