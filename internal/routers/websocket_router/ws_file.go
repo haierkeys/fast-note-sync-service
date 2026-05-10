@@ -108,6 +108,7 @@ type FileDownloadChunkSession struct {
 	TotalChunks int64  // Total chunks // 总分块数
 	ChunkSize   int64  // Chunk size // 分块大小
 	SavePath    string // File actual save path // 文件实际保存路径
+	ContentHash string // Content hash // 内容哈希
 }
 
 // FileUploadCheck checks file upload request, initializes upload session or confirms no upload needed
@@ -530,6 +531,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 		TotalChunks: totalChunks,
 		ChunkSize:   chunkSize,
 		SavePath:    fileSvc.SavePath,
+		ContentHash: fileSvc.ContentHash,
 	}
 
 	// Send download ready message
@@ -537,6 +539,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 	c.ToResponse(code.Success.WithData(
 		dto.FileSyncDownloadMessage{
 			Path:        fileSvc.Path,
+			ContentHash: session.ContentHash,
 			Ctime:       fileSvc.Ctime,
 			Mtime:       fileSvc.Mtime,
 			SessionID:   session.SessionID,
