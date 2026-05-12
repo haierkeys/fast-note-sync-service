@@ -50,7 +50,7 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 	// Match Client (Only if scope specifies a client)
 	matchC := true
 	if scopeC != "" && scopeC != "*" {
-		matchC = strings.EqualFold(scopeC, c)
+		matchC = MatchWildcard(scopeC, c)
 	}
 
 	matchF := true

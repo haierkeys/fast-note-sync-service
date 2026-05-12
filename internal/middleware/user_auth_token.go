@@ -77,7 +77,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		if reqClientType == "" {
 			reqClientType = c.Query("client")
 		}
-		if !strings.EqualFold(reqClientType, dbToken.ClientType) {
+		if !app.MatchWildcard(dbToken.ClientType, reqClientType) {
 			response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch"))
 			c.Abort()
 			return

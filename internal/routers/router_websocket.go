@@ -2,15 +2,15 @@ package routers
 
 import (
 	"context"
-	"strings"
+
+	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
-	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
-	"fmt"
 )
 
 func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
@@ -73,9 +73,9 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 		}
 
 		// 2. Verify Client Type
-		if reqClientType != "" && !strings.EqualFold(reqClientType, dbToken.ClientType) {
+		if dbToken.ClientType != "" && !pkgapp.MatchWildcard(dbToken.ClientType, reqClientType) {
 			fmt.Printf("[WSDebug] ClientType mismatch: req=%s, db=%s\n", reqClientType, dbToken.ClientType)
-			return code.ErrorAuthTokenClientRestricted
+			return code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
 		}
 
 		// 3. Verify User-Agent (Only if bound)
@@ -101,7 +101,7 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 			UA:            reqUserAgent,
 			StatusCode:    101, // Switching Protocols
 		})
-		
+
 		return nil
 	})
 }
