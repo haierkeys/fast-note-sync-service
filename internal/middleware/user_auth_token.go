@@ -77,7 +77,12 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		if reqClientType == "" {
 			reqClientType = c.Query("client")
 		}
-		if !app.MatchWildcard(dbToken.ClientType, reqClientType) {
+
+		// Only enforce strict ClientType matching for login tokens (IssueType == 1).
+		// Manual tokens (IssueType == 2) use ClientType as a Remark/Title, and client restriction is handled via Scope.
+		// 仅对登录签发的令牌 (IssueType == 1) 执行 ClientType 字段的严格绑定校验。
+		// 手动签发的令牌 (IssueType == 2) 的 ClientType 字段用作备注/标题，其客户端限制由后续的 Scope 验证处理。
+		if dbToken.IssueType == 1 && !app.MatchWildcard(dbToken.ClientType, reqClientType) {
 			response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch"))
 			c.Abort()
 			return

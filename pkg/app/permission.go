@@ -84,6 +84,9 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 
 // MatchWildcard checks if a value matches a pattern with an optional wildcard suffix '*'
 func MatchWildcard(pattern, value string) bool {
+	pattern = strings.ToLower(strings.TrimSpace(pattern))
+	value = strings.ToLower(strings.TrimSpace(value))
+
 	if pattern == "" || pattern == "*" {
 		return true
 	}

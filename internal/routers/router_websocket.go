@@ -72,8 +72,9 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 			return code.ErrorInvalidAuthToken.WithDetails("Permission denied")
 		}
 
-		// 2. Verify Client Type
-		if dbToken.ClientType != "" && !pkgapp.MatchWildcard(dbToken.ClientType, reqClientType) {
+		// 2. Verify Client Type (Only for login tokens where ClientType is used for restriction)
+		// 仅对登录令牌执行严格客户端匹配，手动令牌通过 Scope 校验
+		if dbToken.IssueType == 1 && dbToken.ClientType != "" && !pkgapp.MatchWildcard(dbToken.ClientType, reqClientType) {
 			fmt.Printf("[WSDebug] ClientType mismatch: req=%s, db=%s\n", reqClientType, dbToken.ClientType)
 			return code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
 		}
