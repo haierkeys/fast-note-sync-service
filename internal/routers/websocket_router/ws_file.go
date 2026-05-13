@@ -617,6 +617,8 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// Handle files deleted by client
 	// 处理客户端删除的文件
 	if len(params.DelFiles) > 0 {
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
+
 		for _, delFile := range params.DelFiles {
 			// Check if file exists before deleting
 			// 删除前检查文件是否存在
@@ -629,6 +631,14 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// If file exists, execute delete
 			// 如果文件存在，执行删除
 			if err == nil && checkFile != nil && checkFile.Action != "delete" {
+				if !hasWritePermission {
+					h.App.Logger().Warn("websocket_router.file.FileSync: permission denied for deletion",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delFile.Path))
+					continue
+				}
+
 				delParams := &dto.FileDeleteRequest{
 					Vault:    params.Vault,
 					Path:     delFile.Path,
@@ -797,22 +807,29 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
-						if ferr != nil {
-							h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
-							continue
+						if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+							session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime)
+							if ferr != nil {
+								h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
+								continue
+							}
+							// 将消息添加到队列而非立即发送
+							messageQueue = append(messageQueue, dto.WSQueuedMessage{
+								Action: dto.FileUpload,
+								Data: dto.FileSyncUploadMessage{
+									Path:      session.Path,
+									PathHash:  session.PathHash,
+									SessionID: session.ID,
+									ChunkSize: session.ChunkSize,
+								},
+							})
+							needUploadCount++
+						} else {
+							h.App.Logger().Warn("websocket_router.file.FileSync: permission denied for upload",
+								zap.String(logger.FieldTraceID, c.TraceID),
+								zap.Int64(logger.FieldUID, c.User.UID),
+								zap.String(logger.FieldPath, cFile.Path))
 						}
-						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, dto.WSQueuedMessage{
-							Action: dto.FileUpload,
-							Data: dto.FileSyncUploadMessage{
-								Path:      session.Path,
-								PathHash:  session.PathHash,
-								SessionID: session.ID,
-								ChunkSize: session.ChunkSize,
-							},
-						})
-						needUploadCount++
 					}
 				} else {
 					// Content matches, but modification time differs, notify client to update file modification time
@@ -858,27 +875,34 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
 			// Create upload session and return FileUpload message
 			// 创建上传会话并返回 FileUpload 消息
-			session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, file.Ctime, file.Mtime)
-			if ferr != nil {
-				h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
-				continue
+			if hasWritePermission {
+				session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, file.Path, file.PathHash, file.ContentHash, file.Size, file.Ctime, file.Mtime)
+				if ferr != nil {
+					h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
+					continue
+				}
+				// Add message to queue instead of sending immediately
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
+					Action: dto.FileUpload,
+					Data: dto.FileSyncUploadMessage{
+						Path:      session.Path,
+						PathHash:  session.PathHash,
+						SessionID: session.ID,
+						ChunkSize: session.ChunkSize,
+					},
+				})
+				needUploadCount++
+			} else {
+				h.App.Logger().Warn("websocket_router.file.FileSync: permission denied for missing file upload",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.Int64(logger.FieldUID, c.User.UID),
+					zap.String(logger.FieldPath, file.Path))
 			}
-			// Add message to queue instead of sending immediately
-			// 将消息添加到队列而非立即发送
-			messageQueue = append(messageQueue, dto.WSQueuedMessage{
-				Action: dto.FileUpload,
-				Data: dto.FileSyncUploadMessage{
-					Path:      session.Path,
-					PathHash:  session.PathHash,
-					SessionID: session.ID,
-					ChunkSize: session.ChunkSize,
-				},
-			})
-			needUploadCount++
 		}
 	}
 
@@ -1165,8 +1189,9 @@ func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	fileSvc, err := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
 	if err != nil {
-		h.respondError(c, code.ErrorFileGetFailed, err, "websocket_router.file.FileRePush.Get")
-		return
+		h.App.Logger().Debug("websocket_router.file.FileRePush.Get: record not found or error, proceeding to send delete",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.Error(err))
 	}
 
 	if fileSvc != nil && fileSvc.Action != "delete" {
@@ -1182,7 +1207,14 @@ func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			},
 		).WithVault(params.Vault), dto.FileSyncUpdate)
 	} else {
-		c.ToResponse(code.ErrorFileGetFailed)
+		// If file not found, send delete message to client to clean up local unauthorized creation
+		// 如果未找到文件，则向客户端发送删除消息，以清理本地未授权的创建
+		c.ToResponse(code.Success.WithData(
+			dto.FileSyncDeleteMessage{
+				Path:     params.Path,
+				PathHash: params.PathHash,
+			},
+		).WithVault(params.Vault), string(dto.FileSyncDelete))
 	}
 }
 

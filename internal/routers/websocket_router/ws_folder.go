@@ -53,6 +53,8 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 
 	// Handle deleted folders from client
 	if len(params.DelFolders) > 0 {
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "note_w")
+
 		for _, delFolder := range params.DelFolders {
 
 			// Check if folder exists before deleting
@@ -62,6 +64,14 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			})
 
 			if err == nil && checkFolder != nil && checkFolder.Action != "delete" {
+				if !hasWritePermission {
+					h.App.Logger().Warn("websocket_router.folder.FolderSync: permission denied for deletion",
+						zap.String(logpkg.FieldTraceID, c.TraceID),
+						zap.Int64(logpkg.FieldUID, uid),
+						zap.String(logpkg.FieldPath, delFolder.Path))
+					continue
+				}
+
 				delParams := &dto.FolderDeleteRequest{
 					Vault:    params.Vault,
 					Path:     delFolder.Path,

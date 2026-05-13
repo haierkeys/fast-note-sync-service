@@ -34,6 +34,8 @@ type TokenService interface {
 	ListLogs(ctx context.Context, uid, tokenID int64, page, pageSize int) ([]*dto.TokenLogResponse, int64, error)
 	// UpdateLastUsedAt updates the last used time of a token
 	UpdateLastUsedAt(ctx context.Context, tokenID int64) error
+	// SetSyncHandler sets the sync hook
+	SetSyncHandler(handler func(uid int64, tokenID int64, scope string))
 }
 
 type tokenService struct {
@@ -42,6 +44,7 @@ type tokenService struct {
 	tokenManager app.TokenManager
 	logger       *zap.Logger
 	lastLogMap   sync.Map // TokenID -> time.Time (for 30s rate limiting)
+	SyncHandler  func(uid int64, tokenID int64, scope string) // Hook for syncing to other modules (like WS)
 }
 
 func NewTokenService(tokenRepo domain.AuthTokenRepository, logRepo domain.AuthTokenLogRepository, tokenManager app.TokenManager, logger *zap.Logger) TokenService {
@@ -232,6 +235,11 @@ func (s *tokenService) Update(ctx context.Context, uid int64, tokenID int64, par
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
+
+	// Trigger sync hook if set
+	if s.SyncHandler != nil {
+		s.SyncHandler(uid, tokenID, token.Scope)
+	}
 	return nil
 }
 
@@ -247,6 +255,11 @@ func (s *tokenService) Revoke(ctx context.Context, uid int64, tokenID int64) err
 	err = s.tokenRepo.Revoke(ctx, tokenID)
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Trigger sync hook (scope empty means revoked/no permission)
+	if s.SyncHandler != nil {
+		s.SyncHandler(uid, tokenID, "")
 	}
 	return nil
 }
@@ -315,4 +328,8 @@ func (s *tokenService) GetActiveToken(ctx context.Context, uid int64, tokenID in
 }
 func (s *tokenService) UpdateLastUsedAt(ctx context.Context, tokenID int64) error {
 	return s.tokenRepo.UpdateLastUsedAt(ctx, tokenID)
+}
+
+func (s *tokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string)) {
+	s.SyncHandler = handler
 }

@@ -184,10 +184,15 @@ func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
 	a.checkVersion = info
 }
 
-// SetWSS sets WebSocket server reference
-// SetWSS 设置 WebSocket 服务器引用
+// SetWSS sets WebSocket server reference and binds sync hooks
+// SetWSS 设置 WebSocket 服务器引用并绑定同步钩子
 func (a *App) SetWSS(wss *pkgapp.WebsocketServer) {
 	a.wss = wss
+	if a.wss != nil && a.Services != nil && a.Services.TokenService != nil {
+		a.Services.TokenService.SetSyncHandler(func(uid int64, tokenID int64, scope string) {
+			a.wss.UpdateTokenScope(uid, tokenID, scope)
+		})
+	}
 }
 
 // GetWSS gets WebSocket server reference

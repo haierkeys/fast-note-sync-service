@@ -616,8 +616,9 @@ func (h *NoteWSHandler) NoteRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	uid := c.User.UID
 	note, err := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion).Get(c.Context(), uid, params)
 	if err != nil {
-		h.respondError(c, code.ErrorNoteNotFound, err, "websocket_router.note.NoteRePush.Get")
-		return
+		h.App.Logger().Debug("websocket_router.note.NoteRePush.Get: record not found or error, proceeding to send delete",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.Error(err))
 	}
 
 	if note != nil && note.Action != "delete" {
@@ -633,7 +634,14 @@ func (h *NoteWSHandler) NoteRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			},
 		).WithVault(params.Vault), dto.NoteSyncModify)
 	} else {
-		c.ToResponse(code.ErrorNoteNotFound)
+		// If note not found, send delete message to client to clean up local unauthorized creation
+		// 如果未找到笔记，则向客户端发送删除消息，以清理本地未授权的创建
+		c.ToResponse(code.Success.WithData(
+			dto.NoteSyncDeleteMessage{
+				Path:     params.Path,
+				PathHash: params.PathHash,
+			},
+		).WithVault(params.Vault), dto.NoteSyncDelete)
 	}
 
 }
@@ -713,6 +721,8 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// Handle notes deleted by client
 	// 处理客户端删除的笔记
 	if len(params.DelNotes) > 0 {
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "note_w")
+
 		for _, delNote := range params.DelNotes {
 			// Check if note exists before deleting
 			// 删除前检查笔记是否存在
@@ -725,6 +735,14 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			// If note exists, execute delete
 			// 如果笔记存在，执行删除
 			if err == nil && checkNote != nil && checkNote.Action != "delete" {
+				if !hasWritePermission {
+					h.App.Logger().Warn("websocket_router.note.NoteSync: permission denied for deletion",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delNote.Path))
+					continue
+				}
+
 				delParams := &dto.NoteDeleteRequest{
 					Vault:    params.Vault,
 					Path:     delNote.Path,

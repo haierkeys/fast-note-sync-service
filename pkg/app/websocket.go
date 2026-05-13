@@ -266,6 +266,8 @@ type WebsocketClient struct {
 	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
 	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
+	Scope               string                    // Token Scope // 令牌权限范围
+	Lang                string                    // Language preference // 语言偏好
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -455,7 +457,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	content := Res{
 		Code:    code.Code(),
 		Status:  code.Status(),
-		Message: code.Lang.GetMessage(),
+		Message: code.MsgIn(c.Lang),
 		Data:    code.Data(),
 	}
 
@@ -511,7 +513,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 	content := Res{
 		Code:    code.Code(),
 		Status:  code.Status(),
-		Message: code.Lang.GetMessage(),
+		Message: code.MsgIn(c.Lang),
 		Data:    code.Data(),
 	}
 
@@ -645,7 +647,7 @@ type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -771,6 +773,14 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		client.ClientName = c.Query("clientName")
 		client.ClientVersion = c.Query("clientVersion")
 
+		// Extract language preference
+		// 提取语言偏好
+		lang := c.Query("lang")
+		if lang == "" {
+			lang = c.GetHeader("lang")
+		}
+		client.Lang = strings.ToLower(strings.ReplaceAll(lang, "-", "_"))
+
 		// Initialize long-lifecycle context for WebSocket connection
 		// 初始化 WebSocket 连接的长生命周期 context
 		client.initContext(traceID)
@@ -795,7 +805,7 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
-func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error) {
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)) {
 	w.tokenVerifyHandler = handler
 }
 
@@ -839,7 +849,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			reqUserAgent := c.Ctx.GetHeader("User-Agent")
 			reqIP := c.Ctx.ClientIP()
 
-			err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
+			scope, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
 				if appErr, ok := err.(*code.Code); ok {
@@ -851,6 +861,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 				c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 				return
 			}
+			c.Scope = scope
 		}
 
 		// Mandatorily verify user validity
@@ -991,6 +1002,23 @@ func (w *WebsocketServer) GetActiveTokenIDs(uid int64) map[int64]bool {
 		}
 	}
 	return activeTokens
+}
+
+// UpdateTokenScope updates the scope of all active connections for a specific token
+// UpdateTokenScope 更新特定令牌所有活动连接的权限范围
+func (w *WebsocketServer) UpdateTokenScope(uid int64, tokenID int64, newScope string) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID == tokenID {
+				log(LogInfo, "WS UpdateTokenScope", zap.Int64("uid", uid), zap.Int64("tokenID", tokenID), zap.String("newScope", newScope))
+				client.Scope = newScope
+			}
+		}
+	}
 }
 
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
@@ -1149,6 +1177,12 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 					return ctx.Err()
 				default:
 				}
+				// Verify binary message permission (currently only "00" for file chunk upload)
+				if !VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+					log(LogWarn, "WS OnMessage Binary Permission Denied", zap.String("prefix", prefix), zap.String("uid", c.User.ID))
+					c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: binary " + prefix))
+					return nil
+				}
 				handler(c, payloadCopy)
 				return nil
 			})
@@ -1208,6 +1242,109 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	// 执行操作
 	handler, exists := w.handlers[msg.Type]
 	if exists {
+		// Map Action to Function for RBAC
+		var function string
+		switch msg.Type {
+		case "NoteSync", "NoteCheck", "NoteRePush", "FolderSync":
+			function = "note_r"
+		case "NoteModify", "NoteDelete", "NoteRename", "FolderModify", "FolderDelete", "FolderRename":
+			function = "note_w"
+		case "FileChunkDownload", "FileRePush", "FileSync":
+			function = "file_r"
+		case "FileUploadCheck", "FileDelete", "FileRename":
+			function = "file_w"
+		case "SettingSync", "SettingCheck", "SettingRePush":
+			function = "config_r"
+		case "SettingModify", "SettingDelete", "SettingClear":
+			function = "config_w"
+		}
+
+		if function != "" && !VerifyPermissions(c.Scope, "ws", c.ClientType, function) {
+			log(LogWarn, "WS OnMessage Permission Denied", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("function", function))
+
+			// Try to extract resource path from message data
+			var pathInfo struct {
+				Path string `json:"path"`
+				Name string `json:"name"`
+			}
+			_ = json.Unmarshal(msg.Data, &pathInfo)
+			resPath := pathInfo.Path
+			if resPath == "" {
+				resPath = pathInfo.Name
+			}
+			if resPath == "" {
+				resPath = msg.Type // Fallback to message type
+			}
+
+			c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: "+resPath), msg.Type+"Ack")
+
+			// Trigger re-push for write operations to ensure client consistency
+			// 触发写操作的重推，确保客户端一致性
+			if strings.HasSuffix(function, "_w") {
+				// Special handling for Rename operations:
+				// Send a SyncRename message to "rename back" the resource on the client side.
+				// For example, if client tried A -> B and failed, we send Rename(Path=A, OldPath=B).
+				// 针对重命名操作的特殊处理：
+				// 向客户端发送一个同步重命名消息，将其“重命名回”原始路径。
+				// 例如：客户端尝试 A -> B 失败，我们下发 Rename(Path=A, OldPath=B)。
+				if strings.HasSuffix(msg.Type, "Rename") {
+					var renameData map[string]interface{}
+					if err := json.Unmarshal(msg.Data, &renameData); err == nil {
+						vault, _ := renameData["vault"].(string)
+						newPath, _ := renameData["path"].(string)
+						newPathHash, _ := renameData["pathHash"].(string)
+						oldPath, _ := renameData["oldPath"].(string)
+						oldPathHash, _ := renameData["oldPathHash"].(string)
+
+						if newPath != "" && oldPath != "" {
+							var syncRenameAction string
+							switch function {
+							case "note_w":
+								if strings.Contains(msg.Type, "Folder") {
+									syncRenameAction = "FolderSyncRename"
+								} else {
+									syncRenameAction = "NoteSyncRename"
+								}
+							case "file_w":
+								syncRenameAction = "FileSyncRename"
+							}
+
+							if syncRenameAction != "" {
+								rollbackData := map[string]interface{}{
+									"path":        oldPath,
+									"pathHash":    oldPathHash,
+									"oldPath":     newPath,
+									"oldPathHash": newPathHash,
+								}
+								c.ToResponse(code.Success.WithData(rollbackData).WithVault(vault), syncRenameAction)
+								// For Rename rollback, we don't need subsequent RePush (Delete/Modify)
+								// 对于重命名回滚，我们不再需要后续的 RePush（避免下发 Delete/Modify）
+								return
+							}
+						}
+					}
+				}
+
+				var rePushAction string
+				switch function {
+				case "note_w":
+					rePushAction = "NoteRePush"
+				case "file_w":
+					rePushAction = "FileRePush"
+				case "config_w":
+					rePushAction = "SettingRePush"
+				}
+
+				if rePushAction != "" {
+					if h, ok := w.handlers[rePushAction]; ok {
+						log(LogInfo, "WS Trigger RePush on permission denied", zap.String("action", rePushAction), zap.String("uid", c.User.ID))
+						h(c, &msg)
+					}
+				}
+			}
+			return
+		}
+
 		// Use the client object retrieved at the beginning of the function
 		handler(c, &msg)
 	} else {

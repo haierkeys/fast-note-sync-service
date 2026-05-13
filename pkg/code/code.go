@@ -102,6 +102,10 @@ func (e *Code) Msg() string {
 	return e.Lang.GetMessage()
 }
 
+func (e *Code) MsgIn(language string) string {
+	return e.Lang.GetMessageIn(language)
+}
+
 func (e *Code) Msgf(args []interface{}) string {
 	return fmt.Sprintf(e.msg, args...)
 }

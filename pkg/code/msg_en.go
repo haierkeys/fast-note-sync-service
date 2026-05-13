@@ -23,6 +23,7 @@ var en_messages = map[int]string{
 	312: "Auth token IP restricted",
 	313: "Auth token Browser (UA) restricted",
 	314: "Auth token Client restricted",
+	315: "Auth token Scope restricted",
 
 	// --- User Related (400-419) ---
 	400: "User registration failed",

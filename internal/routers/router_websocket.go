@@ -41,6 +41,7 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.Use(dto.SettingReceiveCheck, settingWSHandler.SettingModifyCheck)
 	wss.Use(dto.SettingReceiveSync, settingWSHandler.SettingSync)
 	wss.Use(dto.SettingReceiveClear, settingWSHandler.SettingClear)
+	wss.Use(dto.SettingReceiveRePush, settingWSHandler.SettingRePush)
 
 	// Attachment
 	wss.Use(dto.FileReceiveSync, fileWSHandler.FileSync)
@@ -56,39 +57,39 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 
 	// Inject Token Verification to decouple pkg/app from internal/service
-	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) error {
+	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error) {
 		dbToken, err := appContainer.TokenService.GetActiveToken(ctx, uid, tokenID)
 		if err != nil || dbToken == nil {
 			fmt.Printf("[WSDebug] Token not found or invalid in DB: uid=%d, tokenId=%d, err=%v\n", uid, tokenID, err)
 			if err != nil {
-				return err
+				return "", err
 			}
-			return code.ErrorInvalidUserAuthToken
+			return "", code.ErrorInvalidUserAuthToken
 		}
 
 		// 1. Verify Scope Permissions (Protocol: ws)
 		if !pkgapp.VerifyPermissions(dbToken.Scope, "ws", reqClientType, "") {
 			fmt.Printf("[WSDebug] Permission denied: scope=%s, protocol=%s, client=%s\n", dbToken.Scope, "ws", reqClientType)
-			return code.ErrorInvalidAuthToken.WithDetails("Permission denied")
+			return "", code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: Handshake")
 		}
 
 		// 2. Verify Client Type (Only for login tokens where ClientType is used for restriction)
 		// 仅对登录令牌执行严格客户端匹配，手动令牌通过 Scope 校验
 		if dbToken.IssueType == 1 && dbToken.ClientType != "" && !pkgapp.MatchWildcard(dbToken.ClientType, reqClientType) {
 			fmt.Printf("[WSDebug] ClientType mismatch: req=%s, db=%s\n", reqClientType, dbToken.ClientType)
-			return code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
+			return "", code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
 		}
 
 		// 3. Verify User-Agent (Only if bound)
 		if dbToken.UserAgent != "" && !pkgapp.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
 			fmt.Printf("[WSDebug] User-Agent mismatch: req=%s, db=%s\n", reqUserAgent, dbToken.UserAgent)
-			return code.ErrorAuthTokenUARestricted
+			return "", code.ErrorAuthTokenUARestricted
 		}
 
 		// 4. Verify IP (Only if bound)
 		if dbToken.BoundIP != "" && !pkgapp.MatchWildcard(dbToken.BoundIP, reqIP) {
 			fmt.Printf("[WSDebug] IP mismatch: req=%s, db=%s\n", reqIP, dbToken.BoundIP)
-			return code.ErrorAuthTokenIPRestricted
+			return "", code.ErrorAuthTokenIPRestricted
 		}
 
 		_ = appContainer.TokenService.RecordAccessLog(ctx, &domain.AuthTokenLog{
@@ -103,6 +104,6 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 			StatusCode:    101, // Switching Protocols
 		})
 
-		return nil
+		return dbToken.Scope, nil
 	})
 }

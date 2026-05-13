@@ -135,7 +135,19 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 
 		// 5. Verify Permissions (Health check is always allowed for valid tokens)
 		if path != "/api/health" && !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
-			response.ToResponse(code.ErrorInvalidAuthToken.WithDetails("Permission denied"))
+			// Extract resource path from common parameters
+			resPath := c.Query("path")
+			if resPath == "" {
+				resPath = c.Query("name")
+			}
+			if resPath == "" {
+				resPath = c.Query("file")
+			}
+			if resPath == "" {
+				resPath = path // Fallback to API path if no resource path found
+			}
+
+			response.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: " + resPath))
 			c.Abort()
 			return
 		}

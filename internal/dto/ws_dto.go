@@ -92,6 +92,9 @@ const (
 	// SettingReceiveClear clear all settings request
 	// SettingReceiveClear 清理所有设置请求
 	SettingReceiveClear WebSocketReceiveAction = "SettingClear"
+	// SettingReceiveRePush setting missing pull request
+	// SettingReceiveRePush 配置缺失请求拉取
+	SettingReceiveRePush WebSocketReceiveAction = "SettingRePush"
 )
 
 const (

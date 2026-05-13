@@ -36,13 +36,16 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 	}
 
 	// Match Protocol (supports comma-separated list, e.g. "rest,ws")
-	matchP := scopeP == "*" || strings.EqualFold(scopeP, p)
-	if !matchP && scopeP != "" {
-		pList := strings.Split(scopeP, ",")
-		for _, item := range pList {
-			if strings.EqualFold(strings.TrimSpace(item), p) {
-				matchP = true
-				break
+	matchP := true
+	if scopeP != "" && scopeP != "*" {
+		matchP = strings.EqualFold(scopeP, p)
+		if !matchP {
+			pList := strings.Split(scopeP, ",")
+			for _, item := range pList {
+				if strings.EqualFold(strings.TrimSpace(item), p) {
+					matchP = true
+					break
+				}
 			}
 		}
 	}
@@ -54,8 +57,32 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 	}
 
 	matchF := true
-	if f != "" {
-		matchF = (scopeF == "*" || strings.EqualFold(scopeF, f))
+	if f != "" && scopeF != "" && scopeF != "*" {
+		fList := strings.Split(scopeF, ",")
+		matchF = false
+		for _, item := range fList {
+			item = strings.TrimSpace(item)
+			// Direct match
+			if strings.EqualFold(item, f) {
+				matchF = true
+				break
+			}
+			// _rw matches both _r and _w
+			if strings.HasSuffix(item, "_rw") {
+				prefix := item[:len(item)-3]
+				if strings.HasPrefix(f, prefix) && (strings.HasSuffix(f, "_r") || strings.HasSuffix(f, "_w")) {
+					matchF = true
+					break
+				}
+			}
+			// _w also implies _r for the same resource (backward compatibility)
+			if strings.HasSuffix(item, "_w") && strings.HasSuffix(f, "_r") {
+				if item[:len(item)-2] == f[:len(f)-2] {
+					matchF = true
+					break
+				}
+			}
+		}
 	}
 
 	dump.P(map[string]any{

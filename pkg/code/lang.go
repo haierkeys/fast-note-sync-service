@@ -21,13 +21,23 @@ const FALLBACK_LNG = "en"
 // GetMessage method returns the corresponding message according to the passed language
 // GetMessage 方法根据传入的语言返回相应的消息
 func (l lang) GetMessage() string {
-	if lng == "" {
-		lng = FALLBACK_LNG
+	return l.GetMessageIn(lng)
+}
+
+// GetMessageIn returns the corresponding message according to the specified language
+// GetMessageIn 根据指定的语言返回相应的消息
+func (l lang) GetMessageIn(language string) string {
+	if language == "" {
+		language = lng
 	}
+	if language == "" {
+		language = FALLBACK_LNG
+	}
+
 	// Get language field
 	// 获取语言字段
 	val := reflect.ValueOf(l)
-	field := val.FieldByName(lng)
+	field := val.FieldByName(language)
 	// If the language field is valid and not empty, return the message in that language
 	// 如果语言字段有效且非空，返回该语言的消息
 	if field.IsValid() && field.String() != "" {
@@ -41,7 +51,7 @@ func (l lang) GetMessage() string {
 	}
 	// If the fallback language has no message either, return the default error message
 	// 如果回退语言也没有消息，返回默认的错误信息
-	return fmt.Sprintf("No message available for language: %s", lng)
+	return fmt.Sprintf("No message available for language: %s", language)
 }
 
 // GetSupportedLanguages function returns all languages supported by the lang type

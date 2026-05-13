@@ -127,10 +127,11 @@ func GetAccessHost(c *gin.Context) string {
 func (r *Response) ToResponse(codeObj *code.Code) {
 	r.Ctx.Set("status_code", codeObj.StatusCode())
 
+	lang := r.Ctx.GetString("lang")
 	content := Res{
 		Code:    codeObj.Code(),
 		Status:  codeObj.Status(),
-		Message: codeObj.Lang.GetMessage(),
+		Message: codeObj.MsgIn(lang),
 		Data:    codeObj.Data(),
 	}
 
@@ -152,10 +153,11 @@ func (r *Response) ToResponse(codeObj *code.Code) {
 func (r *Response) ToResponseList(codeObj *code.Code, list interface{}, totalRows int) {
 	r.Ctx.Set("status_code", codeObj.StatusCode())
 
+	lang := r.Ctx.GetString("lang")
 	content := Res{
 		Code:    codeObj.Code(),
 		Status:  codeObj.Status(),
-		Message: codeObj.Lang.GetMessage(),
+		Message: codeObj.MsgIn(lang),
 		Data: ListRes{
 			List:  list,
 			Pager: *NewPager(r.Ctx, totalRows),
