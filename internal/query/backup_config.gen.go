@@ -44,6 +44,8 @@ func newBackupConfig(db *gorm.DB, opts ...gen.DOOption) backupConfig {
 	_backupConfig.LastMessage = field.NewString(tableName, "last_message")
 	_backupConfig.CreatedAt = field.NewField(tableName, "created_at")
 	_backupConfig.UpdatedAt = field.NewField(tableName, "updated_at")
+	_backupConfig.PasswordMode = field.NewInt64(tableName, "password_mode")
+	_backupConfig.PasswordValue = field.NewString(tableName, "password_value")
 
 	_backupConfig.fillFieldMap()
 
@@ -70,6 +72,8 @@ type backupConfig struct {
 	LastMessage      field.String
 	CreatedAt        field.Field
 	UpdatedAt        field.Field
+	PasswordMode     field.Int64
+	PasswordValue    field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -102,6 +106,8 @@ func (b *backupConfig) updateTableName(table string) *backupConfig {
 	b.LastMessage = field.NewString(table, "last_message")
 	b.CreatedAt = field.NewField(table, "created_at")
 	b.UpdatedAt = field.NewField(table, "updated_at")
+	b.PasswordMode = field.NewInt64(table, "password_mode")
+	b.PasswordValue = field.NewString(table, "password_value")
 
 	b.fillFieldMap()
 
@@ -130,7 +136,7 @@ func (b *backupConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (b *backupConfig) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 16)
+	b.fieldMap = make(map[string]field.Expr, 18)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["uid"] = b.UID
 	b.fieldMap["vault_id"] = b.VaultID
@@ -147,6 +153,8 @@ func (b *backupConfig) fillFieldMap() {
 	b.fieldMap["last_message"] = b.LastMessage
 	b.fieldMap["created_at"] = b.CreatedAt
 	b.fieldMap["updated_at"] = b.UpdatedAt
+	b.fieldMap["password_mode"] = b.PasswordMode
+	b.fieldMap["password_value"] = b.PasswordValue
 }
 
 func (b backupConfig) clone(db *gorm.DB) backupConfig {

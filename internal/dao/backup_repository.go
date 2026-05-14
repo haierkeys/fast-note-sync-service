@@ -66,6 +66,8 @@ func (r *backupRepository) configToDomain(m *model.BackupConfig) *domain.BackupC
 		NextRunTime:      m.NextRunTime,
 		LastStatus:       int(m.LastStatus),
 		LastMessage:      m.LastMessage,
+		PasswordMode:     int(m.PasswordMode),
+		PasswordValue:    m.PasswordValue,
 		CreatedAt:        time.Time(m.CreatedAt),
 		UpdatedAt:        time.Time(m.UpdatedAt),
 	}
@@ -98,6 +100,8 @@ func (r *backupRepository) configToModel(d *domain.BackupConfig) *model.BackupCo
 		NextRunTime:      d.NextRunTime,
 		LastStatus:       int64(d.LastStatus),
 		LastMessage:      d.LastMessage,
+		PasswordMode:     int64(d.PasswordMode),
+		PasswordValue:    d.PasswordValue,
 		CreatedAt:        timex.Time(d.CreatedAt),
 		UpdatedAt:        timex.Time(d.UpdatedAt),
 	}

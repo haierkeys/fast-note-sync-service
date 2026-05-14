@@ -292,6 +292,8 @@ CREATE TABLE "backup_config" (
     "last_status" integer DEFAULT 0,
     -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: Success but no update
     "last_message" text DEFAULT '',
+    "password_mode" integer DEFAULT 0, -- 0: None, 1: Fixed, 2: Random
+    "password_value" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );

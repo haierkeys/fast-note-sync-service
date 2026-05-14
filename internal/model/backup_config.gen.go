@@ -30,6 +30,8 @@ type BackupConfig struct {
 	LastMessage      string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
 	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt        timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	PasswordMode     int64      `gorm:"column:password_mode;default:0" json:"passwordMode" form:"passwordMode"`
+	PasswordValue    string     `gorm:"column:password_value;default:''" json:"passwordValue" form:"passwordValue"`
 }
 
 // TableName BackupConfig's table name

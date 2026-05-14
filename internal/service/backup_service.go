@@ -139,6 +139,8 @@ func (s *backupService) UpdateConfig(ctx context.Context, uid int64, req *dto.Ba
 		CronExpression:   req.CronExpression,
 		IncludeVaultName: req.IncludeVaultName,
 		RetentionDays:    req.RetentionDays,
+		PasswordMode:     req.PasswordMode,
+		PasswordValue:    req.PasswordValue,
 	}
 
 	// Preserve state fields if updating existing config
@@ -219,6 +221,8 @@ func (s *backupService) configToDTO(ctx context.Context, d *domain.BackupConfig)
 		CronExpression:   d.CronExpression,
 		IncludeVaultName: d.IncludeVaultName,
 		RetentionDays:    d.RetentionDays,
+		PasswordMode:     d.PasswordMode,
+		PasswordValue:    d.PasswordValue,
 		LastRunTime:      timex.Time(d.LastRunTime),
 		NextRunTime:      timex.Time(d.NextRunTime),
 		LastStatus:       d.LastStatus,
@@ -516,7 +520,14 @@ func (s *backupService) runArchive(ctx context.Context, config *domain.BackupCon
 
 	// 2. Zip archive
 	// 2. 压缩打包
-	password := util.GetRandomString(12)
+	password := ""
+	switch config.PasswordMode {
+	case 1: // Fixed
+		password = config.PasswordValue
+	case 2: // Random
+		password = util.GetRandomString(12)
+	}
+
 	if err := util.ZipWithPassword(tempDir, zipPath, password); err != nil {
 		return 0, 0, err
 	}

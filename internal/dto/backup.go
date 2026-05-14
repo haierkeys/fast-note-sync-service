@@ -14,6 +14,8 @@ type BackupConfigRequest struct {
 	CronExpression   string `json:"cronExpression" form:"cronExpression" example:"0 0 * * *"`                                              // Cron expression // Cron 表达式
 	RetentionDays    int    `json:"retentionDays" form:"retentionDays" binding:"min=-1" example:"7"`                                       // Retention days // 保留天数
 	IncludeVaultName bool   `json:"includeVaultName" form:"includeVaultName" example:"false"`                                              // Include vault name // 同步路径是否包含仓库名
+	PasswordMode     int    `json:"passwordMode" form:"passwordMode" example:"0"`                                                          // Password mode (0:None, 1:Fixed, 2:Random) // 密码模式 (0:无密码, 1:固定密码, 2:随机密码)
+	PasswordValue    string `json:"passwordValue" form:"passwordValue" example:"123456"`                                                   // Password value for fixed mode // 固定密码值
 }
 
 // BackupExecuteRequest backup execution request
@@ -43,6 +45,8 @@ type BackupConfigDTO struct {
 	CronExpression   string     `json:"cronExpression"`   // Cron expression // Cron表达式
 	RetentionDays    int        `json:"retentionDays"`    // Retention days // 保留天数
 	IncludeVaultName bool       `json:"includeVaultName"` // Whether sync path includes vault name // 同步路径是否包含仓库名
+	PasswordMode     int        `json:"passwordMode"`     // Password mode (0:None, 1:Fixed, 2:Random) // 密码模式 (0:无密码, 1:固定密码, 2:随机密码)
+	PasswordValue    string     `json:"passwordValue"`    // Password value for fixed mode // 固定密码值
 	LastRunTime      timex.Time `json:"lastRunTime"`      // Last run time // 上次运行时间
 	NextRunTime      timex.Time `json:"nextRunTime"`      // Next run time // 下次运行时间
 	LastStatus       int        `json:"lastStatus"`       // Last status (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped) // 上次状态 (0:Idle, 1:Running, 2:Success, 3:Failed, 4:Stopped)
