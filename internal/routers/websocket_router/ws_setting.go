@@ -122,7 +122,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 			dto.SettingSyncNeedUploadMessage{
 				Path: settingCheck.Path,
 			},
-		).WithVault(params.Vault), dto.SettingSyncNeedUpload)
+		), dto.SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
@@ -132,7 +132,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 				Mtime:            settingCheck.Mtime,
 				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.SettingSyncMtime)
+		), dto.SettingSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))

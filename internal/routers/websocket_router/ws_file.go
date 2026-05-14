@@ -190,7 +190,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            fileSvc.Mtime,
 				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.FileSyncMtime)
+		), dto.FileSyncMtime)
 		return
 	default:
 		// 无需更新

@@ -461,7 +461,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Path:     nodeCheck.Path,
 				PathHash: nodeCheck.PathHash,
 			},
-		).WithVault(params.Vault), dto.NoteSyncNeedPush)
+		), dto.NoteSyncNeedPush)
 		return
 	case "UpdateMtime":
 		// Force client to update mtime without transferring note content
@@ -473,7 +473,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.NoteSyncMtime)
+		), dto.NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
