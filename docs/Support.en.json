@@ -8,6 +8,22 @@
     "name": "Geeson"
   },
   {
+    "time": "2026/05/13 11:45:36",
+    "item": "Custom amount",
+    "amount": "120.00",
+    "unit": "¥",
+    "message": "Thanks for developing such a good tool and kindly suggesting the one-way image upload function #160",
+    "name": "AlexShyXie"
+  },
+  {
+    "time": "2026/04/21 22:57:33",
+    "item": "Tip as you like",
+    "amount": "108.00",
+    "unit": "¥",
+    "message": "Your plug-in successfully helped me migrate from Evernote to Obsidian, cheers! add oil!",
+    "name": "CTWSM"
+  },
+  {
     "time": "2026/04/18 21:15:46",
     "item": "Four cups of coffee☕",
     "amount": "100.00",
@@ -72,12 +88,36 @@
     "name": "xuhsu"
   },
   {
+    "time": "2026/05/04 05:05:07",
+    "item": "Three cups of coffee☕",
+    "amount": "90.00",
+    "unit": "¥",
+    "message": "-",
+    "name": "111"
+  },
+  {
+    "time": "2026/04/27 09:00:55",
+    "item": "Three cups of coffee☕",
+    "amount": "90.00",
+    "unit": "¥",
+    "message": "keep on keeping on",
+    "name": "小狗减速带"
+  },
+  {
     "time": "2026/01/14 15:58:04",
     "item": "Tip as you like",
     "amount": "88.00",
     "unit": "¥",
     "message": "Limited ability, no respect",
     "name": "wutay"
+  },
+  {
+    "time": "2026/04/30 21:08:11",
+    "item": "Custom amount",
+    "amount": "68.00",
+    "unit": "¥",
+    "message": "Great job! Hope it gets better and better!",
+    "name": "言若"
   },
   {
     "time": "2026/03/02 14:50:25",
@@ -112,12 +152,36 @@
     "name": "Jack"
   },
   {
+    "time": "2026/04/30 14:53:04",
+    "item": "Two cups of coffee☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "Support, thank you boss",
+    "name": "新乡人儿"
+  },
+  {
+    "time": "2026/04/30 03:08:34",
+    "item": "Two cups of coffee☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "It's great. It solved a problem that has been bothering me for a long time. I almost gave up on ob.",
+    "name": "zax"
+  },
+  {
     "time": "2026/04/02 19:16:44",
     "item": "Tip as you like",
     "amount": "51.55",
     "unit": "¥",
     "message": "Very good plugin",
     "name": "小七的小洋"
+  },
+  {
+    "time": "2026/04/22 09:15:52",
+    "item": "Two cups of coffee☕",
+    "amount": "50.00",
+    "unit": "¥",
+    "message": "Thank you for your hard work. I hope FNS can continue to develop steadily.",
+    "name": "zzz"
   },
   {
     "time": "2026/04/21 14:32:40",
@@ -236,7 +300,7 @@
     "item": "Two cups of coffee☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thanks for developing such a great plug-in, which solves the synchronization problem",
+    "message": "Thanks for developing such a great plug-in, which solved the synchronization problem",
     "name": "Jacky龙"
   },
   {
@@ -272,6 +336,86 @@
     "name": "喆"
   },
   {
+    "time": "2026/05/14 09:54:02",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Brother, you are working so hard on updating. Please support me.",
+    "name": "如星"
+  },
+  {
+    "time": "2026/05/12 14:06:48",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thank you for developing the obsidian synchronization plug-in and server, it is very useful!",
+    "name": "wmz0731"
+  },
+  {
+    "time": "2026/05/12 11:04:53",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "marvelous! come on",
+    "name": "深眼2049"
+  },
+  {
+    "time": "2026/05/10 23:39:30",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Easy to use, love to use",
+    "name": "思兼"
+  },
+  {
+    "time": "2026/05/06 08:28:12",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thanks for such a great plugin.",
+    "name": "windowspp"
+  },
+  {
+    "time": "2026/05/05 21:30:30",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Support, come on",
+    "name": "obsidian 同步"
+  },
+  {
+    "time": "2026/05/03 19:09:49",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "-",
+    "name": "长恨"
+  },
+  {
+    "time": "2026/05/02 20:17:52",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Very easy to use, keep up the good work, show your support with my heartfelt thoughts!",
+    "name": "王考考"
+  },
+  {
+    "time": "2026/04/27 09:53:06",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "You guys are awesome, you can finally get rid of icloud!",
+    "name": "Mark"
+  },
+  {
+    "time": "2026/04/26 22:44:57",
+    "item": "A cup of coffee☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "come on",
+    "name": "差不多先生"
+  },
+  {
     "time": "2026/03/04 21:42:57",
     "item": "Tip as you like",
     "amount": "30.00",
@@ -302,6 +446,38 @@
     "unit": "¥",
     "message": "I have never been able to find an ideal obsidian synchronization solution. Thank you to the author. Come on!",
     "name": "淇淇"
+  },
+  {
+    "time": "2026/05/07 23:37:44",
+    "item": "Custom amount",
+    "amount": "21.99",
+    "unit": "¥",
+    "message": "Very professional and easy to use! Very useful!",
+    "name": "王东方"
+  },
+  {
+    "time": "2026/05/12 15:39:05",
+    "item": "Custom amount",
+    "amount": "20.00",
+    "unit": "¥",
+    "message": "support",
+    "name": "Justin"
+  },
+  {
+    "time": "2026/04/24 17:05:04",
+    "item": "A cup of coffee☕",
+    "amount": "20.00",
+    "unit": "¥",
+    "message": "Very easy to use, support it",
+    "name": "拾叁"
+  },
+  {
+    "time": "2026/04/22 17:29:22",
+    "item": "A cup of coffee☕",
+    "amount": "20.00",
+    "unit": "¥",
+    "message": "Really useful software, thank you to the author",
+    "name": "Double"
   },
   {
     "time": "2026/04/21 13:45:19",
@@ -784,6 +960,30 @@
     "name": "下鞅"
   },
   {
+    "time": "2026/05/12 09:50:55",
+    "item": "Custom amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "The function is great, thank you for your hard work",
+    "name": "joven_lynn"
+  },
+  {
+    "time": "2026/04/27 10:54:56",
+    "item": "Custom amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "support! grateful!",
+    "name": "蜗牛"
+  },
+  {
+    "time": "2026/04/25 09:22:32",
+    "item": "Custom amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "try it",
+    "name": "叶子"
+  },
+  {
     "time": "2026/03/02 21:15:39",
     "item": "Tip as you like",
     "amount": "10.00",
@@ -912,6 +1112,14 @@
     "name": "kane"
   },
   {
+    "time": "2026/05/12 21:05:45",
+    "item": "Custom amount",
+    "amount": "5.00",
+    "unit": "¥",
+    "message": "Thanks 🙏",
+    "name": "Eancen"
+  },
+  {
     "time": "2026/04/20 16:34:57",
     "item": "Tip as you like",
     "amount": "5.00",
@@ -992,12 +1200,44 @@
     "name": "jeremy"
   },
   {
+    "time": "2026/05/11 17:29:26",
+    "item": "Custom amount",
+    "amount": "3.00",
+    "unit": "¥",
+    "message": "I don't have much money, just give me some idea. The plugin is great, thank you very much.",
+    "name": "1"
+  },
+  {
+    "time": "2026/05/02 15:26:57",
+    "item": "Custom amount",
+    "amount": "3.00",
+    "unit": "¥",
+    "message": "The deployment was successful, it works very well, thank you",
+    "name": "凭鱼跃"
+  },
+  {
     "time": "2026/02/23 17:47:46",
     "item": "Tip as you like",
     "amount": "3.00",
     "unit": "¥",
     "message": "Happy New Year",
     "name": "LL"
+  },
+  {
+    "time": "2026/04/21 22:43:08",
+    "item": "Tip as you like",
+    "amount": "2.88",
+    "unit": "¥",
+    "message": "Very easy to use(òωó)👍",
+    "name": "Skins"
+  },
+  {
+    "time": "2026/05/02 14:50:23",
+    "item": "Custom amount",
+    "amount": "2.00",
+    "unit": "¥",
+    "message": "Thanks",
+    "name": "竹尘居士"
   },
   {
     "time": "2026/04/11 12:28:18",
