@@ -71,7 +71,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 
 	shareRes.BaseUrl = h.getShareBaseUrl(c)
 	response.ToResponse(code.Success.WithData(shareRes))
-	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
 }
 
 // @Summary Get shared note details
@@ -285,7 +285,7 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success)
-	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
 }
 
 // UpdatePassword updates share password
