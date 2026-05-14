@@ -164,6 +164,9 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	if clientVersion := c.GetHeader("X-Client-Version"); clientVersion != "" {
 		ctx = context.WithValue(ctx, "client_version", clientVersion)
 	}
+	if scope, ok := c.Get("scope"); ok {
+		ctx = context.WithValue(ctx, "scope", scope)
+	}
 
 	// Set SSE headers
 	// 设置 SSE 响应头
@@ -215,6 +218,9 @@ func (h *MCPHandler) HandleMessage(c *gin.Context) {
 	// 将 uid 注入请求 context，使 SSEContextFunc 能在消息处理时将其传递给工具处理函数。
 	uid := pkgapp.GetUID(c)
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
+	if scope, ok := c.Get("scope"); ok {
+		ctx = context.WithValue(ctx, "scope", scope)
+	}
 	h.sseServer.MessageHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
 
@@ -227,5 +233,8 @@ func (h *MCPHandler) HandleStreamableHTTP(c *gin.Context) {
 	// Pre-inject uid into the request context so that WithHTTPContextFunc can forward it.
 	// 将 uid 预注入请求 context，以便 WithHTTPContextFunc 能够透传。
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
+	if scope, ok := c.Get("scope"); ok {
+		ctx = context.WithValue(ctx, "scope", scope)
+	}
 	h.streamableServer.ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }

@@ -132,6 +132,9 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 
 		// Protocol is rest for this middleware
 		protocol := "rest"
+		if strings.HasPrefix(path, "/api/mcp") {
+			protocol = "mcp"
+		}
 
 		// 5. Verify Permissions (Health check is always allowed for valid tokens)
 		if path != "/api/health" && !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
@@ -171,6 +174,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		}()
 
 		c.Set("user_token", user)
+		c.Set("scope", dbToken.Scope)
 		c.Next()
 	}
 }

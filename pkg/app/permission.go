@@ -2,6 +2,8 @@ package app
 
 import (
 	"strings"
+
+	"github.com/gin-gonic/gin"
 	"github.com/gookit/goutil/dump"
 )
 
@@ -18,7 +20,7 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 	}
 
 	parts := strings.Split(scope, " ")
-	
+
 	var scopeP, scopeC, scopeF string
 
 	for _, part := range parts {
@@ -85,26 +87,28 @@ func VerifyPermissions(scope string, p string, c string, f string) bool {
 		}
 	}
 
-	dump.P(map[string]any{
-		"step": "VerifyPermissions",
-		"input": map[string]string{
-			"scope": scope,
-			"protocol": p,
-			"client": c,
-			"function": f,
-		},
-		"extracted": map[string]string{
-			"scopeP": scopeP,
-			"scopeC": scopeC,
-			"scopeF": scopeF,
-		},
-		"matches": map[string]bool{
-			"matchP": matchP,
-			"matchC": matchC,
-			"matchF": matchF,
-		},
-		"result": matchP && matchC && matchF,
-	})
+	if gin.Mode() == gin.DebugMode {
+		dump.P(map[string]any{
+			"step": "VerifyPermissions",
+			"input": map[string]string{
+				"scope":    scope,
+				"protocol": p,
+				"client":   c,
+				"function": f,
+			},
+			"extracted": map[string]string{
+				"scopeP": scopeP,
+				"scopeC": scopeC,
+				"scopeF": scopeF,
+			},
+			"matches": map[string]bool{
+				"matchP": matchP,
+				"matchC": matchC,
+				"matchF": matchF,
+			},
+			"result": matchP && matchC && matchF,
+		})
+	}
 
 	return matchP && matchC && matchF
 }

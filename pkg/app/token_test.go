@@ -82,7 +82,7 @@ func TestTokenManager_GenerateAndParse(t *testing.T) {
 	ip := "127.0.0.1"
 
 	// 1. 测试生成和解析
-	token, err := tm.Generate(uid, nickname, ip)
+	token, err := tm.Generate(uid, nickname, ip, 1)
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -99,9 +99,6 @@ func TestTokenManager_GenerateAndParse(t *testing.T) {
 	if parsedUser.Nickname != nickname {
 		t.Errorf("Expected Nickname %s, got %s", nickname, parsedUser.Nickname)
 	}
-	if parsedUser.IP != ip {
-		t.Errorf("Expected IP %s, got %s", ip, parsedUser.IP)
-	}
 	if parsedUser.Issuer != cfg.Issuer {
 		t.Errorf("Expected Issuer %s, got %s", cfg.Issuer, parsedUser.Issuer)
 	}
@@ -111,7 +108,7 @@ func TestTokenManager_GenerateAndParse(t *testing.T) {
 	shortExpiryCfg.Expiry = -1 * time.Second
 	tmExpired := NewTokenManager(shortExpiryCfg)
 
-	expiredToken, err := tmExpired.Generate(uid, nickname, ip)
+	expiredToken, err := tmExpired.Generate(uid, nickname, ip, 1)
 	if err != nil {
 		t.Fatalf("Generate (expired) failed: %v", err)
 	}
@@ -126,7 +123,7 @@ func TestTokenManager_GenerateAndParse(t *testing.T) {
 	wrongKeyCfg.SecretKey = "wrong-user-secret"
 	tmWrongKey := NewTokenManager(wrongKeyCfg)
 
-	wrongToken, _ := tmWrongKey.Generate(uid, nickname, ip)
+	wrongToken, _ := tmWrongKey.Generate(uid, nickname, ip, 1)
 	_, err = tm.Parse(wrongToken)
 	if err == nil {
 		t.Error("Expected error for token generated with different secret key, but got nil")

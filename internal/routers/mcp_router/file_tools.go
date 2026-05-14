@@ -26,6 +26,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 	)
 	srv.AddTool(toolListFiles, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -61,6 +64,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolGetFileInfo, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -90,6 +96,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolGetContent, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -124,6 +133,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolDeleteFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -154,6 +166,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New file path")),
 	)
 	srv.AddTool(toolRenameFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -196,6 +211,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
 	srv.AddTool(toolRestoreFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -225,6 +243,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Description("File path. If empty, potentially clear all")),
 	)
 	srv.AddTool(toolRecycleClearFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
