@@ -178,7 +178,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				SessionID: session.ID,
 				ChunkSize: session.ChunkSize,
 			},
-		), dto.FileUpload)
+		).WithVault(params.Vault), dto.FileUpload)
 		return
 
 	case "UpdateMtime":
@@ -190,11 +190,11 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            fileSvc.Mtime,
 				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
 			},
-		), dto.FileSyncMtime)
+		).WithVault(params.Vault), dto.FileSyncMtime)
 		return
 	default:
 		// 无需更新
-		c.ToResponse(code.SuccessNoUpdate)
+		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 	}
 }
 
@@ -420,7 +420,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		LastTime: fileSvc.UpdatedTimestamp,
 		Path:     fileSvc.Path,
 		PathHash: fileSvc.PathHash,
-	}), string(dto.FileDeleteAck))
+	}).WithVault(params.Vault), string(dto.FileDeleteAck))
 
 	// Broadcast file deletion message
 	// 广播文件删除消息

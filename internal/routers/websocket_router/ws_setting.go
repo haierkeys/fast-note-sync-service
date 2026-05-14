@@ -64,7 +64,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: setting.UpdatedTimestamp,
 			Path:     setting.Path,
 			PathHash: setting.PathHash,
-		}), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(dto.SettingModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.SettingSyncModifyMessage{
 				Vault:            params.Vault,
@@ -84,10 +84,10 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: settingCheck.UpdatedTimestamp,
 			Path:     settingCheck.Path,
 			PathHash: settingCheck.PathHash,
-		}), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(dto.SettingModifyAck))
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate)
+		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 		return
 	}
 }
@@ -122,7 +122,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 			dto.SettingSyncNeedUploadMessage{
 				Path: settingCheck.Path,
 			},
-		), dto.SettingSyncNeedUpload)
+		).WithVault(params.Vault), dto.SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
@@ -132,10 +132,10 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 				Mtime:            settingCheck.Mtime,
 				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
-		), dto.SettingSyncMtime)
+		).WithVault(params.Vault), dto.SettingSyncMtime)
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate)
+		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 		return
 	}
 }
@@ -168,7 +168,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		LastTime: setting.UpdatedTimestamp,
 		Path:     setting.Path,
 		PathHash: setting.PathHash,
-	}), string(dto.SettingDeleteAck))
+	}).WithVault(params.Vault), string(dto.SettingDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
 			Path:             setting.Path,
@@ -488,12 +488,12 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
 		},
-	).WithContext(params.Context), dto.SettingSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), dto.SettingSyncEnd)
 
 	// Send queued messages individually
 	// 逐条发送队列中的消息
 	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithContext(params.Context), item.Action)
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
 	}
 }
 

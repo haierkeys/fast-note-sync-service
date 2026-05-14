@@ -69,14 +69,15 @@ func registerShareRoutes(r *gin.Engine, frontendFiles embed.FS, appContainer *ap
 // renderHTMLWithAPI injects API_URL into HTML
 // renderHTMLWithAPI 将 API_URL 注入到 HTML 中
 func renderHTMLWithAPI(c *gin.Context, content []byte, apiUrl string) {
+	var script string
 	if apiUrl == "" {
-		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
-		return
+		script = "<script>localStorage.removeItem('API_URL');</script>"
+	} else {
+		// Inject localStorage setter before </body>
+		// 在 </body> 前注入 localStorage 设置脚本
+		script = fmt.Sprintf("<script>localStorage.setItem('API_URL', '%s');</script>", apiUrl)
 	}
 
-	// Inject localStorage setter before </body>
-	// 在 </body> 前注入 localStorage 设置脚本
-	script := fmt.Sprintf("<script>localStorage.setItem('API_URL', '%s');</script>", apiUrl)
 	html := string(content)
 	if strings.Contains(html, "</body>") {
 		html = strings.Replace(html, "</body>", script+"</body>", 1)

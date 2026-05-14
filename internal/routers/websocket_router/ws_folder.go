@@ -234,12 +234,12 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		LastTime:        syncStartTime,
 		NeedModifyCount: needModifyCount,
 		NeedDeleteCount: needDeleteCount,
-	}).WithContext(params.Context), dto.FolderSyncEnd)
+	}).WithVault(params.Vault).WithContext(params.Context), dto.FolderSyncEnd)
 
 	// Send queued messages individually
 	// 逐条发送队列中的消息
 	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithContext(params.Context), item.Action)
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
 	}
 }
 
@@ -263,7 +263,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		LastTime: folder.UpdatedTimestamp,
 		Path:     folder.Path,
 		PathHash: folder.PathHash,
-	}), string(dto.FolderModifyAck))
+	}).WithVault(params.Vault), string(dto.FolderModifyAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FolderSyncModifyMessage{
 			Path:             folder.Path,
@@ -296,7 +296,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		LastTime: folder.UpdatedTimestamp,
 		Path:     folder.Path,
 		PathHash: folder.PathHash,
-	}), string(dto.FolderDeleteAck))
+	}).WithVault(params.Vault), string(dto.FolderDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.FolderSyncDeleteMessage{
 			Path:             folder.Path,
@@ -330,7 +330,7 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		LastTime: newFolder.UpdatedTimestamp,
 		Path:     newFolder.Path,
 		PathHash: newFolder.PathHash,
-	}), string(dto.FolderRenameAck))
+	}).WithVault(params.Vault), string(dto.FolderRenameAck))
 
 	// 如果 oldFolder 为空，说明是新增文件夹
 	if oldFolder == nil {
