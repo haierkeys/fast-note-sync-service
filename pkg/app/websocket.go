@@ -647,7 +647,7 @@ type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -805,7 +805,7 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
-func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)) {
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)) {
 	w.tokenVerifyHandler = handler
 }
 
@@ -849,7 +849,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			reqUserAgent := c.Ctx.GetHeader("User-Agent")
 			reqIP := c.Ctx.ClientIP()
 
-			scope, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
+			scope, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
 				if appErr, ok := err.(*code.Code); ok {
@@ -1016,6 +1016,23 @@ func (w *WebsocketServer) UpdateTokenScope(uid int64, tokenID int64, newScope st
 			if client.TokenID == tokenID {
 				log(LogInfo, "WS UpdateTokenScope", zap.Int64("uid", uid), zap.Int64("tokenID", tokenID), zap.String("newScope", newScope))
 				client.Scope = newScope
+			}
+		}
+	}
+}
+
+// KickToken closes all connections for a specific token
+// KickToken 关闭特定令牌的所有连接
+func (w *WebsocketServer) KickToken(uid int64, tokenID int64) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID == tokenID {
+				log(LogInfo, "WS KickToken", zap.Int64("uid", uid), zap.Int64("tokenID", tokenID))
+				client.conn.WriteClose(1000, []byte("TokenRotatedOrRevoked"))
 			}
 		}
 	}

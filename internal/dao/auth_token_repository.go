@@ -166,6 +166,15 @@ func (r *authTokenRepository) RevokeAllByUID(ctx context.Context, uid int64) err
 	return err
 }
 
+func (r *authTokenRepository) UpdateTokenString(ctx context.Context, id int64, tokenString string) error {
+	u := r.authToken().AuthToken
+	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(
+		u.TokenString.Value(tokenString),
+		u.UpdatedAt.Value(timex.Now()),
+	)
+	return err
+}
+
 func (r *authTokenRepository) UpdateLastUsedAt(ctx context.Context, id int64) error {
 	u := r.authToken().AuthToken
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(

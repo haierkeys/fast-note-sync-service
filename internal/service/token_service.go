@@ -11,6 +11,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
@@ -26,6 +27,8 @@ type TokenService interface {
 	Update(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error
 	// Revoke revokes a token
 	Revoke(ctx context.Context, uid int64, tokenID int64) error
+	// Rotate rotates a token (generates new JWT and invalidates old ones)
+	Rotate(ctx context.Context, uid int64, tokenID int64) (*dto.TokenCreateResponse, error)
 	// GetActiveToken gets an active token by ID
 	GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error)
 	// RecordAccessLog records a token access log
@@ -35,7 +38,7 @@ type TokenService interface {
 	// UpdateLastUsedAt updates the last used time of a token
 	UpdateLastUsedAt(ctx context.Context, tokenID int64) error
 	// SetSyncHandler sets the sync hook
-	SetSyncHandler(handler func(uid int64, tokenID int64, scope string))
+	SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool))
 }
 
 type tokenService struct {
@@ -43,8 +46,8 @@ type tokenService struct {
 	logRepo      domain.AuthTokenLogRepository
 	tokenManager app.TokenManager
 	logger       *zap.Logger
-	lastLogMap   sync.Map // TokenID -> time.Time (for 30s rate limiting)
-	SyncHandler  func(uid int64, tokenID int64, scope string) // Hook for syncing to other modules (like WS)
+	lastLogMap   sync.Map                                     // TokenID -> time.Time (for 30s rate limiting)
+	SyncHandler  func(uid int64, tokenID int64, scope string, kick bool) // Hook for syncing to other modules (like WS)
 }
 
 func NewTokenService(tokenRepo domain.AuthTokenRepository, logRepo domain.AuthTokenLogRepository, tokenManager app.TokenManager, logger *zap.Logger) TokenService {
@@ -114,16 +117,20 @@ func (s *tokenService) Create(ctx context.Context, uid int64, params *dto.TokenI
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	// Generate JWT using token_id
-	tokenStr, err := s.tokenManager.Generate(uid, "", "", t.ID)
+	// Generate JWT using token_id and a random nonce
+	nonce := util.GetRandomString(16)
+	tokenStr, err := s.tokenManager.Generate(uid, "", "", t.ID, nonce)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
-	// Save token string back
-	t.TokenString = tokenStr
-	err = s.tokenRepo.UpdateScope(ctx, t.ID, t.Scope) // Note: Dao doesn't have UpdateTokenString yet, but actually we can update token string if we add it, or just ignore for now since it's just for reference. Wait, I should add UpdateTokenString to repo or ignore. Let's just not update DB with it if not necessary. But we have it in DB. Let's assume we don't need to update it back immediately if it's not strictly checked by string in standard flow. Or wait, let's just use UpdateScope method for now. Actually better to have an UpdateTokenString method, but wait, the JWT is the token string. Let's skip saving TokenString for now as it's not used in strict validation.
+	// Save nonce to database
+	err = s.tokenRepo.UpdateTokenString(ctx, t.ID, nonce)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
 
+	t.TokenString = nonce
 	res := &dto.TokenCreateResponse{
 		TokenResponse: *s.domainToDTO(t),
 		TokenString:   tokenStr,
@@ -153,12 +160,18 @@ func (s *tokenService) CreateForLogin(ctx context.Context, uid int64, clientType
 		return nil, "", code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
-	tokenStr, err := s.tokenManager.Generate(uid, "", ip, t.ID)
+	nonce := util.GetRandomString(16)
+	tokenStr, err := s.tokenManager.Generate(uid, "", ip, t.ID, nonce)
 	if err != nil {
 		return nil, "", code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
-	t.TokenString = tokenStr
+	err = s.tokenRepo.UpdateTokenString(ctx, t.ID, nonce)
+	if err != nil {
+		return nil, "", code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	t.TokenString = nonce
 
 	return t, tokenStr, nil
 }
@@ -238,7 +251,7 @@ func (s *tokenService) Update(ctx context.Context, uid int64, tokenID int64, par
 
 	// Trigger sync hook if set
 	if s.SyncHandler != nil {
-		s.SyncHandler(uid, tokenID, token.Scope)
+		s.SyncHandler(uid, tokenID, token.Scope, false)
 	}
 	return nil
 }
@@ -259,9 +272,60 @@ func (s *tokenService) Revoke(ctx context.Context, uid int64, tokenID int64) err
 
 	// Trigger sync hook (scope empty means revoked/no permission)
 	if s.SyncHandler != nil {
-		s.SyncHandler(uid, tokenID, "")
+		s.SyncHandler(uid, tokenID, "", true)
 	}
 	return nil
+}
+
+func (s *tokenService) Rotate(ctx context.Context, uid int64, tokenID int64) (*dto.TokenCreateResponse, error) {
+	token, err := s.tokenRepo.GetByID(ctx, tokenID)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	if token.UID != uid {
+		return nil, code.ErrorInvalidAuthToken
+	}
+
+	// Only active tokens can be rotated
+	if token.Status != 1 {
+		return nil, code.ErrorInvalidAuthToken.WithDetails("Token is not active")
+	}
+
+	// Prohibit rotation for login tokens (IssueType == 1)
+	if token.IssueType == 1 {
+		return nil, code.ErrorInvalidAuthToken.WithDetails("Rotation is not allowed for login tokens")
+	}
+
+	// Check expiry
+	if time.Now().After(token.ExpiredAt) {
+		return nil, code.ErrorTokenExpired
+	}
+
+	// Generate new JWT with new nonce
+	nonce := util.GetRandomString(16)
+	tokenStr, err := s.tokenManager.Generate(uid, "", "", token.ID, nonce)
+	if err != nil {
+		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
+	}
+
+	// Update nonce in database
+	err = s.tokenRepo.UpdateTokenString(ctx, token.ID, nonce)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	token.TokenString = nonce
+	res := &dto.TokenCreateResponse{
+		TokenResponse: *s.domainToDTO(token),
+		TokenString:   tokenStr,
+	}
+
+	// Trigger sync hook (just in case scope changed or we need to notify other modules)
+	if s.SyncHandler != nil {
+		s.SyncHandler(uid, tokenID, token.Scope, true)
+	}
+
+	return res, nil
 }
 
 func (s *tokenService) RecordAccessLog(ctx context.Context, log *domain.AuthTokenLog) error {
@@ -312,7 +376,6 @@ func (s *tokenService) ListLogs(ctx context.Context, uid, tokenID int64, page, p
 	return res, count, nil
 }
 
-
 func (s *tokenService) GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error) {
 	token, err := s.tokenRepo.GetByID(ctx, tokenID)
 	if err != nil {
@@ -330,6 +393,6 @@ func (s *tokenService) UpdateLastUsedAt(ctx context.Context, tokenID int64) erro
 	return s.tokenRepo.UpdateLastUsedAt(ctx, tokenID)
 }
 
-func (s *tokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string)) {
+func (s *tokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool)) {
 	s.SyncHandler = handler
 }

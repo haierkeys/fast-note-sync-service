@@ -33,7 +33,7 @@ type TokenConfig struct {
 // TokenManager defines Token management interface // TokenManager 定义 Token 管理接口
 type TokenManager interface {
 	// User authentication related // 用户认证相关
-	Generate(uid int64, nickname, ip string, tokenID int64) (string, error)
+	Generate(uid int64, nickname, ip string, tokenID int64, nonce string) (string, error)
 	Parse(token string) (*UserEntity, error)
 
 	// Resource sharing related // 资源分享相关
@@ -75,6 +75,7 @@ type UserEntity struct {
 	UID      int64  `json:"uid"`
 	Nickname string `json:"nickname"`
 	TokenID  int64  `json:"tokenId"` // 数据库中的 auth_token.id
+	Nonce    string `json:"nonce"`   // 令牌标识符，用于轮换校验
 	jwt.RegisteredClaims
 }
 
@@ -87,12 +88,14 @@ type ShareEntity struct {
 }
 
 // Generate generates a new JWT Token
-func (t *tokenManager) Generate(uid int64, nickname, _ string, tokenID int64) (string, error) {
+func (t *tokenManager) Generate(uid int64, nickname, _ string, tokenID int64, nonce string) (string, error) {
 	claims := &UserEntity{
 		UID:      uid,
 		Nickname: nickname,
 		TokenID:  tokenID,
+		Nonce:    nonce,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(t.config.Expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    t.config.Issuer,

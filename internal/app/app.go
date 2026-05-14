@@ -189,8 +189,12 @@ func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
 func (a *App) SetWSS(wss *pkgapp.WebsocketServer) {
 	a.wss = wss
 	if a.wss != nil && a.Services != nil && a.Services.TokenService != nil {
-		a.Services.TokenService.SetSyncHandler(func(uid int64, tokenID int64, scope string) {
-			a.wss.UpdateTokenScope(uid, tokenID, scope)
+		a.Services.TokenService.SetSyncHandler(func(uid int64, tokenID int64, scope string, kick bool) {
+			if kick {
+				a.wss.KickToken(uid, tokenID)
+			} else {
+				a.wss.UpdateTokenScope(uid, tokenID, scope)
+			}
 		})
 	}
 }

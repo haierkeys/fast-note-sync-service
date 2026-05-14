@@ -71,6 +71,14 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 			return
 		}
 
+		// 2.1 Verify Nonce (Generation Check)
+		// 校验 Nonce（世代校验），如果数据库中有记录且不匹配，说明该令牌已被轮换或失效
+		if dbToken.TokenString != "" && user.Nonce != dbToken.TokenString {
+			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated"))
+			c.Abort()
+			return
+		}
+
 		// 3. Verify Client, IP and User-Agent Binding
 		// 验证客户端类型、IP 和浏览器 User-Agent 的严格绑定
 		reqClientType := c.GetHeader("x-client")

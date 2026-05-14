@@ -77,6 +77,10 @@ type AuthTokenRepository interface {
 	// RevokeAllByUID revokes all active tokens for a user
 	// RevokeAllByUID 注销用户的所有活跃令牌
 	RevokeAllByUID(ctx context.Context, uid int64) error
+
+	// UpdateTokenString updates the token string (nonce) of a token
+	// UpdateTokenString 更新令牌字符串（标识符）
+	UpdateTokenString(ctx context.Context, id int64, tokenString string) error
 }
 
 type AuthTokenLogRepository interface {

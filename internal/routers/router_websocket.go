@@ -57,7 +57,7 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 
 	// Inject Token Verification to decouple pkg/app from internal/service
-	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error) {
+	wss.UseTokenVerify(func(ctx context.Context, uid, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error) {
 		dbToken, err := appContainer.TokenService.GetActiveToken(ctx, uid, tokenID)
 		if err != nil || dbToken == nil {
 			fmt.Printf("[WSDebug] Token not found or invalid in DB: uid=%d, tokenId=%d, err=%v\n", uid, tokenID, err)
@@ -65,6 +65,13 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 				return "", err
 			}
 			return "", code.ErrorInvalidUserAuthToken
+		}
+
+		// 0. Verify Nonce (Generation Check)
+		// 校验 Nonce（世代校验），如果数据库中有记录且不匹配，说明该令牌已被轮换或失效
+		if dbToken.TokenString != "" && nonce != dbToken.TokenString {
+			fmt.Printf("[WSDebug] Token rotated: req_nonce=%s, db_nonce=%s\n", nonce, dbToken.TokenString)
+			return "", code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated")
 		}
 
 		// 1. Verify Scope Permissions (Protocol: ws)

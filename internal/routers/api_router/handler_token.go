@@ -137,6 +137,31 @@ func (h *TokenHandler) Revoke(c *gin.Context) {
 	response.ToResponse(code.Success)
 }
 
+// Rotate rotates a token (generates new JWT and invalidates old ones)
+// Rotate 轮换令牌（生成新 JWT 并使旧的失效）
+func (h *TokenHandler) Rotate(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	
+	idStr := c.Param("id")
+	tokenID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("invalid id"))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	res, err := h.App.TokenService.Rotate(ctx, uid, tokenID)
+	if err != nil {
+		h.logError(ctx, "TokenHandler.Rotate", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(res))
+}
+
 // ListLogs lists access logs for a specific token
 // ListLogs 列出特定令牌的访问日志
 func (h *TokenHandler) ListLogs(c *gin.Context) {

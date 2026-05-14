@@ -210,6 +210,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 				tokenGroup.POST("/token", tokenHandler.Create)
 				tokenGroup.PUT("/token/:id", tokenHandler.Update)
 				tokenGroup.DELETE("/token/:id", tokenHandler.Revoke)
+				tokenGroup.POST("/token/:id/rotate", tokenHandler.Rotate)
 				tokenGroup.GET("/token/:id/logs", tokenHandler.ListLogs)
 			}
 		}
