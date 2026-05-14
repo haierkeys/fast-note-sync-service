@@ -2,39 +2,30 @@ package aliyun_oss
 
 import (
 	"bytes"
+	"context"
 	"io"
+	"path"
 	"time"
 
-	"path"
-
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 )
 
-func (p *OSS) GetBucket(bucketName string) error {
-	// Get bucket
-	if len(bucketName) <= 0 {
-		bucketName = p.Config.BucketName
-	}
-	var err error
-	p.Bucket, err = p.Client.Bucket(bucketName)
-	return err
-}
-
 func (p *OSS) SendFile(fileKey string, file io.Reader, itype string, modTime time.Time) (string, error) {
-	if p.Bucket == nil {
-		err := p.GetBucket("")
-		if err != nil {
-			return "", err
-		}
-	}
 	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
-	var options []oss.Option
-	if !modTime.IsZero() {
-		options = append(options, oss.Meta("modification-time", modTime.Format(time.RFC3339)))
+	request := &oss.PutObjectRequest{
+		Bucket: oss.Ptr(p.Config.BucketName),
+		Key:    oss.Ptr(fileKey),
+		Body:   file,
 	}
 
-	err := p.Bucket.PutObject(fileKey, file, options...)
+	if !modTime.IsZero() {
+		request.Metadata = map[string]string{
+			"modification-time": modTime.Format(time.RFC3339),
+		}
+	}
+
+	_, err := p.Client.PutObject(context.Background(), request)
 	if err != nil {
 		return "", err
 	}
@@ -42,21 +33,21 @@ func (p *OSS) SendFile(fileKey string, file io.Reader, itype string, modTime tim
 }
 
 func (p *OSS) SendContent(fileKey string, content []byte, modTime time.Time) (string, error) {
-
-	if p.Bucket == nil {
-		err := p.GetBucket("")
-		if err != nil {
-			return "", err
-		}
-	}
 	fileKey = path.Join(p.Config.CustomPath, fileKey)
 
-	var options []oss.Option
-	if !modTime.IsZero() {
-		options = append(options, oss.Meta("modification-time", modTime.Format(time.RFC3339)))
+	request := &oss.PutObjectRequest{
+		Bucket: oss.Ptr(p.Config.BucketName),
+		Key:    oss.Ptr(fileKey),
+		Body:   bytes.NewReader(content),
 	}
 
-	err := p.Bucket.PutObject(fileKey, bytes.NewReader(content), options...)
+	if !modTime.IsZero() {
+		request.Metadata = map[string]string{
+			"modification-time": modTime.Format(time.RFC3339),
+		}
+	}
+
+	_, err := p.Client.PutObject(context.Background(), request)
 	if err != nil {
 		return "", err
 	}

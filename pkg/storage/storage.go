@@ -86,6 +86,7 @@ func NewClient(config *Config) (Storager, error) {
 	} else if cType == OSS {
 		cfg := &aliyun_oss.Config{
 			Endpoint:        config.Endpoint,
+			Region:          config.Region,
 			BucketName:      config.BucketName,
 			AccessKeyID:     config.AccessKeyID,
 			AccessKeySecret: config.AccessKeySecret,
