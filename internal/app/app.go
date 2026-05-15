@@ -381,34 +381,50 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 		records = a.supportRecords["en"]
 	}
 
-	total := len(records)
+	actualSortBy := sortBy
+	var filteredRecords []pkgapp.SupportRecord
+
+	if sortBy == "amount_3m" || sortBy == "amount_6m" {
+		actualSortBy = "amount"
+		threeMonthsAgo := time.Now().AddDate(0, -3, 0)
+		filteredRecords = make([]pkgapp.SupportRecord, 0, len(records))
+		for _, r := range records {
+			// Date format: 2026/03/27 00:36:52
+			t, err := time.Parse("2006/01/02 15:04:05", r.Time)
+			if err == nil && t.After(threeMonthsAgo) {
+				filteredRecords = append(filteredRecords, r)
+			}
+		}
+	} else {
+		filteredRecords = make([]pkgapp.SupportRecord, len(records))
+		copy(filteredRecords, records)
+	}
+
+	total := len(filteredRecords)
 	if total == 0 {
 		return []pkgapp.SupportRecord{}, 0
 	}
 
-	sortedRecords := make([]pkgapp.SupportRecord, total)
-	copy(sortedRecords, records)
-
-	if sortBy != "" {
+	if actualSortBy != "" {
 		isDesc := strings.ToLower(sortOrder) == "desc"
-		sort.SliceStable(sortedRecords, func(i, j int) bool {
+		sort.SliceStable(filteredRecords, func(i, j int) bool {
 			var less bool
-			switch sortBy {
+			switch actualSortBy {
 			case "amount":
-				amountI, _ := strconv.ParseFloat(sortedRecords[i].Amount, 64)
-				amountJ, _ := strconv.ParseFloat(sortedRecords[j].Amount, 64)
+				amountI, _ := strconv.ParseFloat(filteredRecords[i].Amount, 64)
+				amountJ, _ := strconv.ParseFloat(filteredRecords[j].Amount, 64)
 				if amountI == amountJ {
-					return sortedRecords[i].Time > sortedRecords[j].Time
+					return filteredRecords[i].Time > filteredRecords[j].Time
 				}
 				less = amountI < amountJ
 			case "name":
-				less = sortedRecords[i].Name < sortedRecords[j].Name
+				less = filteredRecords[i].Name < filteredRecords[j].Name
 			case "item":
-				less = sortedRecords[i].Item < sortedRecords[j].Item
+				less = filteredRecords[i].Item < filteredRecords[j].Item
 			case "time":
 				fallthrough
 			default:
-				less = sortedRecords[i].Time < sortedRecords[j].Time
+				less = filteredRecords[i].Time < filteredRecords[j].Time
 			}
 			if isDesc {
 				return !less
@@ -430,7 +446,7 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 		end = total
 	}
 
-	return sortedRecords[offset:end], total
+	return filteredRecords[offset:end], total
 }
 
 // UpdateSupportRecords updates support records for a specific language
