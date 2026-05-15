@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // TokenService defines the token management service interface
@@ -46,7 +48,7 @@ type tokenService struct {
 	logRepo      domain.AuthTokenLogRepository
 	tokenManager app.TokenManager
 	logger       *zap.Logger
-	lastLogMap   sync.Map                                     // TokenID -> time.Time (for 30s rate limiting)
+	lastLogMap   sync.Map                                                // TokenID -> time.Time (for 30s rate limiting)
 	SyncHandler  func(uid int64, tokenID int64, scope string, kick bool) // Hook for syncing to other modules (like WS)
 }
 
@@ -379,10 +381,16 @@ func (s *tokenService) ListLogs(ctx context.Context, uid, tokenID int64, page, p
 func (s *tokenService) GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error) {
 	token, err := s.tokenRepo.GetByID(ctx, tokenID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorInvalidUserAuthToken.WithDetails("Token has been revoked or no longer exists")
+		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
-	if token.UID != uid || token.Status != 1 {
-		return nil, code.ErrorInvalidAuthToken
+	if token.UID != uid {
+		return nil, code.ErrorInvalidUserAuthToken.WithDetails("Token does not belong to the authenticated user")
+	}
+	if token.Status != 1 {
+		return nil, code.ErrorInvalidUserAuthToken.WithDetails("Token has been revoked or no longer exists")
 	}
 	if time.Now().After(token.ExpiredAt) {
 		return nil, code.ErrorTokenExpired
