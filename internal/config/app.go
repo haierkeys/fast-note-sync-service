@@ -70,6 +70,9 @@ type AppSettings struct {
 	// PullSource data pull source: auto | github | cnb
 	// PullSource 数据拉取源：auto | github | cnb
 	PullSource string `yaml:"pull-source" default:"auto"`
+	// PullReleaseChannel update version channel: stable | beta
+	// PullReleaseChannel 更新版本通道：stable（正式版） | beta（测试版）
+	PullReleaseChannel string `yaml:"pull-release-channel" default:"stable"`
 
 	// ShortLink configurations
 	// 短链配置

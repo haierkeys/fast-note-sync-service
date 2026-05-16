@@ -31,11 +31,13 @@ const (
 )
 
 type CNBRelease struct {
-	TagName string `json:"tag_name"`
+	TagName    string `json:"tag_name"`
+	Prerelease bool   `json:"prerelease"`
 }
 
 type GitHubRelease struct {
-	TagName string `json:"tag_name"`
+	TagName    string `json:"tag_name"`
+	Prerelease bool   `json:"prerelease"`
 }
 
 type GitHubTag struct {
@@ -156,7 +158,15 @@ func (t *CheckVersionTask) fetchGitHubReleases(url string) (string, error) {
 		return "", nil
 	}
 
-	return strings.TrimPrefix(releases[0].TagName, "v"), nil
+	releaseChannel := t.app.Config().App.PullReleaseChannel
+	for _, release := range releases {
+		if releaseChannel == "stable" && release.Prerelease {
+			continue
+		}
+		return strings.TrimPrefix(release.TagName, "v"), nil
+	}
+
+	return "", nil
 }
 
 func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, error) {
@@ -189,7 +199,25 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, er
 		return "", nil
 	}
 
-	return strings.TrimPrefix(releases[0].TagName, "v"), nil
+	releaseChannel := t.app.Config().App.PullReleaseChannel
+	for _, release := range releases {
+		// CNB API usually follows Gitea/GitHub pattern
+		// Also fallback check for common prerelease suffixes if field is not enough
+		isPrerelease := release.Prerelease
+		if !isPrerelease {
+			tagName := strings.ToLower(release.TagName)
+			if strings.Contains(tagName, "-beta") || strings.Contains(tagName, "-rc") || strings.Contains(tagName, "-alpha") {
+				isPrerelease = true
+			}
+		}
+
+		if releaseChannel == "stable" && isPrerelease {
+			continue
+		}
+		return strings.TrimPrefix(release.TagName, "v"), nil
+	}
+
+	return "", nil
 }
 
 func (t *CheckVersionTask) fetchTextContent(url string) string {

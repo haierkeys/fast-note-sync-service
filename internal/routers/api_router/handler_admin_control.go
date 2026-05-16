@@ -136,6 +136,7 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		ShareTokenKey:    &cfg.Security.ShareTokenKey,
 		ShareTokenExpiry: &cfg.Security.ShareTokenExpiry,
 		PullSource:       &cfg.App.PullSource,
+		PullReleaseChannel: &cfg.App.PullReleaseChannel,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -247,6 +248,9 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	}
 	if params.PullSource != nil {
 		cfg.App.PullSource = *params.PullSource
+	}
+	if params.PullReleaseChannel != nil {
+		cfg.App.PullReleaseChannel = *params.PullReleaseChannel
 	}
 
 	// Save configuration to file

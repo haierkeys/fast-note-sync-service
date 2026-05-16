@@ -32,6 +32,7 @@ type AdminConfig struct {
 	ShareTokenKey           *string `json:"shareTokenKey,omitempty" form:"shareTokenKey"`                     // Share token key // 分享 Token 密钥
 	ShareTokenExpiry        *string `json:"shareTokenExpiry,omitempty" form:"shareTokenExpiry"`               // Share token expiry // 分享 Token 有效期
 	PullSource              *string `json:"pullSource,omitempty" form:"pullSource"`                           // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
+	PullReleaseChannel      *string `json:"pullReleaseChannel,omitempty" form:"pullReleaseChannel"`           // Update version channel: stable | beta // 更新版本通道：stable | beta
 }
 
 // AdminUserDatabaseConfig User database configuration structure
