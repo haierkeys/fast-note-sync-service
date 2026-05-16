@@ -44,10 +44,11 @@ func (h *TokenHandler) List(c *gin.Context) {
 	// Cross-reference with active WebSocket connections
 	// 交叉引用活跃的 WebSocket 连接
 	if wss := h.App.GetWSS(); wss != nil {
-		activeTokenIDs := wss.GetActiveTokenIDs(uid)
+		activeClientsMap := wss.GetActiveTokenClients(uid)
 		for i := range tokens {
-			if activeTokenIDs[tokens[i].ID] {
+			if clients, ok := activeClientsMap[tokens[i].ID]; ok {
 				tokens[i].IsWsOnline = true
+				tokens[i].ActiveClients = clients
 			}
 		}
 	}

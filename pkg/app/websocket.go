@@ -1004,6 +1004,37 @@ func (w *WebsocketServer) GetActiveTokenIDs(uid int64) map[int64]bool {
 	return activeTokens
 }
 
+// GetActiveTokenClients gets all active token IDs and their client names for a specific user
+// GetActiveTokenClients 获取特定用户的所有活动令牌 ID 及其对应的客户端名称
+func (w *WebsocketServer) GetActiveTokenClients(uid int64) map[int64][]string {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	activeClients := make(map[int64][]string)
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID > 0 {
+				if _, exists := activeClients[client.TokenID]; !exists {
+					activeClients[client.TokenID] = []string{}
+				}
+				names := activeClients[client.TokenID]
+				nameExists := false
+				for _, name := range names {
+					if name == client.ClientName {
+						nameExists = true
+						break
+					}
+				}
+				if !nameExists && client.ClientName != "" {
+					activeClients[client.TokenID] = append(names, client.ClientName)
+				}
+			}
+		}
+	}
+	return activeClients
+}
+
 // UpdateTokenScope updates the scope of all active connections for a specific token
 // UpdateTokenScope 更新特定令牌所有活动连接的权限范围
 func (w *WebsocketServer) UpdateTokenScope(uid int64, tokenID int64, newScope string) {

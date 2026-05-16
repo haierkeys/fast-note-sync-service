@@ -31,6 +31,13 @@ type TokenUpdateRequest struct {
 	UserAgent   string `json:"userAgent"`   // Optional: User Agent // 可选：User Agent
 }
 
+// TokenActiveClient defines the information for an active token client
+// TokenActiveClient 定义活跃令牌客户端的信息
+type TokenActiveClient struct {
+	Name     string          `json:"name"`
+	Platform map[string]bool `json:"platform"`
+}
+
 // TokenResponse defines the response structure for a token
 // TokenResponse 定义令牌的响应结构
 type TokenResponse struct {
@@ -43,7 +50,8 @@ type TokenResponse struct {
 	LastUsedAt timex.Time `json:"lastUsedAt"`
 	ExpiredAt  timex.Time `json:"expiredAt"`
 	CreatedAt  timex.Time `json:"createdAt"`
-	IsWsOnline bool       `json:"isWsOnline"`
+	IsWsOnline    bool                `json:"isWsOnline"`
+	ActiveClients []string            `json:"activeClients"`
 }
 
 // TokenCreateResponse defines the response structure when creating a token
