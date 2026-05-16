@@ -89,5 +89,10 @@ type AuthTokenLogRepository interface {
 	Create(ctx context.Context, log *AuthTokenLog) error
 	// ListByTokenID lists access logs for a specific token with pagination
 	// ListByTokenID 为特定令牌列出带有分页的访问日志
+	// ListByTokenID lists access logs for a specific token with pagination
+	// ListByTokenID 为特定令牌列出带有分页的访问日志
 	ListByTokenID(ctx context.Context, tokenID int64, page, pageSize int) ([]*AuthTokenLog, int64, error)
+	// ListRecentClientsByUID lists unique client names for all tokens of a user in the last duration
+	// ListRecentClientsByUID 列出用户所有令牌在最近一段时间内的唯一客户端名称
+	ListRecentClientsByUID(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error)
 }

@@ -3,6 +3,7 @@ package api_router
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -41,15 +42,35 @@ func (h *TokenHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Cross-reference with active WebSocket connections
-	// 交叉引用活跃的 WebSocket 连接
+	// Cross-reference with active WebSocket connections and recent access logs
+	// 交叉引用活跃的 WebSocket 连接和最近的访问日志
+	recentClientsMap, _ := h.App.TokenService.GetRecentClients(ctx, uid, time.Hour)
+	var activeClientsMap map[int64][]string
 	if wss := h.App.GetWSS(); wss != nil {
-		activeClientsMap := wss.GetActiveTokenClients(uid)
-		for i := range tokens {
-			if clients, ok := activeClientsMap[tokens[i].ID]; ok {
+		activeClientsMap = wss.GetActiveTokenClients(uid)
+	}
+
+	for i := range tokens {
+		tokenID := tokens[i].ID
+
+		// Set IsWsOnline if there are active WebSocket connections
+		// 如果有活跃的 WebSocket 连接，设置在线状态
+		if activeClientsMap != nil {
+			if _, ok := activeClientsMap[tokenID]; ok {
 				tokens[i].IsWsOnline = true
-				tokens[i].ActiveClients = clients
 			}
+		}
+
+		// Client name list only shows clients from access logs in the last 1 hour
+		// 客户端名称列表仅显示近 1 小时内访问日志中的客户端
+		if clients, ok := recentClientsMap[tokenID]; ok {
+			mergedClients := make([]string, 0, len(clients))
+			for _, name := range clients {
+				if name != "" {
+					mergedClients = append(mergedClients, name)
+				}
+			}
+			tokens[i].ActiveClients = mergedClients
 		}
 	}
 

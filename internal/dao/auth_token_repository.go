@@ -242,6 +242,27 @@ func (r *authTokenLogRepository) ListByTokenID(ctx context.Context, tokenID int6
 	return res, count, nil
 }
 
+func (r *authTokenLogRepository) ListRecentClientsByUID(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
+	u := r.authTokenLog().AuthTokenLog
+	since := timex.Now().Add(-duration)
+
+	models, err := u.WithContext(ctx).
+		Where(u.UID.Eq(uid), u.CreatedAt.Gte(since), u.ClientName.Neq("")).
+		Select(u.TokenID, u.ClientName).
+		Group(u.TokenID, u.ClientName).
+		Find()
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[int64][]string)
+	for _, m := range models {
+		res[m.TokenID] = append(res[m.TokenID], m.ClientName)
+	}
+	return res, nil
+}
+
 func (r *authTokenLogRepository) toDomain(m *model.AuthTokenLog) *domain.AuthTokenLog {
 	return &domain.AuthTokenLog{
 		ID:            m.ID,

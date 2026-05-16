@@ -41,6 +41,9 @@ type TokenService interface {
 	UpdateLastUsedAt(ctx context.Context, tokenID int64) error
 	// SetSyncHandler sets the sync hook
 	SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool))
+	// GetRecentClients gets unique client names for all tokens of a user in the last duration
+	// GetRecentClients 获取用户所有令牌在最近一段时间内的唯一客户端名称
+	GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error)
 }
 
 type tokenService struct {
@@ -403,4 +406,8 @@ func (s *tokenService) UpdateLastUsedAt(ctx context.Context, tokenID int64) erro
 
 func (s *tokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool)) {
 	s.SyncHandler = handler
+}
+
+func (s *tokenService) GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
+	return s.logRepo.ListRecentClientsByUID(ctx, uid, duration)
 }

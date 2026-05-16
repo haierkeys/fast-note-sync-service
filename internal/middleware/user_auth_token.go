@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -166,12 +167,19 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		// 6. Asynchronously record access log
 		// 异步记录访问日志
 		go func() {
+			clientName := c.GetHeader("x-client-name")
+			if clientName != "" {
+				if decoded, err := url.QueryUnescape(clientName); err == nil {
+					clientName = decoded
+				}
+			}
+
 			log := &domain.AuthTokenLog{
 				TokenID:       dbToken.ID,
 				UID:           dbToken.UID,
 				Protocol:      protocol,
 				Client:        reqClientType,
-				ClientName:    c.GetHeader("x-client-name"),
+				ClientName:    clientName,
 				ClientVersion: c.GetHeader("x-client-version"),
 				IP:            c.ClientIP(),
 				UA:            c.GetHeader("User-Agent"),
