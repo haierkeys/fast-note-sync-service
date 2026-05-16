@@ -108,6 +108,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.GET("/admin/restart", adminControlHandler.Restart)
 			auth.GET("/admin/gc", adminControlHandler.GC)
 			auth.GET("/admin/ws_clients", adminControlHandler.GetWSClients)
+			auth.DELETE("/admin/ws_client/:traceId", adminControlHandler.KickWSClient)
 			auth.GET("/admin/cloudflared_tunnel_download", adminControlHandler.CloudflaredTunnelDownload)
 
 			auth.POST("/user/change_password", userHandler.UserChangePassword)

@@ -672,6 +672,7 @@ type WSClientInfo struct {
 	RemoteAddr    string          `json:"remoteAddr"`
 	StartTime     timex.Time      `json:"startTime"`
 	TraceID       string          `json:"traceId"`
+	TokenID       int64           `json:"tokenId"`
 }
 
 // GetClients returns information of all currently connected WebSocket clients
@@ -689,6 +690,7 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 			RemoteAddr:    c.conn.RemoteAddr().String(),
 			StartTime:     c.StartTime,
 			TraceID:       c.TraceID,
+			TokenID:       c.TokenID,
 		}
 		if c.User != nil {
 			info.UID = c.User.ID
@@ -697,6 +699,33 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 		clients = append(clients, info)
 	}
 	return clients
+}
+
+// KickClient closes a WebSocket connection by TraceID
+// KickClient 通过 TraceID 关闭 WebSocket 连接
+func (w *WebsocketServer) KickClient(traceID string) bool {
+	w.mu.RLock()
+	client, ok := w.clientsByTraceID(traceID)
+	w.mu.RUnlock()
+
+	if !ok {
+		return false
+	}
+
+	if client.conn != nil {
+		client.conn.WriteClose(1000, []byte("kicked by admin"))
+	}
+	return true
+}
+
+// clientsByTraceID finds a client by TraceID (helper, requires mu lock)
+func (w *WebsocketServer) clientsByTraceID(traceID string) (*WebsocketClient, bool) {
+	for _, c := range w.clients {
+		if c.TraceID == traceID {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 // NewWebsocketServer creates WebSocket server instance

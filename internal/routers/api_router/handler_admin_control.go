@@ -1023,6 +1023,46 @@ func (h *AdminControlHandler) GetWSClients(c *gin.Context) {
 	response.ToResponse(code.Success.WithData(clients))
 }
 
+// KickWSClient kicks a WebSocket client (requires admin privileges)
+// @Summary Kick a WebSocket client
+// @Description Kick a WebSocket client by TraceID, requires admin privileges
+// @Tags System
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Param traceId path string true "Trace ID of the client"
+// @Produce json
+// @Success 200 {object} pkgapp.Res "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/ws_client/{traceId} [delete]
+func (h *AdminControlHandler) KickWSClient(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if uid == 0 {
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	traceID := c.Param("traceId")
+	if traceID == "" {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("traceId is required"))
+		return
+	}
+
+	if ok := h.wss.KickClient(traceID); !ok {
+		response.ToResponse(code.Failed.WithDetails("Client not found or already disconnected"))
+		return
+	}
+
+	response.ToResponse(code.Success.WithDetails("Client kicked successfully"))
+}
+
 func (h *AdminControlHandler) downloadFile(url string, dest string) error {
 	resp, err := http.Get(url)
 	if err != nil {
