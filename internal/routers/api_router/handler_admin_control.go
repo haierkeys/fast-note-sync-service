@@ -710,10 +710,12 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	}
 
 	// Go Runtime
+	// Go 运行时状态
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
 	// CPU
+	// CPU 信息
 	cpuInfoList, _ := cpu.Info()
 	cpuModel := ""
 	if len(cpuInfoList) > 0 {
@@ -725,18 +727,29 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	loadStat, _ := load.Avg()
 
 	// Memory
+	// 内存与交换区信息
 	vMem, _ := mem.VirtualMemory()
 	swapMem, _ := mem.SwapMemory()
 
 	// Host
+	// 主机系统信息
 	hInfo, _ := host.Info()
 
 	// Process
+	// 当前进程状态
 	p, _ := process.NewProcess(int32(os.Getpid()))
-	pName, _ := p.Name()
-	pPPid, _ := p.Ppid()
-	pCPU, _ := p.CPUPercent()
-	pMem, _ := p.MemoryPercent()
+	var pName string
+	var pPPid int32
+	var pCPU float64
+	var pMem float32
+	if p != nil {
+		// Only invoke methods if the process instance is not nil to prevent panic
+		// 仅当进程实例不为 nil 时调用方法，以防 panic
+		pName, _ = p.Name()
+		pPPid, _ = p.Ppid()
+		pCPU, _ = p.CPUPercent()
+		pMem, _ = p.MemoryPercent()
+	}
 
 	data := dto.AdminSystemInfo{
 		StartTime: h.App.StartTime,
@@ -764,43 +777,70 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 			PhysicalCores: physCores,
 			LogicalCores:  logicCores,
 			Percent:       cpuPercents,
-			LoadAvg: &dto.AdminLoadInfo{
-				Load1:  loadStat.Load1,
-				Load5:  loadStat.Load5,
-				Load15: loadStat.Load15,
-			},
-		},
-		Memory: dto.AdminMemoryInfo{
-			Total:           vMem.Total,
-			Available:       vMem.Available,
-			Used:            vMem.Used,
-			UsedPercent:     vMem.UsedPercent,
-			SwapTotal:       swapMem.Total,
-			SwapUsed:        swapMem.Used,
-			SwapUsedPercent: swapMem.UsedPercent,
-		},
-		Host: dto.AdminHostInfo{
-			Hostname:      hInfo.Hostname,
-			OS:            hInfo.OS,
-			OSPretty:      util.GetOSPrettyName(),
-			Platform:      hInfo.Platform,
-			Arch:          hInfo.KernelArch,
-			KernelVersion: hInfo.KernelVersion,
-			Uptime:        hInfo.Uptime,
-			CurrentTime:   time.Now(),
-			TimeZone:      time.Now().Location().String(),
-			TimeZoneOffset: func() int {
-				_, offset := time.Now().Zone()
-				return offset
+			LoadAvg: func() *dto.AdminLoadInfo {
+				// Safely check nil loadStat to prevent panic on Windows/unsupported platforms
+				// 安全地校验 nil 指针，防止在 Windows 等不支持的平台上产生 panic
+				if loadStat == nil {
+					return nil
+				}
+				return &dto.AdminLoadInfo{
+					Load1:  loadStat.Load1,
+					Load5:  loadStat.Load5,
+					Load15: loadStat.Load15,
+				}
 			}(),
 		},
-		Process: dto.AdminProcessInfo{
-			PID:           p.Pid,
-			PPID:          pPPid,
-			Name:          pName,
-			CPUPercent:    pCPU,
-			MemoryPercent: pMem,
-		},
+		Memory: func() dto.AdminMemoryInfo {
+			var info dto.AdminMemoryInfo
+			// Safely handle nil memory structures
+			// 安全地处理 nil 的内存结构体
+			if vMem != nil {
+				info.Total = vMem.Total
+				info.Available = vMem.Available
+				info.Used = vMem.Used
+				info.UsedPercent = vMem.UsedPercent
+			}
+			if swapMem != nil {
+				info.SwapTotal = swapMem.Total
+				info.SwapUsed = swapMem.Used
+				info.SwapUsedPercent = swapMem.UsedPercent
+			}
+			return info
+		}(),
+		Host: func() dto.AdminHostInfo {
+			var info dto.AdminHostInfo
+			// Safely handle nil host information structure
+			// 安全地处理 nil 的主机信息结构体
+			if hInfo != nil {
+				info.Hostname = hInfo.Hostname
+				info.OS = hInfo.OS
+				info.Platform = hInfo.Platform
+				info.Arch = hInfo.KernelArch
+				info.KernelVersion = hInfo.KernelVersion
+				info.Uptime = hInfo.Uptime
+			}
+			info.OSPretty = util.GetOSPrettyName()
+			info.CurrentTime = time.Now()
+			info.TimeZone = time.Now().Location().String()
+			info.TimeZoneOffset = func() int {
+				_, offset := time.Now().Zone()
+				return offset
+			}()
+			return info
+		}(),
+		Process: func() dto.AdminProcessInfo {
+			var info dto.AdminProcessInfo
+			// Safely handle nil process pointer
+			// 安全地处理 nil 的进程指针
+			if p != nil {
+				info.PID = p.Pid
+			}
+			info.PPID = pPPid
+			info.Name = pName
+			info.CPUPercent = pCPU
+			info.MemoryPercent = pMem
+			return info
+		}(),
 	}
 
 	response.ToResponse(code.Success.WithData(data))
