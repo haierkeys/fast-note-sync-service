@@ -1,10 +1,10 @@
 [
   {
     "time": "2026/03/27 00:36:52",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "128.00",
     "unit": "¥",
-    "message": "Excellent! I've been using it consistently. Hope it keeps getting better.",
+    "message": "Excellent! I've been using it consistently. Hope it keeps getting better and better.",
     "name": "Geeson"
   },
   {
@@ -12,12 +12,12 @@
     "item": "Custom Amount",
     "amount": "120.00",
     "unit": "¥",
-    "message": "Thank you for developing such a great tool and for the friendly suggestion to add one-way mirror upload functionality (#160).",
+    "message": "Thanks for developing such a great tool and for the friendly suggestion to add one-way mirror upload functionality #160.",
     "name": "AlexShyXie"
   },
   {
     "time": "2026/04/21 22:57:33",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "108.00",
     "unit": "¥",
     "message": "Your plugin successfully helped me migrate from Evernote to Obsidian. Keep it up! Add oil!",
@@ -44,7 +44,7 @@
     "item": "Four cups of coffee ☕",
     "amount": "100.00",
     "unit": "¥",
-    "message": "You did an amazing job.",
+    "message": "You did a fantastic job.",
     "name": "Bais"
   },
   {
@@ -60,7 +60,7 @@
     "item": "Four cups of coffee ☕",
     "amount": "100.00",
     "unit": "¥",
-    "message": "Strongly support version updates.",
+    "message": "Strongly support version iterations.",
     "name": "cw"
   },
   {
@@ -68,7 +68,7 @@
     "item": "Four cups of coffee ☕",
     "amount": "100.00",
     "unit": "¥",
-    "message": "Go update it, even if it means working overtime.",
+    "message": "Go work overtime to update it.",
     "name": "背背背疼"
   },
   {
@@ -76,7 +76,7 @@
     "item": "Four cups of coffee ☕",
     "amount": "100.00",
     "unit": "¥",
-    "message": "Thank you very much for your open-source contribution and effort. The plugin is super practical. Here's a small token of appreciation. Keep it up! 💪",
+    "message": "Thank you very much for your open-source contribution and effort. The plugin is super practical. A small token of support. Keep it up! 💪",
     "name": "一世风霜"
   },
   {
@@ -105,10 +105,10 @@
   },
   {
     "time": "2026/01/14 15:58:04",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "88.00",
     "unit": "¥",
-    "message": "My contribution is modest, but it's a token of my appreciation.",
+    "message": "Limited ability, but please accept this small gesture.",
     "name": "wutay"
   },
   {
@@ -116,20 +116,20 @@
     "item": "Custom Amount",
     "amount": "68.00",
     "unit": "¥",
-    "message": "Great job! Hope it keeps getting better!",
+    "message": "Great job! Hope it keeps getting better and better!",
     "name": "言若"
   },
   {
     "time": "2026/03/02 14:50:25",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "66.00",
     "unit": "¥",
-    "message": "Thanks, big shot! It's very useful!",
+    "message": "Thanks, boss! It's very useful!",
     "name": "Patrick"
   },
   {
     "time": "2026/03/01 22:56:17",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "66.00",
     "unit": "¥",
     "message": "Rejoice and praise!",
@@ -137,15 +137,15 @@
   },
   {
     "time": "2026/03/01 22:40:23",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "66.00",
     "unit": "¥",
-    "message": "You're awesome, the plugin is very useful ヽ(*≧ω≦)ﾉ",
+    "message": "Awesome, the plugin is very useful ٩(◕‿◕｡)۶",
     "name": "HanHaocheng"
   },
   {
     "time": "2026/02/16 21:34:33",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "66.00",
     "unit": "¥",
     "message": "Happy New Year",
@@ -164,12 +164,20 @@
     "item": "Two cups of coffee ☕",
     "amount": "60.00",
     "unit": "¥",
-    "message": "Excellent! It solved a problem that had been bothering me for a long time. I was about to give up on OBS.",
+    "message": "Excellent! It solved a problem that had been bothering me for a long time. I was about to give up on ob.",
     "name": "zax"
   },
   {
+    "time": "05/06/2026 15:28",
+    "item": "Ko-fi Support",
+    "amount": "8.00",
+    "unit": "USD",
+    "message": "-",
+    "name": "陈白嫖怪"
+  },
+  {
     "time": "2026/04/02 19:16:44",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "51.55",
     "unit": "¥",
     "message": "Great plugin",
@@ -196,7 +204,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Computer sync successful, but Android reports error code=305, message=Parameter validation failed. Details=context is requ",
+    "message": "Computer sync successful, but Android reported an error: code=305, message=Parameter validation failed. Details=context is requ",
     "name": "亲 yexizhu811"
   },
   {
@@ -204,7 +212,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thank you, author. This sync method solves the hassle of maintaining consistent configurations across multiple devices.",
+    "message": "Thanks to the author. This sync method solves the hassle of maintaining consistent configurations across multiple devices.",
     "name": "彼岸花"
   },
   {
@@ -228,7 +236,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Paying for awesomeness!",
+    "message": "Worth paying for something this awesome!",
     "name": "狗带带子"
   },
   {
@@ -252,7 +260,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thank you 🙏, the plugin works great",
+    "message": "Thank you 🙏, the plugin is very useful",
     "name": "红星 RedStar"
   },
   {
@@ -260,7 +268,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "The entire architecture is fantastic, bringing me into the 21st century",
+    "message": "Excellent overall architecture, it brought me into the 21st century.",
     "name": "fbeis"
   },
   {
@@ -276,7 +284,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "So diligent, must support!",
+    "message": "So hardworking, must support!",
     "name": "xenon"
   },
   {
@@ -284,7 +292,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "A very good sync solution",
+    "message": "A very good synchronization solution",
     "name": "熙熙煦煦"
   },
   {
@@ -292,7 +300,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thank you, author! Happy New Year!",
+    "message": "Thanks to the author, Happy New Year!",
     "name": "红殇"
   },
   {
@@ -300,7 +308,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thanks for developing such an awesome plugin; it solved the sync problem.",
+    "message": "Thanks for developing such an awesome plugin; it solved the synchronization problem.",
     "name": "Jacky龙"
   },
   {
@@ -308,7 +316,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "The sync feature is very useful. I hope you continue to iterate and improve it, prioritizing note security.",
+    "message": "The sync feature is very useful. I hope you continue to iterate and improve it, with a focus on note security.",
     "name": "咕咕咕"
   },
   {
@@ -316,7 +324,7 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Keep up the good work! It truly solves one of Obsidian's biggest pain points!",
+    "message": "Keep up the good work; it truly addresses one of Obsidian's biggest pain points!",
     "name": "vulnnull"
   },
   {
@@ -332,15 +340,23 @@
     "item": "Two cups of coffee ☕",
     "amount": "50.00",
     "unit": "¥",
-    "message": "Thanks to the 'male bodhisattva' for this OB plugin that benefits everyone (^🙏^). A small token of appreciation.",
+    "message": "Thanks to the 'male bodhisattva' for the OB plugin that benefits everyone (^🙏^). A small token of appreciation.",
     "name": "喆"
+  },
+  {
+    "time": "04/13/2026 05:52",
+    "item": "Ko-fi Support",
+    "amount": "5.00",
+    "unit": "USD",
+    "message": "Nice work!",
+    "name": "joehwang"
   },
   {
     "time": "2026/05/14 09:54:02",
     "item": "A cup of coffee ☕",
     "amount": "30.00",
     "unit": "¥",
-    "message": "Bro, you're updating so hard! Supporting you.",
+    "message": "Bro, you're updating so hard. Support!",
     "name": "如星"
   },
   {
@@ -380,7 +396,7 @@
     "item": "A cup of coffee ☕",
     "amount": "30.00",
     "unit": "¥",
-    "message": "Supporting you, keep it up.",
+    "message": "Support! Keep it up.",
     "name": "obsidian 同步"
   },
   {
@@ -396,7 +412,7 @@
     "item": "A cup of coffee ☕",
     "amount": "30.00",
     "unit": "¥",
-    "message": "Very useful! Keep up the good work. A small token of appreciation to show my support!",
+    "message": "Very useful. Keep up the good work. A small token of appreciation to show my support!",
     "name": "王考考"
   },
   {
@@ -404,7 +420,7 @@
     "item": "A cup of coffee ☕",
     "amount": "30.00",
     "unit": "¥",
-    "message": "You're amazing! I can finally get rid of iCloud!",
+    "message": "You're amazing! Finally, I can get rid of iCloud!",
     "name": "Mark"
   },
   {
@@ -417,7 +433,7 @@
   },
   {
     "time": "2026/03/04 21:42:57",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "30.00",
     "unit": "¥",
     "message": "The plugin is very useful. Thanks to the developer.",
@@ -425,15 +441,15 @@
   },
   {
     "time": "2026/02/25 10:55:32",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "30.00",
     "unit": "¥",
-    "message": "Your project has been a huge help! Thank you very much! Hope you keep up the great work.",
+    "message": "Your project has been a huge help! Thank you so much! Hope you keep up the great work.",
     "name": "jeanlaw"
   },
   {
     "time": "2026/03/13 13:43:33",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "29.00",
     "unit": "¥",
     "message": "Great work, keep it up!",
@@ -441,10 +457,10 @@
   },
   {
     "time": "2026/02/24 18:36:51",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "25.00",
     "unit": "¥",
-    "message": "I've been unable to find an ideal sync solution for Obsidian. Thank you, author! Keep it up!",
+    "message": "I've been unable to find an ideal synchronization solution for Obsidian. Thank you, author! Keep it up!",
     "name": "淇淇"
   },
   {
@@ -492,7 +508,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Kneeling in admiration to the expert 🧎🏻‍♂️, hope for more updates in the future",
+    "message": "I bow down to you, boss! 🧎🏻‍♂️ Hope for more updates in the future",
     "name": "riding-a-colt"
   },
   {
@@ -556,7 +572,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Here's a coffee for you, thanks for your hard work",
+    "message": "Here's a coffee, thanks for your hard work",
     "name": "hsonghao"
   },
   {
@@ -580,7 +596,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thank you, expert, hope you can keep going",
+    "message": "Thank you, boss. Hope you can keep going",
     "name": "畅"
   },
   {
@@ -644,7 +660,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thank you! 🙏 Great!",
+    "message": "Thank you! 🙏 It's great!",
     "name": "jediknight"
   },
   {
@@ -660,7 +676,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Well done. Simplicity is the ultimate sophistication. Hope for continued optimization~",
+    "message": "Excellent work. Simplicity is the ultimate sophistication. Hope you continue to optimize it~",
     "name": "southzen"
   },
   {
@@ -700,7 +716,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "You're awesome, thanks a lot.",
+    "message": "You're amazing, thanks a lot.",
     "name": "T0_欣"
   },
   {
@@ -724,7 +740,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Useful, support!",
+    "message": "Useful, supporting it.",
     "name": "耀/"
   },
   {
@@ -732,7 +748,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Great plugin, support!",
+    "message": "Great plugin, supporting it.",
     "name": "阿叶"
   },
   {
@@ -740,7 +756,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thank you",
+    "message": "Thank you.",
     "name": "Dylan"
   },
   {
@@ -748,7 +764,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thanks to the author for working day and night to write and open-source the code.",
+    "message": "Thanks to the author for coding day and night and open-sourcing it.",
     "name": "Alan"
   },
   {
@@ -756,7 +772,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Hope it can be more complete, e.g., viewing other formats of Ob files in the cloud.",
+    "message": "Hope it can be more complete, allowing viewing of other file formats in Obsidian from the cloud.",
     "name": "Jack ☑️"
   },
   {
@@ -788,7 +804,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "This is amazing!",
+    "message": "So powerful!",
     "name": "行长"
   },
   {
@@ -804,7 +820,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Very useful. Thank you to the author for developing such a great tool!",
+    "message": "Very easy to use. Thank you to the author for developing such a great tool!",
     "name": "woloin"
   },
   {
@@ -812,7 +828,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thanks to the author for developing such a useful plugin that has made my Obsidian experience shine 🥰",
+    "message": "Thanks to the author for developing such a useful plugin that makes my Obsidian spin 🥰",
     "name": "kimi"
   },
   {
@@ -820,7 +836,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "The plugin works well.",
+    "message": "The plugin is useful.",
     "name": "ccsir"
   },
   {
@@ -828,7 +844,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "I've been using it for a while now, and it's truly fantastic.",
+    "message": "I've been using it for a while now, and it's truly amazing.",
     "name": "KevinYAN"
   },
   {
@@ -860,7 +876,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Supporting this! Keep it up~. It's very practical and addresses a strong need. It will be extremely useful in the AI era.",
+    "message": "Support! Keep it up~ Very practical and a highly demanded feature. It will be very useful in the AI era.",
     "name": "sfsun67"
   },
   {
@@ -868,7 +884,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Thanks to the developer for creating this sync plugin. It's very useful. Please have a coffee on me first, and I'll continue to support you later.",
+    "message": "Thanks to the big shot for making this sync plugin. It's very useful. Please have a cup of coffee first, and I'll continue to tip you later.",
     "name": "toby"
   },
   {
@@ -876,7 +892,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "The developer's sync plugin is excellent. I will continue to support it.",
+    "message": "The big shot's sync plugin is fantastic. I will continue to support it.",
     "name": "WONG"
   },
   {
@@ -892,7 +908,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Keep it up 💪. Could you add image editing functionality for the web version?",
+    "message": "Keep it up 💪 Could you add image editing functionality to the web version?",
     "name": "Max"
   },
   {
@@ -916,7 +932,7 @@
     "item": "A cup of coffee ☕",
     "amount": "20.00",
     "unit": "¥",
-    "message": "Very useful. Looking forward to future development and optimizations. Thank you.",
+    "message": "Very useful. Looking forward to future development and optimization. Thank you.",
     "name": "苏"
   },
   {
@@ -953,10 +969,10 @@
   },
   {
     "time": "2026/03/11 09:58:20",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "18.00",
     "unit": "¥",
-    "message": "A small contribution to show my respect",
+    "message": "A small token of appreciation",
     "name": "下鞅"
   },
   {
@@ -985,7 +1001,7 @@
   },
   {
     "time": "2026/03/02 21:15:39",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "10.00",
     "unit": "¥",
     "message": "Keep going, master!",
@@ -993,7 +1009,7 @@
   },
   {
     "time": "2026/02/28 12:27:51",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "10.00",
     "unit": "¥",
     "message": "Hope it gets better and better",
@@ -1001,23 +1017,23 @@
   },
   {
     "time": "2026/02/27 15:54:55",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "10.00",
     "unit": "¥",
-    "message": "Thanks to the author for developing this, and for open-sourcing it. Wishing it continues to improve.",
+    "message": "Thank you to the author for developing this, and for open-sourcing it. Wishing you continued success.",
     "name": "柴特"
   },
   {
     "time": "2026/02/23 15:34:53",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "10.00",
     "unit": "¥",
-    "message": "Thank you, it's even easier to use than the official sync.",
+    "message": "Thanks, it's even better than the official sync",
     "name": "Joe M"
   },
   {
     "time": "2026/02/20 10:37:02",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "10.00",
     "unit": "¥",
     "message": "Thanks for making such a convenient sync software",
@@ -1025,7 +1041,7 @@
   },
   {
     "time": "2026/03/22 15:09:43",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "9.90",
     "unit": "¥",
     "message": "Great software, thanks to the author.",
@@ -1033,7 +1049,7 @@
   },
   {
     "time": "2026/01/28 12:03:03",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "9.90",
     "unit": "¥",
     "message": "Awesome 🐮",
@@ -1041,23 +1057,23 @@
   },
   {
     "time": "2026/04/09 13:51:11",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "8.88",
     "unit": "¥",
-    "message": "Keep it up... This definitely has a bright future. I recommended it to other friends and they all thought it was great.",
+    "message": "Keep it up... This definitely has a bright future. I recommended it to friends and they all thought it was great.",
     "name": "散装白酒🍶"
   },
   {
     "time": "2026/03/07 20:29:42",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "8.88",
     "unit": "¥",
-    "message": "Thanks, boss. Very easy to use. Thumbs up!",
+    "message": "Thanks, boss! Very easy to use, thumbs up",
     "name": "皮皮"
   },
   {
     "time": "2026/01/28 02:52:15",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "8.88",
     "unit": "¥",
     "message": "Thanks for sharing",
@@ -1065,15 +1081,15 @@
   },
   {
     "time": "2026/02/28 19:51:59",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "8.00",
     "unit": "¥",
-    "message": "Very well-rounded, even the server interface looks fantastic",
+    "message": "Very complete, even the server interface looks great",
     "name": "yang"
   },
   {
     "time": "2026/03/25 11:52:09",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "6.66",
     "unit": "¥",
     "message": "Installed. Invincible hahahaha",
@@ -1081,23 +1097,23 @@
   },
   {
     "time": "2026/03/23 01:02:18",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "6.66",
     "unit": "¥",
-    "message": "Please keep developing this!!!",
+    "message": "Please keep developing!!!",
     "name": "wishyuwill"
   },
   {
     "time": "2026/03/02 17:10:28",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "6.66",
     "unit": "¥",
-    "message": "Thanks for developing it. The plugin is very useful and updates quickly [Thumbs Up]",
+    "message": "Thanks for developing, the plugin is very useful and updates quickly [Thumbs Up]",
     "name": "马孔多的旅人"
   },
   {
     "time": "2026/02/01 23:44:27",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "6.66",
     "unit": "¥",
     "message": "Love you",
@@ -1105,10 +1121,10 @@
   },
   {
     "time": "2026/01/09 22:22:25",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "6.66",
     "unit": "¥",
-    "message": "The plugin you wrote is great, keep up the good work!",
+    "message": "Great plugin, keep up the good work!",
     "name": "kane"
   },
   {
@@ -1121,7 +1137,7 @@
   },
   {
     "time": "2026/04/20 16:34:57",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
     "message": "This is so useful! After all this tinkering, I finally feel like I've graduated (╥╯﹏╰╥)ง",
@@ -1129,31 +1145,31 @@
   },
   {
     "time": "2026/04/15 00:48:38",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
-    "message": "It hasn't been easy",
+    "message": "Not easy",
     "name": "ben"
   },
   {
     "time": "2026/04/06 20:57:36",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
-    "message": "Thanks to your project, I got help. Obsidian sync has become easy.",
+    "message": "Thanks to your project, Obsidian sync has become so much easier.",
     "name": "octobersky"
   },
   {
     "time": "2026/03/01 00:28:19",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
-    "message": "Great development",
+    "message": "Excellent development!",
     "name": "colorednoise"
   },
   {
     "time": "2026/02/27 15:18:26",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
     "message": "Support",
@@ -1161,15 +1177,15 @@
   },
   {
     "time": "2026/02/14 02:32:50",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
-    "message": "Thanks for developing such a useful plugin",
+    "message": "Thanks for developing such a useful plugin.",
     "name": "支持开源精神"
   },
   {
     "time": "2026/02/13 02:13:10",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
     "message": "Tip",
@@ -1177,7 +1193,7 @@
   },
   {
     "time": "2026/02/11 17:07:02",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
     "message": "Keep it up.",
@@ -1185,18 +1201,18 @@
   },
   {
     "time": "2026/01/11 14:20:34",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "5.00",
     "unit": "¥",
-    "message": "Very useful, hope you can implement git",
+    "message": "Very useful. Hope you can implement Git support.",
     "name": "安宁"
   },
   {
     "time": "2026/04/18 16:59:14",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "3.66",
     "unit": "¥",
-    "message": "Keep developing and make great products",
+    "message": "Keep developing and make great products.",
     "name": "jeremy"
   },
   {
@@ -1204,7 +1220,7 @@
     "item": "Custom Amount",
     "amount": "3.00",
     "unit": "¥",
-    "message": "Not much money, just a small token of appreciation. The plugin is great, thank you very much.",
+    "message": "Not much, just a small token of appreciation. The plugin is great, thank you very much.",
     "name": "1"
   },
   {
@@ -1212,12 +1228,12 @@
     "item": "Custom Amount",
     "amount": "3.00",
     "unit": "¥",
-    "message": "Successfully deployed, very useful, thanks",
+    "message": "Deployment successful and very useful. Thank you!",
     "name": "凭鱼跃"
   },
   {
     "time": "2026/02/23 17:47:46",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "3.00",
     "unit": "¥",
     "message": "Happy New Year",
@@ -1225,7 +1241,7 @@
   },
   {
     "time": "2026/04/21 22:43:08",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "2.88",
     "unit": "¥",
     "message": "Very useful (òωó)👍",
@@ -1236,12 +1252,12 @@
     "item": "Custom Amount",
     "amount": "2.00",
     "unit": "¥",
-    "message": "Thank you",
+    "message": "Thank you.",
     "name": "竹尘居士"
   },
   {
     "time": "2026/04/11 12:28:18",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "1.00",
     "unit": "¥",
     "message": "Give it a try",
@@ -1249,26 +1265,26 @@
   },
   {
     "time": "2026/03/26 15:03:40",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "1.00",
     "unit": "¥",
-    "message": "Thank you, very useful",
+    "message": "Thank you, very helpful.",
     "name": "guanyingquan"
   },
   {
     "time": "2026/02/24 20:15:19",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "1.00",
     "unit": "¥",
-    "message": "Grateful for your Obs sync plugin, it's very helpful!",
+    "message": "Grateful for your Obsidian sync plugin, it's been very helpful!",
     "name": "Jimmy"
   },
   {
     "time": "2026/01/08 15:18:06",
-    "item": "Tip Any Amount",
+    "item": "Custom Tip",
     "amount": "1.00",
     "unit": "¥",
-    "message": "From discovering the deployment to using it, it's been many years. Never experienced such smooth and seamless performance before, it's really great! [Thumbs up][Thumbs up][Thumbs up]",
+    "message": "It's been years since I discovered the deployment to using it. Never felt such smoothness before. It's really great! [Thumbs up][Thumbs up][Thumbs up]",
     "name": "用户"
   }
 ]

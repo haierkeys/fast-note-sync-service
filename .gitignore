@@ -2,6 +2,7 @@
 /composer.phar
 /composer.lock
 
+scripts/node_modules
 
 *.exe
 # -- Editores -----------------------------------------
