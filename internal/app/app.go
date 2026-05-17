@@ -365,6 +365,17 @@ func (a *App) GetSupportRecords() map[string][]pkgapp.SupportRecord {
 	return a.supportRecords
 }
 
+// getCNYValue gets support record amount converted to CNY for sorting
+// getCNYValue 将打赏记录金额折合为人民币价值用于排序
+func getCNYValue(amountStr, unit string) float64 {
+	amount, _ := strconv.ParseFloat(amountStr, 64)
+	unitUpper := strings.ToUpper(unit)
+	if unitUpper == "USD" || unitUpper == "$" {
+		return amount * 6.81 // 采用与 JS 统一的 6.81 汇率
+	}
+	return amount
+}
+
 // GetSupportRecordsPage gets support records with pagination and sorting
 // GetSupportRecordsPage 分页并排序获取打赏记录
 func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSize int) ([]pkgapp.SupportRecord, int) {
@@ -411,12 +422,12 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 			var less bool
 			switch actualSortBy {
 			case "amount":
-				amountI, _ := strconv.ParseFloat(filteredRecords[i].Amount, 64)
-				amountJ, _ := strconv.ParseFloat(filteredRecords[j].Amount, 64)
-				if amountI == amountJ {
+				valI := getCNYValue(filteredRecords[i].Amount, filteredRecords[i].Unit)
+				valJ := getCNYValue(filteredRecords[j].Amount, filteredRecords[j].Unit)
+				if valI == valJ {
 					return filteredRecords[i].Time > filteredRecords[j].Time
 				}
-				less = amountI < amountJ
+				less = valI < valJ
 			case "name":
 				less = filteredRecords[i].Name < filteredRecords[j].Name
 			case "item":
