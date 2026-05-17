@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
@@ -267,6 +268,7 @@ type WebsocketClient struct {
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
 	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
 	Scope               string                    // Token Scope // 令牌权限范围
+	Vaults              string                    // Restrict Vaults // 限制笔记库
 	Lang                string                    // Language preference // 语言偏好
 }
 
@@ -647,7 +649,7 @@ type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
-	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -834,7 +836,7 @@ func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*
 	w.userVerifyHandler = handler
 }
 
-func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, error)) {
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)) {
 	w.tokenVerifyHandler = handler
 }
 
@@ -878,7 +880,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			reqUserAgent := c.Ctx.GetHeader("User-Agent")
 			reqIP := c.Ctx.ClientIP()
 
-			scope, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
+			scope, vaults, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
 				if appErr, ok := err.(*code.Code); ok {
@@ -891,6 +893,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 				return
 			}
 			c.Scope = scope
+			c.Vaults = vaults
 		}
 
 		// Mandatorily verify user validity
@@ -1313,6 +1316,21 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 			zap.String("traceId", c.TraceID))
 		c.ToResponse(code.ErrorNotUserAuthToken)
 		return
+	}
+
+	// Verify Vault Restrictions for active WebSocket connections
+	// 针对活跃 WebSocket 连接校验笔记库访问权限限制
+	if c.Vaults != "" {
+		var vaultInfo struct {
+			Vault string `json:"vault"`
+		}
+		if err := json.Unmarshal(msg.Data, &vaultInfo); err == nil && vaultInfo.Vault != "" {
+			if !util.VerifyVaultAccess(c.Vaults, vaultInfo.Vault) {
+				log(LogWarn, "WS OnMessage Vault Restricted", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("vault", vaultInfo.Vault))
+				c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: "+vaultInfo.Vault), msg.Type+"Ack")
+				return
+			}
+		}
 	}
 
 	// Execute operation

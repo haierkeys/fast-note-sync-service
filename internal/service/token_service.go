@@ -71,6 +71,7 @@ func (s *tokenService) domainToDTO(token *domain.AuthToken) *dto.TokenResponse {
 		ClientType: token.ClientType,
 		BoundIP:    token.BoundIP,
 		UserAgent:  token.UserAgent,
+		Vaults:     token.Vaults,
 		IssueType:  token.IssueType,
 		LastUsedAt: timex.Time(token.LastUsedAt),
 		ExpiredAt:  timex.Time(token.ExpiredAt),
@@ -110,6 +111,7 @@ func (s *tokenService) Create(ctx context.Context, uid int64, params *dto.TokenI
 		ClientType: params.ClientType,
 		BoundIP:    params.BoundIP,
 		UserAgent:  params.UserAgent,
+		Vaults:     params.Vaults,
 		Status:     1,
 		IssueType:  2, // Manual
 		ExpiredAt:  time.Now().Add(time.Duration(params.ExpiredDays) * 24 * time.Hour),
@@ -223,6 +225,7 @@ func (s *tokenService) Update(ctx context.Context, uid int64, tokenID int64, par
 	if params.UserAgent != "" {
 		token.UserAgent = params.UserAgent
 	}
+	token.Vaults = params.Vaults
 	token.ExpiredAt = time.Now().Add(time.Duration(params.ExpiredDays) * 24 * time.Hour)
 
 	// Format scope

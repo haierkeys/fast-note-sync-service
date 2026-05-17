@@ -58,7 +58,7 @@ func newUserHandler(mockSvc *svcmocks.MockUserService) *UserHandler {
 // TestUserHandler_Register_Success 验证注册成功时的响应。
 func TestUserHandler_Register_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockUserService)
-	mockSvc.On("Register", mock.Anything, mock.AnythingOfType("*dto.UserCreateRequest")).
+	mockSvc.On("Register", mock.Anything, mock.AnythingOfType("*dto.UserCreateRequest"), mock.Anything, mock.Anything, mock.Anything).
 		Return(&dto.UserDTO{UID: 1, Username: "testuser", Token: "test-token"}, nil)
 
 	handler := newUserHandler(mockSvc)
@@ -75,7 +75,7 @@ func TestUserHandler_Register_Success(t *testing.T) {
 // TestUserHandler_Register_ServiceError 验证 service 错误被正确传递到响应。
 func TestUserHandler_Register_ServiceError(t *testing.T) {
 	mockSvc := new(svcmocks.MockUserService)
-	mockSvc.On("Register", mock.Anything, mock.AnythingOfType("*dto.UserCreateRequest")).
+	mockSvc.On("Register", mock.Anything, mock.AnythingOfType("*dto.UserCreateRequest"), mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, code.ErrorUserRegisterIsDisable)
 
 	handler := newUserHandler(mockSvc)
@@ -96,7 +96,7 @@ func TestUserHandler_Register_ServiceError(t *testing.T) {
 // TestUserHandler_Login_Success 验证登录成功时的响应。
 func TestUserHandler_Login_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockUserService)
-	mockSvc.On("Login", mock.Anything, mock.AnythingOfType("*dto.UserLoginRequest"), mock.AnythingOfType("string")).
+	mockSvc.On("Login", mock.Anything, mock.AnythingOfType("*dto.UserLoginRequest"), mock.Anything, mock.Anything, mock.Anything).
 		Return(&dto.UserDTO{UID: 1, Token: "test-token"}, nil)
 
 	handler := newUserHandler(mockSvc)
@@ -113,7 +113,7 @@ func TestUserHandler_Login_Success(t *testing.T) {
 // TestUserHandler_Login_Failure 验证凭证错误时返回错误响应。
 func TestUserHandler_Login_Failure(t *testing.T) {
 	mockSvc := new(svcmocks.MockUserService)
-	mockSvc.On("Login", mock.Anything, mock.AnythingOfType("*dto.UserLoginRequest"), mock.AnythingOfType("string")).
+	mockSvc.On("Login", mock.Anything, mock.AnythingOfType("*dto.UserLoginRequest"), mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, code.ErrorUserLoginPasswordFailed)
 
 	handler := newUserHandler(mockSvc)

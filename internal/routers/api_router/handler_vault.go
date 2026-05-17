@@ -10,6 +10,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
 
@@ -161,6 +162,22 @@ func (h *VaultHandler) List(c *gin.Context) {
 		h.logError(ctx, "VaultHandler.List", err)
 		apperrors.ErrorResponse(c, err)
 		return
+	}
+
+	// Filter vaults based on auth token restrictions
+	// 根据授权令牌限制过滤笔记本列表
+	allowedVaultsVal, exists := c.Get("vaults")
+	if exists {
+		allowedVaults := allowedVaultsVal.(string)
+		if allowedVaults != "" {
+			var filtered []*dto.VaultDTO
+			for _, v := range vaults {
+				if util.VerifyVaultAccess(allowedVaults, v.Name) {
+					filtered = append(filtered, v)
+				}
+			}
+			vaults = filtered
+		}
 	}
 
 	response.ToResponse(code.Success.WithData(vaults))

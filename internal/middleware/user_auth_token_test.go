@@ -66,6 +66,10 @@ func (s *fakeMiddlewareTokenService) UpdateLastUsedAt(ctx context.Context, token
 func (s *fakeMiddlewareTokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool)) {
 }
 
+func (s *fakeMiddlewareTokenService) GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
+	return nil, nil
+}
+
 func newMiddlewareJWT(t *testing.T, secretKey, nonce string) string {
 	t.Helper()
 	tokenManager := app.NewTokenManager(app.TokenConfig{

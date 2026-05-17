@@ -15,6 +15,7 @@ type AuthToken struct {
 	ClientType  string    // Client Type (e.g. webgui, obsidian) // 客户端类型
 	BoundIP     string    // Bound IP Address // 绑定 IP 地址
 	UserAgent   string    // User Agent // 用户代理
+	Vaults      string    // Restrict Vaults (comma-separated, empty means no restriction) // 限制笔记库（逗号分隔，为空表示不限制）
 	Status      int64     // Status (1: Active, 0: Revoked) // 状态 (1: 活跃, 0: 注销)
 	ExpiredAt   time.Time // Expiration Time // 过期时间
 	IssueType   int       // Issue Type (1: Login, 2: Manual) // 签发类型 (1: 登录, 2: 手动)

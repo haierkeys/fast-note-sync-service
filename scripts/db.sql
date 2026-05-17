@@ -433,6 +433,7 @@ CREATE TABLE "auth_token" (
     "client_type" text NOT NULL DEFAULT '',
     "bound_ip" text NOT NULL DEFAULT '',
     "user_agent" text NOT NULL DEFAULT '',
+    "vaults" text NOT NULL DEFAULT '',
     "status" integer NOT NULL DEFAULT 1,
     "issue_type" integer NOT NULL DEFAULT 1,
     "last_used_at" datetime DEFAULT NULL,

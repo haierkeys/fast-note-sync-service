@@ -35,8 +35,6 @@ func newAuthTokenLog(db *gorm.DB, opts ...gen.DOOption) authTokenLog {
 	_authTokenLog.Client = field.NewString(tableName, "client")
 	_authTokenLog.ClientName = field.NewString(tableName, "client_name")
 	_authTokenLog.ClientVersion = field.NewString(tableName, "client_version")
-	_authTokenLog.Path = field.NewString(tableName, "path")
-	_authTokenLog.Method = field.NewString(tableName, "method")
 	_authTokenLog.IP = field.NewString(tableName, "ip")
 	_authTokenLog.Ua = field.NewString(tableName, "ua")
 	_authTokenLog.StatusCode = field.NewInt64(tableName, "status_code")
@@ -58,8 +56,6 @@ type authTokenLog struct {
 	Client        field.String
 	ClientName    field.String
 	ClientVersion field.String
-	Path          field.String
-	Method        field.String
 	IP            field.String
 	Ua            field.String
 	StatusCode    field.Int64
@@ -87,8 +83,6 @@ func (a *authTokenLog) updateTableName(table string) *authTokenLog {
 	a.Client = field.NewString(table, "client")
 	a.ClientName = field.NewString(table, "client_name")
 	a.ClientVersion = field.NewString(table, "client_version")
-	a.Path = field.NewString(table, "path")
-	a.Method = field.NewString(table, "method")
 	a.IP = field.NewString(table, "ip")
 	a.Ua = field.NewString(table, "ua")
 	a.StatusCode = field.NewInt64(table, "status_code")
@@ -121,7 +115,7 @@ func (a *authTokenLog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (a *authTokenLog) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 13)
+	a.fieldMap = make(map[string]field.Expr, 11)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["token_id"] = a.TokenID
 	a.fieldMap["uid"] = a.UID
@@ -129,8 +123,6 @@ func (a *authTokenLog) fillFieldMap() {
 	a.fieldMap["client"] = a.Client
 	a.fieldMap["client_name"] = a.ClientName
 	a.fieldMap["client_version"] = a.ClientVersion
-	a.fieldMap["path"] = a.Path
-	a.fieldMap["method"] = a.Method
 	a.fieldMap["ip"] = a.IP
 	a.fieldMap["ua"] = a.Ua
 	a.fieldMap["status_code"] = a.StatusCode

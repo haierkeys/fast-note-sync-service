@@ -21,6 +21,7 @@ type AuthToken struct {
 	ClientType  string     `gorm:"column:client_type;not null;default:''" json:"clientType" form:"clientType"`
 	BoundIP     string     `gorm:"column:bound_ip;not null;default:''" json:"boundIp" form:"boundIp"`
 	UserAgent   string     `gorm:"column:user_agent;not null;default:''" json:"userAgent" form:"userAgent"`
+	Vaults      string     `gorm:"column:vaults;not null;default:''" json:"vaults" form:"vaults"`
 	Status      int64      `gorm:"column:status;not null;default:1" json:"status" form:"status"`
 	IssueType   int64      `gorm:"column:issue_type;not null;default:1" json:"issueType" form:"issueType"`
 	LastUsedAt  time.Time  `gorm:"column:last_used_at" json:"lastUsedAt" form:"lastUsedAt"`

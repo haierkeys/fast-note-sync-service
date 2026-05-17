@@ -39,6 +39,7 @@ func newTestFolderHandler(folderSvc *svcmocks.MockFolderService) *FolderHandler 
 	testApp := app.NewTestApp(&app.Services{
 		FolderService: folderSvc,
 	})
+	folderSvc.On("WithClient", mock.Anything, mock.Anything, mock.Anything).Return(folderSvc)
 	return NewFolderHandler(testApp)
 }
 

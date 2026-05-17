@@ -61,6 +61,7 @@ func (r *authTokenRepository) toDomain(m *model.AuthToken) *domain.AuthToken {
 		ClientType:  m.ClientType,
 		BoundIP:     m.BoundIP,
 		UserAgent:   m.UserAgent,
+		Vaults:      m.Vaults,
 		Status:      int64(m.Status),
 		ExpiredAt:   m.ExpiredAt,
 		IssueType:   int(m.IssueType),
@@ -79,6 +80,7 @@ func (r *authTokenRepository) Create(ctx context.Context, token *domain.AuthToke
 		ClientType:  token.ClientType,
 		BoundIP:     token.BoundIP,
 		UserAgent:   token.UserAgent,
+		Vaults:      token.Vaults,
 		Status:      token.Status,
 		ExpiredAt:   token.ExpiredAt,
 		IssueType:   int64(token.IssueType),
@@ -133,6 +135,7 @@ func (r *authTokenRepository) Update(ctx context.Context, token *domain.AuthToke
 		u.ClientType.Value(token.ClientType),
 		u.BoundIP.Value(token.BoundIP),
 		u.UserAgent.Value(token.UserAgent),
+		u.Vaults.Value(token.Vaults),
 		u.ExpiredAt.Value(token.ExpiredAt),
 		u.UpdatedAt.Value(timex.Now()),
 	)

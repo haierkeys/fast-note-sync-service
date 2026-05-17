@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"github.com/gin-gonic/gin"
 )
@@ -164,6 +165,17 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 			return
 		}
 
+		// 5.1 Verify Vault Restrictions
+		// 校验笔记库权限限制
+		if dbToken.Vaults != "" {
+			targetVault := app.RequestParam(c, "vault")
+			if targetVault != "" && !util.VerifyVaultAccess(dbToken.Vaults, targetVault) {
+				response.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: " + targetVault))
+				c.Abort()
+				return
+			}
+		}
+
 		// 6. Asynchronously record access log
 		// 异步记录访问日志
 		go func() {
@@ -191,6 +203,7 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 
 		c.Set("user_token", user)
 		c.Set("scope", dbToken.Scope)
+		c.Set("vaults", dbToken.Vaults)
 		c.Next()
 	}
 }

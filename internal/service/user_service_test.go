@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	domainmocks "github.com/haierkeys/fast-note-sync-service/internal/domain/mocks"
@@ -80,6 +81,10 @@ func (m *mockUserTokenService) UpdateLastUsedAt(ctx context.Context, tokenID int
 }
 
 func (m *mockUserTokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool)) {
+}
+
+func (m *mockUserTokenService) GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
+	return nil, nil
 }
 
 // newUserSvc creates a userService with mocked dependencies for testing.

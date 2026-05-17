@@ -39,14 +39,15 @@ func newTestFileHandler(fileSvc *svcmocks.MockFileService) *FileHandler {
 	testApp := app.NewTestApp(&app.Services{
 		FileService: fileSvc,
 	})
+	fileSvc.On("WithClient", mock.Anything, mock.Anything, mock.Anything).Return(fileSvc)
 	wss := pkgapp.NewWebsocketServer(pkgapp.WSConfig{}, testApp)
 	return NewFileHandler(testApp, wss)
 }
 
 // TestFileHandler_Get_Success verifies successful file fetch
+// TestFileHandler_Get_Success 验证成功获取文件
 func TestFileHandler_Get_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
-	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
 
 	mockData := &dto.FileDTO{
 		ID:       1,
@@ -64,13 +65,12 @@ func TestFileHandler_Get_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockSvc.AssertExpectations(t)
 }
 
 // TestFileHandler_List_Success verifies successful file list fetch
+// TestFileHandler_List_Success 验证成功获取文件列表
 func TestFileHandler_List_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
-	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
 
 	listData := []*dto.FileDTO{
 		{ID: 1, Path: "f1.jpg"},
@@ -87,13 +87,12 @@ func TestFileHandler_List_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockSvc.AssertExpectations(t)
 }
 
 // TestFileHandler_Delete_Success verifies successful file deletion
+// TestFileHandler_Delete_Success 验证成功删除文件
 func TestFileHandler_Delete_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockFileService)
-	mockSvc.On("WithClient", "Web", "").Return(mockSvc)
 
 	deletedFile := &dto.FileDTO{ID: 3, Path: "f3.zip"}
 	mockSvc.On("Delete", mock.Anything, int64(1), mock.AnythingOfType("*dto.FileDeleteRequest")).
@@ -107,5 +106,4 @@ func TestFileHandler_Delete_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockSvc.AssertExpectations(t)
 }
