@@ -2,7 +2,7 @@
 /composer.phar
 /composer.lock
 
-.env
+
 *.exe
 # -- Editores -----------------------------------------
 # vim
@@ -92,3 +92,21 @@ CLAUDE.md
 # Python virtual environment
 .venv/
 docs/.support-translate-dict.json
+
+
+
+.env
+# vscode
+.vscode
+
+# Intellij
+*.iml
+.idea
+
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# env
+.env

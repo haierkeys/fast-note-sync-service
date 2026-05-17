@@ -60,13 +60,9 @@ all: test build-all
 # -------------------------
 sup:
 	node scripts/process_support_csv.js
-	@if [ ! -d ".venv" ]; then python3 -m venv .venv; fi
-	.venv/bin/pip install -q deep-translator
-	.venv/bin/python scripts/process_support.py
-	node scripts/gen_support_md.js
+	node scripts/process_support.mjs --model Qwen/Qwen3.6-35B-A3B
 
 sup-md:
-	node scripts/gen_support_md.js
 test:
 	go test $$(go list ./... | grep -v -E 'internal/service/mocks|internal/domain/mocks|internal/dto|internal/model|internal/query|internal/config|internal/app|/docs|internal/middleware|cmd')
 
