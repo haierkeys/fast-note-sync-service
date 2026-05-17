@@ -27,7 +27,7 @@
 | 2026/02/16 21:34:33 | Custom Tip | **¥66.00** | Jack | Happy New Year |
 | 2026/04/30 14:53:04 | Two cups of coffee ☕ | **¥60.00** | 新乡人儿 | Supporting you, thank you! |
 | 2026/04/30 03:08:34 | Two cups of coffee ☕ | **¥60.00** | zax | Excellent! It solved a problem that had been bothering me for a long time. I was about to give up on ob. |
-| 05/06/2026 15:28 | Ko-fi Support | **$8.00** | 陈白嫖怪 | - |
+| 2026/05/06 15:28:00 | Ko-fi Support | **$8.00** | 陈白嫖怪 | - |
 | 2026/04/02 19:16:44 | Custom Tip | **¥51.55** | 小七的小洋 | Great plugin |
 | 2026/04/22 09:15:52 | Two cups of coffee ☕ | **¥50.00** | zzz | Thanks for your hard work. Hope FNS continues to develop steadily. |
 | 2026/04/21 14:32:40 | Two cups of coffee ☕ | **¥50.00** | 安度 | Amazing, a treasure of a plugin. Keep it up! |
@@ -49,7 +49,7 @@
 | 2026/01/31 16:59:55 | Two cups of coffee ☕ | **¥50.00** | vulnnull | Keep up the good work; it truly addresses one of Obsidian's biggest pain points! |
 | 2026/01/21 09:37:19 | Two cups of coffee ☕ | **¥50.00** | Mojo抖音 | Thanks, your Obsidian sync is very useful 👍🏻 |
 | 2026/01/09 16:34:10 | Two cups of coffee ☕ | **¥50.00** | 喆 | Thanks to the 'male bodhisattva' for the OB plugin that benefits everyone (^🙏^). A small token of appreciation. |
-| 04/13/2026 05:52 | Ko-fi Support | **$5.00** | joehwang | Nice work! |
+| 2026/04/13 05:52:00 | Ko-fi Support | **$5.00** | joehwang | Nice work! |
 | 2026/05/14 09:54:02 | A cup of coffee ☕ | **¥30.00** | 如星 | Bro, you're updating so hard. Support! |
 | 2026/05/12 14:06:48 | A cup of coffee ☕ | **¥30.00** | wmz0731 | Thank you for developing the Obsidian sync plugin and server. It's very useful! |
 | 2026/05/12 11:04:53 | A cup of coffee ☕ | **¥30.00** | 深眼2049 | Awesome! Keep it up. |
@@ -170,4 +170,4 @@
 
 
 --- 
-*Last updated on: Sun, 17 May 2026 07:40:17 GMT*
+*Last updated on: Sun, 17 May 2026 07:56:05 GMT*

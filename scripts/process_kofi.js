@@ -99,6 +99,62 @@ function formatCsvField(field) {
 }
 
 /**
+ * 将 Ko-fi 原始时间格式 (如 MM/DD/YYYY HH:mm) 标准化为 YYYY/MM/DD HH:mm:ss
+ * @param {string} dateStr - 原始时间字符串
+ * @returns {string} - 标准化后的时间字符串
+ */
+function formatKofiDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split(/[\/\s-:]/);
+    if (parts.length >= 5) {
+        let year, month, day, hour, minute, second = '00';
+        if (parts[2] && parts[2].length === 4) {
+            // MM/DD/YYYY
+            year = parts[2];
+            month = parts[0].padStart(2, '0');
+            day = parts[1].padStart(2, '0');
+        } else if (parts[0] && parts[0].length === 4) {
+            // YYYY-MM-DD or YYYY/MM/DD
+            year = parts[0];
+            month = parts[1].padStart(2, '0');
+            day = parts[2].padStart(2, '0');
+        } else {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dayStr = String(d.getDate()).padStart(2, '0');
+                const h = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                const s = String(d.getSeconds()).padStart(2, '0');
+                return `${y}/${m}/${dayStr} ${h}:${min}:${s}`;
+            }
+            return dateStr;
+        }
+
+        hour = parts[3].padStart(2, '0');
+        minute = parts[4].padStart(2, '0');
+        if (parts[5]) {
+            second = parts[5].padStart(2, '0');
+        }
+        return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+    }
+    
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        return `${y}/${m}/${dayStr} ${h}:${min}:${s}`;
+    }
+    return dateStr;
+}
+
+
+/**
  * 发起 HTTPS 请求获取 Ko-fi 历史订单的原始 CSV 数据
  * 采用 got-scraping 库自动模拟真实浏览器 (Chrome/macOS) 的 TLS/HTTP2 指纹，绕过 Cloudflare WAF 拦截
  * @param {string} cookie - 身份验证 Cookie
@@ -214,7 +270,8 @@ async function main() {
             const fields = parseCsvLine(lines[i]);
             if (fields.length < headers.length) continue;
 
-            const time = idxDate >= 0 ? fields[idxDate].trim() : '';
+            const rawTime = idxDate >= 0 ? fields[idxDate].trim() : '';
+            const time = formatKofiDate(rawTime);
             const name = idxName >= 0 ? fields[idxName].trim() : '';
             const message = idxMessage >= 0 ? fields[idxMessage].trim() : '';
             const amountStr = idxAmount >= 0 ? fields[idxAmount].trim() : '0';

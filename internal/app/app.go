@@ -411,6 +411,13 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 		copy(filteredRecords, records)
 	}
 
+	// Normalize USD to $ for display
+	for i := range filteredRecords {
+		if strings.ToUpper(filteredRecords[i].Unit) == "USD" {
+			filteredRecords[i].Unit = "$"
+		}
+	}
+
 	total := len(filteredRecords)
 	if total == 0 {
 		return []pkgapp.SupportRecord{}, 0
