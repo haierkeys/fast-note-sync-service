@@ -86,6 +86,12 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 // Register user registration
 // Register 用户注册
 func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	// Only WebGui is allowed for registration
+	// 仅允许 WebGui 客户端注册
+	if clientType != "WebGui" {
+		return nil, code.ErrorUserRegister.WithDetails("Only WebGui is allowed for registration")
+	}
+
 	// Check if registration is enabled
 	// 检查注册是否启用
 	if !s.IsRegisterEnabled(ctx) {

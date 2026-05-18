@@ -234,3 +234,16 @@ func (e *Code) WithContext(context string) *Code {
 func (e *Code) StatusCode() int {
 	return http.StatusOK
 }
+
+// Is reports whether target matches the current error code.
+// This allows errors.Is and assert.ErrorIs to match WithDetails() / WithData() wrapped instances.
+// Is 判断目标错误是否匹配当前错误码。
+// 这使得 errors.Is 和 assert.ErrorIs 能够正确匹配被 WithDetails() / WithData() 包装后的实例。
+func (e *Code) Is(target error) bool {
+	t, ok := target.(*Code)
+	if !ok {
+		return false
+	}
+	return e.code == t.code
+}
+
