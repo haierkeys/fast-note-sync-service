@@ -130,6 +130,14 @@ security:
   # 分享令牌过期时间。例如: 30d, 7d
   # Expiry duration for share tokens. e.g., 30d, 7d
   share-token-expiry: "30d"
+  # WebGUI 登录自动签发 Token 的有效期。例如: 7d, 30d, 24h
+  # Expiry duration for WebGUI auto-issued login tokens. e.g., 7d, 30d, 24h
+  webgui-login-token-expiry: "7d"
+  # WebGUI 登录 Token 是否绑定客户端 IP。
+  # 使用 Cloudflare Tunnel 时可关闭（false），避免因 IP 变化频繁掉线。
+  # Whether to bind client IP for WebGUI login tokens.
+  # Set to false when using Cloudflare Tunnel to avoid disconnection due to IP changes.
+  webgui-login-token-bind-ip: true
 
 # 主数据库配置
 # Main database configuration

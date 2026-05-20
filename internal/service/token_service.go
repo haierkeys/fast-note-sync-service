@@ -51,16 +51,18 @@ type tokenService struct {
 	logRepo      domain.AuthTokenLogRepository
 	tokenManager app.TokenManager
 	logger       *zap.Logger
+	config       TokenServiceConfig                                      // Token config // Token 配置
 	lastLogMap   sync.Map                                                // TokenID -> time.Time (for 30s rate limiting)
 	SyncHandler  func(uid int64, tokenID int64, scope string, kick bool) // Hook for syncing to other modules (like WS)
 }
 
-func NewTokenService(tokenRepo domain.AuthTokenRepository, logRepo domain.AuthTokenLogRepository, tokenManager app.TokenManager, logger *zap.Logger) TokenService {
+func NewTokenService(tokenRepo domain.AuthTokenRepository, logRepo domain.AuthTokenLogRepository, tokenManager app.TokenManager, logger *zap.Logger, config TokenServiceConfig) TokenService {
 	return &tokenService{
 		tokenRepo:    tokenRepo,
 		logRepo:      logRepo,
 		tokenManager: tokenManager,
 		logger:       logger,
+		config:       config,
 	}
 }
 
@@ -149,17 +151,31 @@ func (s *tokenService) CreateForLogin(ctx context.Context, uid int64, clientType
 	// Restrict to REST protocol and bind to clientType
 	scope := "p:rest c:" + clientType + " f:*"
 
+	// Resolve expiry from config, fallback to 7 days
+	// 从配置读取有效期，默认 7 天
+	expiry := 7 * 24 * time.Hour
+	if d, err := util.ParseDuration(s.config.WebGUILoginTokenExpiry); err == nil && d > 0 {
+		expiry = d
+	}
+
+	// Bind IP only if configured
+	// 根据配置决定是否绑定 IP
+	boundIP := ""
+	if s.config.WebGUILoginTokenBindIP {
+		boundIP = ip
+	}
+
 	t := &domain.AuthToken{
 		UID:        uid,
 		Scope:      scope,
 		ClientType: clientType,
-		BoundIP:    ip,
+		BoundIP:    boundIP,
 		UserAgent:  userAgent,
 		Status:     1,
 		IssueType:  1, // Login
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		ExpiredAt:  time.Now().Add(7 * 24 * time.Hour), // 7 days
+		ExpiredAt:  time.Now().Add(expiry),
 	}
 
 	t, err := s.tokenRepo.Create(ctx, t)

@@ -33,6 +33,10 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 			RegisterIsEnable: cfg.User.RegisterIsEnable,
 			AdminUID:         cfg.User.AdminUID,
 		},
+		Token: service.TokenServiceConfig{
+			WebGUILoginTokenExpiry: cfg.Security.WebGUILoginTokenExpiry,
+			WebGUILoginTokenBindIP: cfg.Security.WebGUILoginTokenBindIP,
+		},
 		App: service.AppServiceConfig{
 			SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
 			HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
@@ -73,7 +77,7 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 
 	s.FolderService = service.NewFolderService(repos.FolderRepo, repos.NoteRepo, repos.FileRepo, s.VaultService, s.BackupService, s.SyncLogService, infra.workerPool)
 	s.NoteService = service.NewNoteService(repos.UserRepo, repos.NoteRepo, repos.NoteLinkRepo, repos.FileRepo, repos.ShareRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
-	s.TokenService = service.NewTokenService(repos.AuthTokenRepo, repos.AuthTokenLogRepo, infra.TokenManager, logger)
+	s.TokenService = service.NewTokenService(repos.AuthTokenRepo, repos.AuthTokenLogRepo, infra.TokenManager, logger, svcConfig.Token)
 	s.UserService = service.NewUserService(repos.UserRepo, infra.TokenManager, s.TokenService, logger, svcConfig)
 	s.FileService = service.NewFileService(repos.UserRepo, repos.FileRepo, repos.NoteRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
 	s.SettingService = service.NewSettingService(repos.SettingRepo, s.VaultService, s.SyncLogService, svcConfig)
