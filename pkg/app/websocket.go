@@ -233,6 +233,12 @@ type SessionCleaner interface {
 	Cleanup()
 }
 
+// PathHashGetter interface, used to identify session by file path hash
+// PathHashGetter 接口，用于通过文件路径哈希标识会话
+type PathHashGetter interface {
+	GetPathHash() string
+}
+
 // DiffMergeEntry represents an entry in DiffMergePaths
 // DiffMergeEntry 表示 DiffMergePaths 中的条目
 // Contains creation timestamp for timeout cleanup mechanism
@@ -1145,6 +1151,40 @@ func (w *WebsocketServer) RemoveSession(uid string, sessionID string) {
 		if len(userSessions) == 0 {
 			delete(w.binaryChunkSessions, uid)
 		}
+	}
+}
+
+// CleanSessionsByPathHash cleans up existing sessions for a specific path hash of a user
+// CleanSessionsByPathHash 清理用户特定路径哈希的现有会话
+func (w *WebsocketServer) CleanSessionsByPathHash(uid string, pathHash string) {
+	w.sessionsMu.Lock()
+	defer w.sessionsMu.Unlock()
+
+	userSessions, ok := w.binaryChunkSessions[uid]
+	if !ok {
+		return
+	}
+
+	var sessionIDsToRemove []string
+	for sessionID, session := range userSessions {
+		if getter, ok := session.(PathHashGetter); ok {
+			if getter.GetPathHash() == pathHash {
+				sessionIDsToRemove = append(sessionIDsToRemove, sessionID)
+			}
+		}
+	}
+
+	for _, sessionID := range sessionIDsToRemove {
+		session := userSessions[sessionID]
+		delete(userSessions, sessionID)
+
+		if cleaner, ok := session.(SessionCleaner); ok {
+			go cleaner.Cleanup()
+		}
+	}
+
+	if len(userSessions) == 0 {
+		delete(w.binaryChunkSessions, uid)
 	}
 }
 

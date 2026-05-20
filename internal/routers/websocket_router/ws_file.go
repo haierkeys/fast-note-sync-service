@@ -98,6 +98,12 @@ func (s *FileUploadBinaryChunkSession) Cleanup() {
 	}
 }
 
+// GetPathHash returns the path hash of the session
+// GetPathHash 返回会话的路径哈希值
+func (s *FileUploadBinaryChunkSession) GetPathHash() string {
+	return s.PathHash
+}
+
 // FileDownloadChunkSession defines the session state for file chunk download
 // Used to track progress and file info for large file chunk downloads
 // FileDownloadChunkSession 定义文件分块下载的会话状态。
@@ -287,25 +293,27 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 	}
 
 	// Update uploaded count and bytes
-	// 更新已上传计数和字节数
+	// 更新已上传计数 and 字节数
 	session.mu.Lock()
 	session.uploadedChunks[chunkIndex] = struct{}{} // 记录已上传的分块索引
 	session.UploadedChunks++
 	session.UploadedBytes += int64(len(chunkData))
 	uploadedBytes := session.UploadedBytes
+	uploadedChunks := session.UploadedChunks
+	totalChunks := session.TotalChunks
 	session.mu.Unlock()
 
-	// Check if all data has been uploaded (judged by bytes)
-	// 检查是否所有数据都已上传(根据字节数判断)
-	if uploadedBytes >= session.Size {
+	// Check if all data has been uploaded (judged by bytes or total chunks received)
+	// 检查是否所有数据都已上传 (根据字节数或收到的总分块数判断)
+	if uploadedBytes >= session.Size || uploadedChunks >= totalChunks {
 
 		h.logInfo(c, "FileUploadComplete: upload finished",
 			zap.String("sessionID", sessionID),
 			zap.String("path", session.Path),
 			zap.Int64("uploadedBytes", uploadedBytes),
 			zap.Int64("totalSize", session.Size),
-			zap.Int64("uploadedChunks", session.UploadedChunks),
-			zap.Int64("totalChunks", session.TotalChunks))
+			zap.Int64("uploadedChunks", uploadedChunks),
+			zap.Int64("totalChunks", totalChunks))
 
 		// NOTE: Session removal is delayed until UploadComplete is successful
 		// 注意：Session 的移除延迟到 UploadComplete 成功之后
@@ -351,16 +359,19 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			return
 		}
 
-		if fileSvc == nil {
-			h.logInfo(c, "FileUploadChunkBinary: fileSvc is nil, skipping broadcast", zap.String("path", session.Path))
-			c.ToResponse(code.Success)
-			return
+		// Always send FileUploadAck to client, even if fileSvc is nil (defensive edge case)
+		// 始终发送 FileUploadAck 给客户端，即使 fileSvc 为 nil（防御性边界情况）
+		// Without this ack, the client will never clear its pending upload state and will retry indefinitely
+		// 缺少此 ack，客户端永远无法清除其待上传状态，将无限重试
+		var ackLastTime int64
+		if fileSvc != nil {
+			ackLastTime = fileSvc.UpdatedTimestamp
 		}
 
 		// Reply to sender with ack carrying server timestamp, so client can update lastFileSyncTime
 		// 回复发送方携带服务端时间戳的 ack，让客户端可以更新 lastFileSyncTime
 		c.ToResponse(code.Success.WithData(dto.FileUploadAckMessage{
-			LastTime: fileSvc.UpdatedTimestamp,
+			LastTime: ackLastTime,
 			Path:     session.Path,
 			PathHash: session.PathHash,
 		}).WithVault(session.Vault), string(dto.FileUploadAck))
@@ -372,19 +383,23 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		session.mu.Unlock()
 		c.Server.RemoveSession(c.User.ID, session.ID)
 
-		// Broadcast file update message
-		// 广播文件更新消息
-		c.BroadcastResponse(code.Success.WithData(
-			dto.FileSyncModifyMessage{
-				Path:             fileSvc.Path,
-				PathHash:         fileSvc.PathHash,
-				ContentHash:      fileSvc.ContentHash,
-				Size:             fileSvc.Size,
-				Ctime:            fileSvc.Ctime,
-				Mtime:            fileSvc.Mtime,
-				UpdatedTimestamp: fileSvc.UpdatedTimestamp,
-			},
-		).WithVault(session.Vault), true, dto.FileSyncUpdate)
+		// Broadcast file update message (only when fileSvc is available)
+		// 广播文件更新消息（仅在 fileSvc 可用时）
+		if fileSvc != nil {
+			c.BroadcastResponse(code.Success.WithData(
+				dto.FileSyncModifyMessage{
+					Path:             fileSvc.Path,
+					PathHash:         fileSvc.PathHash,
+					ContentHash:      fileSvc.ContentHash,
+					Size:             fileSvc.Size,
+					Ctime:            fileSvc.Ctime,
+					Mtime:            fileSvc.Mtime,
+					UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+				},
+			).WithVault(session.Vault), true, dto.FileSyncUpdate)
+		} else {
+			h.logInfo(c, "FileUploadChunkBinary: fileSvc is nil, ack sent but skipping broadcast", zap.String("path", session.Path))
+		}
 	}
 }
 
@@ -989,7 +1004,25 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 // handleFileUploadSession initializes a file upload session and returns upload message.
 // handleFileUploadSession 初始化一个文件上传会话并返回上传消息.
 func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient, vault, path, pathHash, contentHash string, size, ctime, mtime int64) (*FileUploadBinaryChunkSession, error) {
+	// Clean up any existing stale sessions for the same file path hash to prevent resource leak and duplication
+	h.App.Logger().Info("FileUploadSessionCreate: cleaning existing stale sessions for path hash",
+		zap.String(logger.FieldTraceID, c.TraceID),
+		zap.Int64(logger.FieldUID, c.User.UID),
+		zap.String("pathHash", pathHash),
+		zap.String("path", path),
+	)
+	c.Server.CleanSessionsByPathHash(c.User.ID, pathHash)
+
 	sessionID := uuid.New().String()
+	h.App.Logger().Info("FileUploadSessionCreate: creating upload session",
+		zap.String(logger.FieldTraceID, c.TraceID),
+		zap.Int64(logger.FieldUID, c.User.UID),
+		zap.String("sessionID", sessionID),
+		zap.String("path", path),
+		zap.String("pathHash", pathHash),
+		zap.Int64("size", size),
+	)
+
 	cfg := h.App.Config()
 	tempDir := cfg.App.TempPath
 	if tempDir == "" {
