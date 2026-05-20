@@ -569,4 +569,18 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(fileDTO))
+
+	// Broadcast WebSocket event: FileSyncUpdate
+	// 广播 WebSocket 事件: 文件同步更新
+	h.WSS.BroadcastToUser(uid, code.Success.WithData(
+		dto.FileSyncModifyMessage{
+			Path:             fileDTO.Path,
+			PathHash:         fileDTO.PathHash,
+			ContentHash:      fileDTO.ContentHash,
+			Size:             fileDTO.Size,
+			Ctime:            fileDTO.Ctime,
+			Mtime:            fileDTO.Mtime,
+			UpdatedTimestamp: fileDTO.UpdatedTimestamp,
+		},
+	).WithVault(input.Vault), "FileSyncUpdate")
 }
