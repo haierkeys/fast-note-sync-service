@@ -1153,6 +1153,28 @@ func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
 }
 
+// isNormalDisconnectError 检查给定错误是否为正常的断开连接或网络中断错误
+// isNormalDisconnectError checks if the given error is a normal disconnect or network interruption error
+func isNormalDisconnectError(err error) bool {
+	if err == nil {
+		return true
+	}
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return true
+	}
+	errStr := err.Error()
+	// 检查常见的网络关闭、重置或超时错误消息
+	// Check common network closed, reset, or timeout error messages
+	if strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "i/o timeout") ||
+		strings.Contains(errStr, "closed network connection") ||
+		strings.Contains(errStr, "unexpected EOF") {
+		return true
+	}
+	return false
+}
+
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	c := w.GetClient(conn)
@@ -1163,7 +1185,7 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 	// First cancel the context of the WebSocket connection to notify all ongoing operations to stop
 	// 首先取消 WebSocket 连接的 context，通知所有正在进行的操作停止
 	// This must be performed before cleaning up other resources to ensure that all operations dependent on the context can receive the cancellation signal
-	// 这必须在清理其他资源之前执行，以确保所有依赖 context 的操作能够收到取消信号
+	// 这必须在清理其他 resource 之前执行，以确保所有依赖 context 的操作能够收到取消信号
 	c.cancelContext()
 
 	w.RemoveClient(conn)
@@ -1174,14 +1196,14 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		default:
 		}
 		logLevel := LogInfo
-		if err != nil && err != io.EOF {
+		if err != nil && !isNormalDisconnectError(err) {
 			logLevel = LogError
 		}
 		log(logLevel, "WS User Leave", zap.String("uid", c.User.ID), zap.String("traceID", c.TraceID), zap.Error(err))
 		w.RemoveUserClient(c)
 	} else {
 		logLevel := LogInfo
-		if err != nil && err != io.EOF {
+		if err != nil && !isNormalDisconnectError(err) {
 			logLevel = LogError
 		}
 		log(logLevel, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
