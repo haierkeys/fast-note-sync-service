@@ -5,8 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -265,5 +269,82 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		return mcp.NewToolResultText("Recycle clear successful"), nil
+	})
+
+	// 8. Write File (Create or update file/attachment via MCP)
+	// 8. 写入文件（通过 MCP 新建或更新文件/附件）
+	toolWriteFile := mcp.NewTool("file_write",
+		mcp.WithDescription("Create or update a file (attachment) in the vault by uploading its base64 encoded content"),
+		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
+		mcp.WithString("path", mcp.Required(), mcp.Description("Target file path in the vault (e.g. 'images/my_pic.png')")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Base64 encoded file content")),
+	)
+	srv.AddTool(toolWriteFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "file_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		uid := getUIDFromContext(ctx)
+		args := getArgs(req)
+		vault, _ := args["vault"].(string)
+		if vault == "" || strings.EqualFold(vault, "default") {
+			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		path, _ := args["path"].(string)
+		b64Content, _ := args["content"].(string)
+
+		if !util.ValidatePath(path) {
+			return mcp.NewToolResultError("invalid file path"), nil
+		}
+
+		// Decode base64 content // 解码 Base64 内容
+		data, err := base64.StdEncoding.DecodeString(b64Content)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to decode base64 content: %v", err)), nil
+		}
+
+		// Get temp directory path // 获取临时目录路径
+		tempDir := appContainer.Config().App.TempPath
+		if tempDir == "" {
+			tempDir = "storage/temp"
+		}
+		_ = os.MkdirAll(tempDir, 0755)
+		tempPath := filepath.Join(tempDir, uuid.New().String())
+
+		// Write data to temp file // 将数据写入临时文件
+		if err := os.WriteFile(tempPath, data, 0644); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to write temp file: %v", err)), nil
+		}
+		defer os.Remove(tempPath)
+
+		now := time.Now().UnixMilli()
+		params := &dto.FileUpdateRequest{
+			Vault:       vault,
+			Path:        path,
+			PathHash:    util.EncodeHash32(path),
+			ContentHash: util.EncodeHash32Bytes(data),
+			SavePath:    tempPath,
+			Size:        int64(len(data)),
+			Ctime:       now,
+			Mtime:       now,
+		}
+
+		cType, cName, cVer := getClientInfoFromContext(ctx)
+		_, fileDTO, err := fileSvc.WithClient(cType, cName, cVer).UpdateOrCreate(ctx, uid, params, false)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Broadcast WebSocket event to sync other clients // 广播 WebSocket 事件以同步其他客户端
+		wss.BroadcastToUser(uid, code.Success.WithData(dto.FileSyncModifyMessage{
+			Path:             fileDTO.Path,
+			PathHash:         fileDTO.PathHash,
+			ContentHash:      fileDTO.ContentHash,
+			Size:             fileDTO.Size,
+			Ctime:            fileDTO.Ctime,
+			Mtime:            fileDTO.Mtime,
+			UpdatedTimestamp: fileDTO.UpdatedTimestamp,
+		}).WithVault(vault), "FileSyncUpdate")
+
+		return mcp.NewToolResultText(fmt.Sprintf("Successfully wrote file: %s (Size: %d bytes)", fileDTO.Path, fileDTO.Size)), nil
 	})
 }
