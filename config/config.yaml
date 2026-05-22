@@ -29,6 +29,10 @@ server:
   # 外部访问 API 的地址（例如 http://api.example.com:9000）。用于 Web 界面定位。
   # External API URL (e.g., http://api.example.com:9000). Used for Web interface positioning.
   ext-api-url: ""
+  # 所有请求的自定义 HTTP 响应头
+  # Custom HTTP response headers for all requests
+  custom-response-headers:
+    # "X-Custom-Header": "Custom-Value"
 
 
 app:

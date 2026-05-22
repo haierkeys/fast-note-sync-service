@@ -2,6 +2,7 @@ package routers
 
 import (
 	"embed"
+	"net/http"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -48,8 +49,16 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// 获取配置
 	cfg := appContainer.Config()
 
+	// Convert custom response headers to http.Header for WebSocket handshake
+	// 将自定义响应头转换为 http.Header 以便 WebSocket 握手使用
+	var responseHeader = make(http.Header)
+	for k, v := range cfg.Server.CustomResponseHeaders {
+		responseHeader.Set(k, v)
+	}
+
 	var wss = pkgapp.NewWebsocketServer(pkgapp.WSConfig{
 		GWSOption: gws.ServerOption{
+			ResponseHeader:   responseHeader,
 			CheckUtf8Enabled: cfg.App.WebSocketCheckUtf8Enabled,
 			ParallelEnabled:  cfg.App.WebSocketParallelEnabled, // Enable parallel message processing from config
 			// 从配置开启并行消息处理
@@ -79,6 +88,9 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	r := gin.New()
 	r.Use(middleware.Proxy())
 	r.Use(middleware.Cors())
+	if len(cfg.Server.CustomResponseHeaders) > 0 {
+		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
+	}
 
 	// Register Static routes
 	// 注册静态资源路由
@@ -106,9 +118,13 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 }
 
 func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
+	cfg := appContainer.Config()
 	r := gin.New()
 	r.Use(middleware.Proxy())
 	r.Use(middleware.Cors())
+	if len(cfg.Server.CustomResponseHeaders) > 0 {
+		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
+	}
 
 	registerStaticFiles(r, frontendFiles, appContainer)
 	registerWebGuiRoutes(r, frontendFiles, appContainer)
@@ -118,9 +134,13 @@ func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine 
 }
 
 func NewShareRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
+	cfg := appContainer.Config()
 	r := gin.New()
 	r.Use(middleware.Proxy())
 	r.Use(middleware.Cors())
+	if len(cfg.Server.CustomResponseHeaders) > 0 {
+		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
+	}
 
 	registerStaticFiles(r, frontendFiles, appContainer)
 	registerShareRoutes(r, frontendFiles, appContainer)

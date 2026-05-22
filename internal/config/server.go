@@ -34,4 +34,7 @@ type ServerConfig struct {
 	// MCPSSEPingInterval MCP SSE ping interval (seconds)
 	// MCPSSEPingInterval MCP SSE 保活心跳间隔（秒）
 	MCPSSEPingInterval int `yaml:"mcp-sse-ping-interval" default:"30"`
+	// CustomResponseHeaders custom response headers for all requests
+	// CustomResponseHeaders 所有请求的自定义响应头
+	CustomResponseHeaders map[string]string `yaml:"custom-response-headers"` // Custom response headers mapped to string
 }
