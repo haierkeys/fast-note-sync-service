@@ -65,7 +65,7 @@ draw_banner() {
     if [ "$os_type" = "linux" ]; then
         svc_file="/etc/systemd/system/fast-note.service"
         elif [ "$os_type" = "darwin" ]; then
-        svc_file="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
+        svc_file="/Library/LaunchDaemons/com.haierkeys.fast-note.plist"
     fi
     
     local latest_v
@@ -588,16 +588,18 @@ EOF
         elif [ "$os" = "darwin" ]; then
         # macOS launchd
         step "$L_AUTO_MAC"
-        local plist_path="$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
-        mkdir -p "$(dirname "$plist_path")"
+        ensure_root
+        local plist_path="/Library/LaunchDaemons/com.haierkeys.fast-note.plist"
         
-        cat <<EOF > "$plist_path"
+        cat <<EOF | $SUDO tee "$plist_path" >/dev/null
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.haierkeys.fast-note</string>
+    <key>WorkingDirectory</key>
+    <string>$INSTALL_DIR</string>
     <key>ProgramArguments</key>
     <array>
         <string>$BIN_PATH</string>
@@ -614,9 +616,10 @@ EOF
 </dict>
 </plist>
 EOF
+        $SUDO chmod 644 "$plist_path"
         # unload if exists
-        launchctl unload "$plist_path" 2>/dev/null || true
-        launchctl load "$plist_path" 2>/dev/null || true
+        $SUDO launchctl unload -w "$plist_path" 2>/dev/null || true
+        $SUDO launchctl load -w "$plist_path" 2>/dev/null || true
         success "$L_AUTO_DONE"
         return 0
         elif [ "$os" = "windows" ]; then
@@ -662,9 +665,10 @@ start_service() {
             return 0
         fi
         # 优先尝试 Launchd
-        elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        elif [ "$os" = "darwin" ] && [ -f "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" ]; then
         step "Launchd: $L_STARTING"
-        launchctl load "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        ensure_root
+        $SUDO launchctl load -w "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" 2>/dev/null || true
         success "$L_START_SUCCESS"
         return 0
     fi
@@ -698,9 +702,10 @@ stop_service() {
         success "$L_STOP_SUCCESS"
         return 0
         # 优先尝试 Launchd
-        elif [ "$os" = "darwin" ] && [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
+        elif [ "$os" = "darwin" ] && [ -f "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" ]; then
         step "Launchd: $L_STOPPING"
-        launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        ensure_root
+        $SUDO launchctl unload -w "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" 2>/dev/null || true
         success "$L_STOP_SUCCESS"
         return 0
     fi
@@ -750,9 +755,10 @@ full_uninstall() {
         $SUDO rm -f "/etc/systemd/system/fast-note.service"
         $SUDO systemctl daemon-reload 2>/dev/null || true
     fi
-    if [ -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" ]; then
-        launchctl unload "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist" 2>/dev/null || true
-        rm -f "$HOME/Library/LaunchAgents/com.haierkeys.fast-note.plist"
+    if [ -f "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" ]; then
+        ensure_root
+        $SUDO launchctl unload -w "/Library/LaunchDaemons/com.haierkeys.fast-note.plist" 2>/dev/null || true
+        $SUDO rm -f "/Library/LaunchDaemons/com.haierkeys.fast-note.plist"
     fi
     
     step "$L_CLEAN_FILES"
