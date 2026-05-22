@@ -73,6 +73,7 @@ func TestTokenService_GetActiveToken_RecordNotFoundIsSessionError(t *testing.T) 
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	token, err := svc.GetActiveToken(context.Background(), 1, 2)
@@ -92,6 +93,7 @@ func TestTokenService_GetActiveToken_RevokedIsSessionError(t *testing.T) {
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	token, err := svc.GetActiveToken(context.Background(), 1, 2)
@@ -111,6 +113,7 @@ func TestTokenService_GetActiveToken_WrongUserIsSessionError(t *testing.T) {
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	token, err := svc.GetActiveToken(context.Background(), 1, 2)
@@ -130,6 +133,7 @@ func TestTokenService_GetActiveToken_ExpiredRemainsExpired(t *testing.T) {
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	token, err := svc.GetActiveToken(context.Background(), 1, 2)
@@ -144,6 +148,7 @@ func TestTokenService_GetActiveToken_DBFailureRemainsDBError(t *testing.T) {
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	token, err := svc.GetActiveToken(context.Background(), 1, 2)
@@ -164,6 +169,7 @@ func TestTokenService_GetActiveToken_Valid(t *testing.T) {
 		nil,
 		app.NewTokenManager(app.TokenConfig{SecretKey: "test-secret"}),
 		nil,
+		TokenServiceConfig{},
 	)
 
 	got, err := svc.GetActiveToken(context.Background(), 1, 2)

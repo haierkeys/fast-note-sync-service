@@ -61,10 +61,10 @@ type AppSettings struct {
 	// WebSocket 配置
 	WebSocketReadMaxPayloadSize   string `yaml:"ws-read-max-payload-size" default:"128MB"`
 	WebSocketWriteMaxPayloadSize  string `yaml:"ws-write-max-payload-size" default:"128MB"`
-	WebSocketParallelEnabled      bool   `yaml:"ws-parallel-enabled" default:"true"`
+	WebSocketParallelEnabled      *bool  `yaml:"ws-parallel-enabled" default:"true"`
 	WebSocketParallelGolimit      int    `yaml:"ws-parallel-golimit" default:"3"`
-	WebSocketCheckUtf8Enabled     bool   `yaml:"ws-check-utf8-enabled" default:"true"`
-	WebSocketCompressionEnabled   bool   `yaml:"ws-compression-enabled" default:"true"`
+	WebSocketCheckUtf8Enabled     *bool  `yaml:"ws-check-utf8-enabled" default:"true"`
+	WebSocketCompressionEnabled   *bool  `yaml:"ws-compression-enabled" default:"true"`
 	WebSocketCompressionLevel     int    `yaml:"ws-compression-level" default:"1"`
 	WebSocketCompressionThreshold int    `yaml:"ws-compression-threshold" default:"512"`
 	// PullSource data pull source: auto | github | cnb

@@ -15,5 +15,5 @@ type SecurityConfig struct {
 	WebGUILoginTokenExpiry string `yaml:"webgui-login-token-expiry" default:"7d"`
 	// WebGUILoginTokenBindIP whether to bind the client IP when issuing WebGUI login tokens
 	// WebGUILoginTokenBindIP 签发 WebGUI 登录 Token 时是否绑定客户端 IP
-	WebGUILoginTokenBindIP bool `yaml:"webgui-login-token-bind-ip" default:"true"`
+	WebGUILoginTokenBindIP *bool `yaml:"webgui-login-token-bind-ip" default:"true"`
 }
