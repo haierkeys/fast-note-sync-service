@@ -82,6 +82,13 @@ func newMiddlewareJWT(t *testing.T, secretKey, nonce string) string {
 }
 
 func runUserAuthMiddleware(t *testing.T, tokenService *fakeMiddlewareTokenService, token string) app.Res {
+	return runUserAuthMiddlewareWithRequest(t, tokenService, token, http.MethodGet, "/api/note/list?path=test.md", func(req *http.Request) {
+		req.Header.Set("x-client", "ObsidianPlugin")
+		req.Header.Set("User-Agent", "Obsidian")
+	})
+}
+
+func runUserAuthMiddlewareWithRequest(t *testing.T, tokenService *fakeMiddlewareTokenService, token string, method string, target string, configure func(*http.Request)) app.Res {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -90,11 +97,18 @@ func runUserAuthMiddleware(t *testing.T, tokenService *fakeMiddlewareTokenServic
 	router.GET("/api/note/list", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": code.Success.Code(), "status": true})
 	})
+	router.GET("/api/file", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"code": code.Success.Code(), "status": true})
+	})
+	router.POST("/api/file", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"code": code.Success.Code(), "status": true})
+	})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/note/list?path=test.md", nil)
+	req := httptest.NewRequest(method, target, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("x-client", "ObsidianPlugin")
-	req.Header.Set("User-Agent", "Obsidian")
+	if configure != nil {
+		configure(req)
+	}
 	recorder := httptest.NewRecorder()
 
 	router.ServeHTTP(recorder, req)
@@ -169,4 +183,56 @@ func TestUserAuthTokenWithConfig_RejectsScopeRestrictedToken(t *testing.T) {
 
 	assert.Equal(t, code.ErrorAuthTokenScopeRestricted.Code(), res.Code)
 	assert.Contains(t, res.Details, "Permission denied")
+}
+
+func TestUserAuthTokenWithConfig_AllowsLoginTokenWithoutClientHeader(t *testing.T) {
+	token := newMiddlewareJWT(t, "test-secret", "nonce-ok")
+	res := runUserAuthMiddlewareWithRequest(t, &fakeMiddlewareTokenService{activeToken: &domain.AuthToken{
+		ID:          2,
+		UID:         1,
+		TokenString: "nonce-ok",
+		Status:      1,
+		Scope:       "p:rest c:WebGui f:*",
+		ClientType:  "WebGui",
+		IssueType:   1,
+		ExpiredAt:   time.Now().Add(time.Hour),
+	}}, token, http.MethodGet, "/api/file?vault=main&path=image.png", func(req *http.Request) {
+		req.Header.Set("User-Agent", "Mozilla/5.0")
+	})
+
+	assert.Equal(t, code.Success.Code(), res.Code)
+}
+
+func TestUserAuthTokenWithConfig_RejectsHeaderlessLoginTokenWrite(t *testing.T) {
+	token := newMiddlewareJWT(t, "test-secret", "nonce-ok")
+	res := runUserAuthMiddlewareWithRequest(t, &fakeMiddlewareTokenService{activeToken: &domain.AuthToken{
+		ID:          2,
+		UID:         1,
+		TokenString: "nonce-ok",
+		Status:      1,
+		Scope:       "p:rest c:WebGui f:*",
+		ClientType:  "WebGui",
+		IssueType:   1,
+		ExpiredAt:   time.Now().Add(time.Hour),
+	}}, token, http.MethodPost, "/api/file?vault=main&path=image.png", func(req *http.Request) {
+		req.Header.Set("User-Agent", "Mozilla/5.0")
+	})
+
+	assert.Equal(t, code.ErrorAuthTokenClientRestricted.Code(), res.Code)
+}
+
+func TestUserAuthTokenWithConfig_RejectsManualTokenWithoutClientHeader(t *testing.T) {
+	token := newMiddlewareJWT(t, "test-secret", "nonce-ok")
+	res := runUserAuthMiddlewareWithRequest(t, &fakeMiddlewareTokenService{activeToken: &domain.AuthToken{
+		ID:          2,
+		UID:         1,
+		TokenString: "nonce-ok",
+		Status:      1,
+		Scope:       "p:rest c:WebGui f:file_r",
+		ClientType:  "WebGui",
+		IssueType:   2,
+		ExpiredAt:   time.Now().Add(time.Hour),
+	}}, token, http.MethodGet, "/api/file?vault=main&path=image.png", nil)
+
+	assert.Equal(t, code.ErrorAuthTokenScopeRestricted.Code(), res.Code)
 }
