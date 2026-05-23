@@ -20,7 +20,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 	{
 		api.Use(middleware.AppInfoWithConfig(app.Name, appContainer.Version().Version))
 		api.Use(gin.Logger())
-		api.Use(middleware.TraceMiddlewareWithConfig(cfg.Tracer.Enabled, cfg.Tracer.Header)) // Trace ID middleware
+		api.Use(middleware.TraceMiddlewareWithConfig(*cfg.Tracer.Enabled, cfg.Tracer.Header)) // Trace ID middleware
 		// Trace ID 中间件
 		api.Use(middleware.RateLimiter(methodLimiters))
 

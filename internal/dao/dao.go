@@ -646,7 +646,7 @@ func (d *Dao) AutoMigrate(uid int64, modelKey string) error {
 
 	// 2. Verify the AutoMigrate flag in the configuration
 	// 2. 校验配置中的 AutoMigrate 标志
-	if !cfg.AutoMigrate {
+	if cfg.AutoMigrate != nil && !*cfg.AutoMigrate {
 		return nil
 	}
 

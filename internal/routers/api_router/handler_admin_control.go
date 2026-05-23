@@ -445,6 +445,7 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 	if params.Type == "sqlite" {
 		enableQueue = true
 	}
+	autoMigrate := true
 	dbCfg := config.DatabaseConfig{
 		Type:                params.Type,
 		Path:                params.Path,
@@ -455,7 +456,7 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		Name:                params.Name,
 		SSLMode:             params.SSLMode,
 		Schema:              params.Schema,
-		AutoMigrate:         true,
+		AutoMigrate:         &autoMigrate,
 		MaxIdleConns:        params.MaxIdleConns,
 		MaxOpenConns:        params.MaxOpenConns,
 		ConnMaxLifetime:     params.ConnMaxLifetime,

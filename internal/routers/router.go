@@ -59,13 +59,13 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	var wss = pkgapp.NewWebsocketServer(pkgapp.WSConfig{
 		GWSOption: gws.ServerOption{
 			ResponseHeader:   responseHeader,
-			CheckUtf8Enabled: cfg.App.WebSocketCheckUtf8Enabled,
-			ParallelEnabled:  cfg.App.WebSocketParallelEnabled, // Enable parallel message processing from config
+			CheckUtf8Enabled: *cfg.App.WebSocketCheckUtf8Enabled,
+			ParallelEnabled:  *cfg.App.WebSocketParallelEnabled, // Enable parallel message processing from config
 			// 从配置开启并行消息处理
 			Recovery: gws.Recovery, // Enable exception recovery
 			// 开启异常恢复
 			PermessageDeflate: gws.PermessageDeflate{
-				Enabled:               cfg.App.WebSocketCompressionEnabled,
+				Enabled:               *cfg.App.WebSocketCompressionEnabled,
 				Level:                 cfg.App.WebSocketCompressionLevel,
 				Threshold:             cfg.App.WebSocketCompressionThreshold,
 				ServerContextTakeover: true,

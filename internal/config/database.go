@@ -13,7 +13,7 @@ type DatabaseConfig struct {
 	SSLMode             string `yaml:"ssl-mode"`                                   // SSL mode (postgres only) // SSL 模式 (仅限 postgres)
 	TablePrefix         string `yaml:"table-prefix"`                               // database table prefix // 数据库表前缀
 	Schema              string `yaml:"schema"`                                     // database schema (postgres only) // 数据库 Schema (仅限 postgres)
-	AutoMigrate         bool   `yaml:"auto-migrate" default:"true"`                // whether to enable automatic migration // 是否启用自动迁移
+	AutoMigrate         *bool  `yaml:"auto-migrate" default:"true"`                // whether to enable automatic migration // 是否启用自动迁移
 	Charset             string `yaml:"charset"`                                    // database charset // 数据库字符集
 	ParseTime           bool   `yaml:"parse-time"`                                 // whether to parse time // 是否解析时间
 	MaxIdleConns        int    `yaml:"max-idle-conns" default:"10"`                // maximum number of idle connections // 最大闲置连接数，默认 10

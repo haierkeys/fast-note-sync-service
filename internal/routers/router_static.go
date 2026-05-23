@@ -34,7 +34,7 @@ func registerStaticFiles(r *gin.Engine, frontendFiles embed.FS, appContainer *ap
 	r.Group("/static", cacheMiddleware, middleware.StaticCompressMiddleware(frontendFiles)).StaticFS("/", http.FS(frontendStatic))
 	r.Group("/user_static", cacheMiddleware).Static("/", userStaticPath)
 
-	if cfg.Storage.LocalFS.HttpfsIsEnable && cfg.Storage.LocalFS.IsEnabled {
+	if *cfg.Storage.LocalFS.HttpfsIsEnable && cfg.Storage.LocalFS.IsEnabled {
 		r.StaticFS(cfg.Storage.LocalFS.SavePath, http.Dir(cfg.Storage.LocalFS.SavePath))
 		r.OPTIONS(cfg.Storage.LocalFS.SavePath+"/*filepath", func(c *gin.Context) {
 			c.Status(http.StatusNoContent)
