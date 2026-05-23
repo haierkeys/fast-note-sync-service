@@ -87,6 +87,9 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		if reqClientType == "" {
 			reqClientType = c.Query("client")
 		}
+		if reqClientType == "" && dbToken.IssueType == 1 && isHeaderlessLoginTokenResourceRead(c) {
+			reqClientType = dbToken.ClientType
+		}
 
 		// Only enforce strict ClientType matching for login tokens (IssueType == 1).
 		// Manual tokens (IssueType == 2) use ClientType as a Remark/Title, and client restriction is handled via Scope.
@@ -206,6 +209,11 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		c.Set("vaults", dbToken.Vaults)
 		c.Next()
 	}
+}
+
+func isHeaderlessLoginTokenResourceRead(c *gin.Context) bool {
+	return c.Request.URL.Path == "/api/file" &&
+		(c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead)
 }
 
 // UserAuthToken user Token authentication middleware (no secret key, always fails)
