@@ -40,6 +40,8 @@ type App struct {
 	wg               sync.WaitGroup
 	checkVersionMu   sync.RWMutex
 	checkVersion     pkgapp.CheckVersionInfo
+	serviceReleases  []pkgapp.HistoricalVersion // Cached filtered service releases // 缓存的已过滤服务版本列表
+	pluginReleases   []pkgapp.HistoricalVersion // Cached filtered plugin releases // 缓存的已过滤插件版本列表
 	supportRecordsMu sync.RWMutex
 	supportRecords   map[string][]pkgapp.SupportRecord
 	wss              *pkgapp.WebsocketServer // WebSocket server reference // WebSocket 服务器引用
@@ -153,8 +155,34 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 
 	cv := a.checkVersion
 
-	// Compare plugin versions
-	// 比较插件版本
+	// Filter service history
+	// 过滤服务端历史版本
+	currentServiceVersion := a.Version().Version
+	if !strings.HasPrefix(currentServiceVersion, "v") {
+		currentServiceVersion = "v" + currentServiceVersion
+	}
+	latestServiceVersion := cv.VersionNewName
+	if !strings.HasPrefix(latestServiceVersion, "v") {
+		latestServiceVersion = "v" + latestServiceVersion
+	}
+
+	if semver.Compare(latestServiceVersion, currentServiceVersion) > 0 {
+		cv.VersionHistory = make([]pkgapp.HistoricalVersion, 0)
+		for i := 1; i < len(a.serviceReleases); i++ {
+			vInfo := a.serviceReleases[i].Version
+			if !strings.HasPrefix(vInfo, "v") {
+				vInfo = "v" + vInfo
+			}
+			if semver.Compare(vInfo, currentServiceVersion) > 0 {
+				hVal := a.serviceReleases[i]
+				hVal.Version = strings.TrimPrefix(hVal.Version, "v")
+				cv.VersionHistory = append(cv.VersionHistory, hVal)
+			}
+		}
+	}
+
+	// Compare plugin versions and filter history
+	// 比较插件版本并过滤历史版本
 	if pluginVersion != "" && cv.PluginVersionNewName != "" {
 		v1 := pluginVersion
 		if !strings.HasPrefix(v1, "v") {
@@ -165,6 +193,21 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 			v2 = "v" + v2
 		}
 		cv.PluginVersionIsNew = semver.Compare(v2, v1) > 0
+
+		if cv.PluginVersionIsNew {
+			cv.PluginVersionHistory = make([]pkgapp.HistoricalVersion, 0)
+			for i := 1; i < len(a.pluginReleases); i++ {
+				vInfo := a.pluginReleases[i].Version
+				if !strings.HasPrefix(vInfo, "v") {
+					vInfo = "v" + vInfo
+				}
+				if semver.Compare(vInfo, v1) > 0 {
+					hVal := a.pluginReleases[i]
+					hVal.Version = strings.TrimPrefix(hVal.Version, "v")
+					cv.PluginVersionHistory = append(cv.PluginVersionHistory, hVal)
+				}
+			}
+		}
 	}
 
 	// Version number returned to client does not have v prefix
@@ -182,6 +225,15 @@ func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
 	a.checkVersionMu.Lock()
 	defer a.checkVersionMu.Unlock()
 	a.checkVersion = info
+}
+
+// SetCheckVersionReleases sets all filtered service and plugin releases
+// SetCheckVersionReleases 设置所有过滤后的服务和插件发布版本列表
+func (a *App) SetCheckVersionReleases(serviceReleases, pluginReleases []pkgapp.HistoricalVersion) {
+	a.checkVersionMu.Lock()
+	defer a.checkVersionMu.Unlock()
+	a.serviceReleases = serviceReleases
+	a.pluginReleases = pluginReleases
 }
 
 // SetWSS sets WebSocket server reference and binds sync hooks

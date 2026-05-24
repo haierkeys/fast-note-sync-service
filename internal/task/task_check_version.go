@@ -33,11 +33,13 @@ const (
 type CNBRelease struct {
 	TagName    string `json:"tag_name"`
 	Prerelease bool   `json:"prerelease"`
+	Body       string `json:"body"` // Release description (changelog) // 版本发布说明（更新日志）
 }
 
 type GitHubRelease struct {
 	TagName    string `json:"tag_name"`
 	Prerelease bool   `json:"prerelease"`
+	Body       string `json:"body"` // Release description (changelog) // 版本发布说明（更新日志）
 }
 
 type GitHubTag struct {
@@ -68,34 +70,61 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	var serviceChangelog, pluginChangelog string
 	var err error
 
+	var serviceChangelogContent, pluginChangelogContent string
+	var serviceReleases, pluginReleases []pkgapp.HistoricalVersion
+
 	if isGitHub {
-		serviceLatest, err = t.fetchGitHubReleases(GitHubServiceReleaseURL)
+		serviceReleases, err = t.fetchGitHubReleases(GitHubServiceReleaseURL)
 		if err != nil {
 			return err
 		}
 
-		pluginLatest, err = t.fetchGitHubReleases(GitHubPluginReleaseURL)
+		pluginReleases, err = t.fetchGitHubReleases(GitHubPluginReleaseURL)
 		if err != nil {
 			return err
 		}
-		serviceLink = ServiceRepoURL + "/releases/tag/" + serviceLatest
-		pluginLink = PluginRepoURL + "/releases/tag/" + pluginLatest
-		serviceChangelog = ServiceRepoURL + "/releases/download/" + serviceLatest + "/changelog.txt"
-		pluginChangelog = PluginRepoURL + "/releases/download/" + pluginLatest + "/changelog.txt"
+
+		if len(serviceReleases) > 0 {
+			serviceLatest = serviceReleases[0].Version
+			serviceChangelogContent = serviceReleases[0].ChangelogContent
+			serviceLatestClean := strings.TrimPrefix(serviceLatest, "v")
+			serviceLink = ServiceRepoURL + "/releases/tag/" + serviceLatestClean
+			serviceChangelog = ServiceRepoURL + "/releases/download/" + serviceLatestClean + "/changelog.txt"
+		}
+
+		if len(pluginReleases) > 0 {
+			pluginLatest = pluginReleases[0].Version
+			pluginChangelogContent = pluginReleases[0].ChangelogContent
+			pluginLatestClean := strings.TrimPrefix(pluginLatest, "v")
+			pluginLink = PluginRepoURL + "/releases/tag/" + pluginLatestClean
+			pluginChangelog = PluginRepoURL + "/releases/download/" + pluginLatestClean + "/changelog.txt"
+		}
 
 	} else {
-		serviceLatest, err = t.fetchCNBVersion(CNBServiceReleaseURL, CNBServiceToken)
+		serviceReleases, err = t.fetchCNBVersion(CNBServiceReleaseURL, CNBServiceToken)
 		if err != nil {
 			return err
 		}
-		pluginLatest, err = t.fetchCNBVersion(CNBPluginReleaseURL, CNBPluginToken)
+		pluginReleases, err = t.fetchCNBVersion(CNBPluginReleaseURL, CNBPluginToken)
 		if err != nil {
 			return err
 		}
-		serviceLink = CNBServiceURL + "/-/releases/tag/" + serviceLatest
-		pluginLink = CNBPluginURL + "/-/releases/tag/" + pluginLatest
-		serviceChangelog = CNBServiceURL + "/-/releases/download/" + serviceLatest + "/changelog.txt"
-		pluginChangelog = CNBPluginURL + "/-/releases/download/" + pluginLatest + "/changelog.txt"
+
+		if len(serviceReleases) > 0 {
+			serviceLatest = serviceReleases[0].Version
+			serviceChangelogContent = serviceReleases[0].ChangelogContent
+			serviceLatestClean := strings.TrimPrefix(serviceLatest, "v")
+			serviceLink = CNBServiceURL + "/-/releases/tag/" + serviceLatestClean
+			serviceChangelog = CNBServiceURL + "/-/releases/download/" + serviceLatestClean + "/changelog.txt"
+		}
+
+		if len(pluginReleases) > 0 {
+			pluginLatest = pluginReleases[0].Version
+			pluginChangelogContent = pluginReleases[0].ChangelogContent
+			pluginLatestClean := strings.TrimPrefix(pluginLatest, "v")
+			pluginLink = CNBPluginURL + "/-/releases/tag/" + pluginLatestClean
+			pluginChangelog = CNBPluginURL + "/-/releases/download/" + pluginLatestClean + "/changelog.txt"
+		}
 	}
 
 	currentServiceVersion := t.app.Version().Version
@@ -103,29 +132,30 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 		currentServiceVersion = "v" + currentServiceVersion
 	}
 
-	if !strings.HasPrefix(serviceLatest, "v") {
+	if serviceLatest != "" && !strings.HasPrefix(serviceLatest, "v") {
 		serviceLatest = "v" + serviceLatest
 	}
 
-	if !strings.HasPrefix(pluginLatest, "v") {
+	if pluginLatest != "" && !strings.HasPrefix(pluginLatest, "v") {
 		pluginLatest = "v" + pluginLatest
 	}
 
 	info := pkgapp.CheckVersionInfo{
 		GithubAvailable:                  isGitHub,
 		VersionNewName:                   serviceLatest,
-		VersionIsNew:                     semver.Compare(serviceLatest, currentServiceVersion) > 0,
+		VersionIsNew:                     serviceLatest != "" && semver.Compare(serviceLatest, currentServiceVersion) > 0,
 		VersionNewLink:                   serviceLink,
 		VersionNewChangelog:              serviceChangelog,
-		VersionNewChangelogContent:       t.fetchTextContent(serviceChangelog),
+		VersionNewChangelogContent:       serviceChangelogContent,
 		PluginVersionNewName:             pluginLatest,
 		PluginVersionNewLink:             pluginLink,
 		PluginVersionNewChangelog:        pluginChangelog,
-		PluginVersionNewChangelogContent: t.fetchTextContent(pluginChangelog),
+		PluginVersionNewChangelogContent: pluginChangelogContent,
 	}
 
-	// 更新 App 中的版本信息
+	// 更新 App 中的版本信息和发布列表
 	t.app.SetCheckVersionInfo(info)
+	t.app.SetCheckVersionReleases(serviceReleases, pluginReleases)
 
 	// 推送版本信息给所有已连接客户端
 	t.app.BroadcastClientInfo()
@@ -133,46 +163,50 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	return nil
 }
 
-func (t *CheckVersionTask) fetchGitHubReleases(url string) (string, error) {
+func (t *CheckVersionTask) fetchGitHubReleases(url string) ([]pkgapp.HistoricalVersion, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API returned status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitHub API returned status: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var releases []GitHubRelease
 	if err := json.Unmarshal(body, &releases); err != nil {
-		return "", err
-	}
-
-	if len(releases) == 0 {
-		return "", nil
+		return nil, err
 	}
 
 	releaseChannel := t.app.Config().App.PullReleaseChannel
+	var result []pkgapp.HistoricalVersion
 	for _, release := range releases {
 		if releaseChannel == "stable" && release.Prerelease {
 			continue
 		}
-		return strings.TrimPrefix(release.TagName, "v"), nil
+		tagName := release.TagName
+		if !strings.HasPrefix(tagName, "v") {
+			tagName = "v" + tagName
+		}
+		result = append(result, pkgapp.HistoricalVersion{
+			Version:          tagName,
+			ChangelogContent: release.Body,
+		})
 	}
 
-	return "", nil
+	return result, nil
 }
 
-func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, error) {
+func (t *CheckVersionTask) fetchCNBVersion(url string, token string) ([]pkgapp.HistoricalVersion, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req.Header.Set("Accept", "application/vnd.cnb.api+json")
@@ -181,25 +215,22 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, er
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var releases []CNBRelease
 	if err := json.Unmarshal(body, &releases); err != nil {
-		return "", err
-	}
-
-	if len(releases) == 0 {
-		return "", nil
+		return nil, err
 	}
 
 	releaseChannel := t.app.Config().App.PullReleaseChannel
+	var result []pkgapp.HistoricalVersion
 	for _, release := range releases {
 		// CNB API usually follows Gitea/GitHub pattern
 		// Also fallback check for common prerelease suffixes if field is not enough
@@ -214,35 +245,17 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) (string, er
 		if releaseChannel == "stable" && isPrerelease {
 			continue
 		}
-		return strings.TrimPrefix(release.TagName, "v"), nil
+		tagName := release.TagName
+		if !strings.HasPrefix(tagName, "v") {
+			tagName = "v" + tagName
+		}
+		result = append(result, pkgapp.HistoricalVersion{
+			Version:          tagName,
+			ChangelogContent: release.Body,
+		})
 	}
 
-	return "", nil
-}
-
-func (t *CheckVersionTask) fetchTextContent(url string) string {
-	if url == "" {
-		return ""
-	}
-	client := http.Client{
-		Timeout: 10 * time.Second,
-	}
-	resp, err := client.Get(url)
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return ""
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ""
-	}
-
-	return string(body)
+	return result, nil
 }
 
 func (t *CheckVersionTask) LoopInterval() time.Duration {

@@ -17,18 +17,27 @@ type VersionInfo struct {
 	Changelog string `json:"changelog"`
 }
 
+// HistoricalVersion historical version release information
+// HistoricalVersion 历史版本发布信息
+type HistoricalVersion struct {
+	Version          string `json:"version"`          // Version name // 版本号
+	ChangelogContent string `json:"changelogContent"` // Changelog content // 更新日志内容
+}
+
 type CheckVersionInfo struct {
-	GithubAvailable                  bool   `json:"githubAvailable"`
-	VersionIsNew                     bool   `json:"versionIsNew"`
-	VersionNewName                   string `json:"versionNewName"`
-	VersionNewLink                   string `json:"versionNewLink"`
-	VersionNewChangelog              string `json:"versionNewChangelog"`
-	VersionNewChangelogContent       string `json:"versionNewChangelogContent"`
-	PluginVersionIsNew               bool   `json:"pluginVersionIsNew"`
-	PluginVersionNewName             string `json:"pluginVersionNewName"`
-	PluginVersionNewLink             string `json:"pluginVersionNewLink"`
-	PluginVersionNewChangelog        string `json:"pluginVersionNewChangelog"`
-	PluginVersionNewChangelogContent string `json:"pluginVersionNewChangelogContent"`
+	GithubAvailable                  bool                `json:"githubAvailable"`
+	VersionIsNew                     bool                `json:"versionIsNew"`
+	VersionNewName                   string              `json:"versionNewName"`
+	VersionNewLink                   string              `json:"versionNewLink"`
+	VersionNewChangelog              string              `json:"versionNewChangelog"`
+	VersionNewChangelogContent       string              `json:"versionNewChangelogContent"`
+	VersionHistory                   []HistoricalVersion `json:"versionHistory"`                   // Service version history between current and latest // 服务端在当前版本和最新版本之间的历史版本
+	PluginVersionIsNew               bool                `json:"pluginVersionIsNew"`
+	PluginVersionNewName             string              `json:"pluginVersionNewName"`
+	PluginVersionNewLink             string              `json:"pluginVersionNewLink"`
+	PluginVersionNewChangelog        string              `json:"pluginVersionNewChangelog"`
+	PluginVersionNewChangelogContent string              `json:"pluginVersionNewChangelogContent"`
+	PluginVersionHistory             []HistoricalVersion `json:"pluginVersionHistory"`             // Plugin version history between current and latest // 插件在当前版本和最新版本之间的历史版本
 }
 
 type SupportRecord struct {
