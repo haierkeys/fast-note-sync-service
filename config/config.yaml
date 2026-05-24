@@ -375,6 +375,8 @@ cloudflare:
 
 # 附件模拟静态访问配置 (免 Token 静态入口，主要提供给 nginx 访问)
 # Attachment mock static access configuration (No token static entry, mainly for nginx)
+# 静态资源地址示例 http://localhost:9000/attachments/1/test/demo.pdf
+# Static Resource URL Example http://localhost:9000/attachments/1/test/demo.pdf
 attachment-static:
   # 是否开启该模拟静态入口
   # Whether to enable the mock static entry
