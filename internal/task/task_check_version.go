@@ -30,16 +30,23 @@ const (
 	CNBPluginToken       = "9pFNKcjlej36e0w6MHKT6YMn53G"
 )
 
+type GitHubAsset struct {
+	Name  string `json:"name"`  // Asset name // 资源包名称
+	State string `json:"state"` // Upload state // 上传状态
+}
+
 type CNBRelease struct {
-	TagName    string `json:"tag_name"`
-	Prerelease bool   `json:"prerelease"`
-	Body       string `json:"body"` // Release description (changelog) // 版本发布说明（更新日志）
+	TagName    string        `json:"tag_name"`
+	Prerelease bool          `json:"prerelease"`
+	Body       string        `json:"body"`   // Release description (changelog) // 版本发布说明（更新日志）
+	Assets     []GitHubAsset `json:"assets"` // Release assets // 资源列表
 }
 
 type GitHubRelease struct {
-	TagName    string `json:"tag_name"`
-	Prerelease bool   `json:"prerelease"`
-	Body       string `json:"body"` // Release description (changelog) // 版本发布说明（更新日志）
+	TagName    string        `json:"tag_name"`
+	Prerelease bool          `json:"prerelease"`
+	Body       string        `json:"body"`   // Release description (changelog) // 版本发布说明（更新日志）
+	Assets     []GitHubAsset `json:"assets"` // Release assets // 资源列表
 }
 
 type GitHubTag struct {
@@ -163,6 +170,20 @@ func (t *CheckVersionTask) Run(ctx context.Context) error {
 	return nil
 }
 
+// hasValidAssets checks if there is at least one uploaded zip or tar.gz file
+// hasValidAssets 检查是否包含至少一个已成功上传的 zip 或 tar.gz 资源文件
+func hasValidAssets(assets []GitHubAsset) bool {
+	for _, asset := range assets {
+		name := strings.ToLower(asset.Name)
+		if strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".tar.gz") {
+			if asset.State == "" || asset.State == "uploaded" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (t *CheckVersionTask) fetchGitHubReleases(url string) ([]pkgapp.HistoricalVersion, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -188,6 +209,9 @@ func (t *CheckVersionTask) fetchGitHubReleases(url string) ([]pkgapp.HistoricalV
 	var result []pkgapp.HistoricalVersion
 	for _, release := range releases {
 		if releaseChannel == "stable" && release.Prerelease {
+			continue
+		}
+		if !hasValidAssets(release.Assets) {
 			continue
 		}
 		tagName := release.TagName
@@ -243,6 +267,9 @@ func (t *CheckVersionTask) fetchCNBVersion(url string, token string) ([]pkgapp.H
 		}
 
 		if releaseChannel == "stable" && isPrerelease {
+			continue
+		}
+		if !hasValidAssets(release.Assets) {
 			continue
 		}
 		tagName := release.TagName
