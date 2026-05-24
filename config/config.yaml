@@ -372,3 +372,25 @@ cloudflare:
   # 是否开启 Cloudflare 隧道相关的详细日志
   # Whether to enable detailed logs for Cloudflare Tunnel
   log-enabled: false
+
+# 附件模拟静态访问配置 (免 Token 静态入口，主要提供给 nginx 访问)
+# Attachment mock static access configuration (No token static entry, mainly for nginx)
+attachment-static:
+  # 是否开启该模拟静态入口
+  # Whether to enable the mock static entry
+  is-enable: false
+  # 允许访问的用户和笔记库，必须强制设置，否则不开启模拟访问
+  # Allowed users and vaults, must be set, otherwise static access is disabled
+  # 格式为 "uid": [vault1, vault2]
+  # Format: "uid": [vault1, vault2]
+  allowed-vaults:
+    # "1": ["notes", "work"]
+  # 允许访问的文件后缀类型，必须强制设置，否则不开启模拟访问
+  # Allowed file extensions, must be set, otherwise static access is disabled
+  allowed-types:
+    # - ".png"
+    # - ".jpg"
+    # - ".jpeg"
+    # - ".gif"
+    # - ".pdf"
+

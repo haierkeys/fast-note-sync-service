@@ -37,6 +37,7 @@ type AppConfig struct {
 	WebGUI       config.WebGUIConfig     `yaml:"webgui"`
 	Ngrok        config.NgrokConfig      `yaml:"ngrok"`
 	Cloudflare   config.CloudflareConfig `yaml:"cloudflare"`
+	AttachmentStatic config.AttachmentStaticConfig `yaml:"attachment-static"` // Attachment static access configuration // 附件模拟静态访问配置
 }
 
 // LoadConfig loads configuration from file
