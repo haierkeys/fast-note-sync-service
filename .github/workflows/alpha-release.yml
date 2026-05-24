@@ -130,7 +130,7 @@ jobs:
           name: ${{ needs.check-version.outputs.release_tag }}-alpha
           draft: false
           prerelease: true
-          generate_release_notes: true
+          generate_release_notes: false
           body: ${{ needs.prepare-message.outputs.commit_msg }}
           target_commitish: ${{ github.sha }} # 明确指定在当前分支的 commit 上创建 tag
           overwrite_files: true
