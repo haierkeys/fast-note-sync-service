@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -1027,6 +1028,19 @@ func buildSharePathCandidates(notePath string, rawRef string) []string {
 	ref := strings.TrimSpace(strings.ReplaceAll(rawRef, "\\", "/"))
 	if ref == "" || !isLocalSharePath(ref) {
 		return nil
+	}
+
+	// Standard markdown image links require characters such as spaces or
+	// non-ASCII to be percent-encoded (e.g. "图片/foo%201.jpg"), but the
+	// canonical path stored in the file table is the literal Obsidian path
+	// (e.g. "图片/foo 1.jpg"). Decode percent-encoding here so the DB lookup
+	// matches regardless of which link form the note used.
+	// 标准 Markdown 图片链接中的空格、非 ASCII 字符等需要百分号编码（如
+	// "图片/foo%201.jpg"），但文件表里存的是 Obsidian 原始字面路径
+	// （如 "图片/foo 1.jpg"）。这里解码百分号编码，让数据库查找在任何
+	// 链接形式下都能命中。
+	if decoded, err := url.PathUnescape(ref); err == nil && decoded != "" {
+		ref = decoded
 	}
 
 	candidates := make([]string, 0, 2)
