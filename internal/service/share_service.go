@@ -1012,6 +1012,23 @@ targetStart:
 	return raw[start:end], start, end
 }
 
+// detectMediaKindByExt returns "image", "video", "audio", or "" based on the
+// file extension of p. Extensions are matched case-insensitively.
+// detectMediaKindByExt 根据 p 的扩展名返回 "image"、"video"、"audio" 或 ""，
+// 大小写不敏感。
+func detectMediaKindByExt(p string) string {
+	ext := strings.ToLower(filepath.Ext(p))
+	switch ext {
+	case ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp":
+		return "image"
+	case ".mp4", ".webm", ".mov", ".mkv", ".avi", ".ogv":
+		return "video"
+	case ".mp3", ".wav", ".m4a", ".flac", ".aac", ".ogg":
+		return "audio"
+	}
+	return ""
+}
+
 func rewriteMarkdownImageLinks(content string, fileRefs map[string]*domain.File, shareToken string, password string) string {
 	return markdownImageRegex.ReplaceAllStringFunc(content, func(match string) string {
 		submatches := markdownImageRegex.FindStringSubmatch(match)
@@ -1029,13 +1046,37 @@ func rewriteMarkdownImageLinks(content string, fileRefs map[string]*domain.File,
 			return match
 		}
 
-		replacementTarget := buildSharedFileAPIURL(file.ID, shareToken, password)
+		apiURL := buildSharedFileAPIURL(file.ID, shareToken, password)
+		alt := submatches[1]
+
+		// Dispatch by file extension so that markdown image syntax pointing
+		// at a video or audio file (e.g. `![alt](clip.mp4)`) is rendered as
+		// a proper <video>/<audio> HTML element in the share view, instead
+		// of a broken <img>. This mirrors the wiki-style ![[]] dispatch
+		// already done in the attachment rewriter above, and is the server-
+		// side counterpart of the webgui's rewriteMarkdownImageLinks media
+		// dispatch.
+		// 按文件扩展名分发：让 Markdown 图片语法指向视频/音频的引用
+		// （如 `![alt](clip.mp4)`）在分享视图中渲染为 <video>/<audio> HTML，
+		// 而不是坏掉的 <img>。与上面 wiki 风格 ![[]] 附件重写器的分发逻辑
+		// 一致，也是 webgui 端 rewriteMarkdownImageLinks 媒体分发的服务端
+		// 对应物。
+		switch detectMediaKindByExt(file.Path) {
+		case "video":
+			return `<video src="` + apiURL + `" controls style="max-width:100%"></video>`
+		case "audio":
+			return `<audio src="` + apiURL + `" controls></audio>`
+		}
+
+		// Image (default) — preserve the original markdown image form, only
+		// substituting the URL.
+		replacementTarget := apiURL
 		rawTarget := submatches[2][start:end]
 		if strings.HasPrefix(rawTarget, "<") && strings.HasSuffix(rawTarget, ">") {
 			replacementTarget = "<" + replacementTarget + ">"
 		}
 
-		return "![" + submatches[1] + "](" + submatches[2][:start] + replacementTarget + submatches[2][end:] + ")"
+		return "![" + alt + "](" + submatches[2][:start] + replacementTarget + submatches[2][end:] + ")"
 	})
 }
 
