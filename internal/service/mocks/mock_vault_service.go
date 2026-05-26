@@ -105,6 +105,13 @@ func (m *MockVaultService) UpdateFileStats(ctx context.Context, fileSize, fileCo
 	return args.Error(0)
 }
 
+// RebuildIndex rebuilds full-text search index for a vault.
+// RebuildIndex 从数据库和物理文件内容重建指定仓库的全文搜索索引。
+func (m *MockVaultService) RebuildIndex(ctx context.Context, uid, vaultID int64) error {
+	args := m.Called(ctx, uid, vaultID)
+	return args.Error(0)
+}
+
 // Compile-time check: MockVaultService must implement service.VaultService.
 // 编译时检查：MockVaultService 必须实现 service.VaultService 接口。
 var _ service.VaultService = (*MockVaultService)(nil)

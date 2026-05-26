@@ -2,6 +2,7 @@ package api_router
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -238,3 +239,63 @@ func (h *VaultHandler) logError(ctx context.Context, method string, err error) {
 		zap.String("traceId", traceID),
 	)
 }
+
+// RebuildIndex rebuilds full-text search index for a specific vault
+// @Summary Rebuild vault FTS index
+// @Description Rebuild full-text search index from physical database and files for a specific vault, restricted to webgui client
+// @Tags Vault
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.VaultRebuildIndexRequest true "Rebuild Index Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/vault/rebuild-index [post]
+func (h *VaultHandler) RebuildIndex(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+
+	// Validate client type
+	// 验证客户端类型
+	clientType, _, _ := h.getClientInfo(c)
+	if !strings.EqualFold(clientType, "webgui") {
+		h.App.Logger().Warn("VaultHandler.RebuildIndex restricted: only webgui client allowed", zap.String("clientType", clientType))
+		response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("This action is restricted to webgui client only"))
+		return
+	}
+
+	params := &dto.VaultRebuildIndexRequest{}
+
+	// Parameter binding and validation
+	// 参数绑定和验证
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("VaultHandler.RebuildIndex.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	// Get UID
+	// 获取用户 ID
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("VaultHandler.RebuildIndex err uid=0")
+		response.ToResponse(code.ErrorNotUserAuthToken)
+		return
+	}
+
+	// Get request context
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	// Call service to rebuild index
+	// 调用服务重建索引
+	err := h.App.VaultService.RebuildIndex(ctx, uid, params.ID)
+	if err != nil {
+		h.logError(ctx, "VaultHandler.RebuildIndex", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success)
+}
+

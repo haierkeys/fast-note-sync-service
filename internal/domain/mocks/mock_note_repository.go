@@ -217,6 +217,12 @@ func (m *MockNoteRepository) DeleteByVaultID(ctx context.Context, vaultID, uid i
 	return args.Error(0)
 }
 
+func (m *MockNoteRepository) RebuildVaultIndex(ctx context.Context, uid, vaultID int64) error {
+	args := m.Called(ctx, uid, vaultID)
+	return args.Error(0)
+}
+
+
 // Compile-time check: MockNoteRepository must implement domain.NoteRepository.
 // 编译时检查：MockNoteRepository 必须实现 domain.NoteRepository 接口。
 var _ domain.NoteRepository = (*MockNoteRepository)(nil)

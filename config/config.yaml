@@ -131,7 +131,7 @@ app:
   # true (方案 B): 既索引又存储原始内容，支持高亮预览，体积稍大。
   # false (方案 A): 仅索引不存储原始内容，节省磁盘空间。
   # Whether Bleve stores raw content (default true). If false, it only indexes it without storing.
-  fts-bleve-store-raw: true
+  fts-bleve-store-raw: false
 
 security:
   # 认证令牌加密混淆 Key

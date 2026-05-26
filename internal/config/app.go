@@ -78,6 +78,6 @@ type AppSettings struct {
 	// 短链配置
 	ShortLink ShortLinkConfig `yaml:"short-link"`
 
-	FtsBleveEnabled  *bool `yaml:"fts-bleve-enabled" default:"true"`   // Bleve FTS enabled flag // 是否启用 Bleve 全文搜索（默认启用）
-	FtsBleveStoreRaw *bool `yaml:"fts-bleve-store-raw" default:"true"` // Bleve FTS store raw content flag // Bleve 全文搜索是否存储原始文本（默认启用为方案 B，若设为 false 则为仅索引不存储的方案 A）
+	FtsBleveEnabled  *bool `yaml:"fts-bleve-enabled" default:"true"`    // Bleve FTS enabled flag // 是否启用 Bleve 全文搜索（默认启用）
+	FtsBleveStoreRaw *bool `yaml:"fts-bleve-store-raw" default:"false"` // Bleve FTS store raw content flag // Bleve 全文搜索是否存储原始文本（默认启用为方案 B，若设为 false 则为仅索引不存储的方案 A）
 }

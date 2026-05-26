@@ -116,6 +116,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.GET("/vault", vaultHandler.List)
 			auth.POST("/vault", vaultHandler.CreateOrUpdate)
 			auth.DELETE("/vault", vaultHandler.Delete)
+			auth.POST("/vault/rebuild-index", vaultHandler.RebuildIndex)
 
 			auth.GET("/note", noteHandler.Get)
 			auth.POST("/note", noteHandler.CreateOrUpdate)
