@@ -54,6 +54,7 @@ type Dao struct {
 	userConfig    *config.DatabaseConfig
 	logger        *zap.Logger
 	writeQueueMgr *writequeue.Manager
+	BleveMgr      *BleveManager       // Bleve index manager instance // Bleve 索引管理器实例
 }
 
 // DaoOption option function for configuring Dao
@@ -89,6 +90,14 @@ func WithLogger(logger *zap.Logger) DaoOption {
 func WithWriteQueueManager(wqm *writequeue.Manager) DaoOption {
 	return func(d *Dao) {
 		d.writeQueueMgr = wqm
+	}
+}
+
+// WithBleveManager sets BleveManager
+// WithBleveManager 设置 Bleve 索引管理器
+func WithBleveManager(mgr *BleveManager) DaoOption {
+	return func(d *Dao) {
+		d.BleveMgr = mgr
 	}
 }
 

@@ -95,6 +95,14 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 // Close releases resources held by application container
 // Close 释放应用容器持有的资源
 func (a *App) Close() error {
+	if a.Dao != nil && a.Dao.BleveMgr != nil {
+		if err := a.Dao.BleveMgr.CloseAll(); err != nil {
+			a.logger.Error("failed to close all Bleve indexes", zap.Error(err))
+		} else {
+			a.logger.Info("All Bleve indexes closed")
+		}
+	}
+
 	if a.DB != nil {
 		sqlDB, err := a.DB.DB()
 		if err != nil {

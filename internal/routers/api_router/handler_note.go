@@ -130,6 +130,15 @@ func (h *NoteHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Log incoming query parameters
+	// 记录请求传入的查询参数
+	h.App.Logger().Info("NoteHandler.List request parameters",
+		zap.String("vault", params.Vault),
+		zap.String("keyword", params.Keyword),
+		zap.String("searchMode", params.SearchMode),
+		zap.Bool("isRecycle", params.IsRecycle),
+	)
+
 	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)

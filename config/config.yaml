@@ -121,6 +121,18 @@ app:
   # Data pull source setting: auto(detect) | github | cnb
   pull-source: auto
 
+  # 是否启用 Bleve 全文搜索。
+  # true (默认): 启用 Bleve 全文搜索，支持 searchMode=content 检索。
+  # false: 禁用 Bleve 全文搜索，检索退回到普通数据库模糊匹配。
+  # Whether to enable Bleve Full-Text Search (default true).
+  fts-bleve-enabled: true
+
+  # Bleve 全文搜索是否在索引中存储原始文本。
+  # true (方案 B): 既索引又存储原始内容，支持高亮预览，体积稍大。
+  # false (方案 A): 仅索引不存储原始内容，节省磁盘空间。
+  # Whether Bleve stores raw content (default true). If false, it only indexes it without storing.
+  fts-bleve-store-raw: true
+
 security:
   # 认证令牌加密混淆 Key
   # Internal key for auth token encryption and obfuscation
