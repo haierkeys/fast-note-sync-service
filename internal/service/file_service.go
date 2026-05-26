@@ -657,6 +657,13 @@ func (s *fileService) GetContentInfo(ctx context.Context, uid int64, params *dto
 	// 3. 尝试从 File 表获取
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+
+		// Fallback: if exact hash not found and path has no "/", try filename suffix match
+		// 回退：若精确 hash 未命中，且 path 不含 "/"（纯文件名），则按文件名后缀模糊查找
+		if (err != nil || file == nil) && !strings.Contains(params.Path, "/") {
+			file, err = s.fileRepo.GetByPathLike(ctx, params.Path, vaultID, uid)
+		}
+
 		if err == nil && file != nil {
 			// Check IsRecycle support
 			// 检查回收站标识支持
