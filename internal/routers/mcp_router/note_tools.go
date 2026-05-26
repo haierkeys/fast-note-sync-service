@@ -24,6 +24,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithDescription("List notes in a vault"),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
+		mcp.WithString("searchMode", mcp.Description("Search mode: 'path' (default) for searching note paths/filenames, 'content' for full-text search inside note contents.")),
 	)
 	srv.AddTool(toolListNotes, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
@@ -36,14 +37,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
 		keyword, _ := args["keyword"].(string)
+		searchMode, _ := args["searchMode"].(string)
 
 		pager := &pkgapp.Pager{
 			Page:     pkgapp.GetPage(1),
 			PageSize: pkgapp.GetPageSize(100),
 		}
 		notes, _, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.NoteListRequest{
-			Vault:   vault,
-			Keyword: keyword,
+			Vault:      vault,
+			Keyword:    keyword,
+			SearchMode: searchMode,
 		}, pager)
 
 		if err != nil {
