@@ -21,10 +21,10 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 
 	// 1. List Notes
 	toolListNotes := mcp.NewTool("note_list",
-		mcp.WithDescription("List notes in a vault"),
+		mcp.WithDescription("List or search notes in a vault. Use this to find a note by title or keyword before calling note_get."),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
-		mcp.WithString("searchMode", mcp.Description("Search mode: 'path' (default) for searching note paths/filenames, 'content' for full-text search inside note contents.")),
+		mcp.WithString("searchMode", mcp.Description("Where to match the keyword: 'path' (default) searches note paths and filenames; 'content' searches inside note bodies using full-text search.")),
 	)
 	srv.AddTool(toolListNotes, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
@@ -62,9 +62,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 
 	// 2. Get Note
 	toolGetNote := mcp.NewTool("note_get",
-		mcp.WithDescription("Get a single note by path"),
+		mcp.WithDescription("Get the full content of a single note. Requires the EXACT vault-relative file path."),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
-		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
+		mcp.WithString("path", mcp.Required(), mcp.Description("Exact vault-relative path to the note.")),
 	)
 	srv.AddTool(toolGetNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
