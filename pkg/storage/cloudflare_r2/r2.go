@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func cacheKey(conf *Config) string {
+	return conf.AccessKeyID + ":" + conf.AccessKeySecret + ":" + conf.AccountID
+}
+
 type Config struct {
 	AccountID       string `yaml:"account-id"`
 	BucketName      string `yaml:"bucket-name"`
@@ -33,8 +37,9 @@ func NewClient(conf *Config) (*R2, error) {
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret
 
-	if clients[accessKeyId] != nil {
-		return clients[accessKeyId], nil
+	key := cacheKey(conf)
+	if clients[key] != nil {
+		return clients[key], nil
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
@@ -50,10 +55,10 @@ func NewClient(conf *Config) (*R2, error) {
 		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId))
 	})
 
-	clients[accessKeyId] = &R2{
+	clients[key] = &R2{
 		S3Client:        client,
 		TransferManager: transfermanager.New(client),
 		Config:          conf,
 	}
-	return clients[accessKeyId], nil
+	return clients[key], nil
 }

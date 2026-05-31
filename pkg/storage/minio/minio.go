@@ -11,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func cacheKey(conf *Config) string {
+	return conf.AccessKeyID + ":" + conf.AccessKeySecret + ":" + conf.Endpoint + ":" + conf.Region
+}
+
 type Config struct {
 	BucketName      string `yaml:"bucket-name"`
 	Endpoint        string `yaml:"endpoint"`
@@ -34,8 +38,9 @@ func NewClient(conf *Config) (*MinIO, error) {
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret
 
-	if clients[accessKeyId] != nil {
-		return clients[accessKeyId], nil
+	key := cacheKey(conf)
+	if clients[key] != nil {
+		return clients[key], nil
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
@@ -52,10 +57,10 @@ func NewClient(conf *Config) (*MinIO, error) {
 		o.BaseEndpoint = aws.String(endpoint)
 	})
 
-	clients[accessKeyId] = &MinIO{
+	clients[key] = &MinIO{
 		S3Client:        client,
 		TransferManager: transfermanager.New(client),
 		Config:          conf,
 	}
-	return clients[accessKeyId], nil
+	return clients[key], nil
 }
