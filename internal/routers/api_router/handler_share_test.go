@@ -39,8 +39,8 @@ type mockTokenManager struct {
 	mock.Mock
 }
 
-func (m *mockTokenManager) Generate(uid int64, nickname, ip string) (string, error) {
-	args := m.Called(uid, nickname, ip)
+func (m *mockTokenManager) Generate(uid int64, nickname, ip string, tokenID int64, nonce string) (string, error) {
+	args := m.Called(uid, nickname, ip, tokenID, nonce)
 	return args.String(0), args.Error(1)
 }
 func (m *mockTokenManager) Parse(token string) (*pkgapp.UserEntity, error) {

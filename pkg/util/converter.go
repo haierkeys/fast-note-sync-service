@@ -103,3 +103,10 @@ func IntSliceToStrSlice(list []int) []string {
 	}
 	return strlist
 }
+
+// Ptr returns a pointer to the passed value
+// Ptr 返回传入值的指针
+func Ptr[T any](v T) *T {
+	return &v
+}
+

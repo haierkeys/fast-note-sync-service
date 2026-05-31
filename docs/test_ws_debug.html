@@ -364,6 +364,21 @@
                     <button onclick="login()" id="loginBtn" style="width: 100%;">Login & Get Token</button>
                 </div>
 
+                <div style="margin: 1.5rem 0; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 1rem; opacity: 0.8;">
+                        —— OR DIRECT CONNECT ——
+                    </div>
+                    <div class="form-group">
+                        <label>Direct WS URL</label>
+                        <input type="text" id="directWsUrl" value="ws://localhost:9000/api/user/sync">
+                    </div>
+                    <div class="form-group">
+                        <label>Direct Token</label>
+                        <input type="text" id="directToken" placeholder="Paste your token here">
+                    </div>
+                    <button onclick="directConnect()" class="warning" style="width: 100%;">Direct Connect (Skip Login)</button>
+                </div>
+
                 <div id="connPanel" style="display: none; margin-top: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div id="wsStatus" class="status-badge status-disconnected">Disconnected</div>
@@ -663,6 +678,20 @@
             } catch(e) {
                 addLog('err', 'Login', e.message);
             }
+        }
+
+        function directConnect() {
+            const url = document.getElementById('directWsUrl').value;
+            const dToken = document.getElementById('directToken').value;
+            if (!url || !dToken) {
+                alert('Please provide both WS URL and Token');
+                return;
+            }
+
+            token = dToken;
+            document.getElementById('apiUrl').value = url;
+            document.getElementById('connPanel').style.display = 'block';
+            connectWS();
         }
 
         function connectWS() {

@@ -69,8 +69,9 @@ func (h *ShareHandler) Create(c *gin.Context) {
 		return
 	}
 
+	shareRes.BaseUrl = h.getShareBaseUrl(c)
 	response.ToResponse(code.Success.WithData(shareRes))
-	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
 }
 
 // @Summary Get shared note details
@@ -237,6 +238,7 @@ func (h *ShareHandler) Query(c *gin.Context) {
 		ExpiresAt:  share.ExpiresAt,
 		ShortLink:  share.ShortLink,
 		IsPassword: share.Password != "",
+		BaseUrl:    h.getShareBaseUrl(c),
 	}))
 }
 
@@ -283,7 +285,7 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success)
-	h.WSS.BroadcastToUser(uid, code.Success, dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
 }
 
 // UpdatePassword updates share password
@@ -396,6 +398,11 @@ func (h *ShareHandler) List(c *gin.Context) {
 		return
 	}
 
+	baseUrl := h.getShareBaseUrl(c)
+	for i := range items {
+		items[i].BaseUrl = baseUrl
+	}
+
 	response.ToResponseList(code.Success, items, count)
 }
 
@@ -440,4 +447,25 @@ func (h *ShareHandler) logError(ctx context.Context, method string, err error) {
 		zap.Error(err),
 		zap.String("traceId", traceID),
 	)
+}
+func (h *ShareHandler) getShareBaseUrl(c *gin.Context) string {
+	cfg := h.App.Config().Server
+	if cfg.WebGuiPort != "" && cfg.SharePort != "" {
+		if cfg.ShareBaseUrl != "" {
+			return cfg.ShareBaseUrl
+		}
+	}
+
+	// Priority 1: ExtApiUrl
+	if cfg.ExtApiUrl != "" {
+		return cfg.ExtApiUrl
+	}
+
+	// Priority 2: Dynamic construction
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }

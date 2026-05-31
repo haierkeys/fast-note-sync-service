@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // User 用户领域模型
 type User struct {
 	UID       int64
@@ -56,4 +55,3 @@ type UserRepository interface {
 	// GetAllUIDs 获取所有用户UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
 }
-

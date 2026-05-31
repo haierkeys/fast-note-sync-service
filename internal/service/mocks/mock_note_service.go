@@ -166,7 +166,6 @@ func (m *MockNoteService) ReplaceContent(ctx context.Context, uid int64, params 
 	return nil, args.Error(1)
 }
 
-
 func (m *MockNoteService) UpdateNoteLinks(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
 	m.Called(ctx, noteID, content, vaultID, uid)
 }
@@ -178,5 +177,10 @@ func (m *MockNoteService) RecycleClear(ctx context.Context, uid int64, params *d
 
 func (m *MockNoteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
 	args := m.Called(ctx, uid, vaultID)
+	return args.Error(0)
+}
+
+func (m *MockNoteService) CleanDuplicateNotesAll(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }

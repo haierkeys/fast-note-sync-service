@@ -60,7 +60,7 @@ func (s *conflictService) CreateConflictFile(ctx context.Context, uid int64, par
 	// Generate conflict file path
 	// 生成冲突文件路径
 	conflictPath := s.generateConflictPath(params.OriginalPath)
-	
+
 	// Generate conflict path hash
 	// 生成冲突路径哈希
 	conflictPathHash := util.EncodeHash32(conflictPath)

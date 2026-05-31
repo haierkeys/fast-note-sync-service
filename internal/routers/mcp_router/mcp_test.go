@@ -11,15 +11,15 @@ import (
 
 func TestHandleSSE_HEAD(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	// Create a dummy app container or use a real one if possible
 	// Here we just need a handler, but NewMCPHandler requires app and websocket server.
 	// For simplicity, we can mock the behavior or just test if the handler sets the header.
-	
+
 	r := gin.New()
-	
+
 	// We'll manually create a handler state that doesn't crash
-	h := &MCPHandler{} 
+	h := &MCPHandler{}
 
 	r.Match([]string{http.MethodGet, http.MethodHead}, "/sse", h.HandleSSE)
 

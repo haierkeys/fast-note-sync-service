@@ -4,7 +4,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	domainmocks "github.com/haierkeys/fast-note-sync-service/internal/domain/mocks"
@@ -21,7 +23,7 @@ import (
 // mockTokenManager 是用于 UserService 测试的最小 TokenManager stub。
 type mockTokenManager struct{}
 
-func (m *mockTokenManager) Generate(uid int64, nickname, ip string) (string, error) {
+func (m *mockTokenManager) Generate(uid int64, nickname, ip string, tokenID int64, nonce string) (string, error) {
 	return "test-token", nil
 }
 func (m *mockTokenManager) Parse(token string) (*pkgapp.UserEntity, error) {
@@ -36,11 +38,60 @@ func (m *mockTokenManager) ShareParse(token string) (*pkgapp.ShareEntity, error)
 func (m *mockTokenManager) Validate(token string) error { return nil }
 func (m *mockTokenManager) GetSecretKey() string        { return "test-key" }
 
+type mockUserTokenService struct{}
+
+func (m *mockUserTokenService) Create(ctx context.Context, uid int64, params *dto.TokenIssueRequest) (*dto.TokenCreateResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) CreateForLogin(ctx context.Context, uid int64, clientType, ip, userAgent string) (*domain.AuthToken, string, error) {
+	return &domain.AuthToken{ID: 1, UID: uid, Status: 1}, "test-token", nil
+}
+
+func (m *mockUserTokenService) ListByUser(ctx context.Context, uid int64) ([]*dto.TokenResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) Update(ctx context.Context, uid int64, tokenID int64, params *dto.TokenUpdateRequest) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) Revoke(ctx context.Context, uid int64, tokenID int64) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) Rotate(ctx context.Context, uid int64, tokenID int64) (*dto.TokenCreateResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) RecordAccessLog(ctx context.Context, log *domain.AuthTokenLog) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) ListLogs(ctx context.Context, uid, tokenID int64, page, pageSize int) ([]*dto.TokenLogResponse, int64, error) {
+	return nil, 0, errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) UpdateLastUsedAt(ctx context.Context, tokenID int64) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockUserTokenService) SetSyncHandler(handler func(uid int64, tokenID int64, scope string, kick bool)) {
+}
+
+func (m *mockUserTokenService) GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
+	return nil, nil
+}
+
 // newUserSvc creates a userService with mocked dependencies for testing.
 // newUserSvc 创建带 mock 依赖的 userService 用于测试。
 func newUserSvc(repo domain.UserRepository, registerEnabled bool) UserService {
-	return NewUserService(repo, &mockTokenManager{}, zap.NewNop(), &ServiceConfig{
-		User: UserServiceConfig{RegisterIsEnable: registerEnabled},
+	return NewUserService(repo, &mockTokenManager{}, &mockUserTokenService{}, zap.NewNop(), &ServiceConfig{
+		User: UserServiceConfig{RegisterIsEnable: registerEnabled, AdminUID: 1},
 	})
 }
 
@@ -70,13 +121,32 @@ func TestUserService_Register_Success(t *testing.T) {
 		Return(created, nil)
 
 	svc := newUserSvc(mockRepo, true)
-	result, err := svc.Register(context.Background(), params)
+	result, err := svc.Register(context.Background(), params, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "test-token", result.Token)
 	mockRepo.AssertExpectations(t)
 }
+
+// TestUserService_Register_ClientRestricted verifies error when clientType is not WebGui.
+// TestUserService_Register_ClientRestricted 验证客户端类型非 WebGui 时返回错误。
+func TestUserService_Register_ClientRestricted(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	svc := newUserSvc(mockRepo, true)
+	_, err := svc.Register(context.Background(), &dto.UserCreateRequest{
+		Email:           "a@b.com",
+		Username:        "user1",
+		Password:        "pass",
+		ConfirmPassword: "pass",
+	}, "127.0.0.1", "obsidian", "test-agent")
+
+	assert.ErrorIs(t, err, code.ErrorUserRegister)
+	assert.Contains(t, err.Error(), "Only WebGui is allowed for registration")
+	mockRepo.AssertExpectations(t)
+}
+
 
 // TestUserService_Register_Disabled verifies error when registration is disabled.
 // TestUserService_Register_Disabled 验证注册功能关闭时返回错误。
@@ -89,7 +159,7 @@ func TestUserService_Register_Disabled(t *testing.T) {
 		Username:        "user1",
 		Password:        "pass",
 		ConfirmPassword: "pass",
-	})
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserRegisterIsDisable)
 	mockRepo.AssertExpectations(t) // no repo calls expected // 期望没有 Repository 调用
@@ -106,7 +176,7 @@ func TestUserService_Register_PasswordMismatch(t *testing.T) {
 		Username:        "validuser",
 		Password:        "pass1",
 		ConfirmPassword: "pass2",
-	})
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserPasswordNotMatch)
 	mockRepo.AssertExpectations(t)
@@ -126,7 +196,7 @@ func TestUserService_Register_EmailExists(t *testing.T) {
 		Username:        "newuser",
 		Password:        "password123",
 		ConfirmPassword: "password123",
-	})
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserEmailAlreadyExists)
 	mockRepo.AssertExpectations(t)
@@ -150,7 +220,7 @@ func TestUserService_Register_UsernameExists(t *testing.T) {
 		Username:        "takenuser",
 		Password:        "password123",
 		ConfirmPassword: "password123",
-	})
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserAlreadyExists)
 	mockRepo.AssertExpectations(t)
@@ -182,7 +252,7 @@ func TestUserService_Login_ByEmail_Success(t *testing.T) {
 	result, err := svc.Login(context.Background(), &dto.UserLoginRequest{
 		Credentials: "test@example.com",
 		Password:    "password",
-	}, "127.0.0.1")
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -207,7 +277,7 @@ func TestUserService_Login_WrongPassword(t *testing.T) {
 	_, err := svc.Login(context.Background(), &dto.UserLoginRequest{
 		Credentials: "test@example.com",
 		Password:    "wrong-password",
-	}, "127.0.0.1")
+	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserLoginPasswordFailed)
 	mockRepo.AssertExpectations(t)
@@ -272,4 +342,46 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
+}
+
+// --- IsRegisterEnabled ---
+
+// TestUserService_IsRegisterEnabled verifies the logic for allowing/disallowing registration.
+// TestUserService_IsRegisterEnabled 验证是否允许注册的逻辑。
+func TestUserService_IsRegisterEnabled(t *testing.T) {
+	t.Run("ConfigDisabled", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, &mockUserTokenService{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: false, AdminUID: 0},
+		})
+		assert.False(t, svc.IsRegisterEnabled(context.Background()))
+	})
+
+	t.Run("AdminUIDSet_Enabled", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, &mockUserTokenService{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 1},
+		})
+		assert.True(t, svc.IsRegisterEnabled(context.Background()))
+	})
+
+	t.Run("AdminUIDZero_NoUsers", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		mockRepo.On("GetAllUIDs", mock.Anything).Return([]int64{}, nil)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, &mockUserTokenService{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 0},
+		})
+		assert.True(t, svc.IsRegisterEnabled(context.Background()))
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("AdminUIDZero_WithUsers", func(t *testing.T) {
+		mockRepo := new(domainmocks.MockUserRepository)
+		mockRepo.On("GetAllUIDs", mock.Anything).Return([]int64{1}, nil)
+		svc := NewUserService(mockRepo, &mockTokenManager{}, &mockUserTokenService{}, zap.NewNop(), &ServiceConfig{
+			User: UserServiceConfig{RegisterIsEnable: true, AdminUID: 0},
+		})
+		assert.False(t, svc.IsRegisterEnabled(context.Background()))
+		mockRepo.AssertExpectations(t)
+	})
 }

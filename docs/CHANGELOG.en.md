@@ -6,6 +6,928 @@ The project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/) 
 
 ---
 
+## v3.1.1
+> *2026/05/25*
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized theme menu interaction. Clicking the theme button now triggers a clean popup menu, supporting "Follow System", "Auto", "Light", and "Dark" selections. The button icon dynamically changes according to the currently active theme.
+- **WebGUI**: Adjusted default theme settings. For new users who haven't manually configured a theme, the default is changed from "Auto" to "Follow System" for a more natural user experience.
+- **WebGUI**: Optimized hover and click effects for the "Theme", "Color", and "Language" buttons in the top navigation bar, making operations more responsive and natural.
+- **WebGUI**: Optimized button tooltips. Hovering over top navigation buttons now displays brief functional explanations. These tooltips are automatically disabled on mobile devices to prevent accidental triggers by touch gestures.
+
+---
+
+## v3.1.0
+> *2026/05/24*
+
+### ✨ Added
+
+- **Sync**: Added static mock access endpoints for attachments, allowing Nginx proxies to access static resources of specific vaults and whitelisted file types without service tokens.
+- **Update**: Upgraded version detection mechanism to show the complete changelog of all historical versions between the current version and the latest version upon detection.
+
+---
+
+## v3.0.6
+> *2026/05/23*
+
+### ✨ Added
+
+- **MCP**: Added `file_write` tool, allowing third-party AI clients to write attachments or files directly using Base64 encoding and sync real-time to all terminals (please avoid uploading extremely large files to prevent OOM).
+- **Network**: Added custom response headers configuration, supporting unified customized response headers for all HTTP services and WebSocket handshake stages (refer to the `server.custom-response-headers` option in the latest `config.yaml`).
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized note list drag-and-drop navigation. Users can now move notes or attachments to the root directory or any subdirectories by dragging.
+- **WebGUI**: Optimized Obsidian properties rendering. The note editor and shared note pages now properly display Obsidian note properties.
+- **WebGUI**: Optimized sharing entry. Added a quick "Share Note" button entry directly in the note editing page.
+
+### 🛠️ Fixed
+
+- **Autostart**: Fixed permission issues preventing macOS autostart services from running normally and resolved execution errors in the quick installation script.
+- **Config**: Fixed configuration inheritance issue where explicitly setting default-enabled boolean configurations (such as `webgui-login-token-bind-ip`, cloud storage enablers, and WebSocket parallelization/compression) to `false` in the configuration file was still overwritten by default values.
+- **WebGUI**: Fixed file access errors in WebGUI where loading images or attachments failed because direct browser requests lacked specific client headers and got blocked.
+- **WebGUI**: Fixed a bug where WebGUI showed redundant paths in the note title edit bar.
+
+---
+
+## v3.0.5
+> *2026/05/23*
+
+### ✨ Added
+
+- **MCP**: Added `file_write` tool, allowing third-party AI clients to write attachments or files directly using Base64 encoding and sync real-time to all terminals.
+- **Network**: Added custom response headers configuration, supporting unified customized response headers for all HTTP services and WebSocket handshake stages.
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized note list drag-and-drop navigation. Users can now move notes or attachments to the root directory or any subdirectories by dragging.
+- **WebGUI**: Optimized Obsidian properties rendering. The note editor and shared note pages now properly display Obsidian note properties.
+- **WebGUIGUI**: Optimized sharing entry. Added a quick "Share Note" button entry directly in the note editing page.
+
+### 🛠️ Fixed
+
+- **Autostart**: Fixed permission issues preventing macOS autostart services from running normally and resolved execution errors in the quick installation script.
+- **Config**: Fixed configuration inheritance issue where explicitly setting default-enabled boolean configurations to `false` was still overwritten by default values.
+- **WebGUI**: Fixed file access errors in WebGUI where loading images or attachments failed due to missing client headers.
+- **WebGUI**: Fixed a bug where WebGUI showed redundant paths in the note title edit bar.
+
+---
+
+## v3.0.4
+> *2026/05/21*
+
+### ✨ Added
+
+- **Sync**: Added an active push notification mechanism after file uploads. Active pushes will notify all online clients after uploads finish, regardless of REST API or WebSocket upload channels.
+
+### 🚀 Optimized
+
+- **Auth**: Optimized WebGUI login token configuration. Added separate configuration support for token validity duration and client IP binding, allowing IP binding to be disabled for Cloudflare Tunnel scenarios.
+- **Experience**: Optimized feedback channels. Added GitHub `bug report` and `feature request` templates for easier issue reporting.
+
+### 🛠️ Fixed
+
+- **Logging**: Fixed log redundancy. Normal WebSocket disconnections, timeouts, and network drops will no longer be logged as error logs.
+- **Sync**: Fixed file upload completion criteria. Added comprehensive checks using both byte count and chunk count to avoid completion flows getting stuck.
+- **Sync**: Fixed sync conflicts. Old duplicate upload sessions on the same path are now terminated before starting new sessions, reducing sync loops and system resources.
+
+---
+
+## v3.0.3
+> *2026/05/18*
+
+### ✨ Added
+
+- **Auth**: Added support for token-specific note vault restrictions. You can now define allowed note vaults for each token to automatically reject unauthorized and cross-vault data requests.
+
+### 🛠️ Fixed
+
+- **Stability**: Fixed a service crash issue triggered by retrieving system metrics on specific platforms like Windows.
+
+---
+
+## v3.0.2
+> *2026/05/16*
+
+### ✨ Added
+
+- **Update**: Added update release channel selection, allowing users to switch update sources between "Stable" and "Beta" releases.
+- **Auth**: Added display of connected clients' recent activity in the authorization token manager, showing the last active timestamp of each connected client.
+- **Admin**: Added client eviction functionality, allowing administrators to forcibly terminate a specific WebSocket client connection in the client manager.
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized sponsor list UI display.
+
+---
+
+## v3.0.0
+> *2026/05/14*
+
+> [!WARNING]
+> **Important Notes**: This update introduces a brand new token architecture, which will invalidate all existing authorizations in older versions. After upgrading, you will need to re-authorize all client devices.
+
+### 🔐 Core Update: Brand New Stateful Token Permission System
+
+This release completely overhauls the underlying security architecture, transitioning from a single stateless token to a **stateful multi-dimensional (protocol, client, capability)** validation token:
+- **Multi-Dimensional Validation**:
+  - **Protocol Control**: Supports independent authorization and restriction for `REST API`, `WebSocket`, `MCP`, and other access protocols and contexts.
+  - **Client Restriction**: Supports binding specific devices using wildcards (e.g., `obsidian*`) to achieve "one device, one token".
+  - **Content Control**: Granular atomic permissions down to note read/write (`note_r/w`), attachment management (`file_r/w`), and system config (`config_r/w`).
+- **Generation Check & Token Rotation**:
+  - Introduced `Nonce`-based generation mechanism. Tokens can be rotated when leakage risks arise, instantly invalidating previous generation tokens.
+- **Dynamic Environment Binding**:
+  - Supports binding static or wildcard **IP addresses** and **User-Agent** to limit token access under insecure network environments.
+- **Token Access Metrics**:
+  - The server records access behavior for all tokens, supporting real-time monitoring of active protocols, source IPs, and client versions.
+
+### ✨ Added
+
+- **Backup**: Added encryption password configuration for backup tasks. Both full and incremental backups now support flexible encryption strategies ("no password", "fixed manual password", or "system-generated random password") to enhance backup data storage security.
+
+### 🛠️ Fixed
+
+- **Cloud Storage**: Upgraded Alibaba Cloud OSS v2 SDK driver, fixing storage configuration connection test failures and region identification errors.
+
+### 🚀 Optimized
+
+- **Performance**: Optimized file handling performance. Adjusted hash calculation file size threshold to 10MB, and significantly reduced file system I/O overhead by deferring physical directory creations.
+- **Protocol**: Standardized synchronization protocol. Forced the inclusion of the `vault` field in all WebSocket return messages to ensure multi-vault sync state consistency.
+- **Security**: Hardened backup security. Masked sensitive password fields in backup logs by default, supporting manual decryption to view.
+
+---
+
+## v2.14.4
+> *2026/05/10*
+
+### 🚀 Optimized
+
+- **Performance**: Adjusted hash calculation file size threshold to 10MB.
+- **Sync**: Optimized attachment downloads. The server now actively transmits file hashes during downloads to prevent clients from repeating hash calculations.
+
+---
+
+## v2.14.3
+> *2026/05/09*
+
+### ✨ Added
+
+- **MCP**: Added `StreamableHTTP` transmission protocol support for MCP, resolving the `Streaming unsupported` compatibility issue.
+
+---
+
+## v2.14.1
+> *2026/05/09*
+
+### ✨ Added
+
+- **MCP**: Added `StreamableHTTP` transmission protocol support for MCP.
+
+---
+
+## v2.14.0
+> *2026/05/08*
+
+### ✨ Added
+
+- **Sync**: Enhanced Git autocommit sync, adding synchronization support for Obsidian and custom folder configurations.
+- **Backup**: Hardened backup security, integrating random password generation when exporting backup ZIP archives.
+- **Architecture**: Separated page and API services. The management backend and shared pages can now run on independent ports to meet deployment requirements in different environments.
+
+### 🛠️ Fixed
+
+- **Security**: Optimized upgrade parameter filtering, applying strict sanitization to management APIs to prevent unexpected risks.
+- **Security**: Optimized API security, removing sensitive data output from public interfaces.
+
+### 🚀 Optimized
+
+- **Architecture**: Optimized router modularization, refactoring the single router file into functional chunk-based router structures.
+
+---
+
+## v2.13.8
+> *2026/05/07*
+
+### ✨ Added
+
+- **Security**: Added a safety mechanism to automatically forbid new user registrations when no administrator account is configured.
+
+### 🛠️ Fixed
+
+- **Metrics**: Fixed file statistics drift. Fixed an issue where the file count was inaccurate because the `Rename` flag was not properly reset on reused records during note renaming or moving.
+- **MCP**: Fixed MCP SSE connection compatibility, adjusting path returns of the MCP SSE endpoint from relative to absolute paths to resolve connection timeouts on certain clients.
+
+### 🚀 Optimized
+
+- **Privacy**: Blocked search engine crawlers from indexing all FNS service pages.
+
+---
+
+## v2.13.7
+> *2026/05/05*
+
+### ✨ Added
+
+- **API**: Added attachment upload endpoint `POST /api/file` with `multipart/form-data` upload and auto-sync support.
+
+### 🛠️ Fixed
+
+- **Network**: Fixed CORS middleware blocker, allowing cross-origin requests for the `/api/health` endpoint to avoid issues with monitoring integrations.
+
+### 🚀 Optimized
+
+- **Sync**: Added background auto-deduplication tasks for notes and attachments, resolving historical record redundancy caused by hash mismatches.
+
+---
+
+## v2.13.6
+> *2026/05/03*
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed synchronization time windows and broadcast message integrity in multi-client incremental sync.
+
+---
+
+## v2.13.5
+> *2026/05/02*
+
+### 🛠️ Fixed
+
+- **Network**: Fixed a CORS connection issue under Android systems where devices failed to establish connections.
+
+---
+
+## v2.13.4
+> *2026/05/02*
+
+### 🛠️ Fixed
+
+- **Network**: Fixed mobile API failures where direct requests using the `capacitor://` protocol header were blocked by the server.
+
+---
+
+## v2.13.3
+> *2026/05/02*
+
+### 🛠️ Fixed
+
+- **Database**: Fixed PostgreSQL FTS (Full-Text Search) compatible index token field length insufficiency.
+
+---
+
+## v2.13.2
+> *2026/04/27*
+
+### 🛠️ Fixed
+
+- **Network**: Fixed potential security vulnerabilities in CORS cross-origin requests.
+
+---
+
+## v2.13.1
+> *2026/04/27*
+
+### 🚀 Optimized
+
+- **Admin**: Optimized vault deletion logic. Deleting a note vault now immediately purges all physically associated file resources.
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed rename operations failing to properly reset the modification time (`mtime`) flag.
+
+---
+
+## v2.13.0
+> *2026/04/26*
+
+### 🚀 Optimized
+
+- **Sync**: Optimized message acknowledgment (ACK) mechanisms.
+- **Sync**: Optimized hash algorithm performance. Files larger than 100MB are now calculated using a split-segment technique, dramatically lowering CPU load during large uploads.
+
+---
+
+## v2.12.9
+> *2026/04/24*
+
+### 🛠️ Fixed
+
+- **Security**: Fixed potential SQL injection vulnerabilities in the third-party library `pgx < 5.9.2` due to incorrect processing of dollar-sign quotes.
+
+---
+
+## v2.12.8
+> *2026/04/24*
+
+### ✨ Added
+
+- **Update**: Added active notifications to connected clients when a new server release is available.
+
+---
+
+## v2.12.7
+> *2026/04/23*
+
+### 🛠️ Fixed
+
+- **WebGUI**: Fixed text overlapping issues in the note revision history diff view.
+
+---
+
+## v2.12.6
+> *2026/04/22*
+
+### ✨ Added
+
+- **Auth**: Added administrative authorization checking.
+- **Build**: Optimized build pipeline, compiling the changelog directly into the server executable binary.
+
+---
+
+## v2.12.5
+> *2026/04/21*
+
+### 🛠️ Fixed
+
+- **Logging**: Fixed incorrect time format displays in sync update logs.
+
+---
+
+## v2.12.4
+> *2026/04/21*
+
+### ✨ Added
+
+- **Logging**: Added support for client type and version logging in both sync update logs and note history.
+- **MCP**: Fixed MCP sessions failing to record client identification.
+
+---
+
+## v2.12.2
+> *2026/04/21*
+
+### 🛠️ Fixed
+
+- **Logging**: Fixed missing client fields and vault name display anomalies in note update logs.
+
+---
+
+## v2.12.1
+> *2026/04/21*
+
+### 🛠️ Fixed
+
+- **Logging**: Fixed missing client identification fields in update logs.
+
+---
+
+## v2.12.0
+> *2026/04/21*
+
+### ✨ Added
+
+- **Logging**: Added note vault update logging.
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized note vault configuration page UI, updating navigation icons.
+
+---
+
+## v2.11.13
+> *2026/04/20*
+
+### ✨ Added
+
+- **MCP**: Added support for HEAD request checks in MCP protocol context.
+
+---
+
+## v2.11.12
+> *2026/04/19*
+
+### 🚀 Optimized
+
+- **Concurrency**: Added write concurrency deduplication for notes, attachments, and configurations to achieve atomic writes without relying solely on slow database transaction isolation.
+- **API**: Implemented RESTful interfaces for note property updates along with API documentation updates.
+
+---
+
+## v2.11.11
+> *2026/04/17*
+
+### ✨ Added
+
+- **Architecture**: Added build and running support for the ARMv7 Little-endian target platform.
+
+---
+
+## v2.11.10
+> *2026/04/17*
+
+### 🛠️ Fixed
+
+- **Share**: Fixed embedded images in notes failing to load in online shared and read views under certain routing scenarios.
+
+---
+
+## v2.11.9
+> *2026/04/16*
+
+### 🚀 Optimized
+
+- **MCP**: Optimized MCP SSE long connection keep-alive heartbeat mechanisms.
+- **WebGUI**: Optimized server online state detection and update mechanics.
+- **WebGUI**: Unified API headers for all RESTful requests to simplify centralized authorization.
+- **Search**: Removed regex search capability for notes to reduce project complexity.
+
+---
+
+## v2.11.8
+> *2026/04/15*
+
+### 🛠️ Fixed
+
+- **MCP**: Fixed MCP default vault configurations failing to take effect.
+
+### 🚀 Optimized
+
+- **MCP**: Optimized TCP connections, introducing server-side heartbeats to prevent unexpected client disconnects.
+
+---
+
+## v2.11.7
+> *2026/04/14*
+
+### 🛠️ Fixed
+
+- **Backup**: Fixed backup export, skipping missing file anomalies automatically to prevent archiving job terminations.
+- **Sync**: Solved attachment download races, fixing duplicate downloads under highly concurrent scenarios.
+- **Database**: Fixed SQL query errors, adding missing `GROUP BY` fields in the search interface.
+- **MCP**: Fixed MCP SSE disconnection anomalies by adjusting middleware boundaries to avoid connections being killed by `ContextTimeout`.
+
+---
+
+## v2.11.6
+> *2026/04/12*
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed duplicate downloads of attachments under rare synchronization states.
+
+---
+
+## v2.11.5
+> *2026/04/12*
+
+### 🚀 Optimized
+
+- **Search**: Migrated Full-text search engine to a Go-native inverted index.
+
+### 🛠️ Fixed
+
+- **Database**: Fixed model field type overflow issues under multi-database deployments.
+
+---
+
+## v2.11.4
+> *2026/04/09*
+
+### 🛠️ Fixed
+
+- **Share**: Fixed synchronization issues in shared status.
+- **Sync**: Integrated automatic merging of shared records upon note renaming.
+
+---
+
+## v2.11.3
+> *2026/04/02*
+
+### ✨ Added
+
+- **Share**: Added incremental sync API endpoints for shared notes.
+
+---
+
+## v2.11.1
+> *2026/04/02*
+
+### 🛠️ Fixed
+
+- **Test**: Fixed data testing coverage issues.
+- **Admin**: Fixed sensitive password obfuscation issues where cloud storage passwords could not be accessed.
+
+---
+
+## v2.11.0
+> *2026/04/01*
+
+### ✨ Added
+
+- **Database**: Added support for PostgreSQL and MySQL databases, greatly enhancing concurrent throughput capabilities.
+
+### 🚀 Optimized
+
+- **WebGUI**: Optimized settings views in the administration UI.
+
+---
+
+## v2.10.2
+> *2026/03/28*
+
+### ✨ Added
+
+- **MCP**: Added configurations to set a default note vault for MCP.
+
+### 🛠️ Fixed
+
+- **Performance**: Fixed Out-of-Memory (OOM) failures when loading large vaults into memory.
+
+---
+
+## v2.10.1
+> *2026/03/27*
+
+### 🛠️ Fixed
+
+- **WebGUI**: Fixed API error handling inside the administration backend.
+
+---
+
+## v2.10.0
+> *2026/03/27*
+
+### ✨ Added
+
+- **MCP**: Native Model Context Protocol (MCP) support. The server can now be connected as an MCP backend to AI environments like Cherry Studio or Cursor, granting AI reading and writing capabilities to private notes and syncing across endpoints.
+
+---
+
+## v2.9.3
+> *2026/03/24*
+
+### 🛠️ Fixed
+
+- **Share**: Fixed inaccurate counts in active shared lists.
+
+---
+
+## v2.9.2
+> *2026/03/24*
+
+### 🛠️ Fixed
+
+- **Share**: Fixed empty titles in short URL redirections when direct redirection masks were enabled.
+
+---
+
+## v2.9.1
+> *2026/03/24*
+
+### 🛠️ Fixed
+
+- **Share**: Fixed redirection errors and duplicate generation issues in short URLs.
+
+---
+
+## v2.9.0
+> *2026/03/24*
+
+### ✨ Added
+
+- **Share**: Unified administration workflows by merging note vault settings and shared list views.
+- **Share**: Added password authentication prompts for shared note views.
+- **Share**: Supported short URL generation for shared documents.
+
+---
+
+## v2.8.0
+> *2026/03/22*
+
+### ✨ Added
+
+- **Share**: Added standalone administration view for shared resources.
+- **WebGUI**: Implemented sharing creation mechanics from within the Web UI.
+
+---
+
+## v2.7.3
+> *2026/03/19*
+
+### 🛠️ Fixed
+
+- **Logic**: Fixed shutdown sequence cleanup deficiencies.
+
+---
+
+## v2.7.2
+> *2026/03/15*
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed WebDAV mirror sync failures.
+- **Automation**: Fixed history days parameter restoration errors in Git automated synchronization.
+
+### 🚀 Optimized
+
+- **Automation**: Configured git signatures to load dynamically from config preferences.
+
+---
+
+## v2.7.1
+> *2026/03/13*
+
+### ✨ Added
+
+- **Share**: Added API interfaces to cancel shares.
+
+---
+
+## v2.7.0
+> *2026/03/12*
+
+### ✨ Added
+
+- **Share**: Introduced fundamental note-sharing functions.
+
+---
+
+## v2.6.0
+> *2026/03/07*
+
+### ✨ Added
+
+- **WebGUI**: Implemented on-the-fly rendering capability for Canvas elements in the note editor.
+- **WebGUI**: Implemented online administration for note vault configuration files.
+- **Admin**: Implemented active WebSocket connections manager.
+
+### 🚀 Optimized
+
+- **WebGUI**: Redesigned renaming mechanisms for files and folders.
+
+---
+
+## v2.5.5
+> *2026/03/05*
+
+### 🚀 Optimized
+
+- **Sync**: Optimized sync mechanisms, resolving offline deletions failing to broadcast under certain conditions.
+
+---
+
+## v2.5.4
+> *2026/03/03*
+
+### ✨ Added
+
+- **Settings**: Added update check toggle.
+- **WebGUI**: Supported side-by-side editing and previewing modes.
+
+### 🛠️ Fixed
+
+- **WebGUI**: Fixed responsive styling adjustments on mobile devices.
+
+---
+
+## v2.5.3
+> *2026/03/03*
+
+### 🚀 Optimized
+
+- **Release**: Built for CNB Registry validation testing.
+
+---
+
+## v2.5.2
+> *2026/03/02*
+
+### 🚀 Optimized
+
+- **Sync**: Moved WebSocket tuning variables into `config.yaml` for flexible operations.
+
+---
+
+## v2.5.1
+> *2026/03/02*
+
+### 🚀 Optimized
+
+- **Sync**: Resolved error logging anomalies during massive parallel attachment uploads.
+
+---
+
+## v2.5.0
+> *2026/03/02*
+
+### ✨ Added
+
+- **WebGUI**: Upgraded editor baseline to CodeMirror 6.
+- **WebGUI**: Implemented support for Obsidian Callouts rendering styles.
+- **WebGUI**: Supported navigation triggers for Obsidian internal wikilinks.
+
+### 🚀 Optimized
+
+- **Sync**: Avoided writing empty placeholders during upload phases; deferred folder generation calls to avoid performance stalls in active syncing.
+
+---
+
+## v2.4.4
+> *2026/03/01*
+
+### 🛠️ Fixed
+
+- **Performance**: Resolved high GPU loads caused by active loop animations in WebGUI.
+
+### 🚀 Optimized
+
+- **Performance**: Increased default write queue thresholds to 1000 items.
+
+---
+
+## v2.4.3
+> *2026/03/01*
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed execution errors on Git synchronizations.
+- **Metrics**: Rectified connection count estimation.
+- **Sync**: Fixed sync marker initialization bugs during history rollbacks.
+
+---
+
+## v2.4.1
+> *2026/03/01*
+
+### 🛠️ Fixed
+
+- **Update**: Resolved configuration migrations blocking rolling updates.
+
+---
+
+## v2.4.0
+> *2026/03/01*
+
+### ✨ Added
+
+- **WebGUI**: Integrated resource gzip/brotli asset optimizations.
+- **WebGUI**: Integrated CodeMirror 6 editor base.
+- **Trash**: Added cleanups and purging functions for trashed vaults.
+
+---
+
+## v2.3.0
+> *2026/02/28*
+
+### ✨ Added
+
+- **Tunnel**: Integrated cloud tunnel setups (Ngrok / Cloudflare Tunnel) to support secure public HTTP/WebSocket accesses without proxy configurations.
+
+---
+
+## v2.2.1
+> *2026/02/27*
+
+### 🚀 Optimized
+
+- **Sync**: Restrained duplicate runs for automated backup jobs.
+- **Security**: Disabled administrative ports on `9001` by default.
+
+---
+
+## v2.2.0
+> *2026/02/26*
+
+### 🚀 Optimized
+
+- **Sync**: Reduced message packet sizes during active sync, enhancing connectivity resilience (requires plugin v1.16+).
+
+---
+
+## v2.1.4
+> *2026/02/26*
+
+### 🛠️ Fixed
+
+- **Sync**: Provided quick stabilization fix for large-packet connections dropped by middleboxes.
+
+---
+
+## v2.1.3
+> *2026/02/25*
+
+### 🛠️ Fixed
+
+- **WebDAV**: Fixed authentication handling under WebDAV.
+- **Backup**: Fixed automated jobs overriding storage databases with empty states during failed read procedures.
+
+---
+
+## v2.1.2 / v2.1.1 / v2.1.0
+> *2026/02/25*
+
+### ✨ Added
+
+- **Update**: Integrated online version upgrades.
+
+### 🛠️ Fixed
+
+- **i18n**: Resolved locale preferences failing to load or stick.
+
+---
+
+## v2.0.10
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **Cloud Storage**: Addressed credential validation problems inside S3/OSS adapters.
+
+---
+
+## v2.0.9
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **CI/CD**: Addressed version flag errors inside automated GitHub Action packaging.
+
+---
+
+## v2.0.8
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **Update**: Fixed upgrade validation alert triggers.
+
+---
+
+## v2.0.7
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **Sync**: Solved path hashing bugs occurring on special character paths, fixing redundant directory synchronization, file duplication, and deletion faults.
+
+---
+
+## v2.0.6 / v2.0.5
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **Backup**: Prevented backup routines from running continuously triggered by file write operations.
+
+### 🚀 Optimized
+
+- **Automation**: Implemented synchronization backing for unitialized repository spaces.
+
+---
+
+## v2.0.4
+> *2026/02/24*
+
+### 🛠️ Fixed
+
+- **Sync**: Addressed missing creation times inside uploaded assets (requires client 1.15+).
+
+---
+
+## v2.0.3
+> *2026/02/23*
+
+### 🛠️ Fixed
+
+- **WebGUI**: Solved document rendering freezes in edit windows.
+- **i18n**: Restored missing translation dictionaries.
+
+### 🚀 Optimized
+
+- **WebGUI**: Implemented theme automation switching, adding support for customized application icons.
+
+---
+
+## v2.0.2
+> *2026/02/23*
+
+### 🛠️ Fixed
+
+- **Database**: Addressed table migration constraints.
+
+---
+
+## v2.0.1
+> *2026/02/23*
+
+### 🚀 Optimized
+
+- **System**: Shipped major version 2.0 release, bringing robust performance gains and fundamental stability enhancements.
+
+---
+
 ## v1.16.2
 > *2026/02/14*
 

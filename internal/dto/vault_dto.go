@@ -15,6 +15,13 @@ type VaultGetRequest struct {
 	ID int64 `form:"id" binding:"required,gte=1" example:"1"` // Vault ID // 保险库 ID
 }
 
+// VaultRebuildIndexRequest Request parameters for rebuilding vault index
+// 重建保险库全文搜索索引的请求参数
+type VaultRebuildIndexRequest struct {
+	ID int64 `json:"id" form:"id" binding:"required,gte=1" example:"1"` // Vault ID // 保险库 ID
+}
+
+
 // ---------------- DTO / Response ----------------
 // ---------------- DTO / 响应参数 ----------------
 

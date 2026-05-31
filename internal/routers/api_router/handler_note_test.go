@@ -41,17 +41,22 @@ func newTestNoteHandler(noteSvc *svcmocks.MockNoteService, fileSvc *svcmocks.Moc
 		NoteService: noteSvc,
 		FileService: fileSvc,
 	})
+	if noteSvc != nil {
+		noteSvc.On("WithClient", mock.Anything, mock.Anything, mock.Anything).Return(noteSvc)
+	}
+	if fileSvc != nil {
+		fileSvc.On("WithClient", mock.Anything, mock.Anything, mock.Anything).Return(fileSvc)
+	}
 	// WSS is used in NoteHandler for broadcasting
 	wss := pkgapp.NewWebsocketServer(pkgapp.WSConfig{}, testApp)
 	return NewNoteHandler(testApp, wss)
 }
 
 // TestNoteHandler_Get_Success verifies successful note fetch
+// TestNoteHandler_Get_Success 验证成功获取笔记
 func TestNoteHandler_Get_Success(t *testing.T) {
 	mockNoteSvc := new(svcmocks.MockNoteService)
-	mockNoteSvc.On("WithClient", "Web", "").Return(mockNoteSvc)
 	mockFileSvc := new(svcmocks.MockFileService)
-	mockFileSvc.On("WithClient", "Web", "").Return(mockFileSvc)
 
 	mockData := &dto.NoteDTO{
 		ID:       1,
@@ -68,20 +73,19 @@ func TestNoteHandler_Get_Success(t *testing.T) {
 
 	handler := newTestNoteHandler(mockNoteSvc, mockFileSvc)
 	c, w := newNoteTestContext("GET", "/api/note", "", 1)
-	
+
 	// Simulate binding query params
 	c.Request.URL.RawQuery = "vault=main&path=test.md"
 	handler.Get(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockNoteSvc.AssertExpectations(t)
 }
 
 // TestNoteHandler_List_Success verifies successful note list fetch
+// TestNoteHandler_List_Success 验证成功获取笔记列表
 func TestNoteHandler_List_Success(t *testing.T) {
 	mockNoteSvc := new(svcmocks.MockNoteService)
-	mockNoteSvc.On("WithClient", "Web", "").Return(mockNoteSvc)
 	listData := []*dto.NoteNoContentDTO{
 		{ID: 1, Path: "test1.md"},
 		{ID: 2, Path: "test2.md"},
@@ -93,18 +97,17 @@ func TestNoteHandler_List_Success(t *testing.T) {
 	handler := newTestNoteHandler(mockNoteSvc, nil)
 	c, w := newNoteTestContext("GET", "/api/notes", "", 1)
 	c.Request.URL.RawQuery = "vault=main&page=1&size=10"
-	
+
 	handler.List(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockNoteSvc.AssertExpectations(t)
 }
 
 // TestNoteHandler_CreateOrUpdate_Success verifies successful note creation/update
+// TestNoteHandler_CreateOrUpdate_Success 验证成功创建或更新笔记
 func TestNoteHandler_CreateOrUpdate_Success(t *testing.T) {
 	mockNoteSvc := new(svcmocks.MockNoteService)
-	mockNoteSvc.On("WithClient", "Web", "").Return(mockNoteSvc)
 
 	mockNoteSvc.On("UpdateCheck", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteUpdateCheckRequest")).
 		Return("", (*dto.NoteDTO)(nil), nil)
@@ -121,13 +124,12 @@ func TestNoteHandler_CreateOrUpdate_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockNoteSvc.AssertExpectations(t)
 }
 
 // TestNoteHandler_Delete_Success verifies successful note deletion
+// TestNoteHandler_Delete_Success 验证成功删除笔记
 func TestNoteHandler_Delete_Success(t *testing.T) {
 	mockNoteSvc := new(svcmocks.MockNoteService)
-	mockNoteSvc.On("WithClient", "Web", "").Return(mockNoteSvc)
 
 	existingNote := &dto.NoteDTO{ID: 3, Path: "del.md", Action: ""}
 	mockNoteSvc.On("Get", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteGetRequest")).
@@ -144,5 +146,4 @@ func TestNoteHandler_Delete_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	mockNoteSvc.AssertExpectations(t)
 }

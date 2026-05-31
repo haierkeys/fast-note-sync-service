@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"crypto/tls"
+	"net"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,6 +38,23 @@ func Proxy() gin.HandlerFunc {
 		// 从 X-Forwarded-Host 检测主机名
 		if host := c.GetHeader("X-Forwarded-Host"); host != "" {
 			c.Request.Host = host
+		}
+
+		// Trust CF-Connecting-IP only when the direct TCP connection originates from
+		// the loopback interface (127.0.0.1 / ::1). This is the fingerprint of a local
+		// cloudflared tunnel process — the only entity that connects from loopback and
+		// injects this header. An external attacker connecting directly to the origin
+		// cannot fake a loopback RemoteAddr at the TCP level.
+		//
+		// 仅当 TCP 直连来源为回环地址（127.0.0.1 / ::1）时，才信任 CF-Connecting-IP 头。
+		// 这是本地 cloudflared 进程的唯一特征——它是唯一从回环地址连接并注入该头的实体。
+		// 外部攻击者直连源站时，无法在 TCP 层伪造回环地址，因此此头会被忽略。
+		if cfIP := c.GetHeader("CF-Connecting-IP"); cfIP != "" {
+			if remoteHost, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+				if remoteHost == "127.0.0.1" || remoteHost == "::1" {
+					c.Request.RemoteAddr = cfIP + ":0"
+				}
+			}
 		}
 
 		c.Next()

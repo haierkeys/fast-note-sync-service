@@ -61,17 +61,23 @@ type AppSettings struct {
 	// WebSocket 配置
 	WebSocketReadMaxPayloadSize   string `yaml:"ws-read-max-payload-size" default:"128MB"`
 	WebSocketWriteMaxPayloadSize  string `yaml:"ws-write-max-payload-size" default:"128MB"`
-	WebSocketParallelEnabled      bool   `yaml:"ws-parallel-enabled" default:"true"`
-	WebSocketParallelGolimit      int    `yaml:"ws-parallel-golimit" default:"8"`
-	WebSocketCheckUtf8Enabled     bool   `yaml:"ws-check-utf8-enabled" default:"true"`
-	WebSocketCompressionEnabled   bool   `yaml:"ws-compression-enabled" default:"true"`
+	WebSocketParallelEnabled      *bool  `yaml:"ws-parallel-enabled" default:"true"`
+	WebSocketParallelGolimit      int    `yaml:"ws-parallel-golimit" default:"3"`
+	WebSocketCheckUtf8Enabled     *bool  `yaml:"ws-check-utf8-enabled" default:"true"`
+	WebSocketCompressionEnabled   *bool  `yaml:"ws-compression-enabled" default:"true"`
 	WebSocketCompressionLevel     int    `yaml:"ws-compression-level" default:"1"`
 	WebSocketCompressionThreshold int    `yaml:"ws-compression-threshold" default:"512"`
 	// PullSource data pull source: auto | github | cnb
 	// PullSource 数据拉取源：auto | github | cnb
 	PullSource string `yaml:"pull-source" default:"auto"`
+	// PullReleaseChannel update version channel: stable | beta
+	// PullReleaseChannel 更新版本通道：stable（正式版） | beta（测试版）
+	PullReleaseChannel string `yaml:"pull-release-channel" default:"stable"`
 
 	// ShortLink configurations
 	// 短链配置
 	ShortLink ShortLinkConfig `yaml:"short-link"`
+
+	FtsBleveEnabled  *bool `yaml:"fts-bleve-enabled" default:"true"`    // Bleve FTS enabled flag // 是否启用 Bleve 全文搜索（默认启用）
+	FtsBleveStoreRaw *bool `yaml:"fts-bleve-store-raw" default:"false"` // Bleve FTS store raw content flag // Bleve 全文搜索是否存储原始文本（默认启用为方案 B，若设为 false 则为仅索引不存储的方案 A）
 }

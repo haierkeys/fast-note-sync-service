@@ -60,19 +60,19 @@ func (r *noteHistoryRepository) toDomain(m *model.NoteHistory, uid int64) (*doma
 		return nil, nil
 	}
 	h := &domain.NoteHistory{
-		ID:          m.ID,
-		NoteID:      m.NoteID,
-		VaultID:     m.VaultID,
-		Path:        m.Path,
-		DiffPatch:   m.DiffPatch,
-		Content:     m.Content,
-		ContentHash: m.ContentHash,
-		ClientName:  m.ClientName,
-		ClientType:  m.ClientType,
+		ID:            m.ID,
+		NoteID:        m.NoteID,
+		VaultID:       m.VaultID,
+		Path:          m.Path,
+		DiffPatch:     m.DiffPatch,
+		Content:       m.Content,
+		ContentHash:   m.ContentHash,
+		ClientName:    m.ClientName,
+		ClientType:    m.ClientType,
 		ClientVersion: m.ClientVersion,
-		Version:     m.Version,
-		CreatedAt:   time.Time(m.CreatedAt),
-		UpdatedAt:   time.Time(m.UpdatedAt),
+		Version:       m.Version,
+		CreatedAt:     time.Time(m.CreatedAt),
+		UpdatedAt:     time.Time(m.UpdatedAt),
 	}
 	if err := r.fillHistoryContent(uid, h); err != nil {
 		return nil, err
@@ -163,16 +163,16 @@ func (r *noteHistoryRepository) Create(ctx context.Context, history *domain.Note
 	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.noteHistory(uid).NoteHistory
 		m := &model.NoteHistory{
-			NoteID:      history.NoteID,
-			VaultID:     history.VaultID,
-			Path:        history.Path,
-			ContentHash: history.ContentHash,
-			ClientName:  history.ClientName,
-			ClientType:  history.ClientType,
+			NoteID:        history.NoteID,
+			VaultID:       history.VaultID,
+			Path:          history.Path,
+			ContentHash:   history.ContentHash,
+			ClientName:    history.ClientName,
+			ClientType:    history.ClientType,
 			ClientVersion: history.ClientVersion,
-			Version:     history.Version,
-			CreatedAt:   timex.Time(history.CreatedAt),
-			UpdatedAt:   timex.Time(history.UpdatedAt),
+			Version:       history.Version,
+			CreatedAt:     timex.Time(history.CreatedAt),
+			UpdatedAt:     timex.Time(history.UpdatedAt),
 		}
 
 		// Temporarily store content for file writing

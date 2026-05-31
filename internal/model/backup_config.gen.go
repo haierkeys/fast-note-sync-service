@@ -28,6 +28,8 @@ type BackupConfig struct {
 	NextRunTime      time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
 	LastStatus       int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
 	LastMessage      string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
+	PasswordMode     int64      `gorm:"column:password_mode;default:0" json:"passwordMode" form:"passwordMode"`
+	PasswordValue    string     `gorm:"column:password_value;type:TEXT;default:''" json:"passwordValue" form:"passwordValue"`
 	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
 	UpdatedAt        timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }

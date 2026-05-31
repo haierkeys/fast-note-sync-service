@@ -40,6 +40,8 @@ type App struct {
 	wg               sync.WaitGroup
 	checkVersionMu   sync.RWMutex
 	checkVersion     pkgapp.CheckVersionInfo
+	serviceReleases  []pkgapp.HistoricalVersion // Cached filtered service releases // 缓存的已过滤服务版本列表
+	pluginReleases   []pkgapp.HistoricalVersion // Cached filtered plugin releases // 缓存的已过滤插件版本列表
 	supportRecordsMu sync.RWMutex
 	supportRecords   map[string][]pkgapp.SupportRecord
 	wss              *pkgapp.WebsocketServer // WebSocket server reference // WebSocket 服务器引用
@@ -93,6 +95,14 @@ func NewApp(cfg *AppConfig, logger *zap.Logger, db *gorm.DB, efs embed.FS) (*App
 // Close releases resources held by application container
 // Close 释放应用容器持有的资源
 func (a *App) Close() error {
+	if a.Dao != nil && a.Dao.BleveMgr != nil {
+		if err := a.Dao.BleveMgr.CloseAll(); err != nil {
+			a.logger.Error("failed to close all Bleve indexes", zap.Error(err))
+		} else {
+			a.logger.Info("All Bleve indexes closed")
+		}
+	}
+
 	if a.DB != nil {
 		sqlDB, err := a.DB.DB()
 		if err != nil {
@@ -153,8 +163,34 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 
 	cv := a.checkVersion
 
-	// Compare plugin versions
-	// 比较插件版本
+	// Filter service history
+	// 过滤服务端历史版本
+	currentServiceVersion := a.Version().Version
+	if !strings.HasPrefix(currentServiceVersion, "v") {
+		currentServiceVersion = "v" + currentServiceVersion
+	}
+	latestServiceVersion := cv.VersionNewName
+	if !strings.HasPrefix(latestServiceVersion, "v") {
+		latestServiceVersion = "v" + latestServiceVersion
+	}
+
+	if semver.Compare(latestServiceVersion, currentServiceVersion) > 0 {
+		cv.VersionHistory = make([]pkgapp.HistoricalVersion, 0)
+		for i := 1; i < len(a.serviceReleases); i++ {
+			vInfo := a.serviceReleases[i].Version
+			if !strings.HasPrefix(vInfo, "v") {
+				vInfo = "v" + vInfo
+			}
+			if semver.Compare(vInfo, currentServiceVersion) > 0 {
+				hVal := a.serviceReleases[i]
+				hVal.Version = strings.TrimPrefix(hVal.Version, "v")
+				cv.VersionHistory = append(cv.VersionHistory, hVal)
+			}
+		}
+	}
+
+	// Compare plugin versions and filter history
+	// 比较插件版本并过滤历史版本
 	if pluginVersion != "" && cv.PluginVersionNewName != "" {
 		v1 := pluginVersion
 		if !strings.HasPrefix(v1, "v") {
@@ -165,6 +201,21 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 			v2 = "v" + v2
 		}
 		cv.PluginVersionIsNew = semver.Compare(v2, v1) > 0
+
+		if cv.PluginVersionIsNew {
+			cv.PluginVersionHistory = make([]pkgapp.HistoricalVersion, 0)
+			for i := 1; i < len(a.pluginReleases); i++ {
+				vInfo := a.pluginReleases[i].Version
+				if !strings.HasPrefix(vInfo, "v") {
+					vInfo = "v" + vInfo
+				}
+				if semver.Compare(vInfo, v1) > 0 {
+					hVal := a.pluginReleases[i]
+					hVal.Version = strings.TrimPrefix(hVal.Version, "v")
+					cv.PluginVersionHistory = append(cv.PluginVersionHistory, hVal)
+				}
+			}
+		}
 	}
 
 	// Version number returned to client does not have v prefix
@@ -184,10 +235,34 @@ func (a *App) SetCheckVersionInfo(info pkgapp.CheckVersionInfo) {
 	a.checkVersion = info
 }
 
-// SetWSS sets WebSocket server reference
-// SetWSS 设置 WebSocket 服务器引用
+// SetCheckVersionReleases sets all filtered service and plugin releases
+// SetCheckVersionReleases 设置所有过滤后的服务和插件发布版本列表
+func (a *App) SetCheckVersionReleases(serviceReleases, pluginReleases []pkgapp.HistoricalVersion) {
+	a.checkVersionMu.Lock()
+	defer a.checkVersionMu.Unlock()
+	a.serviceReleases = serviceReleases
+	a.pluginReleases = pluginReleases
+}
+
+// SetWSS sets WebSocket server reference and binds sync hooks
+// SetWSS 设置 WebSocket 服务器引用并绑定同步钩子
 func (a *App) SetWSS(wss *pkgapp.WebsocketServer) {
 	a.wss = wss
+	if a.wss != nil && a.Services != nil && a.Services.TokenService != nil {
+		a.Services.TokenService.SetSyncHandler(func(uid int64, tokenID int64, scope string, kick bool) {
+			if kick {
+				a.wss.KickToken(uid, tokenID)
+			} else {
+				a.wss.UpdateTokenScope(uid, tokenID, scope)
+			}
+		})
+	}
+}
+
+// GetWSS gets WebSocket server reference
+// GetWSS 获取 WebSocket 服务器引用
+func (a *App) GetWSS() *pkgapp.WebsocketServer {
+	return a.wss
 }
 
 // BroadcastClientInfo broadcasts version information to all connected clients
@@ -228,6 +303,12 @@ func (a *App) GetAuthTokenKey() string {
 // 根据日志配置中的 Production 字段判断
 func (a *App) IsProductionMode() bool {
 	return a.config.Log.Production
+}
+
+// GetTokenService gets TokenService
+// GetTokenService 获取 Token 服务
+func (a *App) GetTokenService() any {
+	return a.TokenService
 }
 
 // IsPullFromGitHub returns whether current source is GitHub
@@ -344,6 +425,17 @@ func (a *App) GetSupportRecords() map[string][]pkgapp.SupportRecord {
 	return a.supportRecords
 }
 
+// getCNYValue gets support record amount converted to CNY for sorting
+// getCNYValue 将打赏记录金额折合为人民币价值用于排序
+func getCNYValue(amountStr, unit string) float64 {
+	amount, _ := strconv.ParseFloat(amountStr, 64)
+	unitUpper := strings.ToUpper(unit)
+	if unitUpper == "USD" || unitUpper == "$" {
+		return amount * 6.81 // 采用与 JS 统一的 6.81 汇率
+	}
+	return amount
+}
+
 // GetSupportRecordsPage gets support records with pagination and sorting
 // GetSupportRecordsPage 分页并排序获取打赏记录
 func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSize int) ([]pkgapp.SupportRecord, int) {
@@ -360,34 +452,57 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 		records = a.supportRecords["en"]
 	}
 
-	total := len(records)
+	actualSortBy := sortBy
+	var filteredRecords []pkgapp.SupportRecord
+
+	if sortBy == "amount_3m" || sortBy == "amount_6m" {
+		actualSortBy = "amount"
+		threeMonthsAgo := time.Now().AddDate(0, -3, 0)
+		filteredRecords = make([]pkgapp.SupportRecord, 0, len(records))
+		for _, r := range records {
+			// Date format: 2026/03/27 00:36:52
+			t, err := time.Parse("2006/01/02 15:04:05", r.Time)
+			if err == nil && t.After(threeMonthsAgo) {
+				filteredRecords = append(filteredRecords, r)
+			}
+		}
+	} else {
+		filteredRecords = make([]pkgapp.SupportRecord, len(records))
+		copy(filteredRecords, records)
+	}
+
+	// Normalize USD to $ for display
+	for i := range filteredRecords {
+		if strings.ToUpper(filteredRecords[i].Unit) == "USD" {
+			filteredRecords[i].Unit = "$"
+		}
+	}
+
+	total := len(filteredRecords)
 	if total == 0 {
 		return []pkgapp.SupportRecord{}, 0
 	}
 
-	sortedRecords := make([]pkgapp.SupportRecord, total)
-	copy(sortedRecords, records)
-
-	if sortBy != "" {
+	if actualSortBy != "" {
 		isDesc := strings.ToLower(sortOrder) == "desc"
-		sort.SliceStable(sortedRecords, func(i, j int) bool {
+		sort.SliceStable(filteredRecords, func(i, j int) bool {
 			var less bool
-			switch sortBy {
+			switch actualSortBy {
 			case "amount":
-				amountI, _ := strconv.ParseFloat(sortedRecords[i].Amount, 64)
-				amountJ, _ := strconv.ParseFloat(sortedRecords[j].Amount, 64)
-				if amountI == amountJ {
-					return sortedRecords[i].Time > sortedRecords[j].Time
+				valI := getCNYValue(filteredRecords[i].Amount, filteredRecords[i].Unit)
+				valJ := getCNYValue(filteredRecords[j].Amount, filteredRecords[j].Unit)
+				if valI == valJ {
+					return filteredRecords[i].Time > filteredRecords[j].Time
 				}
-				less = amountI < amountJ
+				less = valI < valJ
 			case "name":
-				less = sortedRecords[i].Name < sortedRecords[j].Name
+				less = filteredRecords[i].Name < filteredRecords[j].Name
 			case "item":
-				less = sortedRecords[i].Item < sortedRecords[j].Item
+				less = filteredRecords[i].Item < filteredRecords[j].Item
 			case "time":
 				fallthrough
 			default:
-				less = sortedRecords[i].Time < sortedRecords[j].Time
+				less = filteredRecords[i].Time < filteredRecords[j].Time
 			}
 			if isDesc {
 				return !less
@@ -409,7 +524,7 @@ func (a *App) GetSupportRecordsPage(lang, sortBy, sortOrder string, page, pageSi
 		end = total
 	}
 
-	return sortedRecords[offset:end], total
+	return filteredRecords[offset:end], total
 }
 
 // UpdateSupportRecords updates support records for a specific language

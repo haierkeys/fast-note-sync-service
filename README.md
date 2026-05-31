@@ -1,8 +1,8 @@
 [简体中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-CN.md) / [English](https://github.com/haierkeys/fast-note-sync-service/blob/master/README.md) / [日本語](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ja.md) / [한국어](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.ko.md) / [繁體中文](https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/README.zh-TW.md)
 
-For any questions, please create a new [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new), or join the Telegram chat group for help: [https://t.me/obsidian_users](https://t.me/obsidian_users)
+If you have any questions, please create a new [issue](https://github.com/haierkeys/fast-note-sync-service/issues/new), or join our Telegram group for help: [https://t.me/obsidian_users](https://t.me/obsidian_users)
 
-For mainland China, the Tencent `cnb.cool` mirror repository is recommended: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
+For users in Mainland China, the Tencent `cnb.cool` mirror repository is highly recommended: [https://cnb.cool/haierkeys/fast-note-sync-service](https://cnb.cool/haierkeys/fast-note-sync-service)
 
 
 <h1 align="center">Fast Note Sync Service</h1>
@@ -15,13 +15,13 @@ For mainland China, the Tencent `cnb.cool` mirror repository is recommended: [ht
 </p>
 
 <p align="center">
-  <strong>High-performance, low-latency note syncing, online management, and remote REST API service platform</strong>
+  <strong>High-performance, low-latency note synchronization, online management, and remote REST API service platform</strong>
   <br>
-  <em>Built with Golang + Websocket + React</em>
+  <em>Built with Golang + WebSocket + React</em>
 </p>
 
 <p align="center">
-  Data provision requires the use of the client plugin: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
+  Client data provision requires: <a href="https://github.com/haierkeys/obsidian-fast-note-sync">Obsidian Fast Note Sync Plugin</a>
 </p>
 
 <div align="center">
@@ -40,63 +40,57 @@ For mainland China, the Tencent `cnb.cool` mirror repository is recommended: [ht
 ## 🎯 Core Features
 
 * **🧰 Native MCP (Model Context Protocol) Support**:
-  * `FNS` can act as an MCP server connecting to `Cherry Studio`, `Cursor`, and other compatible AI clients. This grants AI the ability to read and write your private notes and attachments, with all changes syncing to all clients in real time.
+  * `FNS` can act as an MCP server connected to compatible AI clients like `Cherry Studio` and `Cursor`, enabling AI to read and write private notes and attachments, with all changes synchronized in real time across endpoints.
 * **🚀 REST API Support**:
-  * Provides standard REST API interfaces, supporting automated program access (e.g., automation scripts, AI assistant integration) for CRUD operations on Obsidian notes.
-  * For more details, please refer to the [RESTful API Documentation](/docs/REST_API.md) or [OpenAPI Documentation](/docs/swagger.yaml).
-* **💻 Web Management Panel**:
-  * Built-in modern management interface to easily create users, generate plugin configurations, and manage vaults and note contents.
-* **🔄 Multi-device Note Syncing**:
+  * Provides standard REST API endpoints, supporting programmatic operations (e.g., automation scripts, AI assistant integrations) to perform CRUD actions on Obsidian notes.
+  * Refer to the [RESTful API Docs](/docs/REST_API.md) or [OpenAPI Docs](/docs/swagger.yaml) for details.
+* **💻 Web Administration Panel**:
+  * Built-in modern dashboard to easily create users, generate plugin configurations, manage repositories, and browse note contents.
+* **🔄 Multi-device Note Sync**:
   * Supports automatic **Vault** creation.
-  * Supports note management (Add, Delete, Modify, Read) with millisecond-level real-time distribution of changes to all online devices.
-* **🖼️ Attachment Syncing Support**:
-  * Perfect support for syncing non-note files like images.
-  * Supports chunked upload and download of large attachments, with configurable chunk sizes, improving syncing efficiency.
-* **⚙️ Configuration Syncing**:
-  * Supports syncing `.obsidian` configuration files.
-  * Supports syncing `PDF` progress states.
+  * Supports note management (create, read, update, delete) with millisecond-level real-time updates distributed to all active devices.
+* **🖼️ Attachment Sync**:
+  * Perfectly supports synchronization of non-note files such as images.
+  * Supports chunked upload/download for large attachments, with configurable chunk sizes to boost synchronization efficiency.
+* **⚙️ Configuration Sync**:
+  * Supports syncing `.obsidian` configurations.
+  * Supports syncing `PDF` progress status.
 * **📝 Note History**:
-  * Ability to view historical modification versions of each note via the Web page and plugin client.
-  * (Requires Server v1.2+)
-* **🗑️ Recycle Bin**:
-  * Supports automatic transfer of notes to the recycle bin upon deletion.
-  * Supports recovering notes from the recycle bin. (Attachment recovery features will be added progressively).
-
+  * View the historical modified versions of each note directly from the Web page or the plugin client (requires server v1.2+).
+* **🗑️ Trash Bin**:
+  * Deleted notes automatically enter the trash bin.
+  * Supports restoring notes from the trash bin (attachment restoration will be introduced in subsequent updates).
 * **🚫 Offline Sync Strategy**:
-  * Supports automatic merging of offline note edits. (Requires setup on the plugin client).
-  * Offline deletion automatically synchronizes with server padding or deletions after reconnection. (Requires setup on the plugin client).
-
-* **🔗 Share Feature**:
-  * Ability to Create/Cancel note sharing.
-  * Automatically parses attachments such as images, audio, and video referenced in shared notes.
-  * Provides sharing access statistics.
-  * Ability to set a password for shared notes.
-  * Ability to generate short links for shared notes.
-* **📂 Directory Syncing**:
-  * Supports Create/Rename/Move/Delete syncing for folders.
-
-* **🌳 Git Automation**:
-  * Automatically updates and pushes to the remote Git repository when attachments or notes undergo changes.
-  * Automatically releases system memory after the task strictly finishes.
-
-* **☁️ Multi-Storage Backup & One-way Mirror Syncing**:
-  * Adapts to S3/OSS/R2/WebDAV/Local and other storage protocols.
-  * Supports full/incremental ZIP scheduled archive backups.
-  * Supports one-way mirror syncing of Vault resources to remote storage.
-  * Automatically cleans up expired backups, with support for custom retention days.
-
-* **🗄️ Multi-Database Support**:
-  * Natively supports mainstream databases such as SQLite, MySQL, PostgreSQL, meeting deployment needs ranging from individuals to teams.
+  * Supports automatic conflict-resolution merging for offline note edits (requires plugin configuration).
+  * Supports automatic cleanup or restoration of offline deletions upon reconnecting (requires plugin configuration).
+* **🔗 Sharing Capabilities**:
+  * Create/cancel note sharing.
+  * Automatically parses attachments referenced in shared notes, such as images, audio, and video.
+  * Provides access statistics for shared notes.
+  * Set passwords for accessing shared notes.
+  * Generate short links for shared notes.
+* **📂 Directory Sync**:
+  * Supports synchronization of folder creation, renaming, moving, and deletion.
+* **🌳 Automated Git Integration**:
+  * Automatically updates and pushes changes to a remote Git repository when attachments and notes are modified.
+  * Automatically frees up system memory upon task completion.
+* **☁️ Multi-storage Backup & One-way Mirror Sync**:
+  * Compatible with multiple storage protocols including S3, Alibaba Cloud OSS, Cloudflare R2, WebDAV, and local filesystems.
+  * Supports scheduled full/incremental ZIP archive backups.
+  * Supports one-way mirror synchronization of Vault resources to remote storage.
+  * Automatically prunes expired backups with customizable retention periods.
+* **🗄️ Multi-database Support**:
+  * Native support for SQLite, MySQL, and PostgreSQL to satisfy different deployment scales from personal to team environments.
 
 ## ☕ Sponsorship & Support
 
-- If you find this plugin useful and want its development to continue, please support me via the following channels:
+- If you find this plugin helpful and wish to support its continued development, please consider sponsoring me through:
 
-  | Ko-fi *Non-China Region*                                                                               |    | WeChat QR Donation *China Region*                        |
+  | Ko-fi *Non-Mainland China*                                                                       |    | WeChat Pay *Mainland China*                    |
   |--------------------------------------------------------------------------------------------------|----|------------------------------------------------|
-  | [<img src="/docs/images/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | OR | <img src="/docs/images/wxds.png" height="150"> |
+  | [<img src="/docs/images/kofi.png" alt="BuyMeACoffee" height="150">](https://ko-fi.com/haierkeys) | or | <img src="/docs/images/wxds.png" height="150"> |
 
-  - Supported List:
+  - List of Supporters:
     - <a href="https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/Support.en.md">Support.en.md</a>
     - <a href="https://cnb.cool/haierkeys/fast-note-sync-service/-/blob/master/docs/Support.en.md">Support.en.md (cnb.cool Mirror)</a>
 
@@ -106,46 +100,43 @@ For mainland China, the Tencent `cnb.cool` mirror repository is recommended: [ht
 
 ## 🗺️ Roadmap
 
-- [ ] Add **Mock** testing covering all levels.
-- [ ] Add WebSocket `Protobuf` transmission format support, enhancing synchronization efficiency.
-- [ ] The backend to include queries for various operational logs such as sync logs and operation logs.
-- [ ] Isolate and optimize the current authorization mechanism to elevate overall security.
-- [ ] Add WebGui note real-time update capability.
-- [ ] Add client Peer-to-Peer message transmission (non-note & attachments, similar to localsend; not saved closely on the client, saves to the server).
-- [ ] Enhance various help documents.
-- [ ] Support more Intranet Penetration (Relay gateway).
-- [ ] Quick deployment plan:
-  * Deploy FNS Server securely with just the server's public IP address and account credentials.
-- [ ] Optimize the current offline note merging scheme and introduce conflict-handling mechanisms.
+- [ ] Add support for WebSocket `Protobuf` transmission to enhance sync efficiency.
+- [ ] Isolate and optimize authorization mechanisms to improve overall security.
+- [ ] Implement real-time WebGui note updates.
+- [ ] Add peer-to-peer message transmission between clients (for messages other than notes/attachments, similar to LocalSend; saves to the server, not saved locally).
+- [ ] Improve all documentation and help guides.
+- [ ] Provide more intranet penetration (relay gateway) integrations.
+- [ ] Fast deployment setups: deploy FNS servers easily just by providing the server address, username, and password.
+- [ ] Optimize the existing offline note merging strategy and introduce a conflict-resolution system.
 
-We are continually improving. Here are our future development plans:
+We are continuously improving, and the above represents our future roadmap plans:
 
-> **If you have improvement suggestions or new ideas, please submit an issue to share them with us. We will sincerely evaluate and adopt appropriate suggestions.**
+> **If you have suggestions for improvement or new ideas, feel free to share them by opening an issue—we carefully evaluate and adopt matching ideas.**
 
 ## 🚀 Quick Deployment
 
-We offer multiple installation methods. We recommend utilizing the **One-click Script** or **Docker**.
+We offer multiple installation methods. Using the **One-click Script** or **Docker** is highly recommended.
 
 ### Method 1: One-click Script (Recommended)
 
-Automatically detects the system environment, completes the installation, and registers the service.
+Automatically detects the system environment, performs the installation, and registers the service.
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/haierkeys/fast-note-sync-service/master/scripts/quest_install.sh)
 ```
 
-Users in China can utilize the Tencent `cnb.cool` mirror source:
+Chinese users can use the Tencent `cnb.cool` mirror:
 ```bash
 bash <(curl -fsSL https://cnb.cool/haierkeys/fast-note-sync-service/-/git/raw/master/scripts/quest_install.sh) --cnb
 ```
 
-**Main Script Actions:**
+**Main actions of the script:**
 
-  * Automatically downloads the optimal Release binary file for your system.
-  * Default installation path is `/opt/fast-note`, creating a global quick command abstractly named `fns` in `/usr/local/bin/fns`.
-  * Configures and launches Systemd (Linux) or Launchd (macOS) services to realize auto-start on boot.
+  * Automatically downloads the release binary adapted to the current operating system.
+  * Installs to `/opt/fast-note` by default and creates a global shortcut command `fns` under `/usr/local/bin/fns`.
+  * Configures and starts the Systemd (Linux) or Launchd (macOS) service for auto-start on boot.
   * **Management Commands**: `fns [install|uninstall|start|stop|status|update|menu]`
-  * **Interactive Menu**: Run `fns` directly to enter an interactive menu enabling installation/upgrade, service control, auto-start configuration, and switching between GitHub / CNB mirrors.
+  * **Interactive Menu**: Run `fns` directly to enter the interactive menu, supporting installs/upgrades, service control, boot configuration, and toggling between GitHub and CNB mirror sources.
 
 -----
 
@@ -177,7 +168,7 @@ services:
     container_name: fast-note-sync-service
     restart: always
     ports:
-      - "9000:9000"  # RESTful API & WebSocket ports where /api/user/sync is the WebSocket interface address
+      - "9000:9000"  # RESTful API & WebSocket port, where /api/user/sync is the WebSocket endpoint
     volumes:
       - ./storage:/fast-note-sync/storage  # Data storage
       - ./config:/fast-note-sync/config    # Configuration files
@@ -193,7 +184,7 @@ docker compose up -d
 
 ### Method 3: Manual Binary Installation
 
-Download the latest version corresponding to your system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), unzip, and run:
+Download the latest release for your operating system from [Releases](https://github.com/haierkeys/fast-note-sync-service/releases), extract it, and run:
 
 ```bash
 ./fast-note-sync-service run -c config/config.yaml
@@ -201,48 +192,84 @@ Download the latest version corresponding to your system from [Releases](https:/
 
 ## 📖 Usage Guide
 
-1.  **Access the Management Panel**:
-    Open `http://{Server IP}:9000` via your browser.
-2.  **Initial Setup**:
-    Register an account on your first visit. *(To disable registration, configure `user.register-is-enable: false` in the settings configuration file)*
+1.  **Access Admin Panel**:
+    Open `http://{Server_IP}:9000` in your browser.
+2.  **Initial Settings**:
+    Register an account upon your first visit. *(To disable public registration, set `user.register-is-enable: false` in the config file)*
 3.  **Configure Client**:
-    Log into the Management Panel, and click **"Copy API Configuration"**.
-4.  **Connect to Obsidian**:
-    Navigate to the Obsidian plugin configuration page, and paste the previously copied configuration details.
+    Log in to the admin panel and click **"Copy API Configuration"**.
+4.  **Connect Obsidian**:
+    Open Obsidian, go to the plugin settings page, and paste the copied configuration.
 
+## ⚙️ Configuration
 
-## ⚙️ Configuration Instructions
+The default configuration file is `config.yaml`. The application automatically searches for it in the **root** or **config/** directories.
 
-The default configuration file is `config.yaml`. The application will search for it automatically in the **Root Directory** or the **config/** directory.
+View full configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
 
-View a complete configuration example: [config/config.yaml](https://github.com/haierkeys/fast-note-sync-service/blob/master/config/config.yaml)
+## 🌐 Nginx Reverse Proxy Example
 
-## 🌐 Nginx Reverse Proxy Configuration Example
-
-View a complete configuration example: [https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
+View full configuration example: [https-nginx-example.conf](https://github.com/haierkeys/fast-note-sync-service/blob/master/scripts/https-nginx-example.conf)
 
 ## 🧰 MCP (Model Context Protocol) Support
 
-FNS natively supports **MCP (Model Context Protocol)**.
+FNS now natively supports **MCP (Model Context Protocol)**, providing both **SSE** and **StreamableHTTP** transport protocols.
 
-You can directly incorporate FNS as an MCP server with Cherry Studio, Cursor, and similar compatible AI clients. Once configured, AI attains the capacity to interpret and write within your own private notes and attachments. Furthermore, WebSocket synchronizes all MCP-directed alterations in real time across the entirety of your devices.
+You can connect FNS as an MCP server directly into compatible AI clients such as Cherry Studio, Cursor, Claude Code, and hermes-agent. Once connected, AI gains the ability to read and write your private notes and attachments. Simultaneously, all edits generated by the MCP integration will sync in real time via WebSockets to all your device terminals.
 
-### Access Configuration (SSE Mode)
+### Common Header Parameters
 
-FNS furnishes an MCP interface primarily through the **SSE protocol**. General parameter requirements are as follows:
-- **Interface Address**: `http://<Your Server IP or Domain>:<Port>/api/mcp/sse`
-- **Authentication Header**: `Authorization: Bearer <Your API Token>` (Obtained from “Copy API Configuration” in the WebGUI).
-- **Optional Header**: `X-Default-Vault-Name: <Vault Name>` (Identifies the default vault for MCP operations; utilized if the `vault` parameter is unspecified during a tool call)
-- **Optional Header**: `X-Client: <Client Type>` (Relates to the client type connecting the MCP, e.g., Cherry Studio / OpenClaw)
-- **Optional Header**: `X-Client-Version: <Client Version>` (Pertains to the client's actual version interfacing with the MCP, e.g., 1.1)
-- **Optional Header**: `X-Client-Name: <Client Name>` (Designates the client's name linking with the MCP, e.g., Mac)
+Regardless of the transport mode used, the following headers are supported:
 
+- **Authorization Header**: `Authorization: Bearer <Your API Token>` (retrieved from the WebGUI's copy API configuration)
+- **Optional Header**: `X-Default-Vault-Name: <Vault Name>` (specifies the default vault for MCP operations. If tool calls do not specify a vault parameter, this value is used)
+- **Optional Header**: `X-Client: <Client Type>` (the type of client connecting to MCP, e.g., Cherry Studio / OpenClaw)
+- **Optional Header**: `X-Client-Version: <Client Version>` (the client version, e.g., 1.1)
+- **Optional Header**: `X-Client-Name: <Client Name>` (the client device name, e.g., Mac)
 
+---
 
-#### Example: Cherry Studio / Cursor / Cline, etc.
+### Integration: StreamableHTTP Mode (Recommended)
 
-Kindly incorporate the below JSON inside your MCP client configuration parameters:
-*(Note: Please swap `<ServerIP>`, `<Port>`, `<Token>`, and `<VaultName>` with your proper contextual details)*
+StreamableHTTP is the standard transport protocol for the MCP ecosystem. A single endpoint handles all requests, making it fire-wall friendly and natively supported by newer MCP clients (like Claude Code and hermes-agent).
+
+- **Endpoint URL**: `http://<Your_Server_IP_or_Domain>:<Port>/api/mcp`
+- **Request Methods**: `POST` (send requests/notifications), `GET` (listen to server-side push notifications), `DELETE` (terminate sessions)
+
+#### Example: Claude Code / hermes-agent / Cursor, etc.
+
+*(Note: Please replace `<ServerIP>`, `<Port>`, `<Token>`, and `<VaultName>` with your actual details)*
+
+```json
+{
+  "mcpServers": {
+    "fns": {
+      "url": "http://<ServerIP>:<Port>/api/mcp",
+      "type": "http",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <Token>",
+        "X-Default-Vault-Name": "<VaultName>",
+        "X-Client": "<Client>",
+        "X-Client-Version": "<ClientVersion>",
+        "X-Client-Name": "<ClientName>"
+      }
+    }
+  }
+}
+```
+
+---
+
+### Integration: SSE Mode (Backward Compatibility)
+
+SSE mode is the legacy transport protocol, fully retained for backward compatibility. It is suitable for MCP clients that only support SSE (such as Cherry Studio).
+
+- **Endpoint URL**: `http://<Your_Server_IP_or_Domain>:<Port>/api/mcp/sse`
+
+#### Example: Cherry Studio / Cline, etc.
+
+*(Note: Please replace `<ServerIP>`, `<Port>`, `<Token>`, and `<VaultName>` with your actual details)*
 
 ```json
 {
@@ -263,9 +290,11 @@ Kindly incorporate the below JSON inside your MCP client configuration parameter
 }
 ```
 
-## 🔗 Client & Client Plugins
+## 🔗 Clients & Client Plugins
 
 * Obsidian Fast Note Sync Plugin
   * [Obsidian Fast Note Sync Plugin](https://github.com/haierkeys/obsidian-fast-note-sync) / [cnb.cool Mirror](https://cnb.cool/haierkeys/obsidian-fast-note-sync)
 * Third-Party Clients
-  * [FastNodeSync-CLI ](https://github.com/Go1c/FastNodeSync-CLI) Python and FNS WS API grounded bidirectional real-time synchronization CLI client customized for headless Linux server infrastructures (like OpenClaw), providing analogous synchronization faculties equivalent to Obsidian's desktop/mobile clients.
+  * [FastNodeSync-CLI](https://github.com/Go1c/FastNodeSync-CLI) A command-line client implementing two-way real-time synchronization based on Python and the FNS WebSocket protocol. Ideal for headless Linux servers (such as OpenClaw), providing sync capabilities equivalent to Obsidian desktop/mobile clients.
+  * [go-fast-note-sync](https://github.com/erichll/go-fast-note-sync) A Go CLI background synchronization daemon based on Go and the FNS WebSocket protocol, mainly targeting headless Linux environments, while also supporting macOS and Windows.
+  * [Fast-note-sync-docker](https://github.com/youpingfang/obsidian-note-sync-docker) A quick containerized deployment solution based on Docker, Python, and the FNS WebSocket protocol, implementing note vaults and configuration file sync to remote servers.

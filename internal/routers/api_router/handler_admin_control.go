@@ -27,6 +27,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/process"
 	"go.uber.org/zap"
+	"golang.org/x/mod/semver"
 )
 
 // AdminControlHandler Admin control configuration API router handler
@@ -59,8 +60,7 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 	cfg := h.App.Config()
 	data := dto.AdminWebGUIConfig{
 		FontSet:          cfg.WebGUI.FontSet,
-		RegisterIsEnable: cfg.User.RegisterIsEnable,
-		AdminUID:         cfg.User.AdminUID,
+		RegisterIsEnable: h.App.UserService.IsRegisterEnabled(c),
 	}
 	response.ToResponse(code.Success.WithData(data))
 }
@@ -122,20 +122,21 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 	}
 
 	data := &dto.AdminConfig{
-		FontSet:                 cfg.WebGUI.FontSet,
-		RegisterIsEnable:        cfg.User.RegisterIsEnable,
-		FileChunkSize:           cfg.App.FileChunkSize,
-		SoftDeleteRetentionTime: cfg.App.SoftDeleteRetentionTime,
-		UploadSessionTimeout:    cfg.App.UploadSessionTimeout,
-		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
-		HistorySaveDelay:        cfg.App.HistorySaveDelay,
-		// DefaultAPIFolder:        cfg.App.DefaultAPIFolder,
-		AdminUID:         cfg.User.AdminUID,
-		AuthTokenKey:     cfg.Security.AuthTokenKey,
-		TokenExpiry:      cfg.Security.TokenExpiry,
-		ShareTokenKey:    cfg.Security.ShareTokenKey,
-		ShareTokenExpiry: cfg.Security.ShareTokenExpiry,
-		PullSource:       cfg.App.PullSource,
+		FontSet:                 &cfg.WebGUI.FontSet,
+		RegisterIsEnable:        &cfg.User.RegisterIsEnable,
+		FileChunkSize:           &cfg.App.FileChunkSize,
+		SoftDeleteRetentionTime: &cfg.App.SoftDeleteRetentionTime,
+		UploadSessionTimeout:    &cfg.App.UploadSessionTimeout,
+		HistoryKeepVersions:     &cfg.App.HistoryKeepVersions,
+		HistorySaveDelay:        &cfg.App.HistorySaveDelay,
+		// DefaultAPIFolder:        &cfg.App.DefaultAPIFolder,
+		AdminUID:         &cfg.User.AdminUID,
+		AuthTokenKey:     &cfg.Security.AuthTokenKey,
+		TokenExpiry:      &cfg.Security.TokenExpiry,
+		ShareTokenKey:    &cfg.Security.ShareTokenKey,
+		ShareTokenExpiry: &cfg.Security.ShareTokenExpiry,
+		PullSource:       &cfg.App.PullSource,
+		PullReleaseChannel: &cfg.App.PullReleaseChannel,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -182,26 +183,26 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 
 	// Validate historyKeepVersions cannot be less than 100
 	// 验证 historyKeepVersions 不能小于 100
-	if params.HistoryKeepVersions > 0 && params.HistoryKeepVersions < 100 {
+	if params.HistoryKeepVersions != nil && *params.HistoryKeepVersions > 0 && *params.HistoryKeepVersions < 100 {
 		logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historyKeepVersions",
-			zap.Int("value", params.HistoryKeepVersions))
+			zap.Int("value", *params.HistoryKeepVersions))
 		response.ToResponse(code.ErrorInvalidParams.WithDetails("historyKeepVersions must be at least 100"))
 		return
 	}
 
 	// Validate historySaveDelay cannot be less than 10 seconds
 	// 验证 historySaveDelay 不能小于 10 秒
-	if params.HistorySaveDelay != "" {
-		delay, err := util.ParseDuration(params.HistorySaveDelay)
+	if params.HistorySaveDelay != nil && *params.HistorySaveDelay != "" {
+		delay, err := util.ParseDuration(*params.HistorySaveDelay)
 		if err != nil {
 			logger.Warn("apiRouter.WebGUI.UpdateConfig invalid historySaveDelay format",
-				zap.String("value", params.HistorySaveDelay))
+				zap.String("value", *params.HistorySaveDelay))
 			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay format invalid, e.g. 10s, 1m"))
 			return
 		}
 		if delay < 10*time.Second {
 			logger.Warn("apiRouter.WebGUI.UpdateConfig historySaveDelay too small",
-				zap.String("value", params.HistorySaveDelay))
+				zap.String("value", *params.HistorySaveDelay))
 			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay must be at least 10s"))
 			return
 		}
@@ -209,20 +210,48 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 
 	// Update configuration
 	// 更新配置
-	cfg.WebGUI.FontSet = params.FontSet
-	cfg.User.RegisterIsEnable = params.RegisterIsEnable
-	cfg.App.FileChunkSize = params.FileChunkSize
-	cfg.App.SoftDeleteRetentionTime = params.SoftDeleteRetentionTime
-	cfg.App.UploadSessionTimeout = params.UploadSessionTimeout
-	cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
-	cfg.App.HistorySaveDelay = params.HistorySaveDelay
-	//cfg.App.DefaultAPIFolder = params.DefaultAPIFolder
-	cfg.User.AdminUID = params.AdminUID
-	cfg.Security.AuthTokenKey = params.AuthTokenKey
-	cfg.Security.TokenExpiry = params.TokenExpiry
-	cfg.Security.ShareTokenKey = params.ShareTokenKey
-	cfg.Security.ShareTokenExpiry = params.ShareTokenExpiry
-	cfg.App.PullSource = params.PullSource
+	if params.FontSet != nil {
+		cfg.WebGUI.FontSet = *params.FontSet
+	}
+	if params.RegisterIsEnable != nil {
+		cfg.User.RegisterIsEnable = *params.RegisterIsEnable
+	}
+	if params.FileChunkSize != nil {
+		cfg.App.FileChunkSize = *params.FileChunkSize
+	}
+	if params.SoftDeleteRetentionTime != nil {
+		cfg.App.SoftDeleteRetentionTime = *params.SoftDeleteRetentionTime
+	}
+	if params.UploadSessionTimeout != nil {
+		cfg.App.UploadSessionTimeout = *params.UploadSessionTimeout
+	}
+	if params.HistoryKeepVersions != nil {
+		cfg.App.HistoryKeepVersions = *params.HistoryKeepVersions
+	}
+	if params.HistorySaveDelay != nil {
+		cfg.App.HistorySaveDelay = *params.HistorySaveDelay
+	}
+	if params.AdminUID != nil {
+		cfg.User.AdminUID = *params.AdminUID
+	}
+	if params.AuthTokenKey != nil {
+		cfg.Security.AuthTokenKey = *params.AuthTokenKey
+	}
+	if params.TokenExpiry != nil {
+		cfg.Security.TokenExpiry = *params.TokenExpiry
+	}
+	if params.ShareTokenKey != nil {
+		cfg.Security.ShareTokenKey = *params.ShareTokenKey
+	}
+	if params.ShareTokenExpiry != nil {
+		cfg.Security.ShareTokenExpiry = *params.ShareTokenExpiry
+	}
+	if params.PullSource != nil {
+		cfg.App.PullSource = *params.PullSource
+	}
+	if params.PullReleaseChannel != nil {
+		cfg.App.PullReleaseChannel = *params.PullReleaseChannel
+	}
 
 	// Save configuration to file
 	// 保存配置到文件
@@ -416,6 +445,7 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 	if params.Type == "sqlite" {
 		enableQueue = true
 	}
+	autoMigrate := true
 	dbCfg := config.DatabaseConfig{
 		Type:                params.Type,
 		Path:                params.Path,
@@ -426,7 +456,7 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		Name:                params.Name,
 		SSLMode:             params.SSLMode,
 		Schema:              params.Schema,
-		AutoMigrate:         true,
+		AutoMigrate:         &autoMigrate,
 		MaxIdleConns:        params.MaxIdleConns,
 		MaxOpenConns:        params.MaxOpenConns,
 		ConnMaxLifetime:     params.ConnMaxLifetime,
@@ -681,10 +711,12 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	}
 
 	// Go Runtime
+	// Go 运行时状态
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
 	// CPU
+	// CPU 信息
 	cpuInfoList, _ := cpu.Info()
 	cpuModel := ""
 	if len(cpuInfoList) > 0 {
@@ -696,18 +728,29 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 	loadStat, _ := load.Avg()
 
 	// Memory
+	// 内存与交换区信息
 	vMem, _ := mem.VirtualMemory()
 	swapMem, _ := mem.SwapMemory()
 
 	// Host
+	// 主机系统信息
 	hInfo, _ := host.Info()
 
 	// Process
+	// 当前进程状态
 	p, _ := process.NewProcess(int32(os.Getpid()))
-	pName, _ := p.Name()
-	pPPid, _ := p.Ppid()
-	pCPU, _ := p.CPUPercent()
-	pMem, _ := p.MemoryPercent()
+	var pName string
+	var pPPid int32
+	var pCPU float64
+	var pMem float32
+	if p != nil {
+		// Only invoke methods if the process instance is not nil to prevent panic
+		// 仅当进程实例不为 nil 时调用方法，以防 panic
+		pName, _ = p.Name()
+		pPPid, _ = p.Ppid()
+		pCPU, _ = p.CPUPercent()
+		pMem, _ = p.MemoryPercent()
+	}
 
 	data := dto.AdminSystemInfo{
 		StartTime: h.App.StartTime,
@@ -735,43 +778,70 @@ func (h *AdminControlHandler) GetSystemInfo(c *gin.Context) {
 			PhysicalCores: physCores,
 			LogicalCores:  logicCores,
 			Percent:       cpuPercents,
-			LoadAvg: &dto.AdminLoadInfo{
-				Load1:  loadStat.Load1,
-				Load5:  loadStat.Load5,
-				Load15: loadStat.Load15,
-			},
-		},
-		Memory: dto.AdminMemoryInfo{
-			Total:           vMem.Total,
-			Available:       vMem.Available,
-			Used:            vMem.Used,
-			UsedPercent:     vMem.UsedPercent,
-			SwapTotal:       swapMem.Total,
-			SwapUsed:        swapMem.Used,
-			SwapUsedPercent: swapMem.UsedPercent,
-		},
-		Host: dto.AdminHostInfo{
-			Hostname:      hInfo.Hostname,
-			OS:            hInfo.OS,
-			OSPretty:      util.GetOSPrettyName(),
-			Platform:      hInfo.Platform,
-			Arch:          hInfo.KernelArch,
-			KernelVersion: hInfo.KernelVersion,
-			Uptime:        hInfo.Uptime,
-			CurrentTime:   time.Now(),
-			TimeZone:      time.Now().Location().String(),
-			TimeZoneOffset: func() int {
-				_, offset := time.Now().Zone()
-				return offset
+			LoadAvg: func() *dto.AdminLoadInfo {
+				// Safely check nil loadStat to prevent panic on Windows/unsupported platforms
+				// 安全地校验 nil 指针，防止在 Windows 等不支持的平台上产生 panic
+				if loadStat == nil {
+					return nil
+				}
+				return &dto.AdminLoadInfo{
+					Load1:  loadStat.Load1,
+					Load5:  loadStat.Load5,
+					Load15: loadStat.Load15,
+				}
 			}(),
 		},
-		Process: dto.AdminProcessInfo{
-			PID:           p.Pid,
-			PPID:          pPPid,
-			Name:          pName,
-			CPUPercent:    pCPU,
-			MemoryPercent: pMem,
-		},
+		Memory: func() dto.AdminMemoryInfo {
+			var info dto.AdminMemoryInfo
+			// Safely handle nil memory structures
+			// 安全地处理 nil 的内存结构体
+			if vMem != nil {
+				info.Total = vMem.Total
+				info.Available = vMem.Available
+				info.Used = vMem.Used
+				info.UsedPercent = vMem.UsedPercent
+			}
+			if swapMem != nil {
+				info.SwapTotal = swapMem.Total
+				info.SwapUsed = swapMem.Used
+				info.SwapUsedPercent = swapMem.UsedPercent
+			}
+			return info
+		}(),
+		Host: func() dto.AdminHostInfo {
+			var info dto.AdminHostInfo
+			// Safely handle nil host information structure
+			// 安全地处理 nil 的主机信息结构体
+			if hInfo != nil {
+				info.Hostname = hInfo.Hostname
+				info.OS = hInfo.OS
+				info.Platform = hInfo.Platform
+				info.Arch = hInfo.KernelArch
+				info.KernelVersion = hInfo.KernelVersion
+				info.Uptime = hInfo.Uptime
+			}
+			info.OSPretty = util.GetOSPrettyName()
+			info.CurrentTime = time.Now()
+			info.TimeZone = time.Now().Location().String()
+			info.TimeZoneOffset = func() int {
+				_, offset := time.Now().Zone()
+				return offset
+			}()
+			return info
+		}(),
+		Process: func() dto.AdminProcessInfo {
+			var info dto.AdminProcessInfo
+			// Safely handle nil process pointer
+			// 安全地处理 nil 的进程指针
+			if p != nil {
+				info.PID = p.Pid
+			}
+			info.PPID = pPPid
+			info.Name = pName
+			info.CPUPercent = pCPU
+			info.MemoryPercent = pMem
+			return info
+		}(),
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -800,6 +870,20 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	if ok, validErrs := pkgapp.BindAndValid(c, &upgradeReq); !ok {
 		response.ToResponse(code.ErrorInvalidParams.WithDetails(validErrs.Errors()...))
 		return
+	}
+
+	// Filter and validate Version parameter
+	// 过滤并验证 Version 参数
+	if upgradeReq.Version != "latest" {
+		v := upgradeReq.Version
+		if !strings.HasPrefix(v, "v") {
+			v = "v" + v
+		}
+		if !semver.IsValid(v) {
+			h.App.Logger().Warn("apiRouter.AdminControl.Upgrade invalid version format", zap.String("version", upgradeReq.Version))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("invalid version format"))
+			return
+		}
 	}
 
 	checkInfo := h.App.CheckVersion("")
@@ -982,6 +1066,46 @@ func (h *AdminControlHandler) GetWSClients(c *gin.Context) {
 
 	clients := h.wss.GetClients()
 	response.ToResponse(code.Success.WithData(clients))
+}
+
+// KickWSClient kicks a WebSocket client (requires admin privileges)
+// @Summary Kick a WebSocket client
+// @Description Kick a WebSocket client by TraceID, requires admin privileges
+// @Tags System
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Param traceId path string true "Trace ID of the client"
+// @Produce json
+// @Success 200 {object} pkgapp.Res "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/ws_client/{traceId} [delete]
+func (h *AdminControlHandler) KickWSClient(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	uid := pkgapp.GetUID(c)
+
+	if uid == 0 {
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	traceID := c.Param("traceId")
+	if traceID == "" {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("traceId is required"))
+		return
+	}
+
+	if ok := h.wss.KickClient(traceID); !ok {
+		response.ToResponse(code.Failed.WithDetails("Client not found or already disconnected"))
+		return
+	}
+
+	response.ToResponse(code.Success.WithDetails("Client kicked successfully"))
 }
 
 func (h *AdminControlHandler) downloadFile(url string, dest string) error {

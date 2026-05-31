@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 const (
 	BackupStatusIdle     = 0
 	BackupStatusRunning  = 1
@@ -29,6 +28,8 @@ type BackupConfig struct {
 	RetentionDays    int       // 保留天数
 	LastRunTime      time.Time // 上次运行时间
 	NextRunTime      time.Time // 下次运行时间
+	PasswordMode     int       // 密码模式 (0: 无密码, 1: 固定密码, 2: 随机密码)
+	PasswordValue    string    // 固定密码值
 	LastStatus       int       // 上次状态 (0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: SuccessNoUpdate)
 	LastMessage      string    // 上次运行结果消息
 	CreatedAt        time.Time
@@ -49,6 +50,7 @@ type BackupHistory struct {
 	FileCount int64
 	Message   string
 	FilePath  string
+	Password  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -82,4 +84,3 @@ type BackupRepository interface {
 	// DisableByVaultID 禁用仓库下的备份任务
 	DisableByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

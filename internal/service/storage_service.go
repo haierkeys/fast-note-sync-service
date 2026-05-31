@@ -196,19 +196,19 @@ func (s *storageService) GetEnabledTypes() ([]string, error) {
 	if s.config.LocalFS.IsEnabled {
 		types = append(types, string(storage.LOCAL))
 	}
-	if s.config.AliyunOSS.IsEnabled {
+	if *s.config.AliyunOSS.IsEnabled {
 		types = append(types, string(storage.OSS))
 	}
-	if s.config.AwsS3.IsEnabled {
+	if *s.config.AwsS3.IsEnabled {
 		types = append(types, string(storage.S3))
 	}
-	if s.config.CloudflareR2.IsEnabled {
+	if *s.config.CloudflareR2.IsEnabled {
 		types = append(types, string(storage.R2))
 	}
-	if s.config.MinIO.IsEnabled {
+	if *s.config.MinIO.IsEnabled {
 		types = append(types, string(storage.MinIO))
 	}
-	if s.config.WebDAV.IsEnabled {
+	if *s.config.WebDAV.IsEnabled {
 		types = append(types, string(storage.WebDAV))
 	}
 	return types, nil
@@ -219,15 +219,15 @@ func (s *storageService) isStorageTypeEnabled(t string) bool {
 	case storage.LOCAL:
 		return s.config.LocalFS.IsEnabled
 	case storage.OSS:
-		return s.config.AliyunOSS.IsEnabled
+		return *s.config.AliyunOSS.IsEnabled
 	case storage.S3:
-		return s.config.AwsS3.IsEnabled
+		return *s.config.AwsS3.IsEnabled
 	case storage.R2:
-		return s.config.CloudflareR2.IsEnabled
+		return *s.config.CloudflareR2.IsEnabled
 	case storage.MinIO:
-		return s.config.MinIO.IsEnabled
+		return *s.config.MinIO.IsEnabled
 	case storage.WebDAV:
-		return s.config.WebDAV.IsEnabled
+		return *s.config.WebDAV.IsEnabled
 	default:
 		return false
 	}

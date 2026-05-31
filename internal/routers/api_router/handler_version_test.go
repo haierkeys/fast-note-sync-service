@@ -30,7 +30,7 @@ func TestVersionHandler_ServerVersion_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	
+
 	// Verify that the response contains the version from app.Version
 	var resp struct {
 		Data struct {
@@ -44,7 +44,7 @@ func TestVersionHandler_ServerVersion_Success(t *testing.T) {
 
 func TestVersionHandler_Support_Success(t *testing.T) {
 	testApp := app.NewTestApp(nil)
-	
+
 	// Inject some support records
 	records := []pkgapp.SupportRecord{
 		{Name: "User1", Amount: "10", Time: "2023-01-01"},
@@ -58,6 +58,6 @@ func TestVersionHandler_Support_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
-	
+
 	assert.Contains(t, w.Body.String(), "User1")
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
@@ -232,6 +233,12 @@ type SessionCleaner interface {
 	Cleanup()
 }
 
+// PathHashGetter interface, used to identify session by file path hash
+// PathHashGetter 接口，用于通过文件路径哈希标识会话
+type PathHashGetter interface {
+	GetPathHash() string
+}
+
 // DiffMergeEntry represents an entry in DiffMergePaths
 // DiffMergeEntry 表示 DiffMergePaths 中的条目
 // Contains creation timestamp for timeout cleanup mechanism
@@ -265,6 +272,10 @@ type WebsocketClient struct {
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
 	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
+	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
+	Scope               string                    // Token Scope // 令牌权限范围
+	Vaults              string                    // Restrict Vaults // 限制笔记库
+	Lang                string                    // Language preference // 语言偏好
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -454,7 +465,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	content := Res{
 		Code:    code.Code(),
 		Status:  code.Status(),
-		Message: code.Lang.GetMessage(),
+		Message: code.MsgIn(c.Lang),
 		Data:    code.Data(),
 	}
 
@@ -510,7 +521,7 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 	content := Res{
 		Code:    code.Code(),
 		Status:  code.Status(),
-		Message: code.Lang.GetMessage(),
+		Message: code.MsgIn(c.Lang),
 		Data:    code.Data(),
 	}
 
@@ -629,6 +640,9 @@ type AppContainer interface {
 	// IsProductionMode whether it is production mode
 	// IsProductionMode 是否为生产模式
 	IsProductionMode() bool
+	// GetTokenService gets token service for RBAC
+	// GetTokenService 获取 Token 服务
+	GetTokenService() any // Use any to avoid circular dependency, then type assert in use
 }
 
 // ValidatorInterface validator interface
@@ -639,8 +653,9 @@ type ValidatorInterface interface {
 
 type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
-	handlers          map[string]func(*WebsocketClient, *WebSocketMessage)
-	userVerifyHandler func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
+	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
+	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
@@ -665,6 +680,7 @@ type WSClientInfo struct {
 	RemoteAddr    string          `json:"remoteAddr"`
 	StartTime     timex.Time      `json:"startTime"`
 	TraceID       string          `json:"traceId"`
+	TokenID       int64           `json:"tokenId"`
 }
 
 // GetClients returns information of all currently connected WebSocket clients
@@ -682,6 +698,7 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 			RemoteAddr:    c.conn.RemoteAddr().String(),
 			StartTime:     c.StartTime,
 			TraceID:       c.TraceID,
+			TokenID:       c.TokenID,
 		}
 		if c.User != nil {
 			info.UID = c.User.ID
@@ -690,6 +707,33 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 		clients = append(clients, info)
 	}
 	return clients
+}
+
+// KickClient closes a WebSocket connection by TraceID
+// KickClient 通过 TraceID 关闭 WebSocket 连接
+func (w *WebsocketServer) KickClient(traceID string) bool {
+	w.mu.RLock()
+	client, ok := w.clientsByTraceID(traceID)
+	w.mu.RUnlock()
+
+	if !ok {
+		return false
+	}
+
+	if client.conn != nil {
+		client.conn.WriteClose(1000, []byte("kicked by admin"))
+	}
+	return true
+}
+
+// clientsByTraceID finds a client by TraceID (helper, requires mu lock)
+func (w *WebsocketServer) clientsByTraceID(traceID string) (*WebsocketClient, bool) {
+	for _, c := range w.clients {
+		if c.TraceID == traceID {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 // NewWebsocketServer creates WebSocket server instance
@@ -760,12 +804,32 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 			StartTime: timex.Now(),
 		}
 
+		// Extract client info from query parameters
+		// 从查询参数中提取客户端信息
+		client.ClientType = c.Query("client")
+		client.ClientName = c.Query("clientName")
+		client.ClientVersion = c.Query("clientVersion")
+
+		// Extract language preference
+		// 提取语言偏好
+		lang := c.Query("lang")
+		if lang == "" {
+			lang = c.GetHeader("lang")
+		}
+		client.Lang = strings.ToLower(strings.ReplaceAll(lang, "-", "_"))
+
 		// Initialize long-lifecycle context for WebSocket connection
 		// 初始化 WebSocket 连接的长生命周期 context
 		client.initContext(traceID)
 
 		w.AddClient(client)
-		log(LogInfo, "WS Start", zap.String("type", "ReadLoop"), zap.String("traceID", traceID))
+		log(LogInfo, "WS Start",
+			zap.String("type", "ReadLoop"),
+			zap.String("traceID", traceID),
+			zap.String("client", client.ClientType),
+			zap.String("clientName", client.ClientName),
+			zap.String("clientVersion", client.ClientVersion),
+		)
 		go socket.ReadLoop()
 	}
 }
@@ -776,6 +840,10 @@ func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *Web
 
 func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
 	w.userVerifyHandler = handler
+}
+
+func (w *WebsocketServer) UseTokenVerify(handler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)) {
+	w.tokenVerifyHandler = handler
 }
 
 func (w *WebsocketServer) UseBinary(prefix string, handler func(*WebsocketClient, []byte)) {
@@ -790,7 +858,11 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 	secretKey := w.app.GetAuthTokenKey()
 	if user, err := ParseTokenWithKey(string(msg.Data), secretKey); err != nil {
 		log(LogError, "WS Authorization FAILD", zap.Error(err))
-		c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+		if appErr, ok := err.(*code.Code); ok {
+			c.ToResponse(appErr, "Authorization")
+		} else {
+			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+		}
 		time.Sleep(2 * time.Second)
 		c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 	} else {
@@ -804,20 +876,51 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			return
 		}
 
+		// Verify 3D RBAC permissions via injected handler
+		// 通过注入的处理函数验证 3D RBAC 权限
+		if w.tokenVerifyHandler != nil {
+			reqClientType := c.Ctx.GetHeader("x-client")
+			if reqClientType == "" {
+				reqClientType = c.Ctx.Query("client")
+			}
+			reqUserAgent := c.Ctx.GetHeader("User-Agent")
+			reqIP := c.Ctx.ClientIP()
+
+			scope, vaults, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
+			if err != nil {
+				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
+				if appErr, ok := err.(*code.Code); ok {
+					c.ToResponse(appErr, "Authorization")
+				} else {
+					c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+				}
+				time.Sleep(2 * time.Second)
+				c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
+				return
+			}
+			c.Scope = scope
+			c.Vaults = vaults
+		}
+
 		// Mandatorily verify user validity
 		// 用户有效性强制验证
 		userSelect, err := w.userVerifyHandler(c, uid)
 		if userSelect == nil || err != nil {
 			log(LogError, "WS Authorization FAILD USER Not Exist", zap.Error(err))
-			c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			if appErr, ok := err.(*code.Code); ok {
+				c.ToResponse(appErr, "Authorization")
+			} else {
+				c.ToResponse(code.ErrorInvalidUserAuthToken, "Authorization")
+			}
 			time.Sleep(2 * time.Second)
 			c.conn.WriteClose(1000, []byte("AuthorizationFaild"))
 			return
 		}
 
 		user.Nickname = userSelect.Nickname
+		c.TokenID = user.TokenID
 
-		log(LogInfo, "WS Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname))
+		log(LogInfo, "WS Authorization", zap.String("uid", user.ID), zap.String("Nickname", user.Nickname), zap.Int64("TokenID", c.TokenID))
 		c.User = user
 		c.UserClients = w.AddUserClient(c)
 
@@ -913,11 +1016,95 @@ func (w *WebsocketServer) RemoveClient(conn *gws.Conn) {
 func (w *WebsocketServer) AddUserClient(c *WebsocketClient) ConnStorage {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.userClients[c.User.ID] == nil {
-		w.userClients[c.User.ID] = make(ConnStorage)
+	uid := c.User.ID
+	if _, ok := w.userClients[uid]; !ok {
+		w.userClients[uid] = make(ConnStorage)
 	}
-	w.userClients[c.User.ID][c.conn] = c
-	return w.userClients[c.User.ID]
+	w.userClients[uid][c.conn] = c
+	return w.userClients[uid]
+}
+
+// GetActiveTokenIDs gets all active token IDs for a specific user
+// GetActiveTokenIDs 获取特定用户的所有活动令牌 ID
+func (w *WebsocketServer) GetActiveTokenIDs(uid int64) map[int64]bool {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	activeTokens := make(map[int64]bool)
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID > 0 {
+				activeTokens[client.TokenID] = true
+			}
+		}
+	}
+	return activeTokens
+}
+
+// GetActiveTokenClients gets all active token IDs and their client names for a specific user
+// GetActiveTokenClients 获取特定用户的所有活动令牌 ID 及其对应的客户端名称
+func (w *WebsocketServer) GetActiveTokenClients(uid int64) map[int64][]string {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	activeClients := make(map[int64][]string)
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID > 0 {
+				if _, exists := activeClients[client.TokenID]; !exists {
+					activeClients[client.TokenID] = []string{}
+				}
+				names := activeClients[client.TokenID]
+				nameExists := false
+				for _, name := range names {
+					if name == client.ClientName {
+						nameExists = true
+						break
+					}
+				}
+				if !nameExists && client.ClientName != "" {
+					activeClients[client.TokenID] = append(names, client.ClientName)
+				}
+			}
+		}
+	}
+	return activeClients
+}
+
+// UpdateTokenScope updates the scope of all active connections for a specific token
+// UpdateTokenScope 更新特定令牌所有活动连接的权限范围
+func (w *WebsocketServer) UpdateTokenScope(uid int64, tokenID int64, newScope string) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID == tokenID {
+				log(LogInfo, "WS UpdateTokenScope", zap.Int64("uid", uid), zap.Int64("tokenID", tokenID), zap.String("newScope", newScope))
+				client.Scope = newScope
+			}
+		}
+	}
+}
+
+// KickToken closes all connections for a specific token
+// KickToken 关闭特定令牌的所有连接
+func (w *WebsocketServer) KickToken(uid int64, tokenID int64) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	uidStr := strconv.FormatInt(uid, 10)
+	if clients, ok := w.userClients[uidStr]; ok {
+		for _, client := range clients {
+			if client.TokenID == tokenID {
+				log(LogInfo, "WS KickToken", zap.Int64("uid", uid), zap.Int64("tokenID", tokenID))
+				client.conn.WriteClose(1000, []byte("TokenRotatedOrRevoked"))
+			}
+		}
+	}
 }
 
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
@@ -967,9 +1154,65 @@ func (w *WebsocketServer) RemoveSession(uid string, sessionID string) {
 	}
 }
 
+// CleanSessionsByPathHash cleans up existing sessions for a specific path hash of a user
+// CleanSessionsByPathHash 清理用户特定路径哈希的现有会话
+func (w *WebsocketServer) CleanSessionsByPathHash(uid string, pathHash string) {
+	w.sessionsMu.Lock()
+	defer w.sessionsMu.Unlock()
+
+	userSessions, ok := w.binaryChunkSessions[uid]
+	if !ok {
+		return
+	}
+
+	var sessionIDsToRemove []string
+	for sessionID, session := range userSessions {
+		if getter, ok := session.(PathHashGetter); ok {
+			if getter.GetPathHash() == pathHash {
+				sessionIDsToRemove = append(sessionIDsToRemove, sessionID)
+			}
+		}
+	}
+
+	for _, sessionID := range sessionIDsToRemove {
+		session := userSessions[sessionID]
+		delete(userSessions, sessionID)
+
+		if cleaner, ok := session.(SessionCleaner); ok {
+			go cleaner.Cleanup()
+		}
+	}
+
+	if len(userSessions) == 0 {
+		delete(w.binaryChunkSessions, uid)
+	}
+}
+
 func (w *WebsocketServer) OnOpen(conn *gws.Conn) {
 	log(LogInfo, "WS Client Connect", zap.Int("Count", len(w.clients)))
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
+}
+
+// isNormalDisconnectError 检查给定错误是否为正常的断开连接或网络中断错误
+// isNormalDisconnectError checks if the given error is a normal disconnect or network interruption error
+func isNormalDisconnectError(err error) bool {
+	if err == nil {
+		return true
+	}
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return true
+	}
+	errStr := err.Error()
+	// 检查常见的网络关闭、重置或超时错误消息
+	// Check common network closed, reset, or timeout error messages
+	if strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "i/o timeout") ||
+		strings.Contains(errStr, "closed network connection") ||
+		strings.Contains(errStr, "unexpected EOF") {
+		return true
+	}
+	return false
 }
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
@@ -982,7 +1225,7 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 	// First cancel the context of the WebSocket connection to notify all ongoing operations to stop
 	// 首先取消 WebSocket 连接的 context，通知所有正在进行的操作停止
 	// This must be performed before cleaning up other resources to ensure that all operations dependent on the context can receive the cancellation signal
-	// 这必须在清理其他资源之前执行，以确保所有依赖 context 的操作能够收到取消信号
+	// 这必须在清理其他 resource 之前执行，以确保所有依赖 context 的操作能够收到取消信号
 	c.cancelContext()
 
 	w.RemoveClient(conn)
@@ -993,14 +1236,14 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 		default:
 		}
 		logLevel := LogInfo
-		if err != nil && err != io.EOF {
+		if err != nil && !isNormalDisconnectError(err) {
 			logLevel = LogError
 		}
 		log(logLevel, "WS User Leave", zap.String("uid", c.User.ID), zap.String("traceID", c.TraceID), zap.Error(err))
 		w.RemoveUserClient(c)
 	} else {
 		logLevel := LogInfo
-		if err != nil && err != io.EOF {
+		if err != nil && !isNormalDisconnectError(err) {
 			logLevel = LogError
 		}
 		log(logLevel, "WS Client Leave (Unauth)", zap.String("traceID", c.TraceID), zap.Error(err))
@@ -1076,6 +1319,12 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 					return ctx.Err()
 				default:
 				}
+				// Verify binary message permission (currently only "00" for file chunk upload)
+				if !VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+					log(LogWarn, "WS OnMessage Binary Permission Denied", zap.String("prefix", prefix), zap.String("uid", c.User.ID))
+					c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: binary " + prefix))
+					return nil
+				}
 				handler(c, payloadCopy)
 				return nil
 			})
@@ -1131,10 +1380,128 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
+	// Verify Vault Restrictions for active WebSocket connections
+	// 针对活跃 WebSocket 连接校验笔记库访问权限限制
+	if c.Vaults != "" {
+		var vaultInfo struct {
+			Vault string `json:"vault"`
+		}
+		if err := json.Unmarshal(msg.Data, &vaultInfo); err == nil && vaultInfo.Vault != "" {
+			if !util.VerifyVaultAccess(c.Vaults, vaultInfo.Vault) {
+				log(LogWarn, "WS OnMessage Vault Restricted", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("vault", vaultInfo.Vault))
+				c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: "+vaultInfo.Vault), msg.Type+"Ack")
+				return
+			}
+		}
+	}
+
 	// Execute operation
 	// 执行操作
 	handler, exists := w.handlers[msg.Type]
 	if exists {
+		// Map Action to Function for RBAC
+		var function string
+		switch msg.Type {
+		case "NoteSync", "NoteCheck", "NoteRePush", "FolderSync":
+			function = "note_r"
+		case "NoteModify", "NoteDelete", "NoteRename", "FolderModify", "FolderDelete", "FolderRename":
+			function = "note_w"
+		case "FileChunkDownload", "FileRePush", "FileSync":
+			function = "file_r"
+		case "FileUploadCheck", "FileDelete", "FileRename":
+			function = "file_w"
+		case "SettingSync", "SettingCheck", "SettingRePush":
+			function = "config_r"
+		case "SettingModify", "SettingDelete", "SettingClear":
+			function = "config_w"
+		}
+
+		if function != "" && !VerifyPermissions(c.Scope, "ws", c.ClientType, function) {
+			log(LogWarn, "WS OnMessage Permission Denied", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("function", function))
+
+			// Try to extract resource path from message data
+			var pathInfo struct {
+				Path string `json:"path"`
+				Name string `json:"name"`
+			}
+			_ = json.Unmarshal(msg.Data, &pathInfo)
+			resPath := pathInfo.Path
+			if resPath == "" {
+				resPath = pathInfo.Name
+			}
+			if resPath == "" {
+				resPath = msg.Type // Fallback to message type
+			}
+
+			c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: "+resPath), msg.Type+"Ack")
+
+			// Trigger re-push for write operations to ensure client consistency
+			// 触发写操作的重推，确保客户端一致性
+			if strings.HasSuffix(function, "_w") {
+				// Special handling for Rename operations:
+				// Send a SyncRename message to "rename back" the resource on the client side.
+				// For example, if client tried A -> B and failed, we send Rename(Path=A, OldPath=B).
+				// 针对重命名操作的特殊处理：
+				// 向客户端发送一个同步重命名消息，将其“重命名回”原始路径。
+				// 例如：客户端尝试 A -> B 失败，我们下发 Rename(Path=A, OldPath=B)。
+				if strings.HasSuffix(msg.Type, "Rename") {
+					var renameData map[string]interface{}
+					if err := json.Unmarshal(msg.Data, &renameData); err == nil {
+						vault, _ := renameData["vault"].(string)
+						newPath, _ := renameData["path"].(string)
+						newPathHash, _ := renameData["pathHash"].(string)
+						oldPath, _ := renameData["oldPath"].(string)
+						oldPathHash, _ := renameData["oldPathHash"].(string)
+
+						if newPath != "" && oldPath != "" {
+							var syncRenameAction string
+							switch function {
+							case "note_w":
+								if strings.Contains(msg.Type, "Folder") {
+									syncRenameAction = "FolderSyncRename"
+								} else {
+									syncRenameAction = "NoteSyncRename"
+								}
+							case "file_w":
+								syncRenameAction = "FileSyncRename"
+							}
+
+							if syncRenameAction != "" {
+								rollbackData := map[string]interface{}{
+									"path":        oldPath,
+									"pathHash":    oldPathHash,
+									"oldPath":     newPath,
+									"oldPathHash": newPathHash,
+								}
+								c.ToResponse(code.Success.WithData(rollbackData).WithVault(vault), syncRenameAction)
+								// For Rename rollback, we don't need subsequent RePush (Delete/Modify)
+								// 对于重命名回滚，我们不再需要后续的 RePush（避免下发 Delete/Modify）
+								return
+							}
+						}
+					}
+				}
+
+				var rePushAction string
+				switch function {
+				case "note_w":
+					rePushAction = "NoteRePush"
+				case "file_w":
+					rePushAction = "FileRePush"
+				case "config_w":
+					rePushAction = "SettingRePush"
+				}
+
+				if rePushAction != "" {
+					if h, ok := w.handlers[rePushAction]; ok {
+						log(LogInfo, "WS Trigger RePush on permission denied", zap.String("action", rePushAction), zap.String("uid", c.User.ID))
+						h(c, &msg)
+					}
+				}
+			}
+			return
+		}
+
 		// Use the client object retrieved at the beginning of the function
 		handler(c, &msg)
 	} else {

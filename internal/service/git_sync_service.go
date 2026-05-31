@@ -50,39 +50,41 @@ type GitSyncService interface {
 }
 
 type gitSyncService struct {
-	repo       domain.GitSyncRepository
-	noteRepo   domain.NoteRepository
-	folderRepo domain.FolderRepository
-	fileRepo   domain.FileRepository
-	vaultRepo  domain.VaultRepository
-	gitConf    *appconfig.GitConfig
-	logger     *zap.Logger
-	mu         sync.Mutex
-	running    map[int64]context.CancelFunc // configID -> cancelFunc
-	timers     map[int64]*time.Timer        // configID -> timer
-	ctx        context.Context
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
-	gcTimer    *time.Timer // Timer for delayed GC // 延迟 GC 定时器
-	gcMu       sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
+	repo        domain.GitSyncRepository
+	noteRepo    domain.NoteRepository
+	folderRepo  domain.FolderRepository
+	fileRepo    domain.FileRepository
+	vaultRepo   domain.VaultRepository
+	settingRepo domain.SettingRepository
+	gitConf     *appconfig.GitConfig
+	logger      *zap.Logger
+	mu          sync.Mutex
+	running     map[int64]context.CancelFunc // configID -> cancelFunc
+	timers      map[int64]*time.Timer        // configID -> timer
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
+	gcTimer     *time.Timer // Timer for delayed GC // 延迟 GC 定时器
+	gcMu        sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
 }
 
 // NewGitSyncService creates a GitSyncService instance
 // NewGitSyncService 创建 GitSyncService 实例
-func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, gitConf *appconfig.GitConfig, logger *zap.Logger) GitSyncService {
+func NewGitSyncService(repo domain.GitSyncRepository, noteRepo domain.NoteRepository, folderRepo domain.FolderRepository, fileRepo domain.FileRepository, vaultRepo domain.VaultRepository, settingRepo domain.SettingRepository, gitConf *appconfig.GitConfig, logger *zap.Logger) GitSyncService {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &gitSyncService{
-		repo:       repo,
-		noteRepo:   noteRepo,
-		folderRepo: folderRepo,
-		fileRepo:   fileRepo,
-		vaultRepo:  vaultRepo,
-		gitConf:    gitConf,
-		logger:     logger,
-		running:    make(map[int64]context.CancelFunc),
-		timers:     make(map[int64]*time.Timer),
-		ctx:        ctx,
-		cancel:     cancel,
+		repo:        repo,
+		noteRepo:    noteRepo,
+		folderRepo:  folderRepo,
+		fileRepo:    fileRepo,
+		vaultRepo:   vaultRepo,
+		settingRepo: settingRepo,
+		gitConf:     gitConf,
+		logger:      logger,
+		running:     make(map[int64]context.CancelFunc),
+		timers:      make(map[int64]*time.Timer),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 }
 
@@ -91,19 +93,21 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 		return nil
 	}
 	res := &dto.GitSyncConfigDTO{
-		ID:            conf.ID,
-		UID:           conf.UID,
-		RepoURL:       conf.RepoURL,
-		Username:      conf.Username,
-		Password:      conf.Password,
-		Branch:        conf.Branch,
-		IsEnabled:     conf.IsEnabled,
-		Delay:         conf.Delay,
-		RetentionDays: conf.RetentionDays,
-		LastStatus:    conf.LastStatus,
-		LastMessage:   conf.LastMessage,
-		CreatedAt:     timex.Time(conf.CreatedAt),
-		UpdatedAt:     timex.Time(conf.UpdatedAt),
+		ID:              conf.ID,
+		UID:             conf.UID,
+		RepoURL:         conf.RepoURL,
+		Username:        conf.Username,
+		Password:        conf.Password,
+		Branch:          conf.Branch,
+		IsEnabled:       conf.IsEnabled,
+		Delay:           conf.Delay,
+		RetentionDays:   conf.RetentionDays,
+		LastStatus:      conf.LastStatus,
+		LastMessage:     conf.LastMessage,
+		IncludeConfig:   conf.IncludeConfig,
+		ConfigSyncRules: conf.ConfigSyncRules,
+		CreatedAt:       timex.Time(conf.CreatedAt),
+		UpdatedAt:       timex.Time(conf.UpdatedAt),
 	}
 	if conf.LastSyncTime != nil {
 		res.LastSyncTime = timex.Time(*conf.LastSyncTime)
@@ -182,6 +186,8 @@ func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dt
 	conf.IsEnabled = params.IsEnabled
 	conf.Delay = params.Delay
 	conf.RetentionDays = params.RetentionDays
+	conf.IncludeConfig = params.IncludeConfig
+	conf.ConfigSyncRules = params.ConfigSyncRules
 
 	saved, err := s.repo.Save(ctx, conf, uid)
 	if err != nil {
@@ -659,7 +665,7 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 
 	s.logger.Info("Pushing changes", zap.Int64("configId", conf.ID))
 	err = r.Push(&git.PushOptions{
-		Auth:  auth,
+		Auth: auth,
 	})
 	if err != nil {
 		return fmt.Errorf("git push failed: %w", err)
@@ -728,6 +734,110 @@ func (s *gitSyncService) mirrorNotesToWorkspace(ctx context.Context, conf *domai
 
 		if len(files) < gitSyncBatchSize {
 			break
+		}
+	}
+
+	if conf.IncludeConfig && len(conf.ConfigSyncRules) > 0 {
+		settingsChanged, err := s.mirrorSettingsToWorkspace(ctx, conf, wsPath, lastSyncTime)
+		if err != nil {
+			return false, fmt.Errorf("mirror settings to workspace failed: %w", err)
+		}
+		if settingsChanged {
+			actuallyChanged = true
+		}
+	}
+
+	return actuallyChanged, nil
+}
+
+func (s *gitSyncService) mirrorSettingsToWorkspace(ctx context.Context, conf *domain.GitSyncConfig, wsPath string, lastSyncTime *time.Time) (bool, error) {
+	v, err := s.vaultRepo.GetByID(ctx, conf.VaultID, conf.UID)
+	if err != nil {
+		return false, err
+	}
+	if v == nil {
+		return false, fmt.Errorf("vault not found")
+	}
+
+	var ts int64
+	if lastSyncTime != nil {
+		ts = lastSyncTime.UnixMilli()
+	}
+
+	var actuallyChanged bool
+
+	// Fetch all settings for the vault
+	settings, err := s.settingRepo.ListByUpdatedTimestamp(ctx, ts, v.ID, conf.UID)
+	if err != nil {
+		return false, err
+	}
+
+	if len(settings) == 0 {
+		return false, nil
+	}
+
+	batchChanged, err := s.processSettingsBatch(settings, conf, wsPath)
+	if err != nil {
+		return false, err
+	}
+	if batchChanged {
+		actuallyChanged = true
+	}
+
+	return actuallyChanged, nil
+}
+
+func (s *gitSyncService) processSettingsBatch(settings []*domain.Setting, conf *domain.GitSyncConfig, wsPath string) (bool, error) {
+	var actuallyChanged bool
+
+	for _, st := range settings {
+		// Filter by rules
+		matched := false
+		for _, rule := range conf.ConfigSyncRules {
+			if rule == "" {
+				continue
+			}
+			// Prefix match for directories, exact match for files
+			if st.Path == rule || (len(st.Path) > len(rule) && st.Path[:len(rule)] == rule && (rule[len(rule)-1] == '/' || st.Path[len(rule)] == '/')) {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			continue
+		}
+
+		fullPath := filepath.Join(wsPath, st.Path)
+
+		if st.Action == domain.SettingActionDelete {
+			if _, err := os.Stat(fullPath); err == nil {
+				_ = os.Remove(fullPath)
+				actuallyChanged = true
+			}
+			continue
+		}
+
+		_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
+
+		// Check if content is different before writing
+		if oldFile, err := os.Open(fullPath); err == nil {
+			defer oldFile.Close()
+			if oldContent, err := io.ReadAll(oldFile); err == nil {
+				if string(oldContent) == st.Content {
+					continue // Skip writing if content is identical
+				}
+			}
+		}
+
+		if err := os.WriteFile(fullPath, []byte(st.Content), 0644); err != nil {
+			return false, fmt.Errorf("failed to write setting to workspace: %w", err)
+		} else {
+			actuallyChanged = true
+			if st.Mtime > 0 {
+				mt := time.UnixMilli(st.Mtime)
+				_ = os.Chtimes(fullPath, mt, mt)
+			}
 		}
 	}
 

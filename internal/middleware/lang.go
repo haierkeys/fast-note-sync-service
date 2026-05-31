@@ -35,6 +35,7 @@ func LangWithTranslator(uni *ut.UniversalTranslator) gin.HandlerFunc {
 		}
 
 		code.SetGlobalDefaultLang(lang)
+		c.Set("lang", lang)
 
 		c.Next()
 	}

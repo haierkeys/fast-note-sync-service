@@ -42,18 +42,21 @@ func initInfra(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*Infra, error) 
 	infra.writeQueueMgr = writequeue.New(&wqConfig, logger)
 
 	// DAO
-	// DAO
 	dbCfg := cfg.Database
 	dbCfg.RunMode = cfg.Server.RunMode
 
 	userDbCfg := cfg.UserDatabase
 	userDbCfg.RunMode = cfg.Server.RunMode
 
+	// Bleve Manager
+	bleveMgr := dao.NewBleveManager(cfg.App.FtsBleveEnabled, cfg.App.FtsBleveStoreRaw, logger)
+
 	infra.Dao = dao.New(db, context.Background(),
 		dao.WithConfig(&dbCfg),
 		dao.WithUserDatabaseConfig(&userDbCfg),
 		dao.WithLogger(logger),
 		dao.WithWriteQueueManager(infra.writeQueueMgr),
+		dao.WithBleveManager(bleveMgr),
 	)
 
 	// TokenManager

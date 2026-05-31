@@ -42,6 +42,8 @@ func newBackupConfig(db *gorm.DB, opts ...gen.DOOption) backupConfig {
 	_backupConfig.NextRunTime = field.NewTime(tableName, "next_run_time")
 	_backupConfig.LastStatus = field.NewInt64(tableName, "last_status")
 	_backupConfig.LastMessage = field.NewString(tableName, "last_message")
+	_backupConfig.PasswordMode = field.NewInt64(tableName, "password_mode")
+	_backupConfig.PasswordValue = field.NewString(tableName, "password_value")
 	_backupConfig.CreatedAt = field.NewField(tableName, "created_at")
 	_backupConfig.UpdatedAt = field.NewField(tableName, "updated_at")
 
@@ -68,6 +70,8 @@ type backupConfig struct {
 	NextRunTime      field.Time
 	LastStatus       field.Int64
 	LastMessage      field.String
+	PasswordMode     field.Int64
+	PasswordValue    field.String
 	CreatedAt        field.Field
 	UpdatedAt        field.Field
 
@@ -100,6 +104,8 @@ func (b *backupConfig) updateTableName(table string) *backupConfig {
 	b.NextRunTime = field.NewTime(table, "next_run_time")
 	b.LastStatus = field.NewInt64(table, "last_status")
 	b.LastMessage = field.NewString(table, "last_message")
+	b.PasswordMode = field.NewInt64(table, "password_mode")
+	b.PasswordValue = field.NewString(table, "password_value")
 	b.CreatedAt = field.NewField(table, "created_at")
 	b.UpdatedAt = field.NewField(table, "updated_at")
 
@@ -130,7 +136,7 @@ func (b *backupConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (b *backupConfig) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 16)
+	b.fieldMap = make(map[string]field.Expr, 18)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["uid"] = b.UID
 	b.fieldMap["vault_id"] = b.VaultID
@@ -145,6 +151,8 @@ func (b *backupConfig) fillFieldMap() {
 	b.fieldMap["next_run_time"] = b.NextRunTime
 	b.fieldMap["last_status"] = b.LastStatus
 	b.fieldMap["last_message"] = b.LastMessage
+	b.fieldMap["password_mode"] = b.PasswordMode
+	b.fieldMap["password_value"] = b.PasswordValue
 	b.fieldMap["created_at"] = b.CreatedAt
 	b.fieldMap["updated_at"] = b.UpdatedAt
 }

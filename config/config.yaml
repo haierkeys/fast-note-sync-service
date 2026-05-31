@@ -4,7 +4,7 @@ server:
   run-mode: release
   # HTTP 端口 (默认 :9000)。格式为 :port 或 IP:port
   # HTTP Port (default :9000). Format: :port or IP:port
-  http-port: :9000
+  http-port: ":9000"
   # 读取超时时间(秒)
   # Read timeout duration (seconds)
   read-timeout: 60
@@ -17,6 +17,23 @@ server:
   # SSE 保活心跳间隔（秒）
   # MCP SSE ping interval (seconds)
   mcp-sse-ping-interval: 30
+  # 独立 Web 界面端口。留空则不开启。格式: :port
+  # Independent WebGUI port. Leave empty to disable. Format: :port
+  webgui-port: ""
+  # 独立分享页面端口。留空则不开启。格式: :port
+  # Independent share page port. Leave empty to disable. Format: :port
+  share-port: ""
+  # 外部分享页面基础 URL（例如 https://share.example.com）。当同时设置了 webgui-port 和 share-port 时使用。
+  # External share page base URL (e.g., https://share.example.com). Used when both webgui-port and share-port are set.
+  share-base-url: ""
+  # 外部访问 API 的地址（例如 http://api.example.com:9000）。用于 Web 界面定位。
+  # External API URL (e.g., http://api.example.com:9000). Used for Web interface positioning.
+  ext-api-url: ""
+  # 所有请求的自定义 HTTP 响应头
+  # Custom HTTP response headers for all requests
+  custom-response-headers:
+    # "X-Custom-Header": "Custom-Value"
+
 
 app:
   # 默认每页显示的项目数
@@ -81,7 +98,7 @@ app:
   ws-parallel-enabled: true
   # WebSocket 并行处理的最大协程限制
   # Maximum goroutine limit for WebSocket parallel processing
-  ws-parallel-golimit: 8
+  ws-parallel-golimit: 5
   # 是否对 WebSocket 消息进行 UTF-8 校验
   # Whether to perform UTF-8 validation on WebSocket messages
   ws-check-utf8-enabled: true
@@ -104,6 +121,18 @@ app:
   # Data pull source setting: auto(detect) | github | cnb
   pull-source: auto
 
+  # 是否启用 Bleve 全文搜索。
+  # true (默认): 启用 Bleve 全文搜索，支持 searchMode=content 检索。
+  # false: 禁用 Bleve 全文搜索，检索退回到普通数据库模糊匹配。
+  # Whether to enable Bleve Full-Text Search (default true).
+  fts-bleve-enabled: true
+
+  # Bleve 全文搜索是否在索引中存储原始文本。
+  # true (方案 B): 既索引又存储原始内容，支持高亮预览，体积稍大。
+  # false (方案 A): 仅索引不存储原始内容，节省磁盘空间。
+  # Whether Bleve stores raw content (default true). If false, it only indexes it without storing.
+  fts-bleve-store-raw: false
+
 security:
   # 认证令牌加密混淆 Key
   # Internal key for auth token encryption and obfuscation
@@ -117,6 +146,14 @@ security:
   # 分享令牌过期时间。例如: 30d, 7d
   # Expiry duration for share tokens. e.g., 30d, 7d
   share-token-expiry: "30d"
+  # WebGUI 登录自动签发 Token 的有效期。例如: 7d, 30d, 24h
+  # Expiry duration for WebGUI auto-issued login tokens. e.g., 7d, 30d, 24h
+  webgui-login-token-expiry: "7d"
+  # WebGUI 登录 Token 是否绑定客户端 IP。
+  # 使用 Cloudflare Tunnel 时可关闭（false），避免因 IP 变化频繁掉线。
+  # Whether to bind client IP for WebGUI login tokens.
+  # Set to false when using Cloudflare Tunnel to avoid disconnection due to IP changes.
+  webgui-login-token-bind-ip: true
 
 # 主数据库配置
 # Main database configuration
@@ -347,3 +384,27 @@ cloudflare:
   # 是否开启 Cloudflare 隧道相关的详细日志
   # Whether to enable detailed logs for Cloudflare Tunnel
   log-enabled: false
+
+# 附件模拟静态访问配置 (免 Token 静态入口，主要提供给 nginx 访问)
+# Attachment mock static access configuration (No token static entry, mainly for nginx)
+# 静态资源地址示例 http://localhost:9000/attachments/1/test/demo.pdf
+# Static Resource URL Example http://localhost:9000/attachments/1/test/demo.pdf
+attachment-static:
+  # 是否开启该模拟静态入口
+  # Whether to enable the mock static entry
+  is-enable: false
+  # 允许访问的用户和笔记库，必须强制设置，否则不开启模拟访问
+  # Allowed users and vaults, must be set, otherwise static access is disabled
+  # 格式为 "uid": [vault1, vault2]
+  # Format: "uid": [vault1, vault2]
+  allowed-vaults:
+    # "1": ["notes", "work"]
+  # 允许访问的文件后缀类型，必须强制设置，否则不开启模拟访问
+  # Allowed file extensions, must be set, otherwise static access is disabled
+  allowed-types:
+    # - ".png"
+    # - ".jpg"
+    # - ".jpeg"
+    # - ".gif"
+    # - ".pdf"
+

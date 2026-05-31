@@ -35,6 +35,7 @@ type FileSyncUploadMessage struct {
 // FileSyncDownloadMessage 定义服务端通知客户端准备下载文件的消息结构
 type FileSyncDownloadMessage struct {
 	Path        string `json:"path" example:"Image.png"`        // File path // 文件路径
+	ContentHash string `json:"contentHash" example:"chash456"`   // Content hash // 内容哈希
 	Ctime       int64  `json:"ctime" example:"1700000000"`      // Creation time // 创建时间
 	Mtime       int64  `json:"mtime" example:"1700000000"`      // Modification time // 修改时间
 	SessionID   string `json:"sessionId" example:"sess_789012"` // Session ID // 会话 ID

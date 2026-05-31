@@ -74,7 +74,7 @@ func (r *syncLogRepository) Create(ctx context.Context, log *domain.SyncLog, uid
 			ClientName:    log.ClientName,
 			ClientType:    log.ClientType,
 			ClientVersion: log.ClientVersion,
-			Status:        log.Status,
+			Status:        int64(log.Status),
 			Message:       log.Message,
 			CreatedAt:     log.CreatedAt,
 		}
@@ -131,7 +131,7 @@ func (r *syncLogRepository) List(ctx context.Context, uid int64, logType, action
 			ClientName:    m.ClientName,
 			ClientType:    m.ClientType,
 			ClientVersion: m.ClientVersion,
-			Status:        m.Status,
+			Status:        int(m.Status),
 			Message:       m.Message,
 			CreatedAt:     m.CreatedAt,
 		})

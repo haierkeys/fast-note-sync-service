@@ -6,10 +6,11 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/blevesearch/bleve/v2"
+	bleveQuery "github.com/blevesearch/bleve/v2/search/query"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
-	"github.com/haierkeys/fast-note-sync-service/pkg/util"
-	"gorm.io/gorm"
+	"go.uber.org/zap"
 )
 
 // noteFTSRepository implements domain.NoteFTSRepository interface
@@ -29,225 +30,214 @@ func (r *noteFTSRepository) GetKey(uid int64) string {
 	return r.customPrefixKey + strconv.FormatInt(uid, 10)
 }
 
-// ensureFTSTable ensures FTS related tables exist
-// ensureFTSTable 确保 FTS 相关表存在
-func (r *noteFTSRepository) ensureFTSTable(uid int64) *gorm.DB {
-	key := r.GetKey(uid)
-	db := r.dao.ResolveDB(key)
-	if db == nil {
-		return nil
-	}
-
-	// Use onceKeys to ensure it is created only once
-	// 使用 onceKeys 确保只创建一次
-	onceKey := key + "#note_fts_v4"
-	if _, loaded := r.dao.onceKeys.LoadOrStore(onceKey, true); !loaded {
-		_ = model.CreateNoteFTSTable(db)
-	}
-
-	return db
-}
-
 // Upsert inserts or updates FTS index
 // Upsert 插入或更新 FTS 索引
 func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		// Ensure table exists
-		// 确保表存在
-		_ = model.CreateNoteFTSTable(db)
+	db := r.dao.ResolveDB("user_" + strconv.FormatInt(uid, 10))
+	var note model.Note
+	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
+		return err
+	}
 
-		// 1. Update snapshot table
-		// 1. 更新快照表
-		noteFTS := model.NoteFTS{
-			NoteID:  noteID,
-			Path:    path,
-			Content: content,
-		}
-		if err := db.Save(&noteFTS).Error; err != nil {
-			return err
-		}
+	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
+	if err != nil {
+		return err
+	}
 
-		// 2. Update inverted index table
-		// 2. 更新倒排索引表
-		// First delete old index
-		// 先删除旧索引
-		if err := db.Where("note_id = ?", noteID).Delete(&model.NoteFTSToken{}).Error; err != nil {
-			return err
-		}
+	doc := BleveNoteDoc{
+		ID:      strconv.FormatInt(noteID, 10),
+		Path:    path,
+		PathRaw: path,
+		Content: content,
+		Action:  note.Action,
+		Rename:  float64(note.Rename),
+		Ctime:   float64(note.Ctime),
+		Mtime:   float64(note.Mtime),
+	}
 
-		// Tokenization
-		// 分词
-		tokens := util.Tokenize(path + " " + content)
-		if len(tokens) == 0 {
-			return nil
-		}
-
-		// Batch insert new index
-		// 批量插入新索引
-		var tokenModels []model.NoteFTSToken
-		for _, t := range tokens {
-			tokenModels = append(tokenModels, model.NoteFTSToken{
-				NoteID: noteID,
-				Token:  t,
-			})
-		}
-
-		return db.CreateInBatches(tokenModels, 500).Error
-	})
+	return index.Index(doc.ID, doc)
 }
 
+// Delete deletes FTS index
 // Delete 删除 FTS 索引
 func (r *noteFTSRepository) Delete(ctx context.Context, noteID int64, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		_ = db.Where("note_id = ?", noteID).Delete(&model.NoteFTS{})
-		return db.Where("note_id = ?", noteID).Delete(&model.NoteFTSToken{}).Error
-	})
+	db := r.dao.ResolveDB("user_" + strconv.FormatInt(uid, 10))
+	var note model.Note
+	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
+		// Fallback: if note is already physically deleted, we don't know the vaultID.
+		// Try to delete from all vaults of this user.
+		// 容错：如果笔记已被物理删除，我们无法获知其 vaultID。尝试从该用户的所有仓库索引中将其删除。
+		var vaults []model.Vault
+		vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
+		if err := vaultDb.Table("vault").Find(&vaults).Error; err == nil {
+			for _, v := range vaults {
+				if index, err := r.dao.BleveMgr.GetIndex(uid, v.ID); err == nil {
+					_ = index.Delete(strconv.FormatInt(noteID, 10))
+				}
+			}
+		}
+		return nil
+	}
+
+	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
+	if err != nil {
+		return err
+	}
+
+	return index.Delete(strconv.FormatInt(noteID, 10))
 }
 
-// Search full-text search
-// Search 全文搜索
+// Search full-text search, returns list of matching note_id
+// Search 全文搜索，返回匹配的 note_id 列表
 func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID, uid int64, limit, offset int) ([]int64, error) {
-	db := r.ensureFTSTable(uid)
-	if db == nil {
-		return nil, nil
-	}
-
-	tokens := util.Tokenize(keyword)
-	if len(tokens) == 0 {
-		return nil, nil
-	}
-
-	var noteIDs []int64
-
-	// Build search SQL: find NoteID containing all Token in NoteFTSToken table
-	// 构建搜索 SQL：在 NoteFTSToken 表中查找包含所有 Token 的 NoteID
-	// And associate Note table to filter VaultID and Action
-	// 并关联 Note 表以过滤 VaultID 和 Action
-	query := db.Table("note_fts_token AS t").
-		Select("t.note_id").
-		Joins("INNER JOIN note ON t.note_id = note.id").
-		Where("t.token IN ?", tokens).
-		Where("note.vault_id = ?", vaultID).
-		Where("note.action != ?", "delete").
-		Group("t.note_id").
-		Having("COUNT(DISTINCT t.token) = ?", len(tokens)).
-		Order("COUNT(t.id) DESC") // Simple ranking: the higher the frequency, the higher the ranking // 简单的排名：出现频率越高排名越前
-
-	err := query.WithContext(ctx).Limit(limit).Offset(offset).Scan(&noteIDs).Error
+	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
 	if err != nil {
 		return nil, err
 	}
 
+	pathQuery := bleve.NewMatchQuery(keyword)
+	pathQuery.SetField("path")
+	pathQuery.Operator = bleveQuery.MatchQueryOperatorAnd
+
+	contentQuery := bleve.NewMatchQuery(keyword)
+	contentQuery.SetField("content")
+	contentQuery.Operator = bleveQuery.MatchQueryOperatorAnd
+
+	actionQuery := bleve.NewBooleanQuery()
+	actionTermQuery := bleve.NewTermQuery("delete")
+	actionTermQuery.SetField("action")
+	actionQuery.AddMustNot(actionTermQuery)
+
+	query := bleve.NewConjunctionQuery(
+		bleve.NewDisjunctionQuery(pathQuery, contentQuery),
+		actionQuery,
+	)
+
+	req := bleve.NewSearchRequest(query)
+	req.Size = limit
+	req.From = offset
+	req.SortBy([]string{"-mtime"})
+
+	res, err := index.Search(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var noteIDs []int64
+	for _, hit := range res.Hits {
+		id, _ := strconv.ParseInt(hit.ID, 10, 64)
+		noteIDs = append(noteIDs, id)
+	}
+
+	// Log search keyword and result IDs
+	// 记录搜索关键词与结果 ID 列表的日志
+	r.dao.Logger().Info("FTS Search full-text search execution",
+		zap.String("keyword", keyword),
+		zap.Int64("uid", uid),
+		zap.Int64("vaultID", vaultID),
+		zap.Int64s("results", noteIDs),
+		zap.Int("total_hits", int(res.Total)),
+	)
+
 	return noteIDs, nil
 }
 
+// SearchCount full-text search count
 // SearchCount 全文搜索计数
 func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vaultID, uid int64) (int64, error) {
-	db := r.ensureFTSTable(uid)
-	if db == nil {
-		return 0, nil
-	}
-
-	tokens := util.Tokenize(keyword)
-	if len(tokens) == 0 {
-		return 0, nil
-	}
-
-	var count int64
-
-	subQuery := db.Table("note_fts_token AS t").
-		Select("t.note_id").
-		Joins("INNER JOIN note ON t.note_id = note.id").
-		Where("t.token IN ?", tokens).
-		Where("note.vault_id = ?", vaultID).
-		Where("note.action != ?", "delete").
-		Group("t.note_id").
-		Having("COUNT(DISTINCT t.token) = ?", len(tokens))
-
-	err := db.Table("(?) AS sub", subQuery).Count(&count).Error
+	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
 	if err != nil {
 		return 0, err
 	}
 
-	return count, nil
+	pathQuery := bleve.NewMatchQuery(keyword)
+	pathQuery.SetField("path")
+	pathQuery.Operator = bleveQuery.MatchQueryOperatorAnd
+
+	contentQuery := bleve.NewMatchQuery(keyword)
+	contentQuery.SetField("content")
+	contentQuery.Operator = bleveQuery.MatchQueryOperatorAnd
+
+	actionQuery := bleve.NewBooleanQuery()
+	actionTermQuery := bleve.NewTermQuery("delete")
+	actionTermQuery.SetField("action")
+	actionQuery.AddMustNot(actionTermQuery)
+
+	query := bleve.NewConjunctionQuery(
+		bleve.NewDisjunctionQuery(pathQuery, contentQuery),
+		actionQuery,
+	)
+
+	req := bleve.NewSearchRequest(query)
+	req.Size = 0
+	res, err := index.Search(req)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(res.Total), nil
 }
 
 // RebuildIndex rebuilds index
 // RebuildIndex 重建索引
 func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		// Drop and rebuild table
-		// 删除并重建表
-		if err := model.DropNoteFTSTable(db); err != nil {
-			return err
-		}
-		if err := model.CreateNoteFTSTable(db); err != nil {
-			return err
-		}
+	var vaults []model.Vault
+	vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
+	if err := vaultDb.Table("vault").Where("is_deleted = 0").Find(&vaults).Error; err != nil {
+		return err
+	}
 
-		// Get all notes
-		// 获取所有笔记
-		var notes []model.Note
-		if err := db.Where("action != ?", "delete").Find(&notes).Error; err != nil {
-			return err
-		}
+	for _, v := range vaults {
+		_ = r.rebuildVault(ctx, uid, v.ID)
+	}
 
-		// Re-index
-		// 重新索引
-		for _, note := range notes {
-			folder := r.dao.GetNoteFolderPath(uid, note.ID)
-			content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
-			if err != nil {
-				return err
-			}
-			if !exists {
-				content = ""
-			}
+	return nil
+}
 
-			// Part that manually calls Upsert logic (since already in transaction)
-			// 手动调用 Upsert 逻辑的部分（因为已经在事务里）
-			noteFTS := model.NoteFTS{NoteID: note.ID, Path: note.Path, Content: content}
-			db.Save(&noteFTS)
+// rebuildVault rebuilds index for a specific vault
+// rebuildVault 重建特定仓库的索引
+func (r *noteFTSRepository) rebuildVault(ctx context.Context, uid, vaultID int64) error {
+	_ = r.dao.BleveMgr.DeleteIndex(uid, vaultID)
 
-			tokens := util.Tokenize(note.Path + " " + content)
-			if len(tokens) == 0 {
-				continue
-			}
+	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
+	if err != nil {
+		return err
+	}
 
-			var tokenModels []model.NoteFTSToken
-			for _, t := range tokens {
-				tokenModels = append(tokenModels, model.NoteFTSToken{NoteID: note.ID, Token: t})
-			}
-			db.CreateInBatches(tokenModels, 500)
+	db := r.dao.ResolveDB("user_" + strconv.FormatInt(uid, 10))
+	var notes []model.Note
+	if err := db.Where("vault_id = ?", vaultID).Find(&notes).Error; err != nil {
+		return err
+	}
+
+	for _, note := range notes {
+		folder := r.dao.GetNoteFolderPath(uid, note.ID)
+		content, exists, err := r.dao.LoadContentFromFile(folder, "content.txt")
+		if err != nil || !exists {
+			content = ""
 		}
 
-		return nil
-	})
+		doc := BleveNoteDoc{
+			ID:      strconv.FormatInt(note.ID, 10),
+			Path:    note.Path,
+			PathRaw: note.Path,
+			Content: content,
+			Action:  note.Action,
+			Rename:  float64(note.Rename),
+			Ctime:   float64(note.Ctime),
+			Mtime:   float64(note.Mtime),
+		}
+
+		_ = index.Index(doc.ID, doc)
+	}
+
+	return nil
 }
 
 // DeleteByVaultID deletes all FTS records for a vault
 // DeleteByVaultID 删除指定仓库的所有 FTS 记录
 func (r *noteFTSRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
-	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		// 先在 note 表找到该仓库的所有笔记 ID
-		var noteIDs []int64
-		err := db.Table("note").Where("vault_id = ?", vaultID).Pluck("id", &noteIDs).Error
-		if err != nil {
-			return err
-		}
-
-		if len(noteIDs) == 0 {
-			return nil
-		}
-
-		// 从 NoteFTS 删除
-		if err := db.Where("note_id IN ?", noteIDs).Delete(&model.NoteFTS{}).Error; err != nil {
-			return err
-		}
-
-		// 从 NoteFTSToken 删除
-		return db.Where("note_id IN ?", noteIDs).Delete(&model.NoteFTSToken{}).Error
-	})
+	return r.dao.BleveMgr.DeleteIndex(uid, vaultID)
 }
 
 // Ensure noteFTSRepository implements domain.NoteFTSRepository interface

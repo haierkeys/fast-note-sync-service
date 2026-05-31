@@ -1,4 +1,4 @@
-# sqlite3
+-- sqlite3
 PRAGMA foreign_keys = false;
 
 -- ----------------------------
@@ -292,6 +292,8 @@ CREATE TABLE "backup_config" (
     "last_status" integer DEFAULT 0,
     -- 0: Idle, 1: Running, 2: Success, 3: Failed, 4: Stopped, 5: Success but no update
     "last_message" text DEFAULT '',
+    "password_mode" integer DEFAULT 0, -- 0: None, 1: Fixed, 2: Random
+    "password_value" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
@@ -322,6 +324,7 @@ CREATE TABLE "backup_history" (
     "message" text DEFAULT '',
     "file_path" text DEFAULT '',
     -- remote path/key
+    "password" text DEFAULT '',
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
@@ -359,6 +362,10 @@ CREATE TABLE "git_sync_config" (
     -- 0: 闲置, 1: 运行中, 2: 成功, 3: 失败
     "last_message" text DEFAULT '',
     -- 同步结果或错误信息
+    "include_config" integer DEFAULT 0,
+    -- 是否开启配置同步
+    "config_sync_rules" text DEFAULT '',
+    -- 存储规则列表的 JSON 数组 (例如 [".obsidian/appearance.json", ".obsidian/plugins/"])
     "created_at" datetime DEFAULT NULL,
     "updated_at" datetime DEFAULT NULL
 );
@@ -412,3 +419,50 @@ CREATE TABLE "sync_log" (
 
 CREATE INDEX "idx_sync_log_uid_created_at"  ON "sync_log" ("uid", "created_at" DESC);
 CREATE INDEX "idx_sync_log_uid_type_action" ON "sync_log" ("uid", "type", "action");
+
+-- ----------------------------
+-- Table structure for auth_token
+-- ----------------------------
+DROP TABLE IF EXISTS "auth_token";
+
+CREATE TABLE "auth_token" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL DEFAULT 0,
+    "token_string" text NOT NULL DEFAULT '',
+    "scope" text NOT NULL DEFAULT '',
+    "client_type" text NOT NULL DEFAULT '',
+    "bound_ip" text NOT NULL DEFAULT '',
+    "user_agent" text NOT NULL DEFAULT '',
+    "vaults" text NOT NULL DEFAULT '',
+    "status" integer NOT NULL DEFAULT 1,
+    "issue_type" integer NOT NULL DEFAULT 1,
+    "last_used_at" datetime DEFAULT NULL,
+    "expired_at" datetime DEFAULT NULL,
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_auth_token_uid" ON "auth_token" ("uid");
+CREATE INDEX "idx_auth_token_token_string" ON "auth_token" ("token_string");
+
+-- ----------------------------
+-- Table structure for auth_token_log
+-- ----------------------------
+DROP TABLE IF EXISTS "auth_token_log";
+
+CREATE TABLE "auth_token_log" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "token_id" integer NOT NULL DEFAULT 0,
+    "uid" integer NOT NULL DEFAULT 0,
+    "protocol" text NOT NULL DEFAULT '',
+    "client" text NOT NULL DEFAULT '',
+    "client_name" text DEFAULT '',
+    "client_version" text DEFAULT '',
+    "ip" text DEFAULT '',
+    "ua" text DEFAULT '',
+    "status_code" integer DEFAULT 0,
+    "created_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_auth_token_log_token_id" ON "auth_token_log" ("token_id");
+CREATE INDEX "idx_auth_token_log_uid" ON "auth_token_log" ("uid");

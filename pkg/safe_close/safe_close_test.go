@@ -60,7 +60,7 @@ func TestSafeClose_AttachAfterClose(t *testing.T) {
 
 func TestSafeClose_MultipleSend(t *testing.T) {
 	sc := NewSafeClose()
-	
+
 	firstErr := errors.New("first error")
 	sc.SendCloseSignal(firstErr)
 

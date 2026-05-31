@@ -21,11 +21,15 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 
 	// 1. List Notes
 	toolListNotes := mcp.NewTool("note_list",
-		mcp.WithDescription("List notes in a vault"),
+		mcp.WithDescription("List or search notes in a vault. Use this to find a note by title or keyword before calling note_get."),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
+		mcp.WithString("searchMode", mcp.Description("Where to match the keyword: 'path' (default) searches note paths and filenames; 'content' searches inside note bodies using full-text search.")),
 	)
 	srv.AddTool(toolListNotes, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -33,14 +37,16 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
 		keyword, _ := args["keyword"].(string)
+		searchMode, _ := args["searchMode"].(string)
 
 		pager := &pkgapp.Pager{
 			Page:     pkgapp.GetPage(1),
 			PageSize: pkgapp.GetPageSize(100),
 		}
 		notes, _, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.NoteListRequest{
-			Vault:   vault,
-			Keyword: keyword,
+			Vault:      vault,
+			Keyword:    keyword,
+			SearchMode: searchMode,
 		}, pager)
 
 		if err != nil {
@@ -56,11 +62,14 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 
 	// 2. Get Note
 	toolGetNote := mcp.NewTool("note_get",
-		mcp.WithDescription("Get a single note by path"),
+		mcp.WithDescription("Get the full content of a single note. Requires the EXACT vault-relative file path."),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
-		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
+		mcp.WithString("path", mcp.Required(), mcp.Description("Exact vault-relative path to the note.")),
 	)
 	srv.AddTool(toolGetNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -91,6 +100,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("content", mcp.Required(), mcp.Description("Note content")),
 	)
 	srv.AddTool(toolCreateUpdateNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -128,6 +140,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolDeleteNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -159,6 +174,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New note path")),
 	)
 	srv.AddTool(toolRenameNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -201,6 +219,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolRestoreNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -230,6 +251,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Description("Note path. If empty, potentially clear all (based on service logic)")),
 	)
 	srv.AddTool(toolRecycleClear, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -260,6 +284,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("remove", mcp.Description("JSON string array for fields to remove (e.g. [\"old_tag\"])")),
 	)
 	srv.AddTool(toolPatchFrontmatter, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -308,6 +335,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to append")),
 	)
 	srv.AddTool(toolAppend, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -340,6 +370,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to prepend")),
 	)
 	srv.AddTool(toolPrepend, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -376,6 +409,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithBoolean("failIfNoMatch", mcp.Description("Fail if no match (default true)")),
 	)
 	srv.AddTool(toolReplace, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_w"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -424,6 +460,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolGetBacklinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)
@@ -457,6 +496,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
 	srv.AddTool(toolGetOutlinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := checkPermission(ctx, "note_r"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		uid := getUIDFromContext(ctx)
 		args := getArgs(req)
 		vault, _ := args["vault"].(string)

@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 // SettingAction 定义配置操作类型
 type SettingAction string
 
@@ -90,4 +89,3 @@ type SettingRepository interface {
 	// DeleteByVaultID 物理删除该用户指定笔记本的所有配置
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

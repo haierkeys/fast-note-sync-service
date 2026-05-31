@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 // NoteLink represents a wiki-style link between notes
 type NoteLink struct {
 	ID             int64
@@ -40,4 +39,3 @@ type NoteLinkRepository interface {
 	// DeleteByVaultID deletes all links for a vault
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

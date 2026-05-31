@@ -21,11 +21,11 @@ import (
 type UserService interface {
 	// Register user registration
 	// Register 用户注册
-	Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error)
+	Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
 
 	// Login user login
 	// Login 用户登录
-	Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string) (*dto.UserDTO, error)
+	Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
 
 	// ChangePassword change user password
 	// ChangePassword 修改密码
@@ -38,6 +38,10 @@ type UserService interface {
 	// GetAllUIDs retrieves all user UIDs
 	// GetAllUIDs 获取所有用户的 UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
+
+	// IsRegisterEnabled checks if registration is allowed
+	// IsRegisterEnabled 检查是否允许注册
+	IsRegisterEnabled(ctx context.Context) bool
 }
 
 // userService implementation of UserService interface
@@ -45,16 +49,18 @@ type UserService interface {
 type userService struct {
 	userRepo     domain.UserRepository // User repository // 用户仓库
 	tokenManager app.TokenManager      // Token manager // Token 管理器
+	tokenService TokenService          // Token service // Token 服务
 	logger       *zap.Logger           // Logger // 日志器
 	config       *ServiceConfig        // Service configuration // 服务配置
 }
 
 // NewUserService creates UserService instance
 // NewUserService 创建 UserService 实例
-func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager, logger *zap.Logger, config *ServiceConfig) UserService {
+func NewUserService(userRepo domain.UserRepository, tokenManager app.TokenManager, tokenService TokenService, logger *zap.Logger, config *ServiceConfig) UserService {
 	return &userService{
 		userRepo:     userRepo,
 		tokenManager: tokenManager,
+		tokenService: tokenService,
 		logger:       logger,
 		config:       config,
 	}
@@ -79,10 +85,16 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 
 // Register user registration
 // Register 用户注册
-func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error) {
+func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	// Only WebGui is allowed for registration
+	// 仅允许 WebGui 客户端注册
+	if clientType != "WebGui" {
+		return nil, code.ErrorUserRegister.WithDetails("Only WebGui is allowed for registration")
+	}
+
 	// Check if registration is enabled
 	// 检查注册是否启用
-	if s.config == nil || !s.config.User.RegisterIsEnable {
+	if !s.IsRegisterEnabled(ctx) {
 		return nil, code.ErrorUserRegisterIsDisable
 	}
 
@@ -138,21 +150,24 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 		return nil, code.ErrorUserRegister.WithDetails(err.Error())
 	}
 
-	// Generate Token
-	// 生成 Token
-	token, err := s.tokenManager.Generate(user.UID, "", "")
+	// Generate Token with proper IP and UA binding
+	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
-	dto.Token = token
+	dto.Token = tokenStr
 	return dto, nil
 }
 
 // Login user login
 // Login 用户登录
-func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string) (*dto.UserDTO, error) {
+func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	if clientType != "WebGui" {
+		return nil, code.ErrorUserLoginFailed.WithDetails("Only WebGui is allowed for this login method")
+	}
+
 	var user *domain.User
 	var err error
 
@@ -176,15 +191,15 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 		return nil, code.ErrorUserLoginPasswordFailed
 	}
 
-	// Generate Token
+	// Generate Token via TokenService
 	// 生成 Token
-	token, err := s.tokenManager.Generate(user.UID, user.Username, clientIP)
+	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
-	dto.Token = token
+	dto.Token = tokenStr
 	return dto, nil
 }
 
@@ -256,6 +271,27 @@ func (s *userService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return uids, nil
+}
+
+// IsRegisterEnabled checks if registration is allowed
+// IsRegisterEnabled 检查是否允许注册
+func (s *userService) IsRegisterEnabled(ctx context.Context) bool {
+	// Check if registration is enabled in config
+	// 检查配置中是否启用了注册
+	if s.config == nil || !s.config.User.RegisterIsEnable {
+		return false
+	}
+
+	// If AdminUID is 0, registration is only allowed if there are no users
+	// 如果 AdminUID 为 0，则仅在没有用户时允许注册
+	if s.config.User.AdminUID == 0 {
+		uids, err := s.userRepo.GetAllUIDs(ctx)
+		if err == nil && len(uids) > 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Verify userService implements UserService interface

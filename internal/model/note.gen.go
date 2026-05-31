@@ -15,7 +15,7 @@ type Note struct {
 	Action                  string     `gorm:"column:action;type:varchar(255);index:idx_vault_id_action_rename,priority:2;index:idx_vault_id_action_fid,priority:2;default:''" json:"action" form:"action"`
 	Rename                  int64      `gorm:"column:rename;index:idx_vault_id_rename,priority:2;index:idx_vault_id_action_rename,priority:3;default:0" json:"rename" form:"rename"`
 	FID                     int64      `gorm:"column:fid;index:idx_vault_id_action_fid,priority:3;default:0" json:"fid" form:"fid"`
-	Path                    string     `gorm:"column:path;type:varchar(255);index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
+	Path                    string     `gorm:"column:path;type:varchar(1024);index:idx_vault_id_path,priority:2;default:''" json:"path" form:"path"`
 	PathHash                string     `gorm:"column:path_hash;default:''" json:"pathHash" form:"pathHash"`
 	Content                 string     `gorm:"column:content;default:''" json:"content" form:"content"`
 	ContentHash             string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`

@@ -6,22 +6,21 @@ import (
 	"time"
 )
 
-
 // NoteHistory 笔记历史领域模型
 type NoteHistory struct {
-	ID          int64
-	NoteID      int64
-	VaultID     int64
-	Path        string
-	DiffPatch   string
-	Content     string
-	ContentHash string
-	ClientName  string
-	ClientType  string
+	ID            int64
+	NoteID        int64
+	VaultID       int64
+	Path          string
+	DiffPatch     string
+	Content       string
+	ContentHash   string
+	ClientName    string
+	ClientType    string
 	ClientVersion string
-	Version     int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	Version       int64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // NoteHistoryRepository 笔记历史仓储接口
@@ -60,4 +59,3 @@ type NoteHistoryRepository interface {
 	// DeleteByVaultID 删除仓库下的所有历史记录（包含物理目录）
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
 }
-

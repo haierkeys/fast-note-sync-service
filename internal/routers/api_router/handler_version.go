@@ -46,10 +46,12 @@ func (h *VersionHandler) ServerVersion(c *gin.Context) {
 		VersionNewLink:                   checkInfo.VersionNewLink,
 		VersionNewChangelog:              checkInfo.VersionNewChangelog,
 		VersionNewChangelogContent:       checkInfo.VersionNewChangelogContent,
+		VersionHistory:                   checkInfo.VersionHistory,
 		PluginVersionNewName:             checkInfo.PluginVersionNewName,
 		PluginVersionNewLink:             checkInfo.PluginVersionNewLink,
 		PluginVersionNewChangelog:        checkInfo.PluginVersionNewChangelog,
 		PluginVersionNewChangelogContent: checkInfo.PluginVersionNewChangelogContent,
+		PluginVersionHistory:             checkInfo.PluginVersionHistory,
 	}))
 }
 

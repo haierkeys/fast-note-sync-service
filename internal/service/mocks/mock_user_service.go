@@ -18,8 +18,8 @@ type MockUserService struct {
 
 // Register handles user registration.
 // Register 处理用户注册。
-func (m *MockUserService) Register(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error) {
-	args := m.Called(ctx, params)
+func (m *MockUserService) Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	args := m.Called(ctx, params, clientIP, clientType, userAgent)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -28,8 +28,8 @@ func (m *MockUserService) Register(ctx context.Context, params *dto.UserCreateRe
 
 // Login handles user login.
 // Login 处理用户登录。
-func (m *MockUserService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string) (*dto.UserDTO, error) {
-	args := m.Called(ctx, params, clientIP)
+func (m *MockUserService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	args := m.Called(ctx, params, clientIP, clientType, userAgent)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -61,6 +61,13 @@ func (m *MockUserService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]int64), args.Error(1)
+}
+
+// IsRegisterEnabled checks if registration is allowed.
+// IsRegisterEnabled 检查是否允许注册。
+func (m *MockUserService) IsRegisterEnabled(ctx context.Context) bool {
+	args := m.Called(ctx)
+	return args.Bool(0)
 }
 
 // Compile-time check: MockUserService must implement service.UserService.

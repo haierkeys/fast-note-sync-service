@@ -41,6 +41,8 @@ func newGitSyncConfig(db *gorm.DB, opts ...gen.DOOption) gitSyncConfig {
 	_gitSyncConfig.LastSyncTime = field.NewTime(tableName, "last_sync_time")
 	_gitSyncConfig.LastStatus = field.NewInt64(tableName, "last_status")
 	_gitSyncConfig.LastMessage = field.NewString(tableName, "last_message")
+	_gitSyncConfig.IncludeConfig = field.NewInt64(tableName, "include_config")
+	_gitSyncConfig.ConfigSyncRules = field.NewString(tableName, "config_sync_rules")
 	_gitSyncConfig.CreatedAt = field.NewField(tableName, "created_at")
 	_gitSyncConfig.UpdatedAt = field.NewField(tableName, "updated_at")
 
@@ -52,22 +54,24 @@ func newGitSyncConfig(db *gorm.DB, opts ...gen.DOOption) gitSyncConfig {
 type gitSyncConfig struct {
 	gitSyncConfigDo gitSyncConfigDo
 
-	ALL           field.Asterisk
-	ID            field.Int64
-	UID           field.Int64
-	VaultID       field.Int64
-	RepoURL       field.String
-	Username      field.String
-	Password      field.String
-	Branch        field.String
-	IsEnabled     field.Int64
-	Delay         field.Int64
-	RetentionDays field.Int64
-	LastSyncTime  field.Time
-	LastStatus    field.Int64
-	LastMessage   field.String
-	CreatedAt     field.Field
-	UpdatedAt     field.Field
+	ALL             field.Asterisk
+	ID              field.Int64
+	UID             field.Int64
+	VaultID         field.Int64
+	RepoURL         field.String
+	Username        field.String
+	Password        field.String
+	Branch          field.String
+	IsEnabled       field.Int64
+	Delay           field.Int64
+	RetentionDays   field.Int64
+	LastSyncTime    field.Time
+	LastStatus      field.Int64
+	LastMessage     field.String
+	IncludeConfig   field.Int64
+	ConfigSyncRules field.String
+	CreatedAt       field.Field
+	UpdatedAt       field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -97,6 +101,8 @@ func (g *gitSyncConfig) updateTableName(table string) *gitSyncConfig {
 	g.LastSyncTime = field.NewTime(table, "last_sync_time")
 	g.LastStatus = field.NewInt64(table, "last_status")
 	g.LastMessage = field.NewString(table, "last_message")
+	g.IncludeConfig = field.NewInt64(table, "include_config")
+	g.ConfigSyncRules = field.NewString(table, "config_sync_rules")
 	g.CreatedAt = field.NewField(table, "created_at")
 	g.UpdatedAt = field.NewField(table, "updated_at")
 
@@ -127,7 +133,7 @@ func (g *gitSyncConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (g *gitSyncConfig) fillFieldMap() {
-	g.fieldMap = make(map[string]field.Expr, 15)
+	g.fieldMap = make(map[string]field.Expr, 17)
 	g.fieldMap["id"] = g.ID
 	g.fieldMap["uid"] = g.UID
 	g.fieldMap["vault_id"] = g.VaultID
@@ -141,6 +147,8 @@ func (g *gitSyncConfig) fillFieldMap() {
 	g.fieldMap["last_sync_time"] = g.LastSyncTime
 	g.fieldMap["last_status"] = g.LastStatus
 	g.fieldMap["last_message"] = g.LastMessage
+	g.fieldMap["include_config"] = g.IncludeConfig
+	g.fieldMap["config_sync_rules"] = g.ConfigSyncRules
 	g.fieldMap["created_at"] = g.CreatedAt
 	g.fieldMap["updated_at"] = g.UpdatedAt
 }

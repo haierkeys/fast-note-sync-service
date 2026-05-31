@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/gin-gonic/gin"
+	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 )
 
 func RequestParams(c *gin.Context) (map[string]interface{}, error) {

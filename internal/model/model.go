@@ -1,14 +1,23 @@
+
 package model
 
 import (
 	"gorm.io/gorm"
 )
 
+
+
 func AutoMigrate(db *gorm.DB, key string) error {
 	if db == nil {
 		return nil
 	}
 	switch key {
+
+	case "AuthToken":
+		return db.AutoMigrate(AuthToken{})
+
+	case "AuthTokenLog":
+		return db.AutoMigrate(AuthTokenLog{})
 
 	case "BackupConfig":
 		return db.AutoMigrate(BackupConfig{})

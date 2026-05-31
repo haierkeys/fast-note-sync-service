@@ -53,13 +53,16 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Get request context (including Trace ID)
-	// 获取请求上下文（包含 Trace ID）
+	// Get request context (including Trace ID), client IP, client type, and user agent
+	// 获取请求上下文（包含 Trace ID）、客户端 IP、客户端类型和用户代理
 	ctx := c.Request.Context()
+	clientIP := c.ClientIP()
+	clientType := c.GetHeader("x-client")
+	userAgent := c.GetHeader("User-Agent")
 
 	// Call UserService to perform registration
 	// 调用 UserService 执行注册
-	userDTO, err := h.App.UserService.Register(ctx, params)
+	userDTO, err := h.App.UserService.Register(ctx, params, clientIP, clientType, userAgent)
 	if err != nil {
 		h.logError(ctx, "UserHandler.Register", err)
 		apperrors.ErrorResponse(c, err)
@@ -93,14 +96,16 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Get request context and client IP
-	// 获取请求上下文和客户端 IP
+	// Get request context, client IP, client type, and user agent
+	// 获取请求上下文、客户端 IP、客户端类型和用户代理
 	ctx := c.Request.Context()
 	clientIP := c.ClientIP()
+	clientType := c.GetHeader("x-client")
+	userAgent := c.GetHeader("User-Agent")
 
 	// Call UserService to perform login
 	// 调用 UserService 执行登录
-	userDTO, err := h.App.UserService.Login(ctx, params, clientIP)
+	userDTO, err := h.App.UserService.Login(ctx, params, clientIP, clientType, userAgent)
 	if err != nil {
 		h.logError(ctx, "UserHandler.Login", err)
 		apperrors.ErrorResponse(c, err)
@@ -108,6 +113,36 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(userDTO))
+}
+
+// Logout user logout
+// @Summary User logout
+// @Description Handle user logout HTTP request, revoke current auth token.
+// @Description 处理用户退出登录 HTTP 请求，注销当前认证 Token。
+// @Tags User
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/auth/logout [post]
+func (h *UserHandler) Logout(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+
+	uid := pkgapp.GetUID(c)
+	tokenID := pkgapp.GetTokenID(c)
+
+	if uid == 0 || tokenID == 0 {
+		response.ToResponse(code.Success) // Already logged out or invalid token, just return success
+		return
+	}
+
+	ctx := c.Request.Context()
+	err := h.App.TokenService.Revoke(ctx, uid, tokenID)
+	if err != nil {
+		h.logError(ctx, "UserHandler.Logout", err)
+		// Even if revoke fails in DB, we want user to proceed with logout in UI
+	}
+
+	response.ToResponse(code.Success)
 }
 
 // UserChangePassword changes user password

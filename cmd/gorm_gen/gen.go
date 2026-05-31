@@ -141,7 +141,11 @@ func getTableDefaultValueTags(db *gorm.DB, table string) []gen.ModelOpt {
 			}
 
 			if isIndexed && (strings.ToUpper(dbType) == "TEXT" || strings.ToUpper(dbType) == "LONGTEXT" || dbType == "text") {
-				tag.Set("type", "varchar(255)")
+				if strings.Contains(strings.ToLower(fieldName), "path") {
+					tag.Set("type", "varchar(1024)")
+				} else {
+					tag.Set("type", "varchar(255)")
+				}
 			}
 
 			return tag

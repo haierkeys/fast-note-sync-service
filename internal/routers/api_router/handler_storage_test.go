@@ -44,7 +44,7 @@ func newTestStorageHandler(storageSvc *svcmocks.MockStorageService) *StorageHand
 func TestStorageHandler_CreateOrUpdate_Create_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockStorageService)
 	mockData := &dto.StorageDTO{ID: 1, Type: "localfs"}
-	
+
 	mockSvc.On("CreateOrUpdate", mock.Anything, int64(1), int64(0), mock.AnythingOfType("*dto.StoragePostRequest")).
 		Return(mockData, nil)
 
@@ -62,7 +62,7 @@ func TestStorageHandler_CreateOrUpdate_Create_Success(t *testing.T) {
 func TestStorageHandler_CreateOrUpdate_Update_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockStorageService)
 	mockData := &dto.StorageDTO{ID: 1, Type: "localfs"}
-	
+
 	mockSvc.On("CreateOrUpdate", mock.Anything, int64(1), int64(1), mock.AnythingOfType("*dto.StoragePostRequest")).
 		Return(mockData, nil)
 
@@ -112,7 +112,7 @@ func TestStorageHandler_Delete_Success(t *testing.T) {
 func TestStorageHandler_EnabledTypes_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockStorageService)
 	mockData := []string{"localfs", "s3"}
-	
+
 	mockSvc.On("GetEnabledTypes").Return(mockData, nil)
 
 	handler := newTestStorageHandler(mockSvc)
@@ -127,7 +127,7 @@ func TestStorageHandler_EnabledTypes_Success(t *testing.T) {
 
 func TestStorageHandler_Validate_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockStorageService)
-	
+
 	mockSvc.On("Validate", mock.Anything, mock.AnythingOfType("*dto.StoragePostRequest")).Return(nil)
 
 	handler := newTestStorageHandler(mockSvc)

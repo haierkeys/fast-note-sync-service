@@ -12,7 +12,7 @@ func TestCode_Immutability_And_Methods(t *testing.T) {
 	codeVal := 999901
 	msgZh := "测试错误"
 	msgEn := "Test Error"
-	
+
 	zh_cn_messages[codeVal] = msgZh
 	en_messages[codeVal] = msgEn
 
@@ -21,7 +21,7 @@ func TestCode_Immutability_And_Methods(t *testing.T) {
 	assert.False(t, c.Status())
 	// Default language logic depends on getLang config, let's just make sure Msg() won't panic
 	assert.NotEmpty(t, c.Msg())
-	
+
 	// Test Immutability
 	cWithData := c.WithData(map[string]string{"foo": "bar"})
 	assert.NotEqual(t, fmt.Sprintf("%p", c), fmt.Sprintf("%p", cWithData))
@@ -74,3 +74,20 @@ func TestNewSuss(t *testing.T) {
 		NewSuss(codeVal) // duplicate suss code
 	})
 }
+
+func TestCode_Is(t *testing.T) {
+	zh_cn_messages[999904] = "Is测试1"
+	en_messages[999904] = "Is Test 1"
+	zh_cn_messages[999905] = "Is测试2"
+	en_messages[999905] = "Is Test 2"
+
+	c1 := NewError(999904)
+	c2 := NewError(999905)
+
+	assert.ErrorIs(t, c1, c1)
+	assert.ErrorIs(t, c1.WithDetails("some details"), c1)
+	assert.ErrorIs(t, c1.WithData("data"), c1)
+	assert.NotErrorIs(t, c1, c2)
+	assert.NotErrorIs(t, c1.WithDetails("detail"), c2)
+}
+

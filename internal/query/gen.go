@@ -18,6 +18,8 @@ import (
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:             db,
+		AuthToken:      newAuthToken(db, opts...),
+		AuthTokenLog:   newAuthTokenLog(db, opts...),
 		BackupConfig:   newBackupConfig(db, opts...),
 		BackupHistory:  newBackupHistory(db, opts...),
 		File:           newFile(db, opts...),
@@ -29,6 +31,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		NoteLink:       newNoteLink(db, opts...),
 		Setting:        newSetting(db, opts...),
 		Storage:        newStorage(db, opts...),
+		SyncLog:        newSyncLog(db, opts...),
 		User:           newUser(db, opts...),
 		UserShare:      newUserShare(db, opts...),
 		Vault:          newVault(db, opts...),
@@ -38,6 +41,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	AuthToken      authToken
+	AuthTokenLog   authTokenLog
 	BackupConfig   backupConfig
 	BackupHistory  backupHistory
 	File           file
@@ -49,6 +54,7 @@ type Query struct {
 	NoteLink       noteLink
 	Setting        setting
 	Storage        storage
+	SyncLog        syncLog
 	User           user
 	UserShare      userShare
 	Vault          vault
@@ -59,6 +65,8 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
+		AuthToken:      q.AuthToken.clone(db),
+		AuthTokenLog:   q.AuthTokenLog.clone(db),
 		BackupConfig:   q.BackupConfig.clone(db),
 		BackupHistory:  q.BackupHistory.clone(db),
 		File:           q.File.clone(db),
@@ -70,6 +78,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		NoteLink:       q.NoteLink.clone(db),
 		Setting:        q.Setting.clone(db),
 		Storage:        q.Storage.clone(db),
+		SyncLog:        q.SyncLog.clone(db),
 		User:           q.User.clone(db),
 		UserShare:      q.UserShare.clone(db),
 		Vault:          q.Vault.clone(db),
@@ -87,6 +96,8 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
+		AuthToken:      q.AuthToken.replaceDB(db),
+		AuthTokenLog:   q.AuthTokenLog.replaceDB(db),
 		BackupConfig:   q.BackupConfig.replaceDB(db),
 		BackupHistory:  q.BackupHistory.replaceDB(db),
 		File:           q.File.replaceDB(db),
@@ -98,6 +109,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		NoteLink:       q.NoteLink.replaceDB(db),
 		Setting:        q.Setting.replaceDB(db),
 		Storage:        q.Storage.replaceDB(db),
+		SyncLog:        q.SyncLog.replaceDB(db),
 		User:           q.User.replaceDB(db),
 		UserShare:      q.UserShare.replaceDB(db),
 		Vault:          q.Vault.replaceDB(db),
@@ -105,6 +117,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	AuthToken      IAuthTokenDo
+	AuthTokenLog   IAuthTokenLogDo
 	BackupConfig   IBackupConfigDo
 	BackupHistory  IBackupHistoryDo
 	File           IFileDo
@@ -116,6 +130,7 @@ type queryCtx struct {
 	NoteLink       INoteLinkDo
 	Setting        ISettingDo
 	Storage        IStorageDo
+	SyncLog        ISyncLogDo
 	User           IUserDo
 	UserShare      IUserShareDo
 	Vault          IVaultDo
@@ -123,6 +138,8 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		AuthToken:      q.AuthToken.WithContext(ctx),
+		AuthTokenLog:   q.AuthTokenLog.WithContext(ctx),
 		BackupConfig:   q.BackupConfig.WithContext(ctx),
 		BackupHistory:  q.BackupHistory.WithContext(ctx),
 		File:           q.File.WithContext(ctx),
@@ -134,6 +151,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		NoteLink:       q.NoteLink.WithContext(ctx),
 		Setting:        q.Setting.WithContext(ctx),
 		Storage:        q.Storage.WithContext(ctx),
+		SyncLog:        q.SyncLog.WithContext(ctx),
 		User:           q.User.WithContext(ctx),
 		UserShare:      q.UserShare.WithContext(ctx),
 		Vault:          q.Vault.WithContext(ctx),

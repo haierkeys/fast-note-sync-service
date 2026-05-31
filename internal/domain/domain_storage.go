@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // Storage 存储配置领域模型
 type Storage struct {
 	ID              int64
@@ -44,4 +43,3 @@ type StorageRepository interface {
 	// Delete 删除存储配置（软删除）
 	Delete(ctx context.Context, id, uid int64) error
 }
-

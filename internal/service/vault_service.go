@@ -61,6 +61,10 @@ type VaultService interface {
 	// UpdateFileStats updates file statistics for a Vault
 	// UpdateFileStats 更新 Vault 的文件统计信息
 	UpdateFileStats(ctx context.Context, fileSize, fileCount, vaultID, uid int64) error
+
+	// RebuildIndex 从数据库和物理文件内容重建指定仓库的全文搜索索引
+	// RebuildIndex rebuilds full-text search index for a specific vault
+	RebuildIndex(ctx context.Context, uid, vaultID int64) error
 }
 
 // vaultService implementation of VaultService interface
@@ -379,3 +383,15 @@ func (s *vaultService) Update(ctx context.Context, uid int64, id int64, name str
 	}
 	return s.domainToDTO(updated), nil
 }
+
+// RebuildIndex 从数据库和物理文件内容重建指定仓库的全文搜索索引
+// RebuildIndex rebuilds full-text search index for a specific vault
+func (s *vaultService) RebuildIndex(ctx context.Context, uid, vaultID int64) error {
+	// Verify if vault exists and belongs to user
+	// 确认 Vault 是否存在且属于该用户
+	if _, err := s.Get(ctx, uid, vaultID); err != nil {
+		return err
+	}
+	return s.noteRepo.RebuildVaultIndex(ctx, uid, vaultID)
+}
+

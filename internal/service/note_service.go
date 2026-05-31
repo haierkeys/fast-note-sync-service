@@ -634,6 +634,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		if existNote != nil {
 			// Reuse deleted record // 复用已删除的记录
 			existNote.Action = domain.NoteActionCreate
+			existNote.Rename = 0 // Reset rename flag to ensure correct note count statistics
 			existNote.Path = newPath
 			existNote.PathHash = newPathHash
 			newPathDir := ""
@@ -1301,7 +1302,7 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 				// 清除 singleflight 缓存，防止残留
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, n.PathHash))
 				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, n.PathHash))
-				
+
 				_ = s.noteRepo.Delete(ctx, n.ID, uid)
 			}
 		}

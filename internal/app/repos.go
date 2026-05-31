@@ -21,6 +21,8 @@ type Repositories struct {
 	GitSyncRepo     domain.GitSyncRepository
 	SyncLogRepo     domain.SyncLogRepository
 	NoteFTSRepo     domain.NoteFTSRepository
+	AuthTokenRepo   domain.AuthTokenRepository
+	AuthTokenLogRepo domain.AuthTokenLogRepository
 }
 
 // initRepositories initializes all repositories
@@ -40,5 +42,7 @@ func initRepositories(d *dao.Dao) *Repositories {
 		GitSyncRepo:     dao.NewGitSyncRepository(d),
 		SyncLogRepo:     dao.NewSyncLogRepository(d),
 		NoteFTSRepo:     dao.NewNoteFTSRepository(d),
+		AuthTokenRepo:   dao.NewAuthTokenRepository(d),
+		AuthTokenLogRepo: dao.NewAuthTokenLogRepository(d),
 	}
 }

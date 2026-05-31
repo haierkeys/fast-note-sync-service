@@ -230,6 +230,7 @@ func (r *folderRepository) ListAll(ctx context.Context, uid int64) ([]*domain.Fo
 	}
 	return res, nil
 }
+
 // DeleteByVaultID removes all folder records for a specific vault
 // DeleteByVaultID 删除指定仓库的所有文件夹记录
 func (r *folderRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {

@@ -1,0 +1,9 @@
+{
+  "name": "fast-note-sync-service-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Fast Note Sync Service",
+  "main": "process_kofi.js",
+  "dependencies": {
+    "got-scraping": "^4.0.0"
+  }
+}

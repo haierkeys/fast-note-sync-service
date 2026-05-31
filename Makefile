@@ -29,7 +29,7 @@ BuildTime       = $(shell date +%FT%T%z)
 
 # LDFLAGS: 注入版本信息到二进制
 # 获取提交信息，并处理掉换行符（用 @@@ 占位）以便安全地注入到 ldflags
-COMMIT_MSG_CLEAN = $(shell echo "$(COMMIT_MSG)" | tr '\n' '^' | sed 's/\^/@@@/g' | sed 's/"/\\"/g')
+COMMIT_MSG_CLEAN = $(shell echo "$(COMMIT_MSG)" | tr '\n' '^' | sed 's/\^/@@@/g' | sed 's/"/\\"/g' | sed "s/'/’/g")
 Changelog       ?= $(COMMIT_MSG_CLEAN)
 LDFLAGS = -ldflags '-X ${REPO}/internal/app.Version=$(GitTag) -X "${REPO}/internal/app.GitTag=$(GitVersion)" -X ${REPO}/internal/app.BuildTime=$(BuildTime) -X "${REPO}/internal/app.Changelog=$(Changelog)"'
 
@@ -60,13 +60,9 @@ all: test build-all
 # -------------------------
 sup:
 	node scripts/process_support_csv.js
-	@if [ ! -d ".venv" ]; then python3 -m venv .venv; fi
-	.venv/bin/pip install -q deep-translator
-	.venv/bin/python scripts/process_support.py
-	node scripts/gen_support_md.js
+	node scripts/process_support.mjs --model Qwen/Qwen3.6-35B-A3B
 
 sup-md:
-	node scripts/gen_support_md.js
 test:
 	go test $$(go list ./... | grep -v -E 'internal/service/mocks|internal/domain/mocks|internal/dto|internal/model|internal/query|internal/config|internal/app|/docs|internal/middleware|cmd')
 
@@ -91,7 +87,7 @@ ver:
 	@:
 
 gen:
-	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db.sqlite3
+	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db_full.sqlite3
 	go run -v ./cmd/model_gen/gen.go
 
 docs:

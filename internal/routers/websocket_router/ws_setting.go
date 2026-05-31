@@ -64,7 +64,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: setting.UpdatedTimestamp,
 			Path:     setting.Path,
 			PathHash: setting.PathHash,
-		}), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(dto.SettingModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.SettingSyncModifyMessage{
 				Vault:            params.Vault,
@@ -84,10 +84,10 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: settingCheck.UpdatedTimestamp,
 			Path:     settingCheck.Path,
 			PathHash: settingCheck.PathHash,
-		}), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(dto.SettingModifyAck))
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate)
+		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 		return
 	}
 }
@@ -135,7 +135,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 		), dto.SettingSyncMtime)
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate)
+		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 		return
 	}
 }
@@ -168,7 +168,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		LastTime: setting.UpdatedTimestamp,
 		Path:     setting.Path,
 		PathHash: setting.PathHash,
-	}), string(dto.SettingDeleteAck))
+	}).WithVault(params.Vault), string(dto.SettingDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
 			Path:             setting.Path,
@@ -232,6 +232,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// Handle settings deleted by client
 	// 处理客户端删除的配置
 	if len(params.DelSettings) > 0 {
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
+
 		for _, delSetting := range params.DelSettings {
 
 			// Check if setting exists before deleting
@@ -242,6 +244,14 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			checkSetting, err := settingSvc.Get(ctx, c.User.UID, getCheckParams)
 
 			if err == nil && checkSetting != nil && checkSetting.Action != "delete" {
+				if !hasWritePermission {
+					h.App.Logger().Warn("websocket_router.setting.SettingSync: permission denied for deletion",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.Int64(logger.FieldUID, c.User.UID),
+						zap.String(logger.FieldPath, delSetting.Path))
+					continue
+				}
+
 				delParams := &dto.SettingDeleteRequest{
 					Vault:    params.Vault,
 					Path:     delSetting.Path,
@@ -449,15 +459,23 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// during query processing from being permanently missed on the next incremental sync.
 	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
 	lastTime = syncStartTime
+	hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
 		// Add message to queue instead of sending immediately
 		// 将消息添加到队列而非立即发送
-		messageQueue = append(messageQueue, dto.WSQueuedMessage{
-			Action: dto.SettingSyncNeedUpload,
-			Data:   dto.SettingSyncNeedUploadMessage{Path: s.Path},
-		})
-		needUploadCount++
+		if hasWritePermission {
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+				Action: dto.SettingSyncNeedUpload,
+				Data:   dto.SettingSyncNeedUploadMessage{Path: s.Path},
+			})
+			needUploadCount++
+		} else {
+			h.App.Logger().Warn("websocket_router.setting.SettingSync: permission denied for upload",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.Int64(logger.FieldUID, c.User.UID),
+				zap.String(logger.FieldPath, s.Path))
+		}
 	}
 
 	// Send SettingSyncEnd message
@@ -470,12 +488,12 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
 		},
-	).WithContext(params.Context), dto.SettingSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), dto.SettingSyncEnd)
 
 	// Send queued messages individually
 	// 逐条发送队列中的消息
 	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithContext(params.Context), item.Action)
+		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
 	}
 }
 
@@ -502,4 +520,50 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	// Broadcast clearing to other clients with vault info
 	// 将清除消息广播给其他客户端，带上笔记本信息
 	c.BroadcastResponse(code.Success.WithData(nil).WithVault(params.Vault), false, dto.SettingSyncClear)
+}
+
+// SettingRePush handles setting missing pull request
+// SettingRePush 处理配置缺失请求拉取
+func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.SettingGetRequest{}
+	valid, errs := c.BindAndValid(msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingRePush.BindAndValid")
+		return
+	}
+
+	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingRePush", params.Path, params.Vault)
+
+	ctx := c.Context()
+	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
+
+	setting, err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	if err != nil {
+		h.App.Logger().Debug("websocket_router.setting.SettingRePush.Get: record not found or error, proceeding to send delete",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.Error(err))
+	}
+
+	if setting != nil && setting.Action != "delete" {
+		c.ToResponse(code.Success.WithData(
+			dto.SettingSyncModifyMessage{
+				Vault:            params.Vault,
+				Path:             setting.Path,
+				PathHash:         setting.PathHash,
+				Content:          setting.Content,
+				ContentHash:      setting.ContentHash,
+				Ctime:            setting.Ctime,
+				Mtime:            setting.Mtime,
+				UpdatedTimestamp: setting.UpdatedTimestamp,
+			},
+		).WithVault(params.Vault), dto.SettingSyncModify)
+	} else {
+		// If setting not found, send delete message to client to clean up local unauthorized creation
+		// 如果未找到配置，则向客户端发送删除消息，以清理本地未授权的创建
+		c.ToResponse(code.Success.WithData(
+			dto.SettingSyncDeleteMessage{
+				Path: params.Path,
+			},
+		).WithVault(params.Vault), string(dto.SettingSyncDelete))
+	}
 }

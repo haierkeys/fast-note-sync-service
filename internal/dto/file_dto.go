@@ -19,11 +19,11 @@ type FileUpdateCheckRequest struct {
 // FileUploadRequest Request parameters for direct file upload (Internal/Public isolation)
 // 用于直接文件上传的请求参数（实现内外隔离）
 type FileUploadRequest struct {
-	Vault    string `form:"vault" binding:"required" example:"MyVault"`   // Vault name // 保险库名称
-	Path     string `form:"path" binding:"required" example:"Image.png"`  // File path // 文件路径
-	PathHash string `form:"pathHash" example:"fhash123"`                  // Path hash // 路径哈希
-	Ctime    int64  `form:"ctime" example:"1700000000"`                   // Creation timestamp // 创建时间戳
-	Mtime    int64  `form:"mtime" example:"1700000000"`                   // Modification timestamp // 修改时间戳
+	Vault    string `form:"vault" binding:"required" example:"MyVault"`  // Vault name // 保险库名称
+	Path     string `form:"path" binding:"required" example:"Image.png"` // File path // 文件路径
+	PathHash string `form:"pathHash" example:"fhash123"`                 // Path hash // 路径哈希
+	Ctime    int64  `form:"ctime" example:"1700000000"`                  // Creation timestamp // 创建时间戳
+	Mtime    int64  `form:"mtime" example:"1700000000"`                  // Modification timestamp // 修改时间戳
 }
 
 // FileUpdateRequest Request parameters for creating or modifying a file

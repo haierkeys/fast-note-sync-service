@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 // NoteAction 定义笔记操作类型
 type NoteAction string
 
@@ -161,5 +160,8 @@ type NoteRepository interface {
 
 	// DeleteByVaultID 物理删除仓库下的所有笔记
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
-}
 
+	// RebuildVaultIndex 从数据库和物理文件内容重建指定仓库的索引
+	// RebuildVaultIndex rebuilds index from database and file contents for a specific vault
+	RebuildVaultIndex(ctx context.Context, uid, vaultID int64) error
+}

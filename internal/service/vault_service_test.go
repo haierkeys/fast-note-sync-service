@@ -13,6 +13,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +21,10 @@ import (
 // newVaultMockRepo 为每个测试返回新的 MockVaultRepository。
 func newVaultMockRepo() *domainmocks.MockVaultRepository {
 	return new(domainmocks.MockVaultRepository)
+}
+
+func newVaultSvc(repo *domainmocks.MockVaultRepository) VaultService {
+	return NewVaultService(repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, zap.NewNop())
 }
 
 // newVault creates a domain.Vault test fixture.
@@ -54,7 +59,7 @@ func TestVaultService_Create_Success(t *testing.T) {
 	mockRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Vault"), int64(1)).
 		Return(created, nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	result, err := svc.Create(context.Background(), 1, "MyVault")
 
 	assert.NoError(t, err)
@@ -71,7 +76,7 @@ func TestVaultService_Create_AlreadyExists(t *testing.T) {
 	mockRepo.On("GetByName", mock.Anything, "MyVault", int64(1)).
 		Return(existing, nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	_, err := svc.Create(context.Background(), 1, "MyVault")
 
 	assert.ErrorIs(t, err, code.ErrorVaultExist)
@@ -89,7 +94,7 @@ func TestVaultService_Get_Success(t *testing.T) {
 	mockRepo.On("GetByID", mock.Anything, int64(5), int64(1)).
 		Return(v, nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	result, err := svc.Get(context.Background(), 1, 5)
 
 	assert.NoError(t, err)
@@ -105,7 +110,7 @@ func TestVaultService_Get_NotFound(t *testing.T) {
 	mockRepo.On("GetByID", mock.Anything, int64(99), int64(1)).
 		Return(nil, gorm.ErrRecordNotFound)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	_, err := svc.Get(context.Background(), 1, 99)
 
 	assert.ErrorIs(t, err, code.ErrorVaultNotFound)
@@ -126,7 +131,7 @@ func TestVaultService_List_Success(t *testing.T) {
 	mockRepo.On("List", mock.Anything, int64(1)).
 		Return(fixturesToDomain(vaults), nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	results, err := svc.List(context.Background(), 1)
 
 	assert.NoError(t, err)
@@ -142,15 +147,62 @@ func TestVaultService_List_Success(t *testing.T) {
 // TestVaultService_Delete_Success 验证正常删除 Vault 的逻辑。
 func TestVaultService_Delete_Success(t *testing.T) {
 	mockRepo := newVaultMockRepo()
+	noteRepo := new(domainmocks.MockNoteRepository)
+	fileRepo := new(domainmocks.MockFileRepository)
+	folderRepo := new(domainmocks.MockFolderRepository)
+	logRepo := new(domainmocks.MockSyncLogRepository)
+	historyRepo := new(domainmocks.MockNoteHistoryRepository)
+	linkRepo := new(domainmocks.MockNoteLinkRepository)
+	settingRepo := new(domainmocks.MockSettingRepository)
+	ftsRepo := new(domainmocks.MockNoteFTSRepository)
+	shareRepo := new(domainmocks.MockUserShareRepository)
+	gitRepo := new(domainmocks.MockGitSyncRepository)
+	backupRepo := new(domainmocks.MockBackupRepository)
 
+	noteRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	fileRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	folderRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	logRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	historyRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	linkRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	ftsRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	shareRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	gitRepo.On("DisableByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	backupRepo.On("DisableByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
+	settingRepo.On("DeleteByVaultID", mock.Anything, int64(3), int64(1)).Return(nil)
 	mockRepo.On("Delete", mock.Anything, int64(3), int64(1)).
 		Return(nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := NewVaultService(
+		mockRepo,
+		noteRepo,
+		fileRepo,
+		folderRepo,
+		logRepo,
+		historyRepo,
+		linkRepo,
+		settingRepo,
+		ftsRepo,
+		shareRepo,
+		gitRepo,
+		backupRepo,
+		zap.NewNop(),
+	)
 	err := svc.Delete(context.Background(), 1, 3)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
+	noteRepo.AssertExpectations(t)
+	fileRepo.AssertExpectations(t)
+	folderRepo.AssertExpectations(t)
+	logRepo.AssertExpectations(t)
+	historyRepo.AssertExpectations(t)
+	linkRepo.AssertExpectations(t)
+	settingRepo.AssertExpectations(t)
+	ftsRepo.AssertExpectations(t)
+	shareRepo.AssertExpectations(t)
+	gitRepo.AssertExpectations(t)
+	backupRepo.AssertExpectations(t)
 }
 
 // --- Update ---
@@ -172,7 +224,7 @@ func TestVaultService_Update_Success(t *testing.T) {
 	mockRepo.On("GetByID", mock.Anything, int64(7), int64(1)).
 		Return(updated, nil).Once()
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	result, err := svc.Update(context.Background(), 1, 7, "NewName")
 
 	assert.NoError(t, err)
@@ -188,7 +240,7 @@ func TestVaultService_Update_NotFound(t *testing.T) {
 	mockRepo.On("GetByID", mock.Anything, int64(99), int64(1)).
 		Return(nil, gorm.ErrRecordNotFound)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	_, err := svc.Update(context.Background(), 1, 99, "NewName")
 
 	assert.ErrorIs(t, err, code.ErrorVaultNotFound)
@@ -206,7 +258,7 @@ func TestVaultService_GetOrCreate_ExistingVault(t *testing.T) {
 	mockRepo.On("GetByName", mock.Anything, "MyVault", int64(1)).
 		Return(existing, nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	result, err := svc.GetOrCreate(context.Background(), 1, "MyVault")
 
 	assert.NoError(t, err)
@@ -226,7 +278,7 @@ func TestVaultService_GetOrCreate_NewVault(t *testing.T) {
 	mockRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Vault"), int64(1)).
 		Return(created, nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	result, err := svc.GetOrCreate(context.Background(), 1, "NewVault")
 
 	assert.NoError(t, err)
@@ -244,7 +296,7 @@ func TestVaultService_UpdateNoteStats(t *testing.T) {
 	mockRepo.On("UpdateNoteCountSize", mock.Anything, int64(1024), int64(5), int64(1), int64(1)).
 		Return(nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	err := svc.UpdateNoteStats(context.Background(), 1024, 5, 1, 1)
 
 	assert.NoError(t, err)
@@ -259,7 +311,7 @@ func TestVaultService_UpdateFileStats(t *testing.T) {
 	mockRepo.On("UpdateFileCountSize", mock.Anything, int64(2048), int64(3), int64(1), int64(1)).
 		Return(nil)
 
-	svc := NewVaultService(mockRepo)
+	svc := newVaultSvc(mockRepo)
 	err := svc.UpdateFileStats(context.Background(), 2048, 3, 1, 1)
 
 	assert.NoError(t, err)
