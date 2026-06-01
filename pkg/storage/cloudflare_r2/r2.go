@@ -12,6 +12,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+func validateAccountID(accountID string) error {
+	if accountID == "" {
+		return fmt.Errorf("Invalid R2 AccountID: AccountID is empty. The AccountID should be your Cloudflare Account ID (a hex string like abc123def456), not a custom domain. You can find your Account ID in the Cloudflare R2 dashboard settings.")
+	}
+	for _, c := range accountID {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return fmt.Errorf("Invalid R2 AccountID format '%s'. The AccountID should be your Cloudflare Account ID (a hex string like abc123def456), not a custom domain. You can find your Account ID in the Cloudflare R2 dashboard settings.", accountID)
+		}
+	}
+	return nil
+}
+
 func cacheKey(conf *Config) string {
 	return conf.AccessKeyID + ":" + conf.AccessKeySecret + ":" + conf.AccountID
 }
@@ -36,6 +48,10 @@ func NewClient(conf *Config) (*R2, error) {
 	var accountId = conf.AccountID
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret
+
+	if err := validateAccountID(accountId); err != nil {
+		return nil, err
+	}
 
 	key := cacheKey(conf)
 	if clients[key] != nil {
