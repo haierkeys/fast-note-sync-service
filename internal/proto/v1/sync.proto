@@ -1,0 +1,555 @@
+syntax = "proto3";
+package proto.v1;
+option go_package = "github.com/haierkeys/fast-note-sync-service/internal/proto/v1;v1";
+
+// WSMessage is the unified envelope structure for WebSocket communication
+// WSMessage 是 WebSocket 通信的统一信封结构
+message WSMessage {
+    string type = 1;      // Message action type (e.g. "NoteSync", "NoteModifyAck") // 消息动作类型
+    bytes data = 2;       // Target message payload serialized to bytes // 目标消息的序列化字节流
+}
+
+// WSResponse is the unified response envelope (analogous to Res struct)
+// WSResponse 是统一的响应信封（与 Res 结构体对应）
+message WSResponse {
+    int32 code = 1;       // Status code // 状态码
+    bool status = 2;      // Is success // 是否成功
+    string message = 3;   // Response message // 响应消息
+    bytes data = 4;       // Target response payload serialized to bytes // 目标响应载荷的序列化字节流
+    string details = 5;   // Error details // 错误细节
+    string vault = 6;     // Vault name // 笔记库名称
+    string context = 7;   // Context // 上下文
+}
+
+// ------------------------------------
+// 0. Client Info (ClientInfo)
+// ------------------------------------
+message ClientInfoMessage {
+    string name = 1;
+    string version = 2;
+    string type = 3;
+    bool isDesktop = 4;
+    bool isMobile = 5;
+    bool isPhone = 6;
+    bool isTablet = 7;
+    bool isMacOS = 8;
+    bool isWin = 9;
+    bool isLinux = 10;
+    string offlineSyncStrategy = 11;
+    bool protobuf = 12;   // Request to upgrade to protobuf // 客户端请求启用 Protobuf
+}
+
+message HistoricalVersion {
+    string version = 1;
+    string changelogContent = 2;
+}
+
+message CheckVersionInfo {
+    bool githubAvailable = 1;
+    bool versionIsNew = 2;
+    string versionNewName = 3;
+    string versionNewLink = 4;
+    string versionNewChangelog = 5;
+    string versionNewChangelogContent = 6;
+    repeated HistoricalVersion versionHistory = 7;
+    bool pluginVersionIsNew = 8;
+    string pluginVersionNewName = 9;
+    string pluginVersionNewLink = 10;
+    string pluginVersionNewChangelog = 11;
+    string pluginVersionNewChangelogContent = 12;
+    repeated HistoricalVersion pluginVersionHistory = 13;
+}
+
+// ------------------------------------
+// 1. Note Messages (Note)
+// ------------------------------------
+
+message NoteSyncCheckRequest {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 mtime = 4;
+    int64 ctime = 5;
+}
+
+message NoteSyncDelNote {
+    string path = 1;
+    string pathHash = 2;
+}
+
+message NoteSyncRequest {
+    string context = 1;
+    string vault = 2;
+    int64 lastTime = 3;
+    repeated NoteSyncCheckRequest notes = 4;
+    repeated NoteSyncDelNote delNotes = 5;
+    repeated NoteSyncDelNote missingNotes = 6;
+}
+
+message NoteModifyOrCreateRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string baseHash = 4;
+    bool baseHashMissing = 5;
+    string content = 6;
+    string contentHash = 7;
+    int64 ctime = 8;
+    int64 mtime = 9;
+    bool createOnly = 10;
+}
+
+message NoteUpdateCheckRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string contentHash = 4;
+    int64 ctime = 5;
+    int64 mtime = 6;
+}
+
+message NoteDeleteRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message NoteRenameRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string oldPath = 4;
+    string oldPathHash = 5;
+}
+
+message NoteGetRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    bool isRecycle = 4;
+}
+
+// --- Note Responses ---
+
+message NoteSyncModifyMessage {
+    string path = 1;
+    string pathHash = 2;
+    string content = 3;
+    string contentHash = 4;
+    int64 ctime = 5;
+    int64 mtime = 6;
+    int64 lastTime = 7;
+}
+
+message NoteSyncDeleteMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    int64 size = 5;
+    int64 lastTime = 6;
+}
+
+message NoteSyncRenameMessage {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 ctime = 4;
+    int64 mtime = 5;
+    int64 size = 6;
+    string oldPath = 7;
+    string oldPathHash = 8;
+    int64 lastTime = 9;
+}
+
+message NoteSyncMtimeMessage {
+    string path = 1;
+    int64 ctime = 2;
+    int64 mtime = 3;
+    int64 lastTime = 4;
+}
+
+message NoteSyncEndMessage {
+    int64 lastTime = 1;
+    int64 needUploadCount = 2;
+    int64 needModifyCount = 3;
+    int64 needSyncMtimeCount = 4;
+    int64 needDeleteCount = 5;
+}
+
+message NoteSyncNeedPushMessage {
+    string path = 1;
+    string pathHash = 2;
+}
+
+message NoteModifyAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message NoteRenameAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message NoteDeleteAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+// ------------------------------------
+// 2. File Messages (File)
+// ------------------------------------
+
+message FileSyncRequest {
+    string context = 1;
+    string vault = 2;
+    int64 lastTime = 3;
+    repeated FileSyncCheckRequest files = 4;
+    repeated FileSyncDelFile delFiles = 5;
+    repeated FileSyncDelFile missingFiles = 6;
+}
+
+message FileSyncCheckRequest {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 size = 4;
+    int64 mtime = 5;
+    int64 ctime = 6;
+}
+
+message FileSyncDelFile {
+    string path = 1;
+    string pathHash = 2;
+}
+
+message FileUploadCheckRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string contentHash = 4;
+    int64 size = 5;
+    int64 ctime = 6;
+    int64 mtime = 7;
+}
+
+message FileDeleteRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FileRenameRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string oldPath = 4;
+    string oldPathHash = 5;
+}
+
+message FileChunkDownloadRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string sessionId = 4;
+    int64 chunkIndex = 5;
+}
+
+message FileGetRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+// --- File Responses ---
+
+message FileSyncModifyMessage {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 size = 4;
+    int64 ctime = 5;
+    int64 mtime = 6;
+    int64 lastTime = 7;
+}
+
+message FileSyncDeleteMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    int64 size = 5;
+    int64 lastTime = 6;
+}
+
+message FileSyncRenameMessage {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 ctime = 4;
+    int64 mtime = 5;
+    int64 size = 6;
+    int64 lastTime = 7;
+    string oldPath = 8;
+    string oldPathHash = 9;
+}
+
+message FileSyncMtimeMessage {
+    string path = 1;
+    int64 ctime = 2;
+    int64 mtime = 3;
+    int64 lastTime = 4;
+}
+
+message FileSyncEndMessage {
+    int64 lastTime = 1;
+    int64 needUploadCount = 2;
+    int64 needModifyCount = 3;
+    int64 needSyncMtimeCount = 4;
+    int64 needDeleteCount = 5;
+}
+
+message FileSyncUploadMessage {
+    string path = 1;
+    string pathHash = 2;
+    string sessionId = 3;
+    int64 chunkSize = 4;
+}
+
+message FileSyncDownloadMessage {
+    string path = 1;
+    string contentHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    string sessionId = 5;
+    int64 chunkSize = 6;
+    int64 totalChunks = 7;
+    int64 size = 8;
+}
+
+message FileRenameAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FileUploadAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FileDeleteAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+// ------------------------------------
+// 3. Setting Messages (Setting)
+// ------------------------------------
+
+message SettingSyncRequest {
+    string context = 1;
+    string vault = 2;
+    int64 lastTime = 3;
+    repeated SettingSyncCheckRequest settings = 4;
+    repeated SettingSyncDelSetting delSettings = 5;
+    repeated SettingSyncDelSetting missingSettings = 6;
+}
+
+message SettingSyncCheckRequest {
+    string path = 1;
+    string pathHash = 2;
+    string contentHash = 3;
+    int64 mtime = 4;
+    int64 ctime = 5;
+}
+
+message SettingSyncDelSetting {
+    string path = 1;
+    string pathHash = 2;
+}
+
+message SettingModifyOrCreateRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string content = 4;
+    string contentHash = 5;
+    int64 ctime = 6;
+    int64 mtime = 7;
+}
+
+message SettingUpdateCheckRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string contentHash = 4;
+    int64 ctime = 5;
+    int64 mtime = 6;
+}
+
+message SettingDeleteRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message SettingGetRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+// --- Setting Responses ---
+
+message SettingSyncModifyMessage {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string content = 4;
+    string contentHash = 5;
+    int64 ctime = 6;
+    int64 mtime = 7;
+    int64 lastTime = 8;
+}
+
+message SettingSyncDeleteMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    int64 lastTime = 5;
+}
+
+message SettingSyncMtimeMessage {
+    string path = 1;
+    int64 ctime = 2;
+    int64 mtime = 3;
+    int64 lastTime = 4;
+}
+
+message SettingSyncEndMessage {
+    int64 lastTime = 1;
+    int64 needUploadCount = 2;
+    int64 needModifyCount = 3;
+    int64 needSyncMtimeCount = 4;
+    int64 needDeleteCount = 5;
+}
+
+message SettingSyncNeedUploadMessage {
+    string path = 1;
+}
+
+message SettingModifyAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message SettingDeleteAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+// ------------------------------------
+// 4. Folder Messages (Folder)
+// ------------------------------------
+
+message FolderSyncCheckRequest {
+    string path = 1;
+    string pathHash = 2;
+    int64 mtime = 3;
+}
+
+message FolderSyncDelFolder {
+    string path = 1;
+    string pathHash = 2;
+}
+
+message FolderSyncRequest {
+    string context = 1;
+    string vault = 2;
+    int64 lastTime = 3;
+    repeated FolderSyncCheckRequest folders = 4;
+    repeated FolderSyncDelFolder delFolders = 5;
+    repeated FolderSyncDelFolder missingFolders = 6;
+}
+
+message FolderCreateRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FolderDeleteRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FolderRenameRequest {
+    string vault = 1;
+    string path = 2;
+    string pathHash = 3;
+    string oldPath = 4;
+    string oldPathHash = 5;
+}
+
+// --- Folder Responses ---
+
+message FolderSyncModifyMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    int64 lastTime = 5;
+}
+
+message FolderSyncDeleteMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    int64 lastTime = 5;
+}
+
+message FolderSyncRenameMessage {
+    string path = 1;
+    string pathHash = 2;
+    int64 ctime = 3;
+    int64 mtime = 4;
+    string oldPath = 5;
+    string oldPathHash = 6;
+    int64 lastTime = 7;
+}
+
+message FolderSyncEndMessage {
+    int64 lastTime = 1;
+    int64 needModifyCount = 2;
+    int64 needDeleteCount = 3;
+}
+
+message FolderModifyAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FolderRenameAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}
+
+message FolderDeleteAckMessage {
+    int64 lastTime = 1;
+    string path = 2;
+    string pathHash = 3;
+}

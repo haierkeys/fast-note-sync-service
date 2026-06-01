@@ -1,6 +1,7 @@
 package api_router
 
 import (
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -122,7 +123,7 @@ func (h *SettingHandler) CreateOrUpdate(c *gin.Context) {
 		Ctime:            res.Ctime,
 		Mtime:            res.Mtime,
 		UpdatedTimestamp: res.UpdatedTimestamp,
-	}).WithVault(params.Vault), string(dto.SettingSyncModify))
+	}).WithVault(params.Vault), string(websocket_router.SettingSyncModify))
 }
 
 // Delete deletes a setting
@@ -159,7 +160,7 @@ func (h *SettingHandler) Delete(c *gin.Context) {
 		Ctime:            res.Ctime,
 		Mtime:            res.Mtime,
 		UpdatedTimestamp: res.UpdatedTimestamp,
-	}).WithVault(params.Vault), string(dto.SettingSyncDelete))
+	}).WithVault(params.Vault), string(websocket_router.SettingSyncDelete))
 }
 
 // Rename renames a setting
@@ -198,7 +199,7 @@ func (h *SettingHandler) Rename(c *gin.Context) {
 		Ctime:            res.Ctime,
 		Mtime:            res.Mtime,
 		UpdatedTimestamp: res.UpdatedTimestamp,
-	}).WithVault(params.Vault), string(dto.SettingSyncDelete))
+	}).WithVault(params.Vault), string(websocket_router.SettingSyncDelete))
 
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(dto.SettingSyncModifyMessage{
 		Vault:            params.Vault,
@@ -209,5 +210,5 @@ func (h *SettingHandler) Rename(c *gin.Context) {
 		Ctime:            res.Ctime,
 		Mtime:            res.Mtime,
 		UpdatedTimestamp: res.UpdatedTimestamp,
-	}).WithVault(params.Vault), string(dto.SettingSyncModify))
+	}).WithVault(params.Vault), string(websocket_router.SettingSyncModify))
 }

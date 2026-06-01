@@ -1,4 +1,4 @@
-package dto
+package websocket_router
 
 // WebSocketMsgType WebSocket Binary message type
 // WebSocket 二进制消息类型
@@ -17,6 +17,16 @@ type WebSocketReceiveAction = string
 type WebSocketSendAction = string
 
 const (
+	// ClientReceiveInfo client info action
+	// ClientReceiveInfo 客户端信息接收动作
+	ClientReceiveInfo WebSocketReceiveAction = "ClientInfo"
+	// ClientReceiveAuth client authorization action
+	// ClientReceiveAuth 客户端鉴权接收动作
+	ClientReceiveAuth WebSocketReceiveAction = "Authorization"
+
+	// ClientInfo client info ack action
+	// ClientInfo 客户端信息确认发送动作
+	ClientInfo WebSocketSendAction = "ClientInfo"
 
 	// ---------------- Folder ----------------
 

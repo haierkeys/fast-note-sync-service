@@ -50,7 +50,7 @@ buildDir = $(rootDir)/build
         push-online push-dev \
         build-macos-amd64 build-macos-arm64 build-linux-amd64 \
         build-linux-arm64 build-linux-arm build-windows-amd64 gox-linux gox-all \
-		docs fmt update air dev ver gen sup
+		docs fmt update air dev ver gen sup proto
 
 # 默认目标
 all: test build-all
@@ -86,7 +86,10 @@ ver:
 %:
 	@:
 
-gen:
+proto:
+	protoc --go_out=. --go_opt=paths=source_relative internal/proto/v1/sync.proto
+
+gen: proto
 	go run -v ./cmd/gorm_gen/gen.go -type sqlite -dsn storage/database/db_full.sqlite3
 	go run -v ./cmd/model_gen/gen.go
 

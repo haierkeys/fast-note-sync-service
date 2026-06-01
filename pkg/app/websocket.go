@@ -15,7 +15,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
-	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/gin-gonic/gin"
@@ -219,6 +218,7 @@ type ClientInfoMessage struct {
 	IsWin               bool   `json:"isWin"`               // Is Windows // 是否为 Windows
 	IsLinux             bool   `json:"isLinux"`             // Is Linux // 是否为 Linux
 	OfflineSyncStrategy string `json:"offlineSyncStrategy"` // Offline device sync strategy "newTimeMerge" | "ignoreTimeMerge" // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
+	Protobuf            bool   `json:"protobuf"`            // Use protobuf // 是否使用 protobuf
 }
 
 type WSConfig struct {
@@ -276,6 +276,10 @@ type WebsocketClient struct {
 	Scope               string                    // Token Scope // 令牌权限范围
 	Vaults              string                    // Restrict Vaults // 限制笔记库
 	Lang                string                    // Language preference // 语言偏好
+	Protocol            string                    // Protocol "protobuf" or other // 协议 "protobuf" 或其他
+	UseProtobuf         bool                      // Whether to use protobuf protocol // 是否使用 protobuf 协议
+	currentAction       string                    // Current action type being processed // 当前正在处理的动作类型
+	currentMsgIsPb      bool                      // Whether current message is in protobuf format // 当前处理的消息是否为 protobuf 格式
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -361,7 +365,45 @@ func (c *WebsocketClient) ClearAllDiffMergePaths() int {
 // WebSocket version of parameter binding and validation utility functions based on global validator
 // 基于全局验证器的 WebSocket 版本参数绑定和验证工具函数
 func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors) {
+	return c.BindAndValidWithAction(c.currentAction, data, obj)
+}
+
+// BindAndValidWithAction WebSocket version of parameter binding and validation with specific action to avoid race condition
+// 带特定动作名称的 WebSocket 版本参数校验，避免并发消息下的 c.currentAction 竞态冲突
+func (c *WebsocketClient) BindAndValidWithAction(action string, data []byte, obj any) (bool, ValidErrors) {
 	var errs ValidErrors
+
+	if c.UseProtobuf && c.currentMsgIsPb && c.Server.ProtobufDecoder != nil {
+		decoded, err := c.Server.ProtobufDecoder(action, data, obj)
+		if err != nil {
+			errs = append(errs, &ValidError{
+				Key:     "body",
+				Message: "Protobuf decode failed: " + err.Error(),
+			})
+			return false, errs
+		}
+		if decoded {
+			validator := c.app.Validator()
+			if validator == nil {
+				return true, nil
+			}
+			if err := validator.ValidateStruct(obj); err != nil {
+				if validationErrors, ok := err.(validatorV10.ValidationErrors); ok {
+					v := c.Ctx.Value("trans")
+					trans := v.(ut.Translator)
+					for _, validationErr := range validationErrors {
+						translatedMsg := validationErr.Translate(trans)
+						errs = append(errs, &ValidError{
+							Key:     validationErr.Field(),
+							Message: translatedMsg,
+						})
+					}
+				}
+				return false, errs
+			}
+			return true, nil
+		}
+	}
 
 	// Step 1: JSON deserialization (can be replaced by other formats)
 	// BindAndValid Step 1: JSON 反序列化（可替换成其他格式）
@@ -654,6 +696,8 @@ type ValidatorInterface interface {
 type WebsocketServer struct {
 	app               AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
+	noAuthHandlers     map[string]func(*WebsocketClient, *WebSocketMessage) // Handlers that do not require user authentication // 免登录鉴权消息处理器集合
+	interceptors       []func(*WebsocketClient, *WebSocketMessage) bool     // Pre-handler interceptor chain // 消息前置拦截器链
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
 	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
@@ -666,6 +710,9 @@ type WebsocketServer struct {
 	// 全局会话管理 (UID -> SessionID -> Session)
 	binaryChunkSessions map[string]map[string]any
 	sessionsMu          sync.RWMutex
+	EnvelopeDecoder     func(data []byte) (string, []byte, error)               // Protobuf envelope decoder // Protobuf 信封解包钩子
+	ProtobufDecoder     func(action string, data []byte, obj any) (bool, error) // Protobuf decoder hook // Protobuf 解码钩子
+	ProtobufEncoder     func(action string, res *Res) ([]byte, error)           // Protobuf encoder hook // Protobuf 编码钩子
 }
 
 // WSClientInfo WebSocket client information for API responses
@@ -758,15 +805,24 @@ func NewWebsocketServer(c WSConfig, app AppContainer) *WebsocketServer {
 	// 设置 WebSocket 模块的生产模式标记
 	SetWSProductionMode(app.IsProductionMode())
 
-	return &WebsocketServer{
+	wss := &WebsocketServer{
 		app:                 app,
 		handlers:            make(map[string]func(*WebsocketClient, *WebSocketMessage)),
+		noAuthHandlers:      make(map[string]func(*WebsocketClient, *WebSocketMessage)),
+		interceptors:        make([]func(*WebsocketClient, *WebSocketMessage) bool, 0),
 		binaryHandlers:      make(map[string]func(*WebsocketClient, []byte)),
 		clients:             make(ConnStorage),
 		userClients:         make(map[string]ConnStorage),
 		config:              &c,
 		binaryChunkSessions: make(map[string]map[string]any),
 	}
+
+	// Register built-in unauthenticated handlers
+	// 自动注册系统内置免登录鉴权的消息处理器
+	wss.UseWithoutAuth("Authorization", wss.Authorization)
+	wss.UseWithoutAuth("ClientInfo", wss.ClientInfo)
+
+	return wss
 }
 
 // App gets App Container
@@ -836,6 +892,25 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 
 func (w *WebsocketServer) Use(action string, handler func(*WebsocketClient, *WebSocketMessage)) {
 	w.handlers[action] = handler
+}
+
+// UseWithoutAuth registers a message handler that does not require user authentication
+// UseWithoutAuth 注册无需用户登录鉴权的消息处理器
+func (w *WebsocketServer) UseWithoutAuth(action string, handler func(*WebsocketClient, *WebSocketMessage)) {
+	w.noAuthHandlers[action] = handler
+}
+
+// UseInterceptor registers a pre-handler interceptor
+// UseInterceptor 注册消息前置拦截器
+func (w *WebsocketServer) UseInterceptor(interceptor func(*WebsocketClient, *WebSocketMessage) bool) {
+	w.interceptors = append(w.interceptors, interceptor)
+}
+
+// GetHandler returns the handler for a specific action
+// GetHandler 返回指定动作的消息处理器
+func (w *WebsocketServer) GetHandler(action string) (func(*WebsocketClient, *WebSocketMessage), bool) {
+	h, ok := w.handlers[action]
+	return h, ok
 }
 
 func (w *WebsocketServer) UseUserVerify(handler func(*WebsocketClient, int64) (*UserSelectEntity, error)) {
@@ -1360,152 +1435,35 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
-	if msg.Type == "Authorization" {
-		w.Authorization(c, &msg)
+	// Prioritize matching and executing unauthenticated handlers
+	// 优先匹配并执行免登录鉴权的消息处理器
+	if noAuthHandler, exists := w.noAuthHandlers[msg.Type]; exists {
+		noAuthHandler(c, &msg)
 		return
 	}
 
-	if msg.Type == "ClientInfo" {
-		w.ClientInfo(c, &msg)
-		return
-	}
-
-	// Verify if the user is logged in
-	// 验证用户是否登录
-	if c.User == nil {
-		log(LogWarn, "WS User not authenticated",
-			zap.String("msgType", msg.Type),
-			zap.String("traceId", c.TraceID))
-		c.ToResponse(code.ErrorNotUserAuthToken)
-		return
-	}
-
-	// Verify Vault Restrictions for active WebSocket connections
-	// 针对活跃 WebSocket 连接校验笔记库访问权限限制
-	if c.Vaults != "" {
-		var vaultInfo struct {
-			Vault string `json:"vault"`
-		}
-		if err := json.Unmarshal(msg.Data, &vaultInfo); err == nil && vaultInfo.Vault != "" {
-			if !util.VerifyVaultAccess(c.Vaults, vaultInfo.Vault) {
-				log(LogWarn, "WS OnMessage Vault Restricted", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("vault", vaultInfo.Vault))
-				c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: "+vaultInfo.Vault), msg.Type+"Ack")
-				return
-			}
+	// Execute all registered pre-handler interceptors
+	// 执行所有注册的前置拦截器。若任何一个返回 false，则中断后续执行
+	for _, interceptor := range w.interceptors {
+		if !interceptor(c, &msg) {
+			return
 		}
 	}
 
 	// Execute operation
 	// 执行操作
+	// Execute core business handler
+	// 执行核心业务处理器
 	handler, exists := w.handlers[msg.Type]
 	if exists {
-		// Map Action to Function for RBAC
-		var function string
-		switch msg.Type {
-		case "NoteSync", "NoteCheck", "NoteRePush", "FolderSync":
-			function = "note_r"
-		case "NoteModify", "NoteDelete", "NoteRename", "FolderModify", "FolderDelete", "FolderRename":
-			function = "note_w"
-		case "FileChunkDownload", "FileRePush", "FileSync":
-			function = "file_r"
-		case "FileUploadCheck", "FileDelete", "FileRename":
-			function = "file_w"
-		case "SettingSync", "SettingCheck", "SettingRePush":
-			function = "config_r"
-		case "SettingModify", "SettingDelete", "SettingClear":
-			function = "config_w"
-		}
-
-		if function != "" && !VerifyPermissions(c.Scope, "ws", c.ClientType, function) {
-			log(LogWarn, "WS OnMessage Permission Denied", zap.String("Type", msg.Type), zap.String("uid", c.User.ID), zap.String("function", function))
-
-			// Try to extract resource path from message data
-			var pathInfo struct {
-				Path string `json:"path"`
-				Name string `json:"name"`
-			}
-			_ = json.Unmarshal(msg.Data, &pathInfo)
-			resPath := pathInfo.Path
-			if resPath == "" {
-				resPath = pathInfo.Name
-			}
-			if resPath == "" {
-				resPath = msg.Type // Fallback to message type
-			}
-
-			c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: "+resPath), msg.Type+"Ack")
-
-			// Trigger re-push for write operations to ensure client consistency
-			// 触发写操作的重推，确保客户端一致性
-			if strings.HasSuffix(function, "_w") {
-				// Special handling for Rename operations:
-				// Send a SyncRename message to "rename back" the resource on the client side.
-				// For example, if client tried A -> B and failed, we send Rename(Path=A, OldPath=B).
-				// 针对重命名操作的特殊处理：
-				// 向客户端发送一个同步重命名消息，将其“重命名回”原始路径。
-				// 例如：客户端尝试 A -> B 失败，我们下发 Rename(Path=A, OldPath=B)。
-				if strings.HasSuffix(msg.Type, "Rename") {
-					var renameData map[string]interface{}
-					if err := json.Unmarshal(msg.Data, &renameData); err == nil {
-						vault, _ := renameData["vault"].(string)
-						newPath, _ := renameData["path"].(string)
-						newPathHash, _ := renameData["pathHash"].(string)
-						oldPath, _ := renameData["oldPath"].(string)
-						oldPathHash, _ := renameData["oldPathHash"].(string)
-
-						if newPath != "" && oldPath != "" {
-							var syncRenameAction string
-							switch function {
-							case "note_w":
-								if strings.Contains(msg.Type, "Folder") {
-									syncRenameAction = "FolderSyncRename"
-								} else {
-									syncRenameAction = "NoteSyncRename"
-								}
-							case "file_w":
-								syncRenameAction = "FileSyncRename"
-							}
-
-							if syncRenameAction != "" {
-								rollbackData := map[string]interface{}{
-									"path":        oldPath,
-									"pathHash":    oldPathHash,
-									"oldPath":     newPath,
-									"oldPathHash": newPathHash,
-								}
-								c.ToResponse(code.Success.WithData(rollbackData).WithVault(vault), syncRenameAction)
-								// For Rename rollback, we don't need subsequent RePush (Delete/Modify)
-								// 对于重命名回滚，我们不再需要后续的 RePush（避免下发 Delete/Modify）
-								return
-							}
-						}
-					}
-				}
-
-				var rePushAction string
-				switch function {
-				case "note_w":
-					rePushAction = "NoteRePush"
-				case "file_w":
-					rePushAction = "FileRePush"
-				case "config_w":
-					rePushAction = "SettingRePush"
-				}
-
-				if rePushAction != "" {
-					if h, ok := w.handlers[rePushAction]; ok {
-						log(LogInfo, "WS Trigger RePush on permission denied", zap.String("action", rePushAction), zap.String("uid", c.User.ID))
-						h(c, &msg)
-					}
-				}
-			}
-			return
-		}
-
-		// Use the client object retrieved at the beginning of the function
 		handler(c, &msg)
 	} else {
-		log(LogError, "WS Unknown Message", zap.String("Type", msg.Type), zap.String("uid", c.User.ID))
+		log(LogError, "WS Unknown Message", zap.String("Type", msg.Type), zap.String("uid", func() string {
+			if c.User != nil {
+				return c.User.ID
+			}
+			return "Guest"
+		}()))
 	}
 }
 
