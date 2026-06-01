@@ -10,6 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func cacheKey(conf *Config) string {
+	return conf.AccessKeyID + ":" + conf.AccessKeySecret + ":" + conf.Region
+}
+
 type Config struct {
 	Region          string `yaml:"region"`
 	BucketName      string `yaml:"bucket-name"`
@@ -31,8 +35,9 @@ func NewClient(conf *Config) (*S3, error) {
 	var accessKeyId = conf.AccessKeyID
 	var accessKeySecret = conf.AccessKeySecret
 
-	if clients[accessKeyId] != nil {
-		return clients[accessKeyId], nil
+	key := cacheKey(conf)
+	if clients[key] != nil {
+		return clients[key], nil
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
@@ -45,10 +50,10 @@ func NewClient(conf *Config) (*S3, error) {
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {})
 
-	clients[accessKeyId] = &S3{
+	clients[key] = &S3{
 		S3Client:        client,
 		TransferManager: transfermanager.New(client),
 		Config:          conf,
 	}
-	return clients[accessKeyId], nil
+	return clients[key], nil
 }

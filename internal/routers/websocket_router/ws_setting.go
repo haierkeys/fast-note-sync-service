@@ -31,7 +31,7 @@ func NewSettingWSHandler(a *app.App) *SettingWSHandler {
 // SettingModify 处理配置修改消息
 func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingModifyOrCreateRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModify.BindAndValid")
 		return
@@ -64,7 +64,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: setting.UpdatedTimestamp,
 			Path:     setting.Path,
 			PathHash: setting.PathHash,
-		}).WithVault(params.Vault), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(SettingModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.SettingSyncModifyMessage{
 				Vault:            params.Vault,
@@ -76,7 +76,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 				Mtime:            setting.Mtime,
 				UpdatedTimestamp: setting.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), true, dto.SettingSyncModify)
+		).WithVault(params.Vault), true, SettingSyncModify)
 		return
 
 	case "UpdateMtime":
@@ -84,10 +84,14 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: settingCheck.UpdatedTimestamp,
 			Path:     settingCheck.Path,
 			PathHash: settingCheck.PathHash,
-		}).WithVault(params.Vault), string(dto.SettingModifyAck))
+		}).WithVault(params.Vault), string(SettingModifyAck))
 		return
 	default:
-		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
+		c.ToResponse(code.SuccessNoUpdate.WithData(dto.SettingModifyAckMessage{
+			LastTime: params.Mtime,
+			Path:     params.Path,
+			PathHash: params.PathHash,
+		}).WithVault(params.Vault), string(SettingModifyAck))
 		return
 	}
 }
@@ -96,7 +100,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 // SettingModifyCheck 检查配置修改必要性
 func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingUpdateCheckRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModifyCheck.BindAndValid")
 		return
@@ -122,7 +126,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 			dto.SettingSyncNeedUploadMessage{
 				Path: settingCheck.Path,
 			},
-		), dto.SettingSyncNeedUpload)
+		), SettingSyncNeedUpload)
 		return
 	case "UpdateMtime":
 		c.ToResponse(code.Success.WithData(
@@ -132,7 +136,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 				Mtime:            settingCheck.Mtime,
 				UpdatedTimestamp: settingCheck.UpdatedTimestamp,
 			},
-		), dto.SettingSyncMtime)
+		), SettingSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
@@ -144,7 +148,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 // SettingDelete 处理配置删除消息
 func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingDeleteRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingDelete.BindAndValid")
 		return
@@ -168,7 +172,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		LastTime: setting.UpdatedTimestamp,
 		Path:     setting.Path,
 		PathHash: setting.PathHash,
-	}).WithVault(params.Vault), string(dto.SettingDeleteAck))
+	}).WithVault(params.Vault), string(SettingDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
 			Path:             setting.Path,
@@ -177,14 +181,14 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 			Mtime:            setting.Mtime,
 			UpdatedTimestamp: setting.UpdatedTimestamp,
 		},
-	).WithVault(params.Vault), true, dto.SettingSyncDelete)
+	).WithVault(params.Vault), true, SettingSyncDelete)
 }
 
 // SettingSync handles setting synchronization messages
 // SettingSync 处理配置同步消息
 func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingSyncRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSync.BindAndValid")
 		return
@@ -219,7 +223,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// 创建消息队列，用于收集所有待发送的消息
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
-	var messageQueue []dto.WSQueuedMessage
+	var messageQueue []WSQueuedMessage
 
 	var lastTime int64
 	var needUploadCount int64
@@ -275,7 +279,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					dto.SettingSyncDeleteMessage{
 						Path: setting.Path,
 					},
-				).WithVault(params.Vault), true, dto.SettingSyncDelete)
+				).WithVault(params.Vault), true, SettingSyncDelete)
 			} else {
 				h.App.Logger().Debug("websocket_router.setting.SettingSync.SettingService.Get check failed (not found or already deleted), broadcasting delete anyway",
 					zap.String(logger.FieldTraceID, c.TraceID),
@@ -291,7 +295,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					dto.SettingSyncDeleteMessage{
 						Path: delSetting.Path,
 					},
-				).WithVault(params.Vault), true, dto.SettingSyncDelete)
+				).WithVault(params.Vault), true, SettingSyncDelete)
 			}
 
 		}
@@ -316,8 +320,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 
 			if setting != nil && setting.Action != "delete" {
 
-				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-					Action: dto.SettingSyncModify,
+				messageQueue = append(messageQueue, WSQueuedMessage{
+					Action: SettingSyncModify,
 					Data: dto.SettingSyncModifyMessage{
 						Vault:            params.Vault,
 						Path:             setting.Path,
@@ -349,8 +353,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				delete(cSettingsKeys, s.PathHash)
 			}
 			// 将消息添加到队列
-			messageQueue = append(messageQueue, dto.WSQueuedMessage{
-				Action: dto.SettingSyncDelete,
+			messageQueue = append(messageQueue, WSQueuedMessage{
+				Action: SettingSyncDelete,
 				Data: dto.SettingSyncDeleteMessage{
 					Path:             s.Path,
 					PathHash:         s.PathHash,
@@ -369,8 +373,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				// 强制覆盖连接端
 				if params.Cover {
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Action: dto.SettingSyncModify,
+					messageQueue = append(messageQueue, WSQueuedMessage{
+						Action: SettingSyncModify,
 						Data: dto.SettingSyncModifyMessage{
 							Vault:            params.Vault,
 							Path:             s.Path,
@@ -392,8 +396,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, dto.WSQueuedMessage{
-							Action: dto.SettingSyncModify,
+						messageQueue = append(messageQueue, WSQueuedMessage{
+							Action: SettingSyncModify,
 							Data: dto.SettingSyncModifyMessage{
 								Vault:            params.Vault,
 								Path:             s.Path,
@@ -411,8 +415,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, dto.WSQueuedMessage{
-							Action: dto.SettingSyncNeedUpload,
+						messageQueue = append(messageQueue, WSQueuedMessage{
+							Action: SettingSyncNeedUpload,
 							Data: dto.SettingSyncNeedUploadMessage{
 								Path: s.Path,
 							},
@@ -424,8 +428,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 					// 将消息添加到队列而非立即发送
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Action: dto.SettingSyncMtime,
+					messageQueue = append(messageQueue, WSQueuedMessage{
+						Action: SettingSyncMtime,
 						Data: dto.SettingSyncMtimeMessage{
 							Path:             s.Path,
 							Ctime:            s.Ctime,
@@ -437,8 +441,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 				}
 			} else {
 				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-					Action: dto.SettingSyncModify,
+				messageQueue = append(messageQueue, WSQueuedMessage{
+					Action: SettingSyncModify,
 					Data: dto.SettingSyncModifyMessage{
 						Vault:            params.Vault,
 						Path:             s.Path,
@@ -465,8 +469,8 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		// Add message to queue instead of sending immediately
 		// 将消息添加到队列而非立即发送
 		if hasWritePermission {
-			messageQueue = append(messageQueue, dto.WSQueuedMessage{
-				Action: dto.SettingSyncNeedUpload,
+			messageQueue = append(messageQueue, WSQueuedMessage{
+				Action: SettingSyncNeedUpload,
 				Data:   dto.SettingSyncNeedUploadMessage{Path: s.Path},
 			})
 			needUploadCount++
@@ -488,7 +492,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			NeedSyncMtimeCount: needSyncMtimeCount,
 			NeedDeleteCount:    needDeleteCount,
 		},
-	).WithVault(params.Vault).WithContext(params.Context), dto.SettingSyncEnd)
+	).WithVault(params.Vault).WithContext(params.Context), SettingSyncEnd)
 
 	// Send queued messages individually
 	// 逐条发送队列中的消息
@@ -501,7 +505,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 // SettingClear 处理清理所有配置消息
 func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingClearRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingClear.BindAndValid")
 		return
@@ -519,14 +523,14 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	// Broadcast clearing to other clients with vault info
 	// 将清除消息广播给其他客户端，带上笔记本信息
-	c.BroadcastResponse(code.Success.WithData(nil).WithVault(params.Vault), false, dto.SettingSyncClear)
+	c.BroadcastResponse(code.Success.WithData(nil).WithVault(params.Vault), false, SettingSyncClear)
 }
 
 // SettingRePush handles setting missing pull request
 // SettingRePush 处理配置缺失请求拉取
 func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
 	params := &dto.SettingGetRequest{}
-	valid, errs := c.BindAndValid(msg.Data, params)
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
 		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingRePush.BindAndValid")
 		return
@@ -556,7 +560,7 @@ func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.
 				Mtime:            setting.Mtime,
 				UpdatedTimestamp: setting.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), dto.SettingSyncModify)
+		).WithVault(params.Vault), SettingSyncModify)
 	} else {
 		// If setting not found, send delete message to client to clean up local unauthorized creation
 		// 如果未找到配置，则向客户端发送删除消息，以清理本地未授权的创建
@@ -564,6 +568,6 @@ func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.
 			dto.SettingSyncDeleteMessage{
 				Path: params.Path,
 			},
-		).WithVault(params.Vault), string(dto.SettingSyncDelete))
+		).WithVault(params.Vault), string(SettingSyncDelete))
 	}
 }

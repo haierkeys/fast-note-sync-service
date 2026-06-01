@@ -1,6 +1,7 @@
 package api_router
 
 import (
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	"context"
 	"fmt"
 	"net/http"
@@ -71,7 +72,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 
 	shareRes.BaseUrl = h.getShareBaseUrl(c)
 	response.ToResponse(code.Success.WithData(shareRes))
-	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), websocket_router.ShareSyncRefresh)
 }
 
 // @Summary Get shared note details
@@ -285,7 +286,7 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success)
-	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), dto.ShareSyncRefresh)
+	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), websocket_router.ShareSyncRefresh)
 }
 
 // UpdatePassword updates share password

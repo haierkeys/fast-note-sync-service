@@ -2,18 +2,20 @@ package routers
 
 import (
 	"context"
-
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
-	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
 func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
+	// Register Protobuf Hooks
+	// 注册 Protobuf 编解码钩子
+	websocket_router.RegisterProtobufHooks(wss)
+
 	// Create WebSocket Handlers (injected App Container)
 	// 创建 WebSocket Handlers（注入 App Container）
 	noteWSHandler := websocket_router.NewNoteWSHandler(appContainer)
@@ -22,37 +24,41 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	settingWSHandler := websocket_router.NewSettingWSHandler(appContainer)
 
 	// Note
-	wss.Use(dto.NoteReceiveModify, noteWSHandler.NoteModify)
-	wss.Use(dto.NoteReceiveDelete, noteWSHandler.NoteDelete)
-	wss.Use(dto.NoteReceiveRename, noteWSHandler.NoteRename)
-	wss.Use(dto.NoteReceiveRePush, noteWSHandler.NoteRePush)
-	wss.Use(dto.NoteReceiveCheck, noteWSHandler.NoteModifyCheck)
-	wss.Use(dto.NoteReceiveSync, noteWSHandler.NoteSync)
+	wss.Use(websocket_router.NoteReceiveModify, noteWSHandler.NoteModify)
+	wss.Use(websocket_router.NoteReceiveDelete, noteWSHandler.NoteDelete)
+	wss.Use(websocket_router.NoteReceiveRename, noteWSHandler.NoteRename)
+	wss.Use(websocket_router.NoteReceiveRePush, noteWSHandler.NoteRePush)
+	wss.Use(websocket_router.NoteReceiveCheck, noteWSHandler.NoteModifyCheck)
+	wss.Use(websocket_router.NoteReceiveSync, noteWSHandler.NoteSync)
 
 	// Folder
-	wss.Use(dto.FolderReceiveSync, folderWSHandler.FolderSync)
-	wss.Use(dto.FolderReceiveModify, folderWSHandler.FolderModify)
-	wss.Use(dto.FolderReceiveDelete, folderWSHandler.FolderDelete)
-	wss.Use(dto.FolderReceiveRename, folderWSHandler.FolderRename)
+	wss.Use(websocket_router.FolderReceiveSync, folderWSHandler.FolderSync)
+	wss.Use(websocket_router.FolderReceiveModify, folderWSHandler.FolderModify)
+	wss.Use(websocket_router.FolderReceiveDelete, folderWSHandler.FolderDelete)
+	wss.Use(websocket_router.FolderReceiveRename, folderWSHandler.FolderRename)
 
 	// Setting
-	wss.Use(dto.SettingReceiveModify, settingWSHandler.SettingModify)
-	wss.Use(dto.SettingReceiveDelete, settingWSHandler.SettingDelete)
-	wss.Use(dto.SettingReceiveCheck, settingWSHandler.SettingModifyCheck)
-	wss.Use(dto.SettingReceiveSync, settingWSHandler.SettingSync)
-	wss.Use(dto.SettingReceiveClear, settingWSHandler.SettingClear)
-	wss.Use(dto.SettingReceiveRePush, settingWSHandler.SettingRePush)
+	wss.Use(websocket_router.SettingReceiveModify, settingWSHandler.SettingModify)
+	wss.Use(websocket_router.SettingReceiveDelete, settingWSHandler.SettingDelete)
+	wss.Use(websocket_router.SettingReceiveCheck, settingWSHandler.SettingModifyCheck)
+	wss.Use(websocket_router.SettingReceiveSync, settingWSHandler.SettingSync)
+	wss.Use(websocket_router.SettingReceiveClear, settingWSHandler.SettingClear)
+	wss.Use(websocket_router.SettingReceiveRePush, settingWSHandler.SettingRePush)
 
 	// Attachment
-	wss.Use(dto.FileReceiveSync, fileWSHandler.FileSync)
-	wss.Use(dto.FileReceiveUploadCheck, fileWSHandler.FileUploadCheck)
-	wss.Use(dto.FileReceiveRename, fileWSHandler.FileRename)
-	wss.Use(dto.FileReceiveDelete, fileWSHandler.FileDelete)
-	wss.Use(dto.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
-	wss.Use(dto.FileReceiveRePush, fileWSHandler.FileRePush)
+	wss.Use(websocket_router.FileReceiveSync, fileWSHandler.FileSync)
+	wss.Use(websocket_router.FileReceiveUploadCheck, fileWSHandler.FileUploadCheck)
+	wss.Use(websocket_router.FileReceiveRename, fileWSHandler.FileRename)
+	wss.Use(websocket_router.FileReceiveDelete, fileWSHandler.FileDelete)
+	wss.Use(websocket_router.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
+	wss.Use(websocket_router.FileReceiveRePush, fileWSHandler.FileRePush)
 
 	// Attachment chunk upload
-	wss.UseBinary(dto.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
+	wss.UseBinary(websocket_router.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)
+
+	// Inject Message Interceptor to handle unauthenticated checks, Vault restrictions, RBAC checks, and error rollbacks
+	// 注入消息拦截器，处理未登录验证、Vault笔记库限制校验、RBAC权限检查以及写失败回滚机制
+	wss.UseInterceptor(websocket_router.NewMessageInterceptor(appContainer))
 
 	wss.UseUserVerify(noteWSHandler.UserInfo)
 

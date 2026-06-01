@@ -8,6 +8,10 @@ import (
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 )
 
+func cacheKey(conf *Config) string {
+	return conf.AccessKeyID + ":" + conf.AccessKeySecret + ":" + conf.Endpoint + ":" + conf.Region
+}
+
 type Config struct {
 	Endpoint        string `yaml:"endpoint"`
 	Region          string `yaml:"region"`
@@ -25,9 +29,9 @@ type OSS struct {
 var clients = make(map[string]*OSS)
 
 func NewClient(conf *Config) (*OSS, error) {
-	var id = conf.AccessKeyID
-	if clients[id] != nil {
-		return clients[id], nil
+	key := cacheKey(conf)
+	if clients[key] != nil {
+		return clients[key], nil
 	}
 
 	region := conf.Region
@@ -45,11 +49,11 @@ func NewClient(conf *Config) (*OSS, error) {
 
 	ossClient := oss.NewClient(cfg)
 
-	clients[id] = &OSS{
+	clients[key] = &OSS{
 		Client: ossClient,
 		Config: conf,
 	}
-	return clients[id], nil
+	return clients[key], nil
 }
 
 func extractRegionFromEndpoint(endpoint string) string {
