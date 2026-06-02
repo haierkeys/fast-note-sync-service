@@ -183,3 +183,40 @@ func (r *Response) ToResponseList(codeObj *code.Code, list interface{}, totalRow
 func (r *Response) send(statusCode int, content interface{}) {
 	r.Ctx.JSON(statusCode, content)
 }
+
+// GetClientType extracts client type from request headers or query parameters
+// GetClientType 从请求头或查询参数中提取客户端类型
+func GetClientType(c *gin.Context) string {
+	client := c.GetHeader("x-client")
+	if client == "" {
+		client = c.Query("client")
+	}
+	return client
+}
+
+// IsWebGUIClient checks if the client type string is webgui
+// IsWebGUIClient 判断客户端类型字符串是否为 webgui (不区分大小写)
+func IsWebGUIClient(clientType string) bool {
+	return strings.EqualFold(clientType, "webgui")
+}
+
+// IsWebGUI checks if current request is from webgui client
+// IsWebGUI 判断当前请求是否来自 WebGUI 客户端
+func IsWebGUI(c *gin.Context) bool {
+	return IsWebGUIClient(GetClientType(c))
+}
+
+// RequireWebGUI is a Gin middleware to restrict access to webgui client only
+// RequireWebGUI 是一个 Gin 中间件，用于限制仅允许 WebGUI 客户端访问
+func RequireWebGUI() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !IsWebGUI(c) {
+			response := NewResponse(c)
+			response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("This action is restricted to webgui client only"))
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+

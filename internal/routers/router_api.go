@@ -2,7 +2,6 @@ package routers
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +10,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
-	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 )
 
 func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.WebsocketServer, uni *ut.UniversalTranslator) {
@@ -50,15 +48,21 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
 		tokenHandler := api_router.NewTokenHandler(appContainer)
 
-		api.POST("/user/register", userHandler.Register)
-		api.POST("/user/login", userHandler.Login)
+		// No-auth WebGUI restricted routes
+		// 免认证但仅限 WebGUI 访问的路由组
+		noAuthWebgui := api.Group("")
+		noAuthWebgui.Use(pkgapp.RequireWebGUI())
+		{
+			noAuthWebgui.POST("/user/register", userHandler.Register)
+			noAuthWebgui.POST("/user/login", userHandler.Login)
+			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
+		}
 		api.GET("/user/sync", wss.Run())
 
 		// Add server version interface (no auth required)
 		// 添加服务端版本号接口（无需认证）
 		api.GET("/version", versionHandler.ServerVersion)
 		api.GET("/support", versionHandler.Support)
-		api.GET("/webgui/config", adminControlHandler.Config)
 
 		// Health check interface (no auth required)
 		// 健康检查接口（无需认证）
@@ -93,30 +97,11 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 
 			// Admin config interface
 			// 管理员配置接口
-			auth.GET("/admin/check", adminControlHandler.CheckAdmin)
-			auth.GET("/admin/config", adminControlHandler.GetConfig)
-			auth.POST("/admin/config", adminControlHandler.UpdateConfig)
-			auth.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)
-			auth.POST("/admin/config/user_database", adminControlHandler.UpdateUserDatabaseConfig)
-			auth.POST("/admin/config/user_database/test", adminControlHandler.ValidateUserDatabaseConfig)
-			auth.GET("/admin/config/ngrok", adminControlHandler.GetNgrokConfig)
-			auth.POST("/admin/config/ngrok", adminControlHandler.UpdateNgrokConfig)
-			auth.GET("/admin/config/cloudflare", adminControlHandler.GetCloudflareConfig)
-			auth.POST("/admin/config/cloudflare", adminControlHandler.UpdateCloudflareConfig)
-			auth.GET("/admin/systeminfo", adminControlHandler.GetSystemInfo)
 			auth.GET("/admin/upgrade", adminControlHandler.Upgrade)
-			auth.GET("/admin/restart", adminControlHandler.Restart)
-			auth.GET("/admin/gc", adminControlHandler.GC)
 			auth.GET("/admin/ws_clients", adminControlHandler.GetWSClients)
 			auth.DELETE("/admin/ws_client/:traceId", adminControlHandler.KickWSClient)
-			auth.GET("/admin/cloudflared_tunnel_download", adminControlHandler.CloudflaredTunnelDownload)
 
-			auth.POST("/user/change_password", userHandler.UserChangePassword)
 			auth.GET("/user/info", userHandler.UserInfo)
-			auth.GET("/vault", vaultHandler.List)
-			auth.POST("/vault", vaultHandler.CreateOrUpdate)
-			auth.DELETE("/vault", vaultHandler.Delete)
-			auth.POST("/vault/rebuild-index", vaultHandler.RebuildIndex)
 
 			auth.GET("/note", noteHandler.Get)
 			auth.POST("/note", noteHandler.CreateOrUpdate)
@@ -161,59 +146,83 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.GET("/note/histories", noteHistoryHandler.List)
 			auth.PUT("/note/history/restore", noteHistoryHandler.Restore)
 
-			auth.GET("/storage", storageHandler.List)
-			auth.POST("/storage", storageHandler.CreateOrUpdate)
-			auth.GET("/storage/enabled_types", storageHandler.EnabledTypes)
-			auth.POST("/storage/validate", storageHandler.Validate)
-			auth.DELETE("/storage", storageHandler.Delete)
-
-			auth.GET("/backup/configs", backupHandler.GetConfigs)
-			auth.POST("/backup/config", backupHandler.UpdateConfig)
-			auth.DELETE("/backup/config", backupHandler.DeleteConfig)
-			auth.GET("/backup/historys", backupHandler.ListHistory)
-			auth.POST("/backup/execute", backupHandler.Execute)
-
-			auth.GET("/git-sync/configs", gitSyncHandler.GetConfigs)
-			auth.POST("/git-sync/config", gitSyncHandler.UpdateConfig)
-			auth.DELETE("/git-sync/config", gitSyncHandler.DeleteConfig)
-			auth.POST("/git-sync/validate", gitSyncHandler.Validate)
-			auth.DELETE("/git-sync/config/clean", gitSyncHandler.CleanWorkspace)
-			auth.POST("/git-sync/config/execute", gitSyncHandler.Execute)
-			auth.GET("/git-sync/histories", gitSyncHandler.GetHistories)
-
 			auth.GET("/setting", settingHandler.Get)
 			auth.POST("/setting", settingHandler.CreateOrUpdate)
 			auth.DELETE("/setting", settingHandler.Delete)
 			auth.POST("/setting/rename", settingHandler.Rename)
 			auth.GET("/settings", settingHandler.List)
 
-			// Sync log routes
-			// 同步日志路由
-			auth.GET("/sync-logs", syncLogHandler.List)
-
-			// Token management routes (Restricted to webgui)
-			// 令牌管理路由（限制仅 webgui 访问）
-			tokenGroup := auth.Group("")
-			tokenGroup.Use(func(c *gin.Context) {
-				client := c.GetHeader("x-client")
-				if client == "" {
-					client = c.Query("client")
-				}
-				if !strings.EqualFold(client, "webgui") {
-					response := pkgapp.NewResponse(c)
-					response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Token management is only allowed from webgui"))
-					c.Abort()
-					return
-				}
-				c.Next()
-			})
+			// WebGUI restricted routes
+			// 仅限 WebGUI 访问的路由组
+			webguiGroup := auth.Group("")
+			webguiGroup.Use(pkgapp.RequireWebGUI())
 			{
-				tokenGroup.GET("/tokens", tokenHandler.List)
-				tokenGroup.POST("/token", tokenHandler.Create)
-				tokenGroup.PUT("/token/:id", tokenHandler.Update)
-				tokenGroup.DELETE("/token/:id", tokenHandler.Revoke)
-				tokenGroup.POST("/token/:id/rotate", tokenHandler.Rotate)
-				tokenGroup.GET("/token/:id/logs", tokenHandler.ListLogs)
+				// User management routes
+				// 用户管理接口
+				webguiGroup.POST("/user/change_password", userHandler.UserChangePassword)
+
+				// Vault management routes
+				// 笔记库管理接口
+				webguiGroup.GET("/vault", vaultHandler.List)
+				webguiGroup.POST("/vault", vaultHandler.CreateOrUpdate)
+				webguiGroup.DELETE("/vault", vaultHandler.Delete)
+				webguiGroup.POST("/vault/rebuild-index", vaultHandler.RebuildIndex)
+
+				// Admin config interface
+				// 管理员配置接口
+				webguiGroup.GET("/admin/check", adminControlHandler.CheckAdmin)
+				webguiGroup.GET("/admin/config", adminControlHandler.GetConfig)
+				webguiGroup.POST("/admin/config", adminControlHandler.UpdateConfig)
+				webguiGroup.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)
+				webguiGroup.POST("/admin/config/user_database", adminControlHandler.UpdateUserDatabaseConfig)
+				webguiGroup.POST("/admin/config/user_database/test", adminControlHandler.ValidateUserDatabaseConfig)
+				webguiGroup.GET("/admin/config/ngrok", adminControlHandler.GetNgrokConfig)
+				webguiGroup.POST("/admin/config/ngrok", adminControlHandler.UpdateNgrokConfig)
+				webguiGroup.GET("/admin/config/cloudflare", adminControlHandler.GetCloudflareConfig)
+				webguiGroup.POST("/admin/config/cloudflare", adminControlHandler.UpdateCloudflareConfig)
+				webguiGroup.GET("/admin/systeminfo", adminControlHandler.GetSystemInfo)
+				webguiGroup.GET("/admin/restart", adminControlHandler.Restart)
+				webguiGroup.GET("/admin/gc", adminControlHandler.GC)
+				webguiGroup.GET("/admin/cloudflared_tunnel_download", adminControlHandler.CloudflaredTunnelDownload)
+
+				// Storage management routes
+				// 存储配置接口
+				webguiGroup.GET("/storage", storageHandler.List)
+				webguiGroup.POST("/storage", storageHandler.CreateOrUpdate)
+				webguiGroup.GET("/storage/enabled_types", storageHandler.EnabledTypes)
+				webguiGroup.POST("/storage/validate", storageHandler.Validate)
+				webguiGroup.DELETE("/storage", storageHandler.Delete)
+
+				// Backup routes
+				// 本地备份接口
+				webguiGroup.GET("/backup/configs", backupHandler.GetConfigs)
+				webguiGroup.POST("/backup/config", backupHandler.UpdateConfig)
+				webguiGroup.DELETE("/backup/config", backupHandler.DeleteConfig)
+				webguiGroup.GET("/backup/historys", backupHandler.ListHistory)
+				webguiGroup.POST("/backup/execute", backupHandler.Execute)
+
+				// Git sync routes
+				// Git 同步接口
+				webguiGroup.GET("/git-sync/configs", gitSyncHandler.GetConfigs)
+				webguiGroup.POST("/git-sync/config", gitSyncHandler.UpdateConfig)
+				webguiGroup.DELETE("/git-sync/config", gitSyncHandler.DeleteConfig)
+				webguiGroup.POST("/git-sync/validate", gitSyncHandler.Validate)
+				webguiGroup.DELETE("/git-sync/config/clean", gitSyncHandler.CleanWorkspace)
+				webguiGroup.POST("/git-sync/config/execute", gitSyncHandler.Execute)
+				webguiGroup.GET("/git-sync/histories", gitSyncHandler.GetHistories)
+
+				// Sync log routes
+				// 同步日志路由
+				webguiGroup.GET("/sync-logs", syncLogHandler.List)
+
+				// Token management routes
+				// 令牌管理路由
+				webguiGroup.GET("/tokens", tokenHandler.List)
+				webguiGroup.POST("/token", tokenHandler.Create)
+				webguiGroup.PUT("/token/:id", tokenHandler.Update)
+				webguiGroup.DELETE("/token/:id", tokenHandler.Revoke)
+				webguiGroup.POST("/token/:id/rotate", tokenHandler.Rotate)
+				webguiGroup.GET("/token/:id/logs", tokenHandler.ListLogs)
 			}
 		}
 	}

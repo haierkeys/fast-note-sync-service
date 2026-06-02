@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
-	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	v1 "github.com/haierkeys/fast-note-sync-service/internal/proto/v1"
+	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"google.golang.org/protobuf/proto"
 )
@@ -488,16 +488,6 @@ func EnSendDTOToProtobuf(action WebSocketSendAction, res *pkgapp.Res) ([]byte, e
 	return result, nil
 }
 
-func formatString(v any) string {
-	if v == nil {
-		return ""
-	}
-	if str, ok := v.(string); ok {
-		return str
-	}
-	return fmt.Sprintf("%v", v)
-}
-
 // enSendDataPayload serializes data payload by action type
 // enSendDataPayload 根据动作类型序列化要发送的数据荷载
 func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
@@ -540,13 +530,13 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case NoteSyncModify:
 		if src, ok := data.(dto.NoteSyncModifyMessage); ok {
 			pbMsg := &v1.NoteSyncModifyMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				Content:          src.Content,
-				ContentHash:      src.ContentHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:        src.Path,
+				PathHash:    src.PathHash,
+				Content:     src.Content,
+				ContentHash: src.ContentHash,
+				Ctime:       src.Ctime,
+				Mtime:       src.Mtime,
+				LastTime:    src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -554,12 +544,12 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case NoteSyncDelete:
 		if src, ok := data.(dto.NoteSyncDeleteMessage); ok {
 			pbMsg := &v1.NoteSyncDeleteMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				Size:             src.Size,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				PathHash: src.PathHash,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				Size:     src.Size,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -567,15 +557,15 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case NoteSyncRename:
 		if src, ok := data.(dto.NoteSyncRenameMessage); ok {
 			pbMsg := &v1.NoteSyncRenameMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				ContentHash:      src.ContentHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				Size:             src.Size,
-				OldPath:          src.OldPath,
-				OldPathHash:      src.OldPathHash,
-				LastTime:         src.UpdatedTimestamp,
+				Path:        src.Path,
+				PathHash:    src.PathHash,
+				ContentHash: src.ContentHash,
+				Ctime:       src.Ctime,
+				Mtime:       src.Mtime,
+				Size:        src.Size,
+				OldPath:     src.OldPath,
+				OldPathHash: src.OldPathHash,
+				LastTime:    src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		} else if m, ok := data.(map[string]interface{}); ok {
@@ -599,10 +589,10 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case NoteSyncMtime:
 		if src, ok := data.(dto.NoteSyncMtimeMessage); ok {
 			pbMsg := &v1.NoteSyncMtimeMessage{
-				Path:             src.Path,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -663,13 +653,13 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case FileSyncUpdate:
 		if src, ok := data.(dto.FileSyncModifyMessage); ok {
 			pbMsg := &v1.FileSyncModifyMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				ContentHash:      src.ContentHash,
-				Size:             src.Size,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:        src.Path,
+				PathHash:    src.PathHash,
+				ContentHash: src.ContentHash,
+				Size:        src.Size,
+				Ctime:       src.Ctime,
+				Mtime:       src.Mtime,
+				LastTime:    src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -677,12 +667,12 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case FileSyncDelete:
 		if src, ok := data.(dto.FileSyncDeleteMessage); ok {
 			pbMsg := &v1.FileSyncDeleteMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				Size:             src.Size,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				PathHash: src.PathHash,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				Size:     src.Size,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -690,15 +680,15 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case FileSyncRename:
 		if src, ok := data.(dto.FileSyncRenameMessage); ok {
 			pbMsg := &v1.FileSyncRenameMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				ContentHash:      src.ContentHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				Size:             src.Size,
-				LastTime:         src.UpdatedTimestamp,
-				OldPath:          src.OldPath,
-				OldPathHash:      src.OldPathHash,
+				Path:        src.Path,
+				PathHash:    src.PathHash,
+				ContentHash: src.ContentHash,
+				Ctime:       src.Ctime,
+				Mtime:       src.Mtime,
+				Size:        src.Size,
+				LastTime:    src.UpdatedTimestamp,
+				OldPath:     src.OldPath,
+				OldPathHash: src.OldPathHash,
 			}
 			return proto.Marshal(pbMsg)
 		} else if m, ok := data.(map[string]interface{}); ok {
@@ -722,10 +712,10 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case FileSyncMtime:
 		if src, ok := data.(dto.FileSyncMtimeMessage); ok {
 			pbMsg := &v1.FileSyncMtimeMessage{
-				Path:             src.Path,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -803,14 +793,14 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case SettingSyncModify:
 		if src, ok := data.(dto.SettingSyncModifyMessage); ok {
 			pbMsg := &v1.SettingSyncModifyMessage{
-				Vault:            src.Vault,
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				Content:          src.Content,
-				ContentHash:      src.ContentHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Vault:       src.Vault,
+				Path:        src.Path,
+				PathHash:    src.PathHash,
+				Content:     src.Content,
+				ContentHash: src.ContentHash,
+				Ctime:       src.Ctime,
+				Mtime:       src.Mtime,
+				LastTime:    src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -818,11 +808,11 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case SettingSyncDelete:
 		if src, ok := data.(dto.SettingSyncDeleteMessage); ok {
 			pbMsg := &v1.SettingSyncDeleteMessage{
-				Path:             src.Path,
-				PathHash:         src.PathHash,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				PathHash: src.PathHash,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -830,10 +820,10 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	case SettingSyncMtime:
 		if src, ok := data.(dto.SettingSyncMtimeMessage); ok {
 			pbMsg := &v1.SettingSyncMtimeMessage{
-				Path:             src.Path,
-				Ctime:            src.Ctime,
-				Mtime:            src.Mtime,
-				LastTime:         src.UpdatedTimestamp,
+				Path:     src.Path,
+				Ctime:    src.Ctime,
+				Mtime:    src.Mtime,
+				LastTime: src.UpdatedTimestamp,
 			}
 			return proto.Marshal(pbMsg)
 		}
@@ -1031,4 +1021,14 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 
 	// For unhandled message types, fallback to JSON encoding
 	return json.Marshal(data)
+}
+
+func formatString(v any) string {
+	if v == nil {
+		return ""
+	}
+	if str, ok := v.(string); ok {
+		return str
+	}
+	return fmt.Sprintf("%v", v)
 }
