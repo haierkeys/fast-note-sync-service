@@ -7,6 +7,7 @@ import "time"
 type AdminWebGUIConfig struct {
 	FontSet          string `json:"fontSet"`          // Font set // 字体设置
 	RegisterIsEnable bool   `json:"registerIsEnable"` // Registration enablement // 是否开启注册
+	FtsBleveEnabled  bool   `json:"ftsBleveEnabled"`  // Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
 }
 
 // AdminCheckResponse Admin check response structure
