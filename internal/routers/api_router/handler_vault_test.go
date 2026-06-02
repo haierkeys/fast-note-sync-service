@@ -256,7 +256,13 @@ func TestVaultHandler_RebuildIndex_ClientRestricted(t *testing.T) {
 	body := `{"id": 10}`
 	c, w := newVaultTestContext("POST", "/api/vault/rebuild-index", body, 1)
 	c.Request.Header.Set("X-Client", "not-webgui")
-	handler.RebuildIndex(c)
+
+	// Execute RequireWebGUI middleware since validation is moved to it
+	// 执行 RequireWebGUI 中间件，因为校验逻辑已移至其中
+	pkgapp.RequireWebGUI()(c)
+	if !c.IsAborted() {
+		handler.RebuildIndex(c)
+	}
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.ErrorAuthTokenClientRestricted.Code())

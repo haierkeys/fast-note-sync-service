@@ -2,7 +2,6 @@ package api_router
 
 import (
 	"context"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -253,15 +252,6 @@ func (h *VaultHandler) logError(ctx context.Context, method string, err error) {
 // @Router /api/vault/rebuild-index [post]
 func (h *VaultHandler) RebuildIndex(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
-
-	// Validate client type
-	// 验证客户端类型
-	clientType, _, _ := h.getClientInfo(c)
-	if !strings.EqualFold(clientType, "webgui") {
-		h.App.Logger().Warn("VaultHandler.RebuildIndex restricted: only webgui client allowed", zap.String("clientType", clientType))
-		response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("This action is restricted to webgui client only"))
-		return
-	}
 
 	params := &dto.VaultRebuildIndexRequest{}
 

@@ -129,25 +129,6 @@ func TestUserService_Register_Success(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-// TestUserService_Register_ClientRestricted verifies error when clientType is not WebGui.
-// TestUserService_Register_ClientRestricted 验证客户端类型非 WebGui 时返回错误。
-func TestUserService_Register_ClientRestricted(t *testing.T) {
-	mockRepo := new(domainmocks.MockUserRepository)
-
-	svc := newUserSvc(mockRepo, true)
-	_, err := svc.Register(context.Background(), &dto.UserCreateRequest{
-		Email:           "a@b.com",
-		Username:        "user1",
-		Password:        "pass",
-		ConfirmPassword: "pass",
-	}, "127.0.0.1", "obsidian", "test-agent")
-
-	assert.ErrorIs(t, err, code.ErrorUserRegister)
-	assert.Contains(t, err.Error(), "Only WebGui is allowed for registration")
-	mockRepo.AssertExpectations(t)
-}
-
-
 // TestUserService_Register_Disabled verifies error when registration is disabled.
 // TestUserService_Register_Disabled 验证注册功能关闭时返回错误。
 func TestUserService_Register_Disabled(t *testing.T) {
