@@ -1059,6 +1059,14 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 			}
 			return "Guest"
 		}()))
+	} else {
+		c.UseProtobuf = false
+		log(LogInfo, "WS Client downgraded/disabled Protobuf successfully", zap.String("uid", func() string {
+			if c.User != nil {
+				return c.User.ID
+			}
+			return "Guest"
+		}()))
 	}
 
 	log(LogInfo, "WS ClientInfo", zap.String("uid", func() string {
