@@ -522,13 +522,25 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 		content.Context = code.Context()
 	}
 
-	responseBytes, _ = json.Marshal(content)
-
-	if actionType != "" {
-		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
-	}
-
 	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
+		if c.UseProtobuf && c.Server.ProtobufEncoder != nil && actionType != "" {
+			pbBytes, err := c.Server.ProtobufEncoder(actionType, &content)
+			if err == nil {
+				c.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+				return
+			}
+			log(LogError, "WS Protobuf encode failed, falling back to JSON", zap.Error(err), zap.String("uid", func() string {
+				if c.User != nil {
+					return c.User.ID
+				}
+				return "Guest"
+			}()))
+		}
+
+		responseBytes, _ = json.Marshal(content)
+		if actionType != "" {
+			responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
+		}
 		c.send(responseBytes, false, false)
 	}
 }
@@ -558,8 +570,6 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		return
 	}
 
-	var responseBytes []byte
-
 	content := Res{
 		Code:    code.Code(),
 		Status:  code.Status(),
@@ -579,33 +589,28 @@ func (c *WebsocketClient) BroadcastResponse(code *code.Code, options ...any) {
 		content.Context = code.Context()
 	}
 
-	responseBytes, _ = json.Marshal(content)
-
-	if actionType != "" {
-		responseBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(responseBytes)))
-	}
-
-	c.send(responseBytes, true, options[0].(bool))
+	c.sendBroadcast(&content, actionType, options[0].(bool))
 }
 
 func (c *WebsocketClient) send(responseBytes []byte, isBroadcast bool, isExcludeSelf bool) {
-	if isBroadcast {
-		c.sendBroadcast(responseBytes, isExcludeSelf)
-	} else {
-		c.sendMessage(responseBytes)
-	}
+	c.sendMessage(responseBytes)
 }
 
 func (c *WebsocketClient) sendMessage(payload []byte) {
 	c.conn.WriteMessage(gws.OpcodeText, payload)
 }
 
-func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
+func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExcludeSelf bool) {
 	c.Server.mu.RLock()
 	defer c.Server.mu.RUnlock()
 
-	var b = gws.NewBroadcaster(gws.OpcodeText, payload)
-	defer b.Close()
+	var jsonBytes []byte
+	if actionType != "" {
+		mBytes, _ := json.Marshal(content)
+		jsonBytes = []byte(fmt.Sprintf(`%s|%s`, actionType, string(mBytes)))
+	} else {
+		jsonBytes, _ = json.Marshal(content)
+	}
 
 	for _, uc := range c.UserClients {
 		if uc.conn == nil {
@@ -615,9 +620,18 @@ func (c *WebsocketClient) sendBroadcast(payload []byte, isExcludeSelf bool) {
 			continue
 		}
 
-		// Track consecutive broadcast failures and close half-broken connections proactively.
-		// 追踪连续广播失败次数，主动关闭半断开的连接（TCP keepalive 未超时但已无法通信）。
-		if err := b.Broadcast(uc.conn); err != nil {
+		var err error
+		if uc.UseProtobuf && uc.Server.ProtobufEncoder != nil && actionType != "" {
+			var pbBytes []byte
+			pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
+			if err == nil {
+				err = uc.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+			}
+		} else {
+			err = uc.conn.WriteMessage(gws.OpcodeText, jsonBytes)
+		}
+
+		if err != nil {
 			if uc.failCount.Add(1) == 4 {
 				uc.conn.WriteClose(1000, []byte("broadcast failed"))
 			}
@@ -865,6 +879,7 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		client.ClientType = c.Query("client")
 		client.ClientName = c.Query("clientName")
 		client.ClientVersion = c.Query("clientVersion")
+		client.Protocol = c.Query("protocol")
 
 		// Extract language preference
 		// 提取语言偏好
@@ -1034,6 +1049,25 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 	}
 	c.OfflineSyncStrategy = info.OfflineSyncStrategy
 	c.DiffMergePaths = make(map[string]DiffMergeEntry)
+
+	// Enable Protobuf if query param protocol=protobuf and ClientInfo protobuf=true
+	if c.Protocol == "protobuf" && info.Protobuf {
+		c.UseProtobuf = true
+		log(LogInfo, "WS Client upgraded to Protobuf successfully", zap.String("uid", func() string {
+			if c.User != nil {
+				return c.User.ID
+			}
+			return "Guest"
+		}()))
+	} else {
+		c.UseProtobuf = false
+		log(LogInfo, "WS Client downgraded/disabled Protobuf successfully", zap.String("uid", func() string {
+			if c.User != nil {
+				return c.User.ID
+			}
+			return "Guest"
+		}()))
+	}
 
 	log(LogInfo, "WS ClientInfo", zap.String("uid", func() string {
 		if c.User != nil {
@@ -1412,6 +1446,55 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 					zap.Error(err))
 				c.ToResponse(code.ErrorServerBusy)
 				return
+			}
+		} else if prefix == "pb" {
+			if !c.UseProtobuf {
+				log(LogWarn, "WS OnMessage received Protobuf but UseProtobuf is false", zap.String("uid", c.User.ID))
+				return
+			}
+			if w.EnvelopeDecoder == nil {
+				log(LogError, "WS OnMessage EnvelopeDecoder is nil", zap.String("uid", c.User.ID))
+				return
+			}
+
+			// Mark current message as Protobuf format for BindAndValid
+			c.currentMsgIsPb = true
+			defer func() {
+				c.currentMsgIsPb = false
+			}()
+
+			action, innerPayload, err := w.EnvelopeDecoder(payloadCopy)
+			if err != nil {
+				log(LogError, "WS OnMessage Protobuf Envelope decode failed", zap.Error(err), zap.String("uid", c.User.ID))
+				return
+			}
+
+			msg := WebSocketMessage{
+				Type: action,
+				Data: innerPayload,
+			}
+
+			if noAuthHandler, exists := w.noAuthHandlers[msg.Type]; exists {
+				noAuthHandler(c, &msg)
+				return
+			}
+
+			for _, interceptor := range w.interceptors {
+				if !interceptor(c, &msg) {
+					return
+				}
+			}
+
+			handler, exists := w.handlers[msg.Type]
+			if exists {
+				handler(c, &msg)
+			} else {
+				log(LogError, "WS Unknown Message (Protobuf)", zap.String("Type", msg.Type), zap.String("uid", func() string {
+					if c.User != nil {
+						return c.User.ID
+					}
+					return "Guest"
+				}()))
 			}
 		} else {
 			log(LogWarn, "WS OnMessage Unknown Binary Prefix", zap.String("prefix", prefix))
