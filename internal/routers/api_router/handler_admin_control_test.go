@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -143,4 +144,59 @@ func TestAdminControlHandler_Upgrade_InvalidVersion(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.ErrorInvalidParams.Code())
 	assert.Contains(t, w.Body.String(), "invalid version format")
+}
+
+func TestAdminControlHandler_GetConfig_WithSecurityFields(t *testing.T) {
+	handler, testApp, _ := newTestAdminHandler()
+	cfg := testApp.Config()
+	cfg.Security.WebGUILoginTokenExpiry = "14d"
+	bindIP := false
+	cfg.Security.WebGUILoginTokenBindIP = &bindIP
+
+	c, w := newAdminTestContext("GET", "/api/admin/config", "", 1)
+	handler.GetConfig(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assertResponseCode(t, w, code.Success.Code())
+
+	var resp struct {
+		Data dto.AdminConfig `json:"data"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, "14d", *resp.Data.WebGUILoginTokenExpiry)
+	assert.Equal(t, false, *resp.Data.WebGUILoginTokenBindIP)
+}
+
+func TestAdminControlHandler_UpdateConfig_Success(t *testing.T) {
+	handler, testApp, _ := newTestAdminHandler()
+	cfg := testApp.Config()
+
+	// Create mock config file for Save() to succeed
+	tempFile, err := os.CreateTemp("", "config_test_*.yaml")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+	cfg.File = tempFile.Name()
+
+	reqBody := `{"webguiLoginTokenExpiry":"30d","webguiLoginTokenBindIp":false}`
+	c, w := newAdminTestContext("POST", "/api/admin/config", reqBody, 1)
+
+	handler.UpdateConfig(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assertResponseCode(t, w, code.Success.Code())
+	assert.Equal(t, "30d", cfg.Security.WebGUILoginTokenExpiry)
+	assert.Equal(t, false, *cfg.Security.WebGUILoginTokenBindIP)
+}
+
+func TestAdminControlHandler_UpdateConfig_InvalidExpiry(t *testing.T) {
+	handler, _, _ := newTestAdminHandler()
+
+	reqBody := `{"webguiLoginTokenExpiry":"invalid_duration"}`
+	c, w := newAdminTestContext("POST", "/api/admin/config", reqBody, 1)
+
+	handler.UpdateConfig(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assertResponseCode(t, w, code.ErrorInvalidParams.Code())
+	assert.Contains(t, w.Body.String(), "webguiLoginTokenExpiry format invalid")
 }

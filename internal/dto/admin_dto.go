@@ -34,6 +34,8 @@ type AdminConfig struct {
 	ShareTokenExpiry        *string `json:"shareTokenExpiry,omitempty" form:"shareTokenExpiry"`               // Share token expiry // 分享 Token 有效期
 	PullSource              *string `json:"pullSource,omitempty" form:"pullSource"`                           // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
 	PullReleaseChannel      *string `json:"pullReleaseChannel,omitempty" form:"pullReleaseChannel"`           // Update version channel: stable | beta // 更新版本通道：stable | beta
+	WebGUILoginTokenExpiry  *string `json:"webguiLoginTokenExpiry,omitempty" form:"webguiLoginTokenExpiry"`   // WebGUI login token expiry // WebGUI 登录 Token 有效期
+	WebGUILoginTokenBindIP  *bool   `json:"webguiLoginTokenBindIp,omitempty" form:"webguiLoginTokenBindIp"`   // WebGUI login token bind IP // WebGUI 登录 Token 是否绑定 IP
 }
 
 // AdminUserDatabaseConfig User database configuration structure

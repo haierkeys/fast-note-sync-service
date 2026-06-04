@@ -142,6 +142,8 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		ShareTokenExpiry: &cfg.Security.ShareTokenExpiry,
 		PullSource:       &cfg.App.PullSource,
 		PullReleaseChannel: &cfg.App.PullReleaseChannel,
+		WebGUILoginTokenExpiry:  &cfg.Security.WebGUILoginTokenExpiry,
+		WebGUILoginTokenBindIP:  cfg.Security.WebGUILoginTokenBindIP,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -213,6 +215,18 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 		}
 	}
 
+	// Validate webguiLoginTokenExpiry format
+	// 验证 webguiLoginTokenExpiry 格式
+	if params.WebGUILoginTokenExpiry != nil && *params.WebGUILoginTokenExpiry != "" {
+		_, err := util.ParseDuration(*params.WebGUILoginTokenExpiry)
+		if err != nil {
+			logger.Warn("apiRouter.WebGUI.UpdateConfig invalid webguiLoginTokenExpiry format",
+				zap.String("value", *params.WebGUILoginTokenExpiry))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("webguiLoginTokenExpiry format invalid, e.g. 7d, 24h, 30m"))
+			return
+		}
+	}
+
 	// Update configuration
 	// 更新配置
 	if params.FontSet != nil {
@@ -256,6 +270,12 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	}
 	if params.PullReleaseChannel != nil {
 		cfg.App.PullReleaseChannel = *params.PullReleaseChannel
+	}
+	if params.WebGUILoginTokenExpiry != nil {
+		cfg.Security.WebGUILoginTokenExpiry = *params.WebGUILoginTokenExpiry
+	}
+	if params.WebGUILoginTokenBindIP != nil {
+		cfg.Security.WebGUILoginTokenBindIP = params.WebGUILoginTokenBindIP
 	}
 
 	// Save configuration to file
