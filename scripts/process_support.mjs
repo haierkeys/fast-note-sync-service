@@ -53,8 +53,8 @@ function getArg(name) {
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://www.dmxapi.cn/v1";
-const MODEL = getArg("model") || process.env.OPENAI_MODEL || "qwen3.5-27b";
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.siliconflow.cn/v1";
+const MODEL = getArg("model") || process.env.OPENAI_MODEL || "Qwen/Qwen3.6-35B-A3B";
 
 if (!OPENAI_API_KEY) {
   console.warn("⚠️  Warning: OPENAI_API_KEY is not set. Translation API will fail if there are new items to translate.");
@@ -180,7 +180,11 @@ function parseCSV(content) {
   return data;
 }
 
-async function callOpenAIStream(messages, onToken) {
+/**
+ * Call OpenAI API with streaming support
+ * 使用流式传输支持调用 OpenAI API
+ */
+async function callOpenAIStream(messages, { onToken } = {}) {
   const res = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -230,6 +234,32 @@ async function callOpenAIStream(messages, onToken) {
   return fullContent;
 }
 
+/**
+ * Call OpenAI API without streaming (used for retry/fallback)
+ * 不使用流式传输调用 OpenAI API（用于重试和降级）
+ */
+async function callOpenAI(messages) {
+  const res = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.3,
+      messages,
+      thinking: { type: "disabled" },
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API error: ${res.status} ${body}`);
+  }
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
 function extractJSON(content) {
   let jsonStr = content.trim();
   const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -261,6 +291,10 @@ function writeProgress(text) {
   process.stdout.write(text);
 }
 
+/**
+ * Translate a batch of texts using LLM with retry support
+ * 使用大模型批量翻译文本，包含重试机制
+ */
 async function translateBatch(texts, sourceLangName, targetLangName) {
   if (texts.length === 0) return {};
   const entries = texts.map(t => [md5(t), t]);
@@ -281,16 +315,29 @@ CRITICAL RULES:
       { role: "system", content: systemPrompt },
       { role: "user", content: jsonPayload },
     ],
-    (delta, full) => {
-      charCount += delta.length;
-      const elapsed = formatDuration(Date.now() - batchStart);
-      const keysReceived = (full.match(/"[^"]+"\s*:/g) || []).length;
-      writeProgress(`     ⏳ 流式接收中... ${keysReceived}/${texts.length} keys | ${charCount} chars | ${elapsed}`);
+    {
+      onToken: (delta, full) => {
+        charCount += delta.length;
+        const elapsed = formatDuration(Date.now() - batchStart);
+        const keysReceived = (full.match(/"[^"]+"\s*:/g) || []).length;
+        writeProgress(`     ⏳ 流式接收中... ${keysReceived}/${texts.length} keys | ${charCount} chars | ${elapsed}`);
+      }
     }
   );
 
   process.stdout.write("\n");
-  return extractJSON(content);
+  
+  try {
+    return extractJSON(content);
+  } catch (e) {
+    console.error(`     ⚠️  JSON 解析失败，正在重试... / JSON parsing failed, retrying...`);
+    const retryContent = await callOpenAI([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: jsonPayload },
+      { role: "user", content: "Your previous response was not valid JSON. Please return ONLY a valid JSON object." },
+    ]);
+    return extractJSON(retryContent);
+  }
 }
 
 function generateJson(data, translationMap, langCode) {
@@ -479,6 +526,10 @@ async function main() {
     }
 
     if (hasKofiTranslations) {
+      if (!OPENAI_API_KEY) {
+        console.error("❌ Error: OPENAI_API_KEY is not set but there are new Ko-fi items that need translation. Please set it in your .env file. / Error：检测到新的 Ko-fi 内容需要翻译，但未设置 OPENAI_API_KEY。请在 .env 文件中进行配置。");
+        process.exit(1);
+      }
       console.log(`\n🚀 开始翻译 Ko-fi (源语言: 英文, 共 ${totalKofiBatches} 个批次)...`);
     }
 
@@ -546,6 +597,10 @@ async function main() {
     }
 
     if (hasCnTranslations) {
+      if (!OPENAI_API_KEY) {
+        console.error("❌ Error: OPENAI_API_KEY is not set but there are new Support.csv items that need translation. Please set it in your .env file. / Error：检测到新的 Support.csv 内容需要翻译，但未设置 OPENAI_API_KEY。请在 .env 文件中进行配置。");
+        process.exit(1);
+      }
       console.log(`\n🚀 开始翻译 Support.csv (源语言: 简体中文, 共 ${totalCnBatches} 个批次)...`);
     }
 
@@ -607,7 +662,7 @@ async function main() {
     console.log(`\n🌐 生成 ${lang} (${LANG_CONFIG[lang].name}) 文件...`);
     let tMap = {};
     const allTexts = cnTextsList.concat(kofiTextsList);
-    
+
     allTexts.forEach(t => {
       const hash = md5(t);
       const isKofiText = kofiTextsSet.has(t);

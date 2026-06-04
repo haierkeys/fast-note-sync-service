@@ -278,8 +278,7 @@ type WebsocketClient struct {
 	Lang                string                    // Language preference // 语言偏好
 	Protocol            string                    // Protocol "protobuf" or other // 协议 "protobuf" 或其他
 	UseProtobuf         bool                      // Whether to use protobuf protocol // 是否使用 protobuf 协议
-	currentAction       string                    // Current action type being processed // 当前正在处理的动作类型
-	currentMsgIsPb      bool                      // Whether current message is in protobuf format // 当前处理的消息是否为 protobuf 格式
+	currentAction       string                    // Current action type being processed // Current action type being processed // 当前正在处理的动作类型
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -373,7 +372,7 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 func (c *WebsocketClient) BindAndValidWithAction(action string, data []byte, obj any) (bool, ValidErrors) {
 	var errs ValidErrors
 
-	if c.UseProtobuf && c.currentMsgIsPb && c.Server.ProtobufDecoder != nil {
+	if c.UseProtobuf && c.Server.ProtobufDecoder != nil {
 		decoded, err := c.Server.ProtobufDecoder(action, data, obj)
 		if err != nil {
 			errs = append(errs, &ValidError{
@@ -1456,12 +1455,6 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 				log(LogError, "WS OnMessage EnvelopeDecoder is nil", zap.String("uid", c.User.ID))
 				return
 			}
-
-			// Mark current message as Protobuf format for BindAndValid
-			c.currentMsgIsPb = true
-			defer func() {
-				c.currentMsgIsPb = false
-			}()
 
 			action, innerPayload, err := w.EnvelopeDecoder(payloadCopy)
 			if err != nil {

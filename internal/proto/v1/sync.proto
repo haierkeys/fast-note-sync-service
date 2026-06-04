@@ -406,6 +406,10 @@ message SettingGetRequest {
     string pathHash = 3;
 }
 
+message SettingClearRequest {
+    string vault = 1;
+}
+
 // --- Setting Responses ---
 
 message SettingSyncModifyMessage {
