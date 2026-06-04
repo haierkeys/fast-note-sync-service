@@ -351,8 +351,14 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 		}
 	// "SettingClear"
 	case SettingReceiveClear:
-		// SettingClear has no extra body arguments, return directly
-		return true, nil
+		var pbMsg v1.SettingClearRequest
+		if err := proto.Unmarshal(data, &pbMsg); err != nil {
+			return false, err
+		}
+		if dest, ok := obj.(*dto.SettingClearRequest); ok {
+			dest.Vault = pbMsg.Vault
+			return true, nil
+		}
 	// "SettingRePush"
 	case SettingReceiveRePush:
 		var pbMsg v1.SettingGetRequest
@@ -847,6 +853,9 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 			}
 			return proto.Marshal(pbMsg)
 		}
+	// "SettingSyncClear"
+	case SettingSyncClear:
+		return []byte{}, nil
 	// "SettingModifyAck"
 	case SettingModifyAck:
 		if src, ok := data.(dto.SettingModifyAckMessage); ok {

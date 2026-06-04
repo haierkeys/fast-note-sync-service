@@ -1,5 +1,13 @@
 [
   {
+    "time": "2026/05/22 14:36:59",
+    "item": "Custom Amount",
+    "amount": "128.00",
+    "unit": "¥",
+    "message": "Thank you for developing such an amazing Obsidian sync plugin! It's truly impressive 🏆. I'm here to support it and suggest adding a concise installation and usage guide so more people can benefit from it. Awesome!",
+    "name": "JR"
+  },
+  {
     "time": "2026/03/27 00:36:52",
     "item": "Custom Tip",
     "amount": "128.00",
@@ -120,6 +128,14 @@
     "name": "言若"
   },
   {
+    "time": "2026/05/15 22:20:29",
+    "item": "Custom Amount",
+    "amount": "66.60",
+    "unit": "¥",
+    "message": "Great tool, supporting it!",
+    "name": "林根"
+  },
+  {
     "time": "2026/03/02 14:50:25",
     "item": "Custom Tip",
     "amount": "66.00",
@@ -152,6 +168,14 @@
     "name": "Jack"
   },
   {
+    "time": "2026/05/16 17:20:29",
+    "item": "Two cups of coffee ☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "I use your plugin along with my own note-taking app, which perfectly solves the problem of not being able to take notes on mobile in Obsidian. Cool!",
+    "name": "xzymoon"
+  },
+  {
     "time": "2026/04/30 14:53:04",
     "item": "Two cups of coffee ☕",
     "amount": "60.00",
@@ -182,6 +206,14 @@
     "unit": "¥",
     "message": "Great plugin",
     "name": "小七的小洋"
+  },
+  {
+    "time": "2026/05/15 22:46:28",
+    "item": "Custom Amount",
+    "amount": "50.00",
+    "unit": "¥",
+    "message": "Supporting it, great plugin!",
+    "name": "seeyou2night"
   },
   {
     "time": "2026/04/22 09:15:52",
@@ -350,6 +382,126 @@
     "unit": "USD",
     "message": "Nice work!",
     "name": "joehwang"
+  },
+  {
+    "time": "2026/06/03 14:55:44",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Awesome, boss!",
+    "name": "ISSEN"
+  },
+  {
+    "time": "2026/06/01 15:04:15",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Great, great, great",
+    "name": "Surtr"
+  },
+  {
+    "time": "2026/05/30 21:01:27",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Amazing, keep it up 👍",
+    "name": "深海"
+  },
+  {
+    "time": "2026/05/29 09:43:05",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "The plugin is surprisingly useful",
+    "name": "jakgong"
+  },
+  {
+    "time": "2026/05/26 17:25:53",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Keep it up!",
+    "name": "8liang"
+  },
+  {
+    "time": "2026/05/26 09:41:03",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thanks to the author, very useful",
+    "name": "zjrbest"
+  },
+  {
+    "time": "2026/05/25 08:30:07",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thanks. It helps me.",
+    "name": "二马"
+  },
+  {
+    "time": "2026/05/24 20:57:31",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thanks, boss, really very useful",
+    "name": "Teng"
+  },
+  {
+    "time": "2026/05/23 14:20:43",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "This tool's functional framework is excellent. Once the details are polished, it will be incomparably powerful. (For public view: I've already tipped before. Please merge the amounts and rank me first.)",
+    "name": "AlexShyXie"
+  },
+  {
+    "time": "2026/05/23 00:49:35",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thank you so much for creating such an amazing plugin. It's incredibly useful.",
+    "name": "还不走"
+  },
+  {
+    "time": "2026/05/20 14:54:19",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "God bless you",
+    "name": "showme"
+  },
+  {
+    "time": "2026/05/19 09:40:55",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "I've been using it for a while and it feels great! Keep up the good work, buddy!",
+    "name": "贾鹏"
+  },
+  {
+    "time": "2026/05/19 09:02:25",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "The plugin is excellent. I hope it can add support for token or email verification for Cloudflare Zero Trust access.",
+    "name": "Waldstein"
+  },
+  {
+    "time": "2026/05/15 16:42:40",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thank you for your patient help. I hope you keep up the great work.",
+    "name": "jeanlaw"
+  },
+  {
+    "time": "2026/05/15 11:18:16",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thank you for developing such a useful Obsidian sync plugin.",
+    "name": "xavier"
   },
   {
     "time": "2026/05/14 09:54:02",
@@ -968,12 +1120,68 @@
     "name": "roao"
   },
   {
+    "time": "2026/05/25 22:34:35",
+    "item": "Custom Amount",
+    "amount": "18.88",
+    "unit": "¥",
+    "message": "Development is not easy. It's very useful. Keep up the good work!",
+    "name": "IO"
+  },
+  {
     "time": "2026/03/11 09:58:20",
     "item": "Custom Tip",
     "amount": "18.00",
     "unit": "¥",
     "message": "A small token of appreciation",
     "name": "下鞅"
+  },
+  {
+    "time": "2026/05/31 21:00:52",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Supporting this!",
+    "name": "lzl"
+  },
+  {
+    "time": "2026/05/23 10:01:48",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Support",
+    "name": "am"
+  },
+  {
+    "time": "2026/05/20 20:56:22",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Absolutely awesome. You've put in a lot of effort. Even the Obsidian official team should thank you.",
+    "name": "道不知"
+  },
+  {
+    "time": "2026/05/20 16:46:01",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "I'm just a regular user, so this is all I can give.",
+    "name": "pp"
+  },
+  {
+    "time": "2026/05/19 14:56:50",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Very useful.",
+    "name": "ming"
+  },
+  {
+    "time": "2026/05/17 23:45:59",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Supporting this. It's fantastic! 🎉",
+    "name": "heyyy"
   },
   {
     "time": "2026/05/12 09:50:55",
@@ -1080,12 +1288,28 @@
     "name": "obsidian"
   },
   {
+    "time": "2026/05/31 21:50:43",
+    "item": "Custom Amount",
+    "amount": "8.00",
+    "unit": "¥",
+    "message": "Awesome!",
+    "name": "觏米"
+  },
+  {
     "time": "2026/02/28 19:51:59",
     "item": "Custom Tip",
     "amount": "8.00",
     "unit": "¥",
     "message": "Very complete, even the server interface looks great",
     "name": "yang"
+  },
+  {
+    "time": "2026/06/03 19:11:55",
+    "item": "Custom Amount",
+    "amount": "6.66",
+    "unit": "¥",
+    "message": "👍 Very useful, supporting it! Recently found a conflict with the Quiet Outline plugin's cursor position recording.",
+    "name": "MaybeLoveU"
   },
   {
     "time": "2026/03/25 11:52:09",
@@ -1126,6 +1350,30 @@
     "unit": "¥",
     "message": "Great plugin, keep up the good work!",
     "name": "kane"
+  },
+  {
+    "time": "2026/05/15 20:32:03",
+    "item": "Custom Amount",
+    "amount": "6.00",
+    "unit": "¥",
+    "message": "Supporting as a student",
+    "name": "bingzhen"
+  },
+  {
+    "time": "2026/05/19 01:34:54",
+    "item": "Custom Amount",
+    "amount": "5.00",
+    "unit": "¥",
+    "message": "Just installed, very smooth!",
+    "name": "SummerDay"
+  },
+  {
+    "time": "2026/05/17 22:51:12",
+    "item": "Custom Amount",
+    "amount": "5.00",
+    "unit": "¥",
+    "message": "👍🏻",
+    "name": "吉他及她"
   },
   {
     "time": "2026/05/12 21:05:45",
@@ -1248,12 +1496,52 @@
     "name": "Skins"
   },
   {
+    "time": "2026/05/30 21:41:41",
+    "item": "Custom Amount",
+    "amount": "2.00",
+    "unit": "¥",
+    "message": "Very useful, support!",
+    "name": "shandawang"
+  },
+  {
+    "time": "2026/05/26 16:34:29",
+    "item": "Custom Amount",
+    "amount": "2.00",
+    "unit": "¥",
+    "message": "Useful",
+    "name": "星河"
+  },
+  {
+    "time": "2026/05/16 20:39:53",
+    "item": "Custom Amount",
+    "amount": "2.00",
+    "unit": "¥",
+    "message": "Thanks, this project is very useful!!! It updates frequently, and I hope the delete function will be improved.",
+    "name": "Lychee"
+  },
+  {
     "time": "2026/05/02 14:50:23",
     "item": "Custom Amount",
     "amount": "2.00",
     "unit": "¥",
     "message": "Thank you.",
     "name": "竹尘居士"
+  },
+  {
+    "time": "2026/06/03 09:42:23",
+    "item": "Custom Amount",
+    "amount": "1.88",
+    "unit": "¥",
+    "message": "Just here to show my support, please forgive me!",
+    "name": "ikkyu"
+  },
+  {
+    "time": "2026/05/19 17:16:10",
+    "item": "Custom Amount",
+    "amount": "1.00",
+    "unit": "¥",
+    "message": "Thank you for your development and open-source spirit. Your program has been very helpful to me. As a student with limited abilities, this is a small but heartfelt contribution of support from me.",
+    "name": "林儿响叮当"
   },
   {
     "time": "2026/04/11 12:28:18",
