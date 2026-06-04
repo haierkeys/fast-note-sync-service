@@ -6,7 +6,7 @@
 
 | Time | Item | Amount | Name | Message |
 | :--- | :--- | :--- | :--- | :--- |
-| 2026/05/22 14:36:59 | Custom Amount | **¥128.00** | JR | Thanks for developing such an awesome Obsidian sync plugin! Impressive 🏆 Here to support and suggest writing a concise installation guide so more people can use it. Amazing! |
+| 2026/05/22 14:36:59 | Custom Amount | **¥128.00** | JR | Thank you for developing such an amazing Obsidian sync plugin! It's truly impressive 🏆. I'm here to support it and suggest adding a concise installation and usage guide so more people can benefit from it. Awesome! |
 | 2026/03/27 00:36:52 | Custom Tip | **¥128.00** | Geeson | Excellent! I've been using it consistently. Hope it keeps getting better and better. |
 | 2026/05/13 11:45:36 | Custom Amount | **¥120.00** | AlexShyXie | Thanks for developing such a great tool and for the friendly suggestion to add one-way mirror upload functionality #160. |
 | 2026/04/21 22:57:33 | Custom Tip | **¥108.00** | CTWSM | Your plugin successfully helped me migrate from Evernote to Obsidian. Keep it up! Add oil! |
@@ -27,12 +27,12 @@
 | 2026/03/01 22:56:17 | Custom Tip | **¥66.00** | xday | Rejoice and praise! |
 | 2026/03/01 22:40:23 | Custom Tip | **¥66.00** | HanHaocheng | Awesome, the plugin is very useful ٩(◕‿◕｡)۶ |
 | 2026/02/16 21:34:33 | Custom Tip | **¥66.00** | Jack | Happy New Year |
-| 2026/05/16 17:20:29 | Two cups of coffee ☕ | **¥60.00** | xzymoon | Bro, I used your plugin along with my own note-taking app, and it perfectly solved the problem of taking notes on mobile in Obsidian. Cool. |
+| 2026/05/16 17:20:29 | Two cups of coffee ☕ | **¥60.00** | xzymoon | I use your plugin along with my own note-taking app, which perfectly solves the problem of not being able to take notes on mobile in Obsidian. Cool! |
 | 2026/04/30 14:53:04 | Two cups of coffee ☕ | **¥60.00** | 新乡人儿 | Supporting you, thank you! |
 | 2026/04/30 03:08:34 | Two cups of coffee ☕ | **¥60.00** | zax | Excellent! It solved a problem that had been bothering me for a long time. I was about to give up on ob. |
 | 2026/05/06 15:28:00 | Ko-fi Support | **$8.00** | 陈白嫖怪 | - |
 | 2026/04/02 19:16:44 | Custom Tip | **¥51.55** | 小七的小洋 | Great plugin |
-| 2026/05/15 22:46:28 | Custom Amount | **¥50.00** | seeyou2night | Supporting it, awesome plugin! |
+| 2026/05/15 22:46:28 | Custom Amount | **¥50.00** | seeyou2night | Supporting it, great plugin! |
 | 2026/04/22 09:15:52 | Two cups of coffee ☕ | **¥50.00** | zzz | Thanks for your hard work. Hope FNS continues to develop steadily. |
 | 2026/04/21 14:32:40 | Two cups of coffee ☕ | **¥50.00** | 安度 | Amazing, a treasure of a plugin. Keep it up! |
 | 2026/04/09 13:45:07 | Two cups of coffee ☕ | **¥50.00** | 亲 yexizhu811 | Computer sync successful, but Android reported an error: code=305, message=Parameter validation failed. Details=context is requ |
@@ -54,16 +54,16 @@
 | 2026/01/21 09:37:19 | Two cups of coffee ☕ | **¥50.00** | Mojo抖音 | Thanks, your Obsidian sync is very useful 👍🏻 |
 | 2026/01/09 16:34:10 | Two cups of coffee ☕ | **¥50.00** | 喆 | Thanks to the 'male bodhisattva' for the OB plugin that benefits everyone (^🙏^). A small token of appreciation. |
 | 2026/04/13 05:52:00 | Ko-fi Support | **$5.00** | joehwang | Nice work! |
-| 2026/06/03 14:55:44 | A cup of coffee ☕ | **¥30.00** | ISSEN | Awesome! |
+| 2026/06/03 14:55:44 | A cup of coffee ☕ | **¥30.00** | ISSEN | Awesome, boss! |
 | 2026/06/01 15:04:15 | A cup of coffee ☕ | **¥30.00** | Surtr | Great, great, great |
-| 2026/05/30 21:01:27 | A cup of coffee ☕ | **¥30.00** | 深海 | Fantastic, keep it up! 👍 |
+| 2026/05/30 21:01:27 | A cup of coffee ☕ | **¥30.00** | 深海 | Amazing, keep it up 👍 |
 | 2026/05/29 09:43:05 | A cup of coffee ☕ | **¥30.00** | jakgong | The plugin is surprisingly useful |
 | 2026/05/26 17:25:53 | A cup of coffee ☕ | **¥30.00** | 8liang | Keep it up! |
-| 2026/05/26 09:41:03 | A cup of coffee ☕ | **¥30.00** | zjrbest | Thanks to the author, it's very useful |
+| 2026/05/26 09:41:03 | A cup of coffee ☕ | **¥30.00** | zjrbest | Thanks to the author, very useful |
 | 2026/05/25 08:30:07 | A cup of coffee ☕ | **¥30.00** | 二马 | Thanks. It helps me. |
-| 2026/05/24 20:57:31 | A cup of coffee ☕ | **¥30.00** | Teng | Thanks, boss, it's really useful |
-| 2026/05/23 14:20:43 | A cup of coffee ☕ | **¥30.00** | AlexShyXie | The functional framework of this tool is excellent. Once the details are polished, it will be incomparably powerful. (For public display: I've already tipped earlier. Please combine the amounts and push me to the top spot.) |
-| 2026/05/23 00:49:35 | A cup of coffee ☕ | **¥30.00** | 还不走 | Thank you so much for creating such an awesome plugin. It's incredibly useful. |
+| 2026/05/24 20:57:31 | A cup of coffee ☕ | **¥30.00** | Teng | Thanks, boss, really very useful |
+| 2026/05/23 14:20:43 | A cup of coffee ☕ | **¥30.00** | AlexShyXie | This tool's functional framework is excellent. Once the details are polished, it will be incomparably powerful. (For public view: I've already tipped before. Please merge the amounts and rank me first.) |
+| 2026/05/23 00:49:35 | A cup of coffee ☕ | **¥30.00** | 还不走 | Thank you so much for creating such an amazing plugin. It's incredibly useful. |
 | 2026/05/20 14:54:19 | A cup of coffee ☕ | **¥30.00** | showme | God bless you |
 | 2026/05/19 09:40:55 | A cup of coffee ☕ | **¥30.00** | 贾鹏 | I've been using it for a while and it feels great! Keep up the good work, buddy! |
 | 2026/05/19 09:02:25 | A cup of coffee ☕ | **¥30.00** | Waldstein | The plugin is excellent. I hope it can add support for token or email verification for Cloudflare Zero Trust access. |
@@ -146,14 +146,14 @@
 | 2026/01/09 18:12:17 | A cup of coffee ☕ | **¥20.00** | xix | The concept behind this plugin is spot on. |
 | 2026/01/03 22:44:43 | A cup of coffee ☕ | **¥20.00** | 姚朝伟 | Hope it gets better and better 👌🏻 |
 | 2026/01/03 14:58:43 | A cup of coffee ☕ | **¥20.00** | roao | Great sync solution, promising future! Thanks so much for open-sourcing it. Keep it up! |
-| 2026/05/25 22:34:35 | Custom Amount | **¥18.88** | IO | Development is not easy, very useful, keep up the good work! |
+| 2026/05/25 22:34:35 | Custom Amount | **¥18.88** | IO | Development is not easy. It's very useful. Keep up the good work! |
 | 2026/03/11 09:58:20 | Custom Tip | **¥18.00** | 下鞅 | A small token of appreciation |
-| 2026/05/31 21:00:52 | Custom Amount | **¥10.00** | lzl | Supporting it |
+| 2026/05/31 21:00:52 | Custom Amount | **¥10.00** | lzl | Supporting this! |
 | 2026/05/23 10:01:48 | Custom Amount | **¥10.00** | am | Support |
-| 2026/05/20 20:56:22 | Custom Amount | **¥10.00** | 道不知 | Absolutely awesome, well done. Even the Obsidian official team should thank you. |
-| 2026/05/20 16:46:01 | Custom Amount | **¥10.00** | pp | I'm just a regular user, this is all I can give |
-| 2026/05/19 14:56:50 | Custom Amount | **¥10.00** | ming | Very useful |
-| 2026/05/17 23:45:59 | Custom Amount | **¥10.00** | heyyy | Supporting it, absolutely fantastic 🎉 |
+| 2026/05/20 20:56:22 | Custom Amount | **¥10.00** | 道不知 | Absolutely awesome. You've put in a lot of effort. Even the Obsidian official team should thank you. |
+| 2026/05/20 16:46:01 | Custom Amount | **¥10.00** | pp | I'm just a regular user, so this is all I can give. |
+| 2026/05/19 14:56:50 | Custom Amount | **¥10.00** | ming | Very useful. |
+| 2026/05/17 23:45:59 | Custom Amount | **¥10.00** | heyyy | Supporting this. It's fantastic! 🎉 |
 | 2026/05/12 09:50:55 | Custom Amount | **¥10.00** | joven_lynn | Awesome features, thanks for your hard work |
 | 2026/04/27 10:54:56 | Custom Amount | **¥10.00** | 蜗牛 | Support! Thank you! |
 | 2026/04/25 09:22:32 | Custom Amount | **¥10.00** | 叶子 | Give it a try |
@@ -169,13 +169,13 @@
 | 2026/01/28 02:52:15 | Custom Tip | **¥8.88** | obsidian | Thanks for sharing |
 | 2026/05/31 21:50:43 | Custom Amount | **¥8.00** | 觏米 | Awesome! |
 | 2026/02/28 19:51:59 | Custom Tip | **¥8.00** | yang | Very complete, even the server interface looks great |
-| 2026/06/03 19:11:55 | Custom Amount | **¥6.66** | MaybeLoveU | 👍Very useful, supporting it! Recently found a conflict with the Quiet Outline plugin's cursor position recording. |
+| 2026/06/03 19:11:55 | Custom Amount | **¥6.66** | MaybeLoveU | 👍 Very useful, supporting it! Recently found a conflict with the Quiet Outline plugin's cursor position recording. |
 | 2026/03/25 11:52:09 | Custom Tip | **¥6.66** | 东 | Installed. Invincible hahahaha |
 | 2026/03/23 01:02:18 | Custom Tip | **¥6.66** | wishyuwill | Please keep developing!!! |
 | 2026/03/02 17:10:28 | Custom Tip | **¥6.66** | 马孔多的旅人 | Thanks for developing, the plugin is very useful and updates quickly [Thumbs Up] |
 | 2026/02/01 23:44:27 | Custom Tip | **¥6.66** | 爱你 | Love you |
 | 2026/01/09 22:22:25 | Custom Tip | **¥6.66** | kane | Great plugin, keep up the good work! |
-| 2026/05/15 20:32:03 | Custom Amount | **¥6.00** | bingzhen | Supporting for students |
+| 2026/05/15 20:32:03 | Custom Amount | **¥6.00** | bingzhen | Supporting as a student |
 | 2026/05/19 01:34:54 | Custom Amount | **¥5.00** | SummerDay | Just installed, very smooth! |
 | 2026/05/17 22:51:12 | Custom Amount | **¥5.00** | 吉他及她 | 👍🏻 |
 | 2026/05/12 21:05:45 | Custom Amount | **¥5.00** | Eancen | Thank you 🙏 |
@@ -193,12 +193,12 @@
 | 2026/05/02 15:26:57 | Custom Amount | **¥3.00** | 凭鱼跃 | Deployment successful and very useful. Thank you! |
 | 2026/02/23 17:47:46 | Custom Tip | **¥3.00** | LL | Happy New Year |
 | 2026/04/21 22:43:08 | Custom Tip | **¥2.88** | Skins | Very useful (òωó)👍 |
-| 2026/05/30 21:41:41 | Custom Amount | **¥2.00** | shandawang | Very user-friendly, fully support it. |
-| 2026/05/26 16:34:29 | Custom Amount | **¥2.00** | 星河 | Useful. |
-| 2026/05/16 20:39:53 | Custom Amount | **¥2.00** | Lychee | Thanks! This project is very useful. It's updated very frequently, and I hope the delete feature can be improved. |
+| 2026/05/30 21:41:41 | Custom Amount | **¥2.00** | shandawang | Very useful, support! |
+| 2026/05/26 16:34:29 | Custom Amount | **¥2.00** | 星河 | Useful |
+| 2026/05/16 20:39:53 | Custom Amount | **¥2.00** | Lychee | Thanks, this project is very useful!!! It updates frequently, and I hope the delete function will be improved. |
 | 2026/05/02 14:50:23 | Custom Amount | **¥2.00** | 竹尘居士 | Thank you. |
-| 2026/06/03 09:42:23 | Custom Amount | **¥1.88** | ikkyu | Just here to show my support—please forgive me! |
-| 2026/05/19 17:16:10 | Custom Amount | **¥1.00** | 林儿响叮当 | Thank you for your development and open-source spirit. Your program has been very helpful to me. As a student with limited capabilities, this is a small but heartfelt gesture of support from me. |
+| 2026/06/03 09:42:23 | Custom Amount | **¥1.88** | ikkyu | Just here to show my support, please forgive me! |
+| 2026/05/19 17:16:10 | Custom Amount | **¥1.00** | 林儿响叮当 | Thank you for your development and open-source spirit. Your program has been very helpful to me. As a student with limited abilities, this is a small but heartfelt contribution of support from me. |
 | 2026/04/11 12:28:18 | Custom Tip | **¥1.00** | ke1078 | Give it a try |
 | 2026/03/26 15:03:40 | Custom Tip | **¥1.00** | guanyingquan | Thank you, very helpful. |
 | 2026/02/24 20:15:19 | Custom Tip | **¥1.00** | Jimmy | Grateful for your Obsidian sync plugin, it's been very helpful! |
@@ -206,4 +206,4 @@
 
 
 --- 
-*Last updated on: Thu, 04 Jun 2026 03:28:45 GMT*
+*Last updated on: Thu, 04 Jun 2026 03:34:36 GMT*
