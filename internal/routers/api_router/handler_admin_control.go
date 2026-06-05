@@ -3,6 +3,7 @@ package api_router
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -926,8 +927,8 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	h.App.Logger().Info("Starting upgrade download", zap.String("url", downloadURL), zap.String("version", versionRaw))
 
 	// Prepare temp directory
-	// 使用 storage/temp/upgrade 作为临时目录
-	tempDir := filepath.Join("storage", "temp", "upgrade")
+	// 使用配置中的 TempPath 作为临时目录
+	tempDir := filepath.Join(cfg.App.TempPath, "upgrade")
 	_ = os.RemoveAll(tempDir)
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		response.ToResponse(code.Failed.WithDetails("Failed to create temp directory: " + err.Error()))
@@ -936,7 +937,11 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 
 	// Download
 	tarPath := filepath.Join(tempDir, fileName)
-	if err := h.downloadFile(downloadURL, tarPath); err != nil {
+	if err := h.downloadFile(c.Request.Context(), downloadURL, tarPath); err != nil {
+		h.App.Logger().Error("Upgrade download failed",
+			zap.String("url", downloadURL),
+			zap.Error(err),
+		)
 		response.ToResponse(code.Failed.WithDetails("Download failed: " + err.Error()))
 		return
 	}
@@ -949,6 +954,7 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	extractedBinaryPath := filepath.Join(tempDir, binaryName)
 
 	if err := h.extractBinary(tarPath, tempDir, binaryName); err != nil {
+		h.App.Logger().Error("Upgrade extract failed", zap.Error(err))
 		response.ToResponse(code.Failed.WithDetails("Extract failed: " + err.Error()))
 		return
 	}
@@ -1113,10 +1119,24 @@ func (h *AdminControlHandler) KickWSClient(c *gin.Context) {
 	response.ToResponse(code.Success.WithDetails("Client kicked successfully"))
 }
 
-func (h *AdminControlHandler) downloadFile(url string, dest string) error {
-	resp, err := http.Get(url)
+func (h *AdminControlHandler) downloadFile(ctx context.Context, url string, dest string) error {
+	client := &http.Client{
+		Timeout: 3 * time.Minute,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   30 * time.Second,
+			ResponseHeaderTimeout: 60 * time.Second,
+        	IdleConnTimeout:       90 * time.Second,
+		},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("create request failed: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("download request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -1126,12 +1146,16 @@ func (h *AdminControlHandler) downloadFile(url string, dest string) error {
 
 	out, err := os.Create(dest)
 	if err != nil {
-		return err
+		return fmt.Errorf("create file failed: %w", err)
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
-	return err
+	if err != nil {
+		return fmt.Errorf("save file failed: %w", err)
+	}
+
+	return nil
 }
 
 func (h *AdminControlHandler) extractBinary(tarPath string, destDir string, binaryName string) error {
