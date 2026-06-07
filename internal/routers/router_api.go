@@ -176,8 +176,6 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 				webguiGroup.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)
 				webguiGroup.POST("/admin/config/user_database", adminControlHandler.UpdateUserDatabaseConfig)
 				webguiGroup.POST("/admin/config/user_database/test", adminControlHandler.ValidateUserDatabaseConfig)
-				webguiGroup.GET("/admin/config/ngrok", adminControlHandler.GetNgrokConfig)
-				webguiGroup.POST("/admin/config/ngrok", adminControlHandler.UpdateNgrokConfig)
 				webguiGroup.GET("/admin/config/cloudflare", adminControlHandler.GetCloudflareConfig)
 				webguiGroup.POST("/admin/config/cloudflare", adminControlHandler.UpdateCloudflareConfig)
 				webguiGroup.GET("/admin/systeminfo", adminControlHandler.GetSystemInfo)

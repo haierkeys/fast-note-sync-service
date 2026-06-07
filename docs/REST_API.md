@@ -216,36 +216,7 @@ Schema: `app.Res`
 
 ---
 
-### Get Ngrok config
-**Endpoint**: `GET /api/admin/config/ngrok`
 
-Get Ngrok tunnel configuration, requires admin privileges
-
-**Parameters**:
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| token | header | string | ✓ | Auth Token |
-
-**Success Response (200)**:
-Schema: `app.Res`
-
----
-
-### Update Ngrok config
-**Endpoint**: `POST /api/admin/config/ngrok`
-
-Modify Ngrok tunnel configuration, requires admin privileges
-
-**Parameters**:
-| Name | In | Type | Required | Description |
-|------|----|------|----------|-------------|
-| token | header | string | ✓ | Auth Token |
-| params | body | api_router.ngrokConfig | ✓ | Config Parameters |
-
-**Success Response (200)**:
-Schema: `app.Res`
-
----
 
 ### Get WebGUI basic config
 **Endpoint**: `GET /api/webgui/config`

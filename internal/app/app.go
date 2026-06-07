@@ -597,13 +597,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	// 0.1 Shutdown NgrokService
-	if a.NgrokService != nil {
-		a.logger.Info("Shutting down ngrok service...")
-		if err := a.NgrokService.Stop(ctx); err != nil {
-			a.logger.Warn("Ngrok service shutdown error", zap.Error(err))
-		}
-	}
+
 
 	// 0.2 Shutdown CloudflareService
 	if a.CloudflareService != nil {

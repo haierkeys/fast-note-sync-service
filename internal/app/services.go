@@ -21,7 +21,6 @@ type Services struct {
 	StorageService     service.StorageService
 	BackupService      service.BackupService
 	GitSyncService     service.GitSyncService
-	NgrokService       service.NgrokService
 	CloudflareService  service.CloudflareService
 	SyncLogService     service.SyncLogService
 }
@@ -85,7 +84,6 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 	s.ConflictService = service.NewConflictService(repos.NoteRepo, s.VaultService, logger)
 	s.ShareService = service.NewShareService(repos.ShareRepo, infra.TokenManager, repos.NoteRepo, repos.FileRepo, repos.VaultRepo, logger, svcConfig)
 	s.NoteLinkService = service.NewNoteLinkService(repos.NoteLinkRepo, repos.NoteRepo, s.VaultService)
-	s.NgrokService = service.NewNgrokService(logger, cfg.Ngrok.AuthToken, cfg.Ngrok.Domain)
 	s.CloudflareService = service.NewCloudflareService(logger)
 
 	return s

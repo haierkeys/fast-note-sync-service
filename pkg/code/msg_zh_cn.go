@@ -135,4 +135,5 @@ var zh_cn_messages = map[int]string{
 	511: "Git 同步任务正在运行中",
 	512: "Git 验证失败",
 	520: "Cloudflared 下载失败",
+	521: "Cloudflared 隧道程序未找到，请先下载隧道程序",
 }
