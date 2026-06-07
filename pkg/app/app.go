@@ -219,4 +219,3 @@ func RequireWebGUI() gin.HandlerFunc {
 		c.Next()
 	}
 }
-

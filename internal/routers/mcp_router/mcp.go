@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/gookit/goutil/dump"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 )
@@ -57,6 +58,7 @@ type MCPHandler struct {
 	streamableServer *mcpserver.StreamableHTTPServer // StreamableHTTP transport server / StreamableHTTP 传输协议服务
 	ssePingInterval  time.Duration                   // SSE heartbeat interval / SSE 心跳间隔
 	extApiUrl        string                          // External API base URL (from config), used for SSE endpoint rewriting / 外部 API 基础 URL（来自配置），用于 SSE 端点重写
+	cfg              *app.AppConfig
 }
 
 func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandler {
@@ -68,7 +70,7 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 
 	srv := NewMCPServer(appContainer, wss)
 
-	sseSrv := mcpserver.NewSSEServer(srv,
+	sseOptions := []mcpserver.SSEOption{
 		mcpserver.WithMessageEndpoint("/api/mcp/message"),
 		mcpserver.WithKeepAlive(true),
 		mcpserver.WithKeepAliveInterval(pingInterval),
@@ -76,33 +78,17 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 			if val := r.Context().Value("uid"); val != nil {
 				ctx = context.WithValue(ctx, "uid", val)
 			}
-			if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
-				ctx = context.WithValue(ctx, "default_vault_name", vaultName)
-			}
-
-			// Extract client info
-			if clientType := r.Header.Get("X-Client"); clientType != "" {
-				ctx = context.WithValue(ctx, "client_type", clientType)
-			}
-			clientName := r.Header.Get("X-Client-Name")
-			if clientName == "" {
-				clientName = "MCP"
-			} else {
-				if decoded, err := url.QueryUnescape(clientName); err == nil {
-					clientName = decoded
-				}
-				clientName = "MCP " + clientName
-			}
-			ctx = context.WithValue(ctx, "client_name", clientName)
-			if clientVersion := r.Header.Get("X-Client-Version"); clientVersion != "" {
-				ctx = context.WithValue(ctx, "client_version", clientVersion)
-			}
-			return ctx
-		}))
+			return contextWithMCPRequestInfo(ctx, r, cfg)
+		}),
+	}
+	if cfg.OAuth.Enabled {
+		sseOptions = append(sseOptions, mcpserver.WithSSEProtectedResourceMetadata(cfg.OAuth.ProtectedResourceMetadata()))
+	}
+	sseSrv := mcpserver.NewSSEServer(srv, sseOptions...)
 
 	// StreamableHTTP server shares the same MCPServer instance as SSEServer.
 	// StreamableHTTP 服务与 SSEServer 共享同一 MCPServer 实例。
-	streamableSrv := mcpserver.NewStreamableHTTPServer(srv,
+	streamableOptions := []mcpserver.StreamableHTTPOption{
 		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
 			// uid is pre-injected into the request context by HandleStreamableHTTP
 			// before calling ServeHTTP, so we forward it here.
@@ -110,30 +96,13 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 			if val := r.Context().Value("uid"); val != nil {
 				ctx = context.WithValue(ctx, "uid", val)
 			}
-			if vaultName := r.Header.Get("X-Default-Vault-Name"); vaultName != "" {
-				ctx = context.WithValue(ctx, "default_vault_name", vaultName)
-			}
-
-			// Extract client info / 提取客户端信息
-			if clientType := r.Header.Get("X-Client"); clientType != "" {
-				ctx = context.WithValue(ctx, "client_type", clientType)
-			}
-			clientName := r.Header.Get("X-Client-Name")
-			if clientName == "" {
-				clientName = "MCP"
-			} else {
-				if decoded, err := url.QueryUnescape(clientName); err == nil {
-					clientName = decoded
-				}
-				clientName = "MCP " + clientName
-			}
-			ctx = context.WithValue(ctx, "client_name", clientName)
-			if clientVersion := r.Header.Get("X-Client-Version"); clientVersion != "" {
-				ctx = context.WithValue(ctx, "client_version", clientVersion)
-			}
-			return ctx
+			return contextWithMCPRequestInfo(ctx, r, cfg)
 		}),
-	)
+	}
+	if cfg.OAuth.Enabled {
+		streamableOptions = append(streamableOptions, mcpserver.WithProtectedResourceMetadata(cfg.OAuth.ProtectedResourceMetadata()))
+	}
+	streamableSrv := mcpserver.NewStreamableHTTPServer(srv, streamableOptions...)
 
 	return &MCPHandler{
 		mcpServer:        srv,
@@ -141,29 +110,14 @@ func NewMCPHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *MCPHandl
 		streamableServer: streamableSrv,
 		ssePingInterval:  pingInterval,
 		extApiUrl:        strings.TrimSuffix(cfg.Server.ExtApiUrl, "/"),
+		cfg:              cfg,
 	}
 }
 
 func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
-	if vaultName := c.GetHeader("X-Default-Vault-Name"); vaultName != "" {
-		ctx = context.WithValue(ctx, "default_vault_name", vaultName)
-	}
-
-	// Extract client info
-	if clientType := c.GetHeader("X-Client"); clientType != "" {
-		ctx = context.WithValue(ctx, "client_type", clientType)
-	}
-	if clientName := c.GetHeader("X-Client-Name"); clientName != "" {
-		if decoded, err := url.QueryUnescape(clientName); err == nil {
-			clientName = decoded
-		}
-		ctx = context.WithValue(ctx, "client_name", clientName)
-	}
-	if clientVersion := c.GetHeader("X-Client-Version"); clientVersion != "" {
-		ctx = context.WithValue(ctx, "client_version", clientVersion)
-	}
+	ctx = contextWithMCPRequestInfo(ctx, c.Request, h.config())
 	if scope, ok := c.Get("scope"); ok {
 		ctx = context.WithValue(ctx, "scope", scope)
 	}
@@ -210,6 +164,64 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 		absoluteBase:   absoluteBase,
 	}
 	h.sseServer.SSEHandler().ServeHTTP(rewriter, c.Request.WithContext(ctx))
+}
+
+func (h *MCPHandler) config() *app.AppConfig {
+	return h.cfg
+}
+
+func contextWithMCPRequestInfo(ctx context.Context, r *http.Request, cfg *app.AppConfig) context.Context {
+	var oauthCfg = configlessOAuthDefaults()
+	if cfg != nil {
+		oauthCfg = cfg.OAuth
+		oauthCfg.Normalize()
+	}
+
+	vaultName := r.Header.Get("X-Default-Vault-Name")
+	if vaultName == "" {
+		vaultName = oauthCfg.DefaultVaultName
+	}
+	if vaultName != "" {
+		ctx = context.WithValue(ctx, "default_vault_name", vaultName)
+	}
+
+	clientType := r.Header.Get("X-Client")
+	if clientType == "" {
+		clientType = oauthCfg.DefaultClient
+	}
+	if clientType != "" {
+		ctx = context.WithValue(ctx, "client_type", clientType)
+	}
+
+	clientName := r.Header.Get("X-Client-Name")
+	if clientName == "" {
+		clientName = oauthCfg.DefaultClientName
+		if clientName == "" {
+			clientName = "MCP"
+		}
+	} else {
+		if decoded, err := url.QueryUnescape(clientName); err == nil {
+			clientName = decoded
+		}
+		clientName = "MCP " + clientName
+	}
+	ctx = context.WithValue(ctx, "client_name", clientName)
+
+	clientVersion := r.Header.Get("X-Client-Version")
+	if clientVersion == "" {
+		clientVersion = oauthCfg.DefaultClientVersion
+	}
+	if clientVersion != "" {
+		ctx = context.WithValue(ctx, "client_version", clientVersion)
+	}
+
+	return ctx
+}
+
+func configlessOAuthDefaults() config.OAuthConfig {
+	cfg := config.OAuthConfig{}
+	cfg.Normalize()
+	return cfg
 }
 
 func (h *MCPHandler) HandleMessage(c *gin.Context) {

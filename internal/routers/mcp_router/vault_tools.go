@@ -26,12 +26,14 @@ func getInt64Arg(args map[string]interface{}, key string) int64 {
 
 func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 	vaultSvc := appContainer.VaultService
+	cfg := appContainer.Config()
 
 	// 1. List Vaults
 	toolListVaults := mcp.NewTool("vault_list",
 		mcp.WithDescription("List all available note vaults"),
+		mcp.WithOutputSchema[mcpVaultListOutput](),
 	)
-	srv.AddTool(toolListVaults, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolListVaults, cfg, "vaults:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -43,22 +45,29 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 		}
 
 		if len(vaults) == 0 {
-			return mcp.NewToolResultText("No vaults found."), nil
+			return mcp.NewToolResultStructured(mcpVaultListOutput{
+				Count:  0,
+				Vaults: vaults,
+			}, "No vaults found."), nil
 		}
 
 		resStr := fmt.Sprintf("Found %d vaults:\n", len(vaults))
 		for _, v := range vaults {
 			resStr += fmt.Sprintf("- %s (ID: %d) [Notes: %d, Files: %d]\n", v.Name, v.ID, v.NoteCount, v.FileCount)
 		}
-		return mcp.NewToolResultText(resStr), nil
+		return mcp.NewToolResultStructured(mcpVaultListOutput{
+			Count:  len(vaults),
+			Vaults: vaults,
+		}, resStr), nil
 	})
 
 	// 2. Get Vault
 	toolGetVault := mcp.NewTool("vault_get",
 		mcp.WithDescription("Get details of a specific vault by ID"),
+		mcp.WithOutputSchema[mcpVaultOutput](),
 		mcp.WithNumber("id", mcp.Required(), mcp.Description("Vault ID")),
 	)
-	srv.AddTool(toolGetVault, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetVault, cfg, "vaults:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -72,16 +81,19 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 		}
 
 		resStr := fmt.Sprintf("Vault: %s\nID: %d\nNotes: %d\nFiles: %d\nTotal Size: %d", vault.Name, vault.ID, vault.NoteCount, vault.FileCount, vault.Size)
-		return mcp.NewToolResultText(resStr), nil
+		return mcp.NewToolResultStructured(mcpVaultOutput{
+			Vault: vault,
+		}, resStr), nil
 	})
 
 	// 3. Create or Update Vault
 	toolCreateUpdateVault := mcp.NewTool("vault_create_or_update",
 		mcp.WithDescription("Create a new vault or update an existing vault (by passing 'id')"),
+		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
 		mcp.WithNumber("id", mcp.Description("Vault ID for update. Omit or 0 to create new vault.")),
 	)
-	srv.AddTool(toolCreateUpdateVault, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolCreateUpdateVault, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -95,22 +107,33 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return mcp.NewToolResultText(fmt.Sprintf("Vault updated: %s (ID: %d)", vault.Name, vault.ID)), nil
+			fallback := fmt.Sprintf("Vault updated: %s (ID: %d)", vault.Name, vault.ID)
+			return mcp.NewToolResultStructured(mcpVaultMutationOutput{
+				Operation: "update",
+				Vault:     vault,
+				ID:        vault.ID,
+			}, fallback), nil
 		} else {
 			vault, err := vaultSvc.Create(ctx, uid, vaultName)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return mcp.NewToolResultText(fmt.Sprintf("Vault created: %s (ID: %d)", vault.Name, vault.ID)), nil
+			fallback := fmt.Sprintf("Vault created: %s (ID: %d)", vault.Name, vault.ID)
+			return mcp.NewToolResultStructured(mcpVaultMutationOutput{
+				Operation: "create",
+				Vault:     vault,
+				ID:        vault.ID,
+			}, fallback), nil
 		}
 	})
 
 	// 4. Delete Vault
 	toolDeleteVault := mcp.NewTool("vault_delete",
 		mcp.WithDescription("Delete a vault by ID"),
+		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 		mcp.WithNumber("id", mcp.Required(), mcp.Description("Vault ID")),
 	)
-	srv.AddTool(toolDeleteVault, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolDeleteVault, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -123,6 +146,9 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(fmt.Sprintf("Deleted vault with ID: %d", id)), nil
+		return mcp.NewToolResultStructured(mcpVaultMutationOutput{
+			Operation: "delete",
+			ID:        id,
+		}, fmt.Sprintf("Deleted vault with ID: %d", id)), nil
 	})
 }

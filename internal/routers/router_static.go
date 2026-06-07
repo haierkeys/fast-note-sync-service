@@ -177,6 +177,20 @@ func registerWebGuiRoutes(r *gin.Engine, frontendFiles embed.FS, appContainer *a
 	})
 }
 
+func registerOAuthAuthorizePageRoutes(r *gin.Engine, frontendFiles embed.FS, appContainer *app.App) {
+	cfg := appContainer.Config()
+	frontendOAuthAuthorizeContent, _ := frontendFiles.ReadFile("frontend/oauth-authorize.html")
+	apiUrl := cfg.Server.ExtApiUrl
+
+	r.GET("/oauth/authorize", func(c *gin.Context) {
+		if !cfg.OAuth.Enabled || !cfg.OAuth.Stytch.Enabled {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		renderHTMLWithAPI(c, frontendOAuthAuthorizeContent, apiUrl)
+	})
+}
+
 func registerShareRoutes(r *gin.Engine, frontendFiles embed.FS, appContainer *app.App) {
 	cfg := appContainer.Config()
 	frontendShareContent, _ := frontendFiles.ReadFile("frontend/share.html")

@@ -100,9 +100,11 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	if cfg.Server.WebGuiPort == "" {
 		registerWebGuiRoutes(r, frontendFiles, appContainer)
 	}
+	registerOAuthAuthorizePageRoutes(r, frontendFiles, appContainer)
 	if cfg.Server.SharePort == "" {
 		registerShareRoutes(r, frontendFiles, appContainer)
 	}
+	registerOAuthMetadataRoutes(r, appContainer)
 
 	// Register API routes
 	// 注册 API 路由
@@ -128,6 +130,7 @@ func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine 
 
 	registerStaticFiles(r, frontendFiles, appContainer)
 	registerWebGuiRoutes(r, frontendFiles, appContainer)
+	registerOAuthAuthorizePageRoutes(r, frontendFiles, appContainer)
 
 	r.NoRoute(middleware.NoFound())
 	return r

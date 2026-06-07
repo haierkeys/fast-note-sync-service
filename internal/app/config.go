@@ -23,20 +23,21 @@ type AppConfig struct {
 	File string `yaml:"-"` // config file path, not serialized
 	// 配置文件路径, 不序列化
 
-	Server       config.ServerConfig     `yaml:"server"`
-	App          config.AppSettings      `yaml:"app"`
-	Security     config.SecurityConfig   `yaml:"security"`
-	Database     config.DatabaseConfig   `yaml:"database"`
-	UserDatabase config.DatabaseConfig   `yaml:"user-database"`
-	Log          config.LogConfig        `yaml:"log"`
-	User         config.UserConfig       `yaml:"user"`
-	Tracer       config.TracerConfig     `yaml:"tracer"`
-	ShortLink    config.ShortLinkConfig  `yaml:"short-link"`
-	Storage      config.StorageConfig    `yaml:"storage"`
-	Git          config.GitConfig        `yaml:"git"`
-	WebGUI       config.WebGUIConfig     `yaml:"webgui"`
-	Ngrok        config.NgrokConfig      `yaml:"ngrok"`
-	Cloudflare   config.CloudflareConfig `yaml:"cloudflare"`
+	Server           config.ServerConfig           `yaml:"server"`
+	App              config.AppSettings            `yaml:"app"`
+	Security         config.SecurityConfig         `yaml:"security"`
+	Database         config.DatabaseConfig         `yaml:"database"`
+	UserDatabase     config.DatabaseConfig         `yaml:"user-database"`
+	Log              config.LogConfig              `yaml:"log"`
+	User             config.UserConfig             `yaml:"user"`
+	Tracer           config.TracerConfig           `yaml:"tracer"`
+	ShortLink        config.ShortLinkConfig        `yaml:"short-link"`
+	Storage          config.StorageConfig          `yaml:"storage"`
+	Git              config.GitConfig              `yaml:"git"`
+	WebGUI           config.WebGUIConfig           `yaml:"webgui"`
+	Ngrok            config.NgrokConfig            `yaml:"ngrok"`
+	Cloudflare       config.CloudflareConfig       `yaml:"cloudflare"`
+	OAuth            config.OAuthConfig            `yaml:"oauth"`
 	AttachmentStatic config.AttachmentStaticConfig `yaml:"attachment-static"` // Attachment static access configuration // 附件模拟静态访问配置
 }
 
@@ -76,6 +77,10 @@ func LoadConfig(f string) (*AppConfig, string, error) {
 	// defaults.Set 只有在字段为该类型的零值时才会填充
 	if err := defaults.Set(c); err != nil {
 		return nil, realpath, errors.Wrap(err, "re-set default config failed")
+	}
+	c.OAuth.Normalize()
+	if err := c.OAuth.Validate(); err != nil {
+		return nil, realpath, errors.Wrap(err, "validate oauth config failed")
 	}
 
 	return c, realpath, nil

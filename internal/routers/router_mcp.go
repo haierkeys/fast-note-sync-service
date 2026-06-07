@@ -16,7 +16,7 @@ func registerMCPRoutes(api *gin.RouterGroup, appContainer *app.App, wss *pkgapp.
 	// MCP 路由 (无超时限制)
 	mcpHandler := mcp_router.NewMCPHandler(appContainer, wss)
 	mcpGroup := api.Group("/mcp")
-	mcpGroup.Use(middleware.UserAuthTokenWithConfig(cfg.Security.AuthTokenKey, appContainer.TokenService))
+	mcpGroup.Use(middleware.MCPOAuthWithConfig(cfg.OAuth, cfg.Security.AuthTokenKey, appContainer.TokenService, appContainer.UserRepo))
 	{
 		// Legacy SSE transport (backward compatible) / 旧版 SSE 传输（向后兼容）
 		mcpGroup.Match([]string{http.MethodGet, http.MethodHead}, "/sse", mcpHandler.HandleSSE)
