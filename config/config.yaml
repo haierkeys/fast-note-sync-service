@@ -111,12 +111,7 @@ app:
   # 触发 WebSocket 压缩的最小载荷大小(字节)
   # Minimum payload size (bytes) to trigger WebSocket compression
   ws-compression-threshold: 512
-  # 日志保存路径
-  # Directory path for log output
-  log-save-fileurl: storage/logs/
-  # 日志文件名
-  # Log filename
-  log-file: log.log
+
   # 数据拉取源设置: auto(自动检测) | github | cnb
   # Data pull source setting: auto(detect) | github | cnb
   pull-source: auto
@@ -363,16 +358,7 @@ webgui:
   # Web GUI font settings. Leave blank for default, "local" for local fonts, or a font URL.
   font-set: "local"
 
-ngrok:
-  # 是否启用 ngrok 内网穿透隧道
-  # Whether to enable ngrok tunnel
-  enabled: false
-  # ngrok 认证令牌 (Authtoken)
-  # ngrok authentication token
-  auth-token: ""
-  # ngrok 自定义域名 (需付费计划支持)
-  # ngrok custom domain (restricted to paid plans)
-  domain: ""
+
 
 cloudflare:
   # 是否启用 Cloudflare Tunnel (穿透)

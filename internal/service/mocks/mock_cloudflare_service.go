@@ -38,3 +38,8 @@ func (m *MockCloudflareService) DownloadBinary() (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
 }
+
+func (m *MockCloudflareService) IsBinaryExist() bool {
+	args := m.Called()
+	return args.Bool(0)
+}

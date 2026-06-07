@@ -1,6 +1,8 @@
 package service
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -25,6 +27,9 @@ type CloudflareService interface {
 	// DownloadBinary downloads the cloudflared binary and returns the path or a detailed error
 	// DownloadBinary 下载 cloudflared 二进制文件，返回路径或包含手动下载建议的详细错误
 	DownloadBinary() (string, error)
+	// IsBinaryExist checks if the cloudflared binary exists on the disk
+	// IsBinaryExist 检查本地是否存在 cloudflared 隧道二进制程序
+	IsBinaryExist() bool
 }
 
 type cloudflareService struct {
@@ -103,7 +108,29 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 
 	// Construct download URL
 	// 构造下载链接
-	downloadURL := "https://github.com/cloudflare/cloudflared/releases/latest/download/" + fileName
+	var downloadURL string
+	isTarGz := false
+
+	// Try to get the latest release tag for direct stable download link
+	// 尝试获取最新发布标签以构建稳定的直接下载链接
+	tag, err := s.getLatestReleaseTag()
+	if err == nil && tag != "" {
+		s.logger.Info("Found latest cloudflared release tag", zap.String("tag", tag))
+		if goos == "darwin" {
+			downloadURL = fmt.Sprintf("https://github.com/cloudflare/cloudflared/releases/download/%s/cloudflared-darwin-%s.tgz", tag, goarch)
+			isTarGz = true
+		} else {
+			downloadURL = fmt.Sprintf("https://github.com/cloudflare/cloudflared/releases/download/%s/%s", tag, fileName)
+		}
+	} else {
+		s.logger.Warn("Failed to get latest release tag, fallback to latest download link", zap.Error(err))
+		if goos == "darwin" {
+			downloadURL = fmt.Sprintf("https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-%s.tgz", goarch)
+			isTarGz = true
+		} else {
+			downloadURL = "https://github.com/cloudflare/cloudflared/releases/latest/download/" + fileName
+		}
+	}
 
 	s.logger.Info("Cloudflared binary not found, attempting to download...", zap.String("url", downloadURL))
 
@@ -126,16 +153,24 @@ func (s *cloudflareService) DownloadBinary() (string, error) {
 		return "", fmt.Errorf("download server returned %s. \n[💡 Suggestion] Please manually download from:\n %s \nAnd place it in: %s", resp.Status, downloadURL, storageDir)
 	}
 
-	// Save to file
-	// 保存到文件
-	out, err := os.Create(binPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create binary file: %w", err)
-	}
-	defer out.Close()
+	if isTarGz {
+		// Extract tar.gz content directly to binPath
+		// 将 tar.gz 内容直接解压到 binPath
+		if err := extractTarGz(resp.Body, binPath); err != nil {
+			return "", fmt.Errorf("failed to extract tar.gz: %w", err)
+		}
+	} else {
+		// Save to file
+		// 保存到文件
+		out, err := os.Create(binPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to create binary file: %w", err)
+		}
+		defer out.Close()
 
-	if _, err = io.Copy(out, resp.Body); err != nil {
-		return "", fmt.Errorf("failed to save binary: %w", err)
+		if _, err = io.Copy(out, resp.Body); err != nil {
+			return "", fmt.Errorf("failed to save binary: %w", err)
+		}
 	}
 
 	// Grant execution permission (Unix)
@@ -228,4 +263,87 @@ func (s *cloudflareService) Stop(ctx context.Context) error {
 // TunnelURL 返回当前隧道 URL
 func (s *cloudflareService) TunnelURL() string {
 	return s.url
+}
+
+// extractTarGz extracts the cloudflared binary from tar.gz stream and writes to destPath
+// extractTarGz 从 tar.gz 流中解压出 cloudflared 二进制并写入 destPath
+func extractTarGz(gzipStream io.Reader, destPath string) error {
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		return fmt.Errorf("NewReader failed: %w", err)
+	}
+	defer uncompressedStream.Close()
+
+	tarReader := tar.NewReader(uncompressedStream)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break // End of tar archive
+		}
+		if err != nil {
+			return fmt.Errorf("Next() failed: %w", err)
+		}
+
+		if filepath.Base(header.Name) == "cloudflared" {
+			outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, header.FileInfo().Mode())
+			if err != nil {
+				return fmt.Errorf("OpenFile failed: %w", err)
+			}
+			defer outFile.Close()
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				return fmt.Errorf("io.Copy failed: %w", err)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("cloudflared binary not found in the archive")
+}
+
+// getLatestReleaseTag gets the latest release tag name of cloudflared from GitHub redirect
+// getLatestReleaseTag 从 GitHub 重定向响应中获取最新的 cloudflared 发布标签名称
+func (s *cloudflareService) getLatestReleaseTag() (string, error) {
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Head("https://github.com/cloudflare/cloudflared/releases/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusMovedPermanently {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return "", fmt.Errorf("location header not found")
+	}
+
+	// Example: https://github.com/cloudflare/cloudflared/releases/tag/2026.5.2
+	_, version := filepath.Split(location)
+	if version == "" {
+		return "", fmt.Errorf("invalid location format: %s", location)
+	}
+
+	return version, nil
+}
+
+// IsBinaryExist checks if the cloudflared binary exists on the disk
+// IsBinaryExist 检查本地是否存在 cloudflared 隧道二进制程序
+func (s *cloudflareService) IsBinaryExist() bool {
+	storageDir := "storage/cloudflared_tunnel"
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	fileName := fmt.Sprintf("cloudflared-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext)
+	binPath := filepath.Join(storageDir, fileName)
+	_, err := os.Stat(binPath)
+	return err == nil
 }

@@ -313,120 +313,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/admin/config/ngrok": {
-            "get": {
-                "security": [
-                    {
-                        "UserAuthToken": []
-                    }
-                ],
-                "description": "Get Ngrok tunnel configuration, requires admin privileges",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Config"
-                ],
-                "summary": "Get Ngrok config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.Res"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.AdminNgrokConfig"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient privileges",
-                        "schema": {
-                            "$ref": "#/definitions/app.Res"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "UserAuthToken": []
-                    }
-                ],
-                "description": "Modify Ngrok tunnel configuration, requires admin privileges",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Config"
-                ],
-                "summary": "Update Ngrok config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Config Parameters",
-                        "name": "params",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.AdminNgrokConfig"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.Res"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.AdminNgrokConfig"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient privileges",
-                        "schema": {
-                            "$ref": "#/definitions/app.Res"
-                        }
-                    }
-                }
-            }
-        },
         "/api/admin/config/user_database": {
             "get": {
                 "security": [
@@ -720,6 +606,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/admin/ws_client/{traceId}": {
+            "delete": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Kick a WebSocket client by TraceID, requires admin privileges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Kick a WebSocket client",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trace ID of the client",
+                        "name": "traceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/ws_clients": {
             "get": {
                 "security": [
@@ -768,6 +701,37 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Insufficient privileges",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Handle user logout HTTP request, revoke current auth token.\n处理用户退出登录 HTTP 请求，注销当前认证 Token。",
+                "tags": [
+                    "User"
+                ],
+                "summary": "User logout",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
                         "schema": {
                             "$ref": "#/definitions/app.Res"
                         }
@@ -5417,6 +5381,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/vault/rebuild-index": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Rebuild full-text search index from physical database and files for a specific vault, restricted to webgui client",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vault"
+                ],
+                "summary": "Rebuild vault FTS index",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth Token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Rebuild Index Parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.VaultRebuildIndexRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/app.Res"
+                        }
+                    }
+                }
+            }
+        },
         "/api/version": {
             "get": {
                 "description": "Get current server software version, Git tag, and build time",
@@ -5504,6 +5514,19 @@ const docTemplate = `{
                 }
             }
         },
+        "app.HistoricalVersion": {
+            "type": "object",
+            "properties": {
+                "changelogContent": {
+                    "description": "Changelog content // 更新日志内容",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version name // 版本号",
+                    "type": "string"
+                }
+            }
+        },
         "app.ListRes": {
             "type": "object",
             "properties": {
@@ -5579,6 +5602,9 @@ const docTemplate = `{
                 },
                 "startTime": {
                     "type": "string"
+                },
+                "tokenId": {
+                    "type": "integer"
                 },
                 "traceId": {
                     "type": "string"
@@ -5702,6 +5728,10 @@ const docTemplate = `{
                     "description": "History save delay // 历史保存延迟",
                     "type": "string"
                 },
+                "pullReleaseChannel": {
+                    "description": "Update version channel: stable | beta // 更新版本通道：stable | beta",
+                    "type": "string"
+                },
                 "pullSource": {
                     "description": "Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb",
                     "type": "string"
@@ -5728,6 +5758,14 @@ const docTemplate = `{
                 },
                 "uploadSessionTimeout": {
                     "description": "Upload session timeout // 上传会话超时时间",
+                    "type": "string"
+                },
+                "webguiLoginTokenBindIp": {
+                    "description": "WebGUI login token bind IP // WebGUI 登录 Token 是否绑定 IP",
+                    "type": "boolean"
+                },
+                "webguiLoginTokenExpiry": {
+                    "description": "WebGUI login token expiry // WebGUI 登录 Token 有效期",
                     "type": "string"
                 }
             }
@@ -5824,23 +5862,6 @@ const docTemplate = `{
                 "usedPercent": {
                     "description": "Memory usage percentage // 内存使用率",
                     "type": "number"
-                }
-            }
-        },
-        "dto.AdminNgrokConfig": {
-            "type": "object",
-            "properties": {
-                "authToken": {
-                    "description": "ngrok auth token // ngrok 认证令牌",
-                    "type": "string"
-                },
-                "domain": {
-                    "description": "Custom domain // 自定义域名",
-                    "type": "string"
-                },
-                "enabled": {
-                    "description": "Whether to enable ngrok tunnel // 是否启用 ngrok 隧道",
-                    "type": "boolean"
                 }
             }
         },
@@ -6068,13 +6089,13 @@ const docTemplate = `{
         "dto.AdminWebGUIConfig": {
             "type": "object",
             "properties": {
-                "adminUid": {
-                    "description": "Admin UID // 管理员 UID",
-                    "type": "integer"
-                },
                 "fontSet": {
                     "description": "Font set // 字体设置",
                     "type": "string"
+                },
+                "ftsBleveEnabled": {
+                    "description": "Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索",
+                    "type": "boolean"
                 },
                 "registerIsEnable": {
                     "description": "Registration enablement // 是否开启注册",
@@ -6123,6 +6144,14 @@ const docTemplate = `{
                 },
                 "nextRunTime": {
                     "description": "Next run time // 下次运行时间",
+                    "type": "string"
+                },
+                "passwordMode": {
+                    "description": "Password mode (0:None, 1:Fixed, 2:Random) // 密码模式 (0:无密码, 1:固定密码, 2:随机密码)",
+                    "type": "integer"
+                },
+                "passwordValue": {
+                    "description": "Password value for fixed mode // 固定密码值",
                     "type": "string"
                 },
                 "retentionDays": {
@@ -6189,6 +6218,16 @@ const docTemplate = `{
                     "description": "Is enabled // 是否启用",
                     "type": "boolean",
                     "example": true
+                },
+                "passwordMode": {
+                    "description": "Password mode (0:None, 1:Fixed, 2:Random) // 密码模式 (0:无密码, 1:固定密码, 2:随机密码)",
+                    "type": "integer",
+                    "example": 0
+                },
+                "passwordValue": {
+                    "description": "Password value for fixed mode // 固定密码值",
+                    "type": "string",
+                    "example": "123456"
                 },
                 "retentionDays": {
                     "description": "Retention days // 保留天数",
@@ -6261,6 +6300,10 @@ const docTemplate = `{
                 },
                 "message": {
                     "description": "Result message // 结果消息",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "Password // 密码",
                     "type": "string"
                 },
                 "startTime": {
@@ -6560,6 +6603,13 @@ const docTemplate = `{
                     "description": "Branch // 分支",
                     "type": "string"
                 },
+                "configSyncRules": {
+                    "description": "Config sync rules // 配置同步规则",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "createdAt": {
                     "description": "Created at // 创建时间",
                     "type": "string"
@@ -6571,6 +6621,10 @@ const docTemplate = `{
                 "id": {
                     "description": "Task ID // 任务ID",
                     "type": "integer"
+                },
+                "includeConfig": {
+                    "description": "Include config sync // 是否开启配置同步",
+                    "type": "boolean"
                 },
                 "isEnabled": {
                     "description": "Is enabled // 是否启用",
@@ -6627,12 +6681,21 @@ const docTemplate = `{
                 "branch": {
                     "type": "string"
                 },
+                "configSyncRules": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "delay": {
                     "description": "Delay time (seconds) // 延迟时间（秒）",
                     "type": "integer"
                 },
                 "id": {
                     "type": "integer"
+                },
+                "includeConfig": {
+                    "type": "boolean"
                 },
                 "isEnabled": {
                     "type": "boolean"
@@ -7505,6 +7568,10 @@ const docTemplate = `{
         "dto.ShareCreateResponse": {
             "type": "object",
             "properties": {
+                "baseUrl": {
+                    "description": "Base URL for sharing // 分享基础 URL",
+                    "type": "string"
+                },
                 "expiresAt": {
                     "description": "Expiration time // 过期时间",
                     "type": "string"
@@ -7534,6 +7601,10 @@ const docTemplate = `{
         "dto.ShareListItem": {
             "type": "object",
             "properties": {
+                "baseUrl": {
+                    "description": "Base URL for sharing // 分享基础 URL",
+                    "type": "string"
+                },
                 "createdAt": {
                     "description": "Created at // 创建时间",
                     "type": "string"
@@ -8033,6 +8104,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.VaultRebuildIndexRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "Vault ID // 保险库 ID",
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 1
+                }
+            }
+        },
         "dto.VersionDTO": {
             "type": "object",
             "properties": {
@@ -8043,6 +8128,13 @@ const docTemplate = `{
                 "gitTag": {
                     "description": "Git tag // Git 标签",
                     "type": "string"
+                },
+                "pluginVersionHistory": {
+                    "description": "Plugin version history // 插件历史版本",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.HistoricalVersion"
+                    }
                 },
                 "pluginVersionNewChangelog": {
                     "description": "New plugin version changelog link // 插件新版本更新日志链接",
@@ -8063,6 +8155,13 @@ const docTemplate = `{
                 "version": {
                     "description": "Current version // 当前版本",
                     "type": "string"
+                },
+                "versionHistory": {
+                    "description": "Service version history // 服务端历史版本",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.HistoricalVersion"
+                    }
                 },
                 "versionIsNew": {
                     "description": "Is there a new version // 是否有新版本",

@@ -45,7 +45,6 @@ require (
 	github.com/w3liu/go-common v0.0.0-20210108072342-826b2f3582be
 	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 	go.uber.org/zap v1.28.0
-	golang.ngrok.com/ngrok/v2 v2.1.4
 	golang.org/x/crypto v0.51.0
 	golang.org/x/mod v0.36.0
 	golang.org/x/sync v0.20.0
@@ -145,7 +144,6 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
@@ -188,7 +186,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.ngrok.com/muxado/v2 v2.0.1 // indirect
 	golang.org/x/arch v0.27.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect

@@ -152,6 +152,9 @@ func TestAdminControlHandler_GetConfig_WithSecurityFields(t *testing.T) {
 	cfg.Security.WebGUILoginTokenExpiry = "14d"
 	bindIP := false
 	cfg.Security.WebGUILoginTokenBindIP = &bindIP
+	cfg.Server.CustomResponseHeaders = map[string]string{
+		"X-Test-Get": "GetValue",
+	}
 
 	c, w := newAdminTestContext("GET", "/api/admin/config", "", 1)
 	handler.GetConfig(c)
@@ -165,6 +168,8 @@ func TestAdminControlHandler_GetConfig_WithSecurityFields(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.Equal(t, "14d", *resp.Data.WebGUILoginTokenExpiry)
 	assert.Equal(t, false, *resp.Data.WebGUILoginTokenBindIP)
+	assert.NotNil(t, resp.Data.CustomResponseHeaders)
+	assert.Equal(t, "GetValue", (*resp.Data.CustomResponseHeaders)["X-Test-Get"])
 }
 
 func TestAdminControlHandler_UpdateConfig_Success(t *testing.T) {
@@ -177,7 +182,7 @@ func TestAdminControlHandler_UpdateConfig_Success(t *testing.T) {
 	defer os.Remove(tempFile.Name())
 	cfg.File = tempFile.Name()
 
-	reqBody := `{"webguiLoginTokenExpiry":"30d","webguiLoginTokenBindIp":false}`
+	reqBody := `{"webguiLoginTokenExpiry":"30d","webguiLoginTokenBindIp":false,"customResponseHeaders":{"X-Test-Update":"UpdateValue"}}`
 	c, w := newAdminTestContext("POST", "/api/admin/config", reqBody, 1)
 
 	handler.UpdateConfig(c)
@@ -186,6 +191,7 @@ func TestAdminControlHandler_UpdateConfig_Success(t *testing.T) {
 	assertResponseCode(t, w, code.Success.Code())
 	assert.Equal(t, "30d", cfg.Security.WebGUILoginTokenExpiry)
 	assert.Equal(t, false, *cfg.Security.WebGUILoginTokenBindIP)
+	assert.Equal(t, "UpdateValue", cfg.Server.CustomResponseHeaders["X-Test-Update"])
 }
 
 func TestAdminControlHandler_UpdateConfig_InvalidExpiry(t *testing.T) {

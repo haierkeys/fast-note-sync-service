@@ -130,4 +130,5 @@ var (
 
 	// --- Cloudflare Related (520-529) ---
 	ErrorCloudflaredDownloadFailed = NewError(520)
+	ErrorCloudflaredBinaryNotFound = NewError(521)
 )
