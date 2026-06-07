@@ -1,15 +1,6 @@
 package config
 
-// NgrokConfig ngrok configuration
-// NgrokConfig ngrok 配置
-type NgrokConfig struct {
-	// Enabled whether to enable ngrok tunnel
-	Enabled bool `yaml:"enabled" default:"false"`
-	// AuthToken ngrok auth token
-	AuthToken string `yaml:"auth-token"`
-	// Domain ngrok custom domain (optional)
-	Domain string `yaml:"domain"`
-}
+
 
 // CloudflareConfig cloudflare configuration
 // CloudflareConfig cloudflare 配置

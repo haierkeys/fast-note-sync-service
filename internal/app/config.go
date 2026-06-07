@@ -35,7 +35,6 @@ type AppConfig struct {
 	Storage          config.StorageConfig          `yaml:"storage"`
 	Git              config.GitConfig              `yaml:"git"`
 	WebGUI           config.WebGUIConfig           `yaml:"webgui"`
-	Ngrok            config.NgrokConfig            `yaml:"ngrok"`
 	Cloudflare       config.CloudflareConfig       `yaml:"cloudflare"`
 	OAuth            config.OAuthConfig            `yaml:"oauth"`
 	AttachmentStatic config.AttachmentStaticConfig `yaml:"attachment-static"` // Attachment static access configuration // 附件模拟静态访问配置

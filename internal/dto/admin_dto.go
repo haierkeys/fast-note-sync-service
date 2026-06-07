@@ -34,6 +34,33 @@ type AdminConfig struct {
 	ShareTokenExpiry        *string `json:"shareTokenExpiry,omitempty" form:"shareTokenExpiry"`               // Share token expiry // 分享 Token 有效期
 	PullSource              *string `json:"pullSource,omitempty" form:"pullSource"`                           // Data pull source: auto | github | cnb // 数据拉取源：auto | github | cnb
 	PullReleaseChannel      *string `json:"pullReleaseChannel,omitempty" form:"pullReleaseChannel"`           // Update version channel: stable | beta // 更新版本通道：stable | beta
+	WebGUILoginTokenExpiry  *string `json:"webguiLoginTokenExpiry,omitempty" form:"webguiLoginTokenExpiry"`   // WebGUI login token expiry // WebGUI 登录 Token 有效期
+	WebGUILoginTokenBindIP  *bool   `json:"webguiLoginTokenBindIp,omitempty" form:"webguiLoginTokenBindIp"`   // WebGUI login token bind IP // WebGUI 登录 Token 是否绑定 IP
+	CustomResponseHeaders   *map[string]string `json:"customResponseHeaders,omitempty" form:"customResponseHeaders"` // Custom HTTP response headers // 自定义 HTTP 响应头
+	DefaultPageSize               *int               `json:"defaultPageSize,omitempty" form:"defaultPageSize"`                             // Default page size // 默认每页显示数
+	MaxPageSize                   *int               `json:"maxPageSize,omitempty" form:"maxPageSize"`                                     // Max page size // 最大每页显示限制
+	DefaultContextTimeout         *int               `json:"defaultContextTimeout,omitempty" form:"defaultContextTimeout"`                 // Default context timeout // 默认上下文超时
+	TempPath                      *string            `json:"tempPath,omitempty" form:"tempPath"`                                           // Temporary file path // 临时文件路径
+	IsReturnSussess               *bool              `json:"isReturnSussess,omitempty" form:"isReturnSussess"`                             // Whether to return success detail // 是否返回成功详情
+	SyncLogRetentionTime          *string            `json:"syncLogRetentionTime,omitempty" form:"syncLogRetentionTime"`                   // Sync log retention time // 同步日志保留时长
+	DownloadSessionTimeout        *string            `json:"downloadSessionTimeout,omitempty" form:"downloadSessionTimeout"`               // Download session timeout // 下载分片超时
+	WorkerPoolMaxWorkers          *int               `json:"workerPoolMaxWorkers,omitempty" form:"workerPoolMaxWorkers"`                   // Worker pool max workers // 协程池最大协程数
+	WorkerPoolQueueSize           *int               `json:"workerPoolQueueSize,omitempty" form:"workerPoolQueueSize"`                     // Worker pool queue size // 协程池队列大小
+	WriteQueueCapacity            *int               `json:"writeQueueCapacity,omitempty" form:"writeQueueCapacity"`                       // Write queue capacity // 写入队列容量
+	WriteQueueTimeout             *string            `json:"writeQueueTimeout,omitempty" form:"writeQueueTimeout"`                         // Write queue timeout // 写入队列超时
+	WriteQueueIdleTime            *string            `json:"writeQueueIdleTime,omitempty" form:"writeQueueIdleTime"`                       // Write queue idle cleanup time // 写入队列空闲清理时长
+	WebSocketReadMaxPayloadSize   *string            `json:"wsReadMaxPayloadSize,omitempty" form:"wsReadMaxPayloadSize"`                   // WebSocket max read payload // WebSocket 最大读取负载
+	WebSocketWriteMaxPayloadSize  *string            `json:"wsWriteMaxPayloadSize,omitempty" form:"wsWriteMaxPayloadSize"`                 // WebSocket max write payload // WebSocket 最大写入负载
+	WebSocketParallelEnabled      *bool              `json:"wsParallelEnabled,omitempty" form:"wsParallelEnabled"`                         // Whether ws parallel is enabled // WebSocket 并行处理是否开启
+	WebSocketParallelGolimit      *int               `json:"wsParallelGolimit,omitempty" form:"wsParallelGolimit"`                         // Ws parallel goroutine limit // WebSocket 并行协程限制
+	WebSocketCheckUtf8Enabled     *bool              `json:"wsCheckUtf8Enabled,omitempty" form:"wsCheckUtf8Enabled"`                       // Whether ws check UTF-8 is enabled // WebSocket 是否开启 UTF-8 校验
+	WebSocketCompressionEnabled   *bool              `json:"wsCompressionEnabled,omitempty" form:"wsCompressionEnabled"`                   // Whether ws compression is enabled // WebSocket 是否开启压缩
+	WebSocketCompressionLevel     *int               `json:"wsCompressionLevel,omitempty" form:"wsCompressionLevel"`                       // Ws compression level // WebSocket 压缩级别
+	WebSocketCompressionThreshold *int               `json:"wsCompressionThreshold,omitempty" form:"wsCompressionThreshold"`               // Ws compression threshold // WebSocket 压缩阈值
+	FtsBleveEnabled               *bool              `json:"ftsBleveEnabled,omitempty" form:"ftsBleveEnabled"`                             // Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
+	FtsBleveStoreRaw              *bool              `json:"ftsBleveStoreRaw,omitempty" form:"ftsBleveStoreRaw"`                           // Whether Bleve stores raw content // Bleve 全文搜索是否存储原始文本
+	GitName                       *string            `json:"gitName,omitempty" form:"gitName"`                                             // Git author name // Git 提交的作者名称
+	GitEmail                      *string            `json:"gitEmail,omitempty" form:"gitEmail"`                                           // Git author email // Git 提交的作者邮箱
 }
 
 // AdminUserDatabaseConfig User database configuration structure
@@ -57,13 +84,7 @@ type AdminUserDatabaseConfig struct {
 	ParseTime           bool   `json:"parseTime" form:"parseTime"`                                       // Parse time // 是否解析时间
 }
 
-// AdminNgrokConfig Ngrok tunnel configuration
-// AdminNgrokConfig Ngrok 隧道配置
-type AdminNgrokConfig struct {
-	Enabled   bool   `json:"enabled" form:"enabled"`     // Whether to enable ngrok tunnel // 是否启用 ngrok 隧道
-	AuthToken string `json:"authToken" form:"authToken"` // ngrok auth token // ngrok 认证令牌
-	Domain    string `json:"domain" form:"domain"`       // Custom domain // 自定义域名
-}
+
 
 // AdminCloudflareConfig Cloudflare tunnel configuration
 // AdminCloudflareConfig Cloudflare 隧道配置

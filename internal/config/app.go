@@ -12,12 +12,7 @@ type AppSettings struct {
 	// DefaultContextTimeout default context timeout duration
 	// DefaultContextTimeout 默认上下文超时时间
 	DefaultContextTimeout int `yaml:"default-context-timeout" default:"60"`
-	// LogSavePath log save path
-	// LogSavePath 日志保存路径
-	LogSavePath string `yaml:"log-save-fileurl"`
-	// LogFile log filename
-	// LogFile 日志文件名
-	LogFile string `yaml:"log-file"`
+
 	// TempPath upload temporary path
 	// TempPath 上传临时路径
 	TempPath string `yaml:"temp-path" default:"storage/temp"`
