@@ -28,6 +28,10 @@ type ServerConfig struct {
 	// ExtApiUrl external API URL
 	// ExtApiUrl 外部访问 API 的地址
 	ExtApiUrl string `yaml:"ext-api-url"`
+	CORSAllowedOrigins []string `yaml:"cors-allowed-origins"` // CORSAllowedOrigins allowed origins for CORS / CORSAllowedOrigins 跨域允许源白名单
+	TrustedProxies     []string `yaml:"trusted-proxies"`     // TrustedProxies trusted proxies IP/CIDR list / TrustedProxies 可信代理 IP/CIDR 列表
+
+
 	// ShareBaseUrl external share page base URL
 	// ShareBaseUrl 外部分享页面基础 URL
 	ShareBaseUrl string `yaml:"share-base-url"`

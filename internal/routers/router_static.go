@@ -2,6 +2,7 @@ package routers
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -26,7 +27,7 @@ func registerStaticFiles(r *gin.Engine, frontendFiles embed.FS, appContainer *ap
 
 	userStaticPath := "storage/user_static"
 	if _, err := os.Stat(userStaticPath); os.IsNotExist(err) {
-		_ = os.MkdirAll(userStaticPath, os.ModePerm)
+		_ = os.MkdirAll(userStaticPath, 0755)
 	}
 
 	cacheMiddleware := func(c *gin.Context) {
@@ -210,7 +211,10 @@ func renderHTMLWithAPI(c *gin.Context, content []byte, apiUrl string) {
 	} else {
 		// Inject localStorage setter before </body>
 		// 在 </body> 前注入 localStorage 设置脚本
-		script = fmt.Sprintf("<script>localStorage.setItem('API_URL', '%s');</script>", apiUrl)
+		// Use json.Marshal to safely escape apiUrl to prevent HTML/JS injection
+		// 使用 json.Marshal 安全转义 apiUrl，防止 HTML/JS 注入
+		safeUrl, _ := json.Marshal(apiUrl)
+		script = fmt.Sprintf("<script>localStorage.setItem('API_URL', %s);</script>", safeUrl)
 	}
 
 	html := string(content)
