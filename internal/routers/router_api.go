@@ -99,6 +99,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			// Admin config interface
 			// 管理员配置接口
 			auth.GET("/admin/upgrade", adminControlHandler.Upgrade)
+			auth.GET("/admin/check", adminControlHandler.CheckAdmin)
 			auth.GET("/admin/ws_clients", adminControlHandler.GetWSClients)
 			auth.DELETE("/admin/ws_client/:traceId", adminControlHandler.KickWSClient)
 
@@ -173,7 +174,6 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 
 				// Admin config interface
 				// 管理员配置接口
-				webguiGroup.GET("/admin/check", adminControlHandler.CheckAdmin)
 				webguiGroup.GET("/admin/config", adminControlHandler.GetConfig)
 				webguiGroup.POST("/admin/config", adminControlHandler.UpdateConfig)
 				webguiGroup.GET("/admin/config/user_database", adminControlHandler.GetUserDatabaseConfig)
