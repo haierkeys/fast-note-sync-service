@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,7 +100,7 @@ func (s *gitSyncService) domainToDTO(conf *domain.GitSyncConfig) *dto.GitSyncCon
 		UID:             conf.UID,
 		RepoURL:         conf.RepoURL,
 		Username:        conf.Username,
-		Password:        conf.Password,
+		Password:        "", // Do not expose Git password to frontend / 不回显 Git 密码给前端
 		Branch:          conf.Branch,
 		IsEnabled:       conf.IsEnabled,
 		Delay:           conf.Delay,
@@ -148,6 +151,12 @@ func (s *gitSyncService) GetConfig(ctx context.Context, uid int64, vaultID int64
 }
 
 func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dto.GitSyncConfigRequest) (*dto.GitSyncConfigDTO, error) {
+	// Validate Repository URL security and format
+	// 验证仓库 URL 的安全性和格式
+	if err := validateRepoURL(params.RepoURL); err != nil {
+		return nil, err
+	}
+
 	var conf *domain.GitSyncConfig
 	var err error
 
@@ -219,6 +228,12 @@ func (s *gitSyncService) DeleteConfig(ctx context.Context, uid int64, id int64) 
 }
 
 func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValidateRequest) error {
+	// Validate Repository URL security and format
+	// 验证仓库 URL 的安全性和格式
+	if err := validateRepoURL(params.RepoURL); err != nil {
+		return err
+	}
+
 	branch := params.Branch
 	if branch == "" {
 		branch = "main"
@@ -263,6 +278,100 @@ func (s *gitSyncService) Validate(ctx context.Context, params *dto.GitSyncValida
 	}
 
 	return nil
+}
+
+// validateRepoURL validates git repository URL format and protocols to prevent file:// and SSRF
+// validateRepoURL 校验 git 仓库 URL 格式和协议，防止 file:// 及 SSRF 漏洞
+func validateRepoURL(rawURL string) error {
+	if rawURL == "" {
+		return code.ErrorGitSyncValidateFailed.WithDetails("repository URL is empty")
+	}
+
+	// 1. Check if it is scp-like SSH format (e.g., git@github.com:org/repo.git)
+	// 1. 检查是否为 scp-like SSH 格式 (例如 git@github.com:org/repo.git)
+	if strings.Contains(rawURL, "@") && strings.Contains(rawURL, ":") && !strings.Contains(rawURL, "://") {
+		return nil
+	}
+
+	// 2. Parse URL standard way
+	// 2. 使用标准方式解析 URL
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return code.ErrorGitSyncValidateFailed.WithDetails("invalid repository URL format")
+	}
+
+	scheme := strings.ToLower(u.Scheme)
+	if scheme == "" {
+		return code.ErrorGitSyncValidateFailed.WithDetails("repository URL must specify protocol (e.g., https/ssh)")
+	}
+
+	allowedSchemes := map[string]bool{
+		"http":  true,
+		"https": true,
+		"ssh":   true,
+		"git":   true,
+	}
+
+	if !allowedSchemes[scheme] {
+		return code.ErrorGitSyncValidateFailed.WithDetails("unsupported git protocol: " + scheme)
+	}
+
+	// 3. For http/https, perform SSRF protection by checking private IP address range
+	// 3. 对于 http/https 协议，检测是否请求了私有 IP 段以进行 SSRF 防护
+	if scheme == "http" || scheme == "https" {
+		host := u.Hostname()
+		if host == "" {
+			return code.ErrorGitSyncValidateFailed.WithDetails("invalid hostname in repository URL")
+		}
+		if isPrivateOrLocalHost(host) {
+			return code.ErrorGitSyncValidateFailed.WithDetails("private network access not allowed for repository URL")
+		}
+	}
+
+	return nil
+}
+
+// isPrivateOrLocalHost checks if hostname resolves to loopback or private ranges
+// isPrivateOrLocalHost 检查主机名是否解析为回环或私有 IP 网段
+func isPrivateOrLocalHost(host string) bool {
+	if strings.ToLower(host) == "localhost" {
+		return true
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		return isPrivateOrLocalIP(ip)
+	}
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return false
+	}
+
+	for _, ip := range ips {
+		if isPrivateOrLocalIP(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// isPrivateOrLocalIP checks if net.IP is loopback, link-local, or private
+// isPrivateOrLocalIP 检查 net.IP 是否属于回环、链路本地或私网 IP
+func isPrivateOrLocalIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 10 ||
+			(ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) ||
+			(ip4[0] == 192 && ip4[1] == 168)
+	}
+
+	if ip6 := ip.To16(); ip6 != nil {
+		return (ip6[0] & 0xfe) == 0xfc
+	}
+	return false
 }
 
 func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) error {

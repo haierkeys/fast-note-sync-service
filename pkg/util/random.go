@@ -1,6 +1,7 @@
 package util
 
 import (
+	cryptorand "crypto/rand"
 	"math/rand"
 	"time"
 )
@@ -65,16 +66,24 @@ func GenerateRandomSingleNumber(start int, end int) int {
 	return r.Intn(end-start) + start
 }
 
-// GetRandomString generates random string of specified length
-// GetRandomString 生成指定长度的随机字符串
+// GetRandomString generates secure random string of specified length using crypto/rand
+// GetRandomString 使用 crypto/rand 生成指定长度的安全随机字符串
 func GetRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 	b := make([]byte, length)
+	_, err := cryptorand.Read(b)
+	if err != nil {
+		// Fallback to math/rand if crypto/rand fails
+		// 若 crypto/rand 失败，回退使用 math/rand
+		for i := range b {
+			b[i] = charset[rand.Intn(len(charset))]
+		}
+		return string(b)
+	}
+
 	for i := range b {
-		// Use global rand directly, no need to NewSource every time
-		// 直接使用全局 rand，无需每次都 NewSource
-		b[i] = charset[rand.Intn(len(charset))]
+		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
 }

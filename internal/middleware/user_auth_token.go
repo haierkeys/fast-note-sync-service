@@ -18,197 +18,156 @@ import (
 func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := app.NewResponse(c)
-		var token string
-
-		// Prioritize getting from Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-			token = strings.TrimPrefix(authHeader, "Bearer ")
-		}
-
-		if token == "" {
-			authHeader := c.GetHeader("Token")
-			if authHeader != "" {
-				token = authHeader
-			}
-			authHeader = c.GetHeader("token")
-			if authHeader != "" {
-				token = authHeader
-			}
-		}
-
-		// If not in header, try getting from URL parameter
-		if token == "" {
-			token = c.Query("token")
-		}
-
-		if token == "" {
-			response.ToResponse(code.ErrorNotUserAuthToken)
+		user, scope, vaults, appErr := AuthenticateUserToken(c, secretKey, tokenService)
+		if appErr != nil {
+			response.ToResponse(appErr)
 			c.Abort()
 			return
 		}
-
-		user, err := app.ParseTokenWithKey(token, secretKey)
-		if err != nil {
-			if appErr, ok := err.(*code.Code); ok {
-				response.ToResponse(appErr)
-			} else {
-				response.ToResponse(code.ErrorInvalidUserAuthToken)
-			}
-			c.Abort()
-			return
-		}
-
-		// 2. Fetch and Validate Stateful Token from DB
-		// 从数据库获取并验证状态化 Token
-		ctx := c.Request.Context()
-		dbToken, err := tokenService.GetActiveToken(ctx, user.UID, user.TokenID)
-		if err != nil || dbToken == nil {
-			if appErr, ok := err.(*code.Code); ok {
-				response.ToResponse(appErr)
-			} else {
-				response.ToResponse(code.ErrorInvalidUserAuthToken)
-			}
-			c.Abort()
-			return
-		}
-
-		// 2.1 Verify Nonce (Generation Check)
-		// 校验 Nonce（世代校验），如果数据库中有记录且不匹配，说明该令牌已被轮换或失效
-		if dbToken.TokenString != "" && user.Nonce != dbToken.TokenString {
-			response.ToResponse(code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated"))
-			c.Abort()
-			return
-		}
-
-		// 3. Verify Client, IP and User-Agent Binding
-		// 验证客户端类型、IP 和浏览器 User-Agent 的严格绑定
-		reqClientType := c.GetHeader("x-client")
-		if reqClientType == "" {
-			reqClientType = c.Query("client")
-		}
-		if reqClientType == "" && dbToken.IssueType == 1 && isHeaderlessLoginTokenResourceRead(c) {
-			reqClientType = dbToken.ClientType
-		}
-
-		// Only enforce strict ClientType matching for login tokens (IssueType == 1).
-		// Manual tokens (IssueType == 2) use ClientType as a Remark/Title, and client restriction is handled via Scope.
-		// 仅对登录签发的令牌 (IssueType == 1) 执行 ClientType 字段的严格绑定校验。
-		// 手动签发的令牌 (IssueType == 2) 的 ClientType 字段用作备注/标题，其客户端限制由后续的 Scope 验证处理。
-		if dbToken.IssueType == 1 && !app.MatchWildcard(dbToken.ClientType, reqClientType) {
-			response.ToResponse(code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch"))
-			c.Abort()
-			return
-		}
-
-		// 检查 User-Agent 防篡改/防盗用 (仅在数据库中有绑定时校验)
-		if dbToken.UserAgent != "" {
-			if reqUserAgent := c.GetHeader("User-Agent"); !app.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
-				response.ToResponse(code.ErrorAuthTokenUARestricted.WithDetails("User-Agent mismatch"))
-				c.Abort()
-				return
-			}
-		}
-
-		// 检查 IP 防盗用 (仅在数据库中有绑定时校验)
-		if dbToken.BoundIP != "" {
-			if reqIP := c.ClientIP(); !app.MatchWildcard(dbToken.BoundIP, reqIP) {
-				response.ToResponse(code.ErrorAuthTokenIPRestricted.WithDetails("IP mismatch"))
-				c.Abort()
-				return
-			}
-		}
-
-		// 4. Determine Function Dimension for RBAC
-		// 确定 RBAC 的功能维度
-		path := c.Request.URL.Path
-		method := c.Request.Method
-		var function string
-
-		// Map path to resource
-		var resource string
-		if strings.HasPrefix(path, "/api/note") || strings.HasPrefix(path, "/api/folder") {
-			resource = "note"
-		} else if strings.HasPrefix(path, "/api/file") || strings.HasPrefix(path, "/api/storage") {
-			resource = "file"
-		} else if strings.HasPrefix(path, "/api/setting") || strings.HasPrefix(path, "/api/admin/config") {
-			resource = "config"
-		}
-
-		if resource != "" {
-			if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
-				function = resource + "_r"
-			} else {
-				function = resource + "_w"
-			}
-		}
-
-		// Protocol is rest for this middleware
-		protocol := "rest"
-		if strings.HasPrefix(path, "/api/mcp") {
-			protocol = "mcp"
-		}
-
-		// 5. Verify Permissions (Health check is always allowed for valid tokens)
-		if path != "/api/health" && !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
-			// Extract resource path from common parameters
-			resPath := c.Query("path")
-			if resPath == "" {
-				resPath = c.Query("name")
-			}
-			if resPath == "" {
-				resPath = c.Query("file")
-			}
-			if resPath == "" {
-				resPath = path // Fallback to API path if no resource path found
-			}
-
-			response.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: " + resPath))
-			c.Abort()
-			return
-		}
-
-		// 5.1 Verify Vault Restrictions
-		// 校验笔记库权限限制
-		if dbToken.Vaults != "" {
-			targetVault := app.RequestParam(c, "vault")
-			if targetVault != "" && !util.VerifyVaultAccess(dbToken.Vaults, targetVault) {
-				response.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: " + targetVault))
-				c.Abort()
-				return
-			}
-		}
-
-		// 6. Asynchronously record access log
-		// 异步记录访问日志
-		go func() {
-			clientName := c.GetHeader("x-client-name")
-			if clientName != "" {
-				if decoded, err := url.QueryUnescape(clientName); err == nil {
-					clientName = decoded
-				}
-			}
-
-			log := &domain.AuthTokenLog{
-				TokenID:       dbToken.ID,
-				UID:           dbToken.UID,
-				Protocol:      protocol,
-				Client:        reqClientType,
-				ClientName:    clientName,
-				ClientVersion: c.GetHeader("x-client-version"),
-				IP:            c.ClientIP(),
-				UA:            c.GetHeader("User-Agent"),
-				StatusCode:    int64(c.Writer.Status()),
-			}
-			// Use background context for async operation
-			_ = tokenService.RecordAccessLog(context.Background(), log)
-		}()
-
 		c.Set("user_token", user)
-		c.Set("scope", dbToken.Scope)
-		c.Set("vaults", dbToken.Vaults)
+		c.Set("scope", scope)
+		c.Set("vaults", vaults)
 		c.Next()
 	}
+}
+
+func ExtractUserAuthToken(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	if authHeader := c.GetHeader("Token"); authHeader != "" {
+		return authHeader
+	}
+	if authHeader := c.GetHeader("token"); authHeader != "" {
+		return authHeader
+	}
+
+	return c.Query("token")
+}
+
+func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService service.TokenService) (*app.UserEntity, string, string, *code.Code) {
+	token := ExtractUserAuthToken(c)
+	if token == "" {
+		return nil, "", "", code.ErrorNotUserAuthToken
+	}
+
+	user, err := app.ParseTokenWithKey(token, secretKey)
+	if err != nil {
+		if appErr, ok := err.(*code.Code); ok {
+			return nil, "", "", appErr
+		}
+		return nil, "", "", code.ErrorInvalidUserAuthToken
+	}
+
+	ctx := c.Request.Context()
+	dbToken, err := tokenService.GetActiveToken(ctx, user.UID, user.TokenID)
+	if err != nil || dbToken == nil {
+		if appErr, ok := err.(*code.Code); ok {
+			return nil, "", "", appErr
+		}
+		return nil, "", "", code.ErrorInvalidUserAuthToken
+	}
+
+	if dbToken.TokenString != "" && user.Nonce != dbToken.TokenString {
+		return nil, "", "", code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated")
+	}
+
+	reqClientType := c.GetHeader("x-client")
+	if reqClientType == "" {
+		reqClientType = c.Query("client")
+	}
+	if reqClientType == "" && dbToken.IssueType == 1 && isHeaderlessLoginTokenResourceRead(c) {
+		reqClientType = dbToken.ClientType
+	}
+
+	if dbToken.IssueType == 1 && !app.MatchWildcard(dbToken.ClientType, reqClientType) {
+		return nil, "", "", code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
+	}
+
+	if dbToken.UserAgent != "" {
+		if reqUserAgent := c.GetHeader("User-Agent"); !app.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
+			return nil, "", "", code.ErrorAuthTokenUARestricted.WithDetails("User-Agent mismatch")
+		}
+	}
+
+	if dbToken.BoundIP != "" {
+		if reqIP := c.ClientIP(); !app.MatchWildcard(dbToken.BoundIP, reqIP) {
+			return nil, "", "", code.ErrorAuthTokenIPRestricted.WithDetails("IP mismatch")
+		}
+	}
+
+	path := c.Request.URL.Path
+	method := c.Request.Method
+	var function string
+
+	var resource string
+	if strings.HasPrefix(path, "/api/note") || strings.HasPrefix(path, "/api/folder") {
+		resource = "note"
+	} else if strings.HasPrefix(path, "/api/file") || strings.HasPrefix(path, "/api/storage") {
+		resource = "file"
+	} else if strings.HasPrefix(path, "/api/setting") || strings.HasPrefix(path, "/api/admin/config") {
+		resource = "config"
+	}
+
+	if resource != "" {
+		if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
+			function = resource + "_r"
+		} else {
+			function = resource + "_w"
+		}
+	}
+
+	protocol := "rest"
+	if strings.HasPrefix(path, "/api/mcp") {
+		protocol = "mcp"
+	}
+
+	if path != "/api/health" && !app.VerifyPermissions(dbToken.Scope, protocol, reqClientType, function) {
+		resPath := c.Query("path")
+		if resPath == "" {
+			resPath = c.Query("name")
+		}
+		if resPath == "" {
+			resPath = c.Query("file")
+		}
+		if resPath == "" {
+			resPath = path
+		}
+		return nil, "", "", code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: " + resPath)
+	}
+
+	if dbToken.Vaults != "" {
+		targetVault := app.RequestParam(c, "vault")
+		if targetVault != "" && !util.VerifyVaultAccess(dbToken.Vaults, targetVault) {
+			return nil, "", "", code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: " + targetVault)
+		}
+	}
+
+	go func() {
+		clientName := c.GetHeader("x-client-name")
+		if clientName != "" {
+			if decoded, err := url.QueryUnescape(clientName); err == nil {
+				clientName = decoded
+			}
+		}
+
+		log := &domain.AuthTokenLog{
+			TokenID:       dbToken.ID,
+			UID:           dbToken.UID,
+			Protocol:      protocol,
+			Client:        reqClientType,
+			ClientName:    clientName,
+			ClientVersion: c.GetHeader("x-client-version"),
+			IP:            c.ClientIP(),
+			UA:            c.GetHeader("User-Agent"),
+			StatusCode:    int64(c.Writer.Status()),
+		}
+		_ = tokenService.RecordAccessLog(context.Background(), log)
+	}()
+
+	return user, dbToken.Scope, dbToken.Vaults, nil
 }
 
 func isHeaderlessLoginTokenResourceRead(c *gin.Context) bool {

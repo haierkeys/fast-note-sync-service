@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
 	"crypto/aes"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
@@ -131,108 +132,110 @@ func (t *tokenManager) Parse(token string) (*UserEntity, error) {
 	return claims, nil
 }
 
-// ShareGenerate builds share Token (extremely shortened version: single block AES + Checksum)
-// ShareGenerate 构建分享 Token (极致缩短版: 单块 AES + Checksum)
+// ShareGenerate builds share Token using HMAC-SHA256 (54 characters)
+// ShareGenerate 构建分享 Token (使用 HMAC-SHA256 算法产生 54 字符)
 func (t *tokenManager) ShareGenerate(shareID int64, uid int64, resources map[string][]string) (string, error) {
-	expirationTime := time.Unix(time.Now().Add(t.config.ShareExpiry).Unix(), 0)
+	expiresAt := time.Now().Add(t.config.ShareExpiry).Unix()
 
-	// Prepare data (fixed 16 bytes): SID (6) + UID (3) + ExpiresAt (4) + Checksum (3)
-	// 准备数据 (固定 16 字节): SID (6) + UID (3) + ExpiresAt (4) + Checksum (3)
-	data := make([]byte, 16)
+	// Prepare payload (24 bytes): SID (8 bytes) + UID (8 bytes) + ExpiresAt (8 bytes)
+	// 准备 payload (24 字节): SID (8 字节) + UID (8 字节) + ExpiresAt (8 字节)
+	payload := make([]byte, 24)
+	binary.BigEndian.PutUint64(payload[0:8], uint64(shareID))
+	binary.BigEndian.PutUint64(payload[8:16], uint64(uid))
+	binary.BigEndian.PutUint64(payload[16:24], uint64(expiresAt))
 
-	// SID: 6 bytes (0-5)
-	// SID: 6 字节 (0-5)
-	sidBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(sidBytes, uint64(shareID))
-	copy(data[0:6], sidBytes[2:8])
-
-	// UID: 3 bytes (6-8)
-	// UID: 3 字节 (6-8)
-	uidBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(uidBytes, uint64(uid))
-	copy(data[6:9], uidBytes[5:8])
-
-	// ExpiresAt: 4 bytes (9-12)
-	// ExpiresAt: 4 字节 (9-12)
-	binary.BigEndian.PutUint32(data[9:13], uint32(expirationTime.Unix()))
-
-	// Generate checksum: generate summary using Key + first 13 bytes, take first 3 bytes
-	// 生成校验和: 使用 Key + 前 13 字节生成摘要，取前 3 字节
+	// Generate HMAC-SHA256 tag and truncate to first 16 bytes (128 bit tag)
+	// 生成 HMAC-SHA256 摘要并取前 16 字节作为签名 (128 bit 标签)
 	key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
-	h := sha256.New()
-	h.Write(key[:])
-	h.Write(data[0:13])
-	sum := h.Sum(nil)
-	copy(data[13:16], sum[:3])
+	mac := hmac.New(sha256.New, key[:])
+	mac.Write(payload)
+	tag := mac.Sum(nil)[:16]
 
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return "", err
-	}
-
-	// Execute single block encryption (16 bytes)
-	// 执行单块加密 (16 字节)
-	ciphertext := make([]byte, 16)
-	block.Encrypt(ciphertext, data)
-
-	// 使用 RawURLEncoding 得到固定的 22 字符长度
-	return base64.RawURLEncoding.EncodeToString(ciphertext), nil
+	// Combine payload and tag, encode using base64 RawURLEncoding (resulting in 54 chars)
+	// 组合 payload 和 tag 并使用 Base64 RawURLEncoding 编码 (得到 54 字符)
+	combined := append(payload, tag...)
+	return base64.RawURLEncoding.EncodeToString(combined), nil
 }
 
-// ShareParse parses share Token
-// ShareParse 解析分享 Token
+// ShareParse parses share Token with compatibility fallback
+// ShareParse 解析分享 Token，支持兼容旧版
 func (t *tokenManager) ShareParse(tokenString string) (*ShareEntity, error) {
-	ciphertext, err := base64.RawURLEncoding.DecodeString(tokenString)
-	if err != nil || len(ciphertext) != 16 {
+	data, err := base64.RawURLEncoding.DecodeString(tokenString)
+	if err != nil {
 		return nil, fmt.Errorf("invalid token format")
 	}
 
-	// Generate AES Key using ShareTokenKey + MachineID
-	// 使用 ShareTokenKey + MachineID 生成 AES Key
-	key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
+	// 1. If length matches 40 bytes, try parsing with HMAC-SHA256 (new version)
+	// 1. 如果长度为 40 字节，尝试用新版 HMAC-SHA256 校验和解析
+	if len(data) == 40 {
+		payload, tag := data[:24], data[24:]
+		key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
+		mac := hmac.New(sha256.New, key[:])
+		mac.Write(payload)
+		expected := mac.Sum(nil)[:16]
 
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return nil, err
+		if hmac.Equal(tag, expected) {
+			shareID := int64(binary.BigEndian.Uint64(payload[0:8]))
+			uid := int64(binary.BigEndian.Uint64(payload[8:16]))
+			expiresAt := int64(binary.BigEndian.Uint64(payload[16:24]))
+
+			if time.Now().Unix() > expiresAt {
+				return nil, fmt.Errorf("token expired")
+			}
+			return &ShareEntity{
+				SID:       shareID,
+				UID:       uid,
+				ExpiresAt: time.Unix(expiresAt, 0),
+			}, nil
+		}
 	}
 
-	// Execute single block decryption
-	// 执行单块解密
-	data := make([]byte, 16)
-	block.Decrypt(data, ciphertext)
+	// 2. If length matches 16 bytes, fallback to parsing with AES-ECB (old version)
+	// 2. 如果长度为 16 字节，回退用旧版 AES-ECB 算法解密与校验
+	if len(data) == 16 {
+		key := sha256.Sum256([]byte(t.config.ShareTokenKey + "_" + util.GetMachineID()))
+		block, err := aes.NewCipher(key[:])
+		if err == nil {
+			decrypted := make([]byte, 16)
+			block.Decrypt(decrypted, data)
 
-	// Verify checksum
-	// 验证校验和
-	h := sha256.New()
-	h.Write(key[:])
-	h.Write(data[0:13])
-	sum := h.Sum(nil)
+			// Verify old checksum
+			// 校验旧校验和
+			h := sha256.New()
+			h.Write(key[:])
+			h.Write(decrypted[0:13])
+			sum := h.Sum(nil)
 
-	if !bytes.Equal(data[13:16], sum[:3]) {
-		return nil, fmt.Errorf("invalid token checksum")
+			if bytes.Equal(decrypted[13:16], sum[:3]) {
+				// Parse SID (6 bytes)
+				// 解析 SID (6 字节)
+				sidBytes := make([]byte, 8)
+				copy(sidBytes[2:8], decrypted[0:6])
+				shareID := int64(binary.BigEndian.Uint64(sidBytes))
+
+				// Parse UID (3 bytes)
+				// 解析 UID (3 字节)
+				uidBytes := make([]byte, 8)
+				copy(uidBytes[5:8], decrypted[6:9])
+				uid := int64(binary.BigEndian.Uint64(uidBytes))
+
+				// Parse ExpiresAt (4 bytes)
+				// 解析 ExpiresAt (4 字节)
+				expUnix := int64(binary.BigEndian.Uint32(decrypted[9:13]))
+
+				if time.Now().Unix() > expUnix {
+					return nil, fmt.Errorf("token expired")
+				}
+				return &ShareEntity{
+					SID:       shareID,
+					UID:       uid,
+					ExpiresAt: time.Unix(expUnix, 0),
+				}, nil
+			}
+		}
 	}
 
-	// Parse SID (6 bytes)
-	// 解析 SID (6 字节)
-	sidBytes := make([]byte, 8)
-	copy(sidBytes[2:8], data[0:6])
-	shareID := int64(binary.BigEndian.Uint64(sidBytes))
-
-	// Parse UID (3 bytes)
-	// 解析 UID (3 字节)
-	uidBytes := make([]byte, 8)
-	copy(uidBytes[5:8], data[6:9])
-	uid := int64(binary.BigEndian.Uint64(uidBytes))
-
-	// Parse ExpiresAt (4 bytes)
-	// 解析 ExpiresAt (4 字节)
-	expUnix := int64(binary.BigEndian.Uint32(data[9:13]))
-
-	return &ShareEntity{
-		SID:       shareID,
-		UID:       uid,
-		ExpiresAt: time.Unix(expUnix, 0),
-	}, nil
+	return nil, fmt.Errorf("invalid token signature or fallback failed")
 }
 
 // Validate validates if Token is valid

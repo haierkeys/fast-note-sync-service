@@ -22,14 +22,16 @@ import (
 
 func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp.WebsocketServer) {
 	fileSvc := appContainer.FileService
+	cfg := appContainer.Config()
 
 	// 1. List Files
 	toolListFiles := mcp.NewTool("file_list",
 		mcp.WithDescription("List files in a vault"),
+		mcp.WithOutputSchema[mcpFileListOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 	)
-	srv.AddTool(toolListFiles, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolListFiles, cfg, "files:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -58,16 +60,21 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		for _, f := range files {
 			resStr += fmt.Sprintf("- %s (Size: %d)\n", f.Path, f.Size)
 		}
-		return mcp.NewToolResultText(resStr), nil
+		return mcp.NewToolResultStructured(mcpFileListOutput{
+			Vault: vault,
+			Count: len(files),
+			Files: files,
+		}, resStr), nil
 	})
 
 	// 2. Get File Info
 	toolGetFileInfo := mcp.NewTool("file_get_info",
 		mcp.WithDescription("Get file metadata information"),
+		mcp.WithOutputSchema[mcpFileOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
-	srv.AddTool(toolGetFileInfo, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetFileInfo, cfg, "files:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -90,16 +97,20 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		resStr := fmt.Sprintf("File path: %s\nSize: %d bytes\nMtime: %d", file.Path, file.Size, file.Mtime)
-		return mcp.NewToolResultText(resStr), nil
+		return mcp.NewToolResultStructured(mcpFileOutput{
+			Vault: vault,
+			File:  file,
+		}, resStr), nil
 	})
 
 	// 3. Get File Content (Read File)
 	toolGetContent := mcp.NewTool("file_read",
 		mcp.WithDescription("Read file content and return. Returned as base64 string because it might be binary."),
+		mcp.WithOutputSchema[mcpFileReadOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
-	srv.AddTool(toolGetContent, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetContent, cfg, "files:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -127,16 +138,22 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		b64 := base64.StdEncoding.EncodeToString(data)
-		return mcp.NewToolResultText(fmt.Sprintf("Base64 Content follows:\n%s", b64)), nil
+		return mcp.NewToolResultStructured(mcpFileReadOutput{
+			Vault:         vault,
+			Path:          path,
+			ContentBase64: b64,
+			Size:          len(data),
+		}, fmt.Sprintf("Base64 Content follows:\n%s", b64)), nil
 	})
 
 	// 4. Delete File
 	toolDeleteFile := mcp.NewTool("file_delete",
 		mcp.WithDescription("Delete a file"),
+		mcp.WithOutputSchema[mcpFileMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
-	srv.AddTool(toolDeleteFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolDeleteFile, cfg, true, "files:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -159,17 +176,23 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(file).WithVault(vault), "FileSyncDelete")
-		return mcp.NewToolResultText(fmt.Sprintf("Deleted file: %s", file.Path)), nil
+		fallback := fmt.Sprintf("Deleted file: %s", file.Path)
+		return mcp.NewToolResultStructured(mcpFileMutationOutput{
+			Vault:     vault,
+			Operation: "delete",
+			File:      file,
+		}, fallback), nil
 	})
 
 	// 5. Rename File
 	toolRenameFile := mcp.NewTool("file_rename",
 		mcp.WithDescription("Rename a file"),
+		mcp.WithOutputSchema[mcpFileMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("oldPath", mcp.Required(), mcp.Description("Old file path")),
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New file path")),
 	)
-	srv.AddTool(toolRenameFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRenameFile, cfg, true, "files:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -205,16 +228,23 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			OldPath:          oldFile.Path,
 			OldPathHash:      oldFile.PathHash,
 		}).WithVault(vault), "FileSyncRename")
-		return mcp.NewToolResultText(fmt.Sprintf("Renamed file from %s to %s", oldFile.Path, newFile.Path)), nil
+		fallback := fmt.Sprintf("Renamed file from %s to %s", oldFile.Path, newFile.Path)
+		return mcp.NewToolResultStructured(mcpFileMutationOutput{
+			Vault:     vault,
+			Operation: "rename",
+			OldFile:   oldFile,
+			NewFile:   newFile,
+		}, fallback), nil
 	})
 
 	// 1. Restore File
 	toolRestoreFile := mcp.NewTool("file_restore",
 		mcp.WithDescription("Restore a deleted file from recycle bin"),
+		mcp.WithOutputSchema[mcpFileMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("File path")),
 	)
-	srv.AddTool(toolRestoreFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRestoreFile, cfg, true, "files:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -237,16 +267,22 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(file).WithVault(vault), "FileSyncUpdate")
-		return mcp.NewToolResultText(fmt.Sprintf("Restored file: %s", file.Path)), nil
+		fallback := fmt.Sprintf("Restored file: %s", file.Path)
+		return mcp.NewToolResultStructured(mcpFileMutationOutput{
+			Vault:     vault,
+			Operation: "restore",
+			File:      file,
+		}, fallback), nil
 	})
 
 	// 2. Recycle Clear File
 	toolRecycleClearFile := mcp.NewTool("file_recycle_clear",
 		mcp.WithDescription("Permanently delete a file from recycle bin (or all if path is empty)"),
+		mcp.WithOutputSchema[mcpFileRecycleClearOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Description("File path. If empty, potentially clear all")),
 	)
-	srv.AddTool(toolRecycleClearFile, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRecycleClearFile, cfg, true, "files:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "file_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -268,7 +304,10 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText("Recycle clear successful"), nil
+		return mcp.NewToolResultStructured(mcpFileRecycleClearOutput{
+			Vault: vault,
+			Path:  path,
+		}, "Recycle clear successful"), nil
 	})
 
 	// 8. Write File (Create or update file/attachment via MCP)

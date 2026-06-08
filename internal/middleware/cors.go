@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,20 @@ import (
 
 // Cors creates CORS middleware
 // Cors 创建跨域中间件
-func Cors() gin.HandlerFunc {
+func Cors(allowedOrigins []string, extApiUrl string) gin.HandlerFunc {
+	originSet := make(map[string]struct{}, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		originSet[strings.ToLower(strings.TrimRight(o, "/"))] = struct{}{}
+	}
+
+	// If allowedOrigins is empty, infer from extApiUrl as default origin
+	// 如果 allowedOrigins 为空，则从 extApiUrl 中推断同源域作为默认允许的 Origin
+	if len(allowedOrigins) == 0 && extApiUrl != "" {
+		if u, err := url.Parse(extApiUrl); err == nil && u.Scheme != "" && u.Host != "" {
+			inferred := u.Scheme + "://" + u.Host
+			originSet[strings.ToLower(inferred)] = struct{}{}
+		}
+	}
 
 	return func(c *gin.Context) {
 
@@ -20,10 +34,10 @@ func Cors() gin.HandlerFunc {
 		if isHealthCheck {
 			allowedOrigin = "*"
 		} else if origin != "" {
-			if strings.HasPrefix(origin, "app://") ||
-				strings.HasPrefix(origin, "capacitor://") ||
-				strings.HasPrefix(origin, "http://") ||
-				strings.HasPrefix(origin, "https://") {
+			norm := strings.ToLower(strings.TrimRight(origin, "/"))
+			if _, ok := originSet[norm]; ok {
+				allowedOrigin = origin
+			} else if isBuiltinOrigin(origin) {
 				allowedOrigin = origin
 			}
 		}
@@ -47,4 +61,10 @@ func Cors() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// isBuiltinOrigin checks if the origin is a builtin mobile application scheme
+// isBuiltinOrigin 校验 origin 是否为内置的移动应用 Scheme
+func isBuiltinOrigin(origin string) bool {
+	return strings.HasPrefix(origin, "app://") || strings.HasPrefix(origin, "capacitor://")
 }

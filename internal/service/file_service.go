@@ -607,6 +607,18 @@ func (s *fileService) GetContent(ctx context.Context, uid int64, params *dto.Fil
 	if s.fileRepo != nil {
 		file, err := s.fileRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
 		if err == nil && file != nil {
+			// Check IsRecycle support
+			// 检查回收站标识支持
+			if params.IsRecycle {
+				if file.Action != domain.FileActionDelete {
+					return nil, "", 0, "", code.ErrorFileNotFound
+				}
+			} else {
+				if file.Action == domain.FileActionDelete {
+					return nil, "", 0, "", code.ErrorFileNotFound
+				}
+			}
+
 			// Identify file MIME type
 			// 识别文件 MIME 类型
 			ext := filepath.Ext(params.Path)

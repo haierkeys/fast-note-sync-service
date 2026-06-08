@@ -26,6 +26,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // attachmentRegex regular expression for attachment links
@@ -247,11 +248,15 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 	// expiresAt 过期时间
 	expiresAt := time.Now().Add(expiry)
 
-	// pwdMd5 password MD5
-	// pwdMd5 密码 MD5
-	pwdMd5 := ""
+	// pwdHash password bcrypt hash
+	// pwdHash 密码 bcrypt 哈希值
+	pwdHash := ""
 	if password != "" {
-		pwdMd5 = util.EncodeMD5(password)
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		pwdHash = string(hash)
 	}
 
 	share := &domain.UserShare{
@@ -261,7 +266,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		Resources: resolvedResources,
 		Status:    1,
 		ExpiresAt: expiresAt,
-		Password:  pwdMd5,
+		Password:  pwdHash,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -287,7 +292,7 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		ID:         mainID,
 		Type:       mainType,
 		Token:      token,
-		IsPassword: pwdMd5 != "",
+		IsPassword: pwdHash != "",
 		ExpiresAt:  expiresAt,
 		ShortLink:  share.ShortLink,
 	}, nil
@@ -315,14 +320,37 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 	// 添加限速延迟防止暴力枚举攻击
 	time.Sleep(time.Millisecond * 100)
 
-	// Add password verification logic
-	// 增加密码校验逻辑
+	// Add password verification logic with upgrade support
+	// 增加密码校验与升级逻辑
 	if share.Password != "" {
 		if password == "" {
 			return nil, domain.ErrSharePasswordRequired
 		}
-		if util.EncodeMD5(password) != share.Password {
-			return nil, domain.ErrSharePasswordInvalid
+
+		// 1. Try bcrypt verification first
+		// 1. 优先尝试 bcrypt 验证
+		err := bcrypt.CompareHashAndPassword([]byte(share.Password), []byte(password))
+		if err != nil {
+			// 2. If it fails and the stored hash length is 32, it might be the old MD5 hash
+			// 2. 如果验证失败且存储的哈希长度为 32，可能为旧的 MD5 哈希
+			if len(share.Password) == 32 {
+				if util.EncodeMD5(password) == share.Password {
+					// 3. Verification succeeds, silently upgrade the password hash to bcrypt in a background goroutine
+					// 3. 验证成功，在后台协程中将密码哈希静默升级为 bcrypt
+					go func(uid, shareID int64, plainPwd string) {
+						newHash, err := bcrypt.GenerateFromPassword([]byte(plainPwd), bcrypt.DefaultCost)
+						if err == nil {
+							// Update password hash in db, using background context to prevent cancellation
+							// 在 db 中更新密码哈希，使用后台 context 避免因请求结束被取消
+							_ = s.repo.UpdatePassword(context.Background(), uid, shareID, string(newHash))
+						}
+					}(share.UID, share.ID, password)
+				} else {
+					return nil, domain.ErrSharePasswordInvalid
+				}
+			} else {
+				return nil, domain.ErrSharePasswordInvalid
+			}
 		}
 	}
 
@@ -431,11 +459,15 @@ func (s *shareService) UpdateSharePassword(ctx context.Context, uid int64, vault
 		return code.ErrorShareNotFound
 	}
 
-	pwdMd5 := ""
+	pwdHash := ""
 	if password != "" {
-		pwdMd5 = util.EncodeMD5(password)
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		pwdHash = string(hash)
 	}
-	return s.repo.UpdatePassword(ctx, uid, share.ID, pwdMd5)
+	return s.repo.UpdatePassword(ctx, uid, share.ID, pwdHash)
 }
 
 // ListShares lists all shares of a user with sorting, pagination and fills in resource titles

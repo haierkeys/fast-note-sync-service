@@ -8,7 +8,7 @@ import (
 
 func TestNewClient(t *testing.T) {
 	config := &Config{
-		AccountID:       "cloudflare-account-id",
+		AccountID:       "abc123def456",
 		BucketName:      "test-bucket",
 		AccessKeyID:     "r2-test-key",
 		AccessKeySecret: "r2-test-secret",

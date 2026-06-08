@@ -47,6 +47,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		settingHandler := api_router.NewSettingHandler(appContainer, wss)
 		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
 		tokenHandler := api_router.NewTokenHandler(appContainer)
+		stytchOAuthHandler := api_router.NewStytchOAuthHandler(appContainer)
 
 		// No-auth WebGUI restricted routes
 		// 免认证但仅限 WebGUI 访问的路由组
@@ -102,6 +103,8 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.DELETE("/admin/ws_client/:traceId", adminControlHandler.KickWSClient)
 
 			auth.GET("/user/info", userHandler.UserInfo)
+			auth.POST("/oauth/stytch/authorize/start", stytchOAuthHandler.AuthorizeStart)
+			auth.POST("/oauth/stytch/authorize/submit", stytchOAuthHandler.AuthorizeSubmit)
 
 			auth.GET("/note", noteHandler.Get)
 			auth.POST("/note", noteHandler.CreateOrUpdate)

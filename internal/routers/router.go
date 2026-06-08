@@ -86,8 +86,8 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	initWebSocketRoutes(wss, appContainer)
 
 	r := gin.New()
-	r.Use(middleware.Proxy())
-	r.Use(middleware.Cors())
+	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
+	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
 		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
 	}
@@ -100,9 +100,11 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	if cfg.Server.WebGuiPort == "" {
 		registerWebGuiRoutes(r, frontendFiles, appContainer)
 	}
+	registerOAuthAuthorizePageRoutes(r, frontendFiles, appContainer)
 	if cfg.Server.SharePort == "" {
 		registerShareRoutes(r, frontendFiles, appContainer)
 	}
+	registerOAuthMetadataRoutes(r, appContainer)
 
 	// Register API routes
 	// 注册 API 路由
@@ -120,14 +122,15 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	cfg := appContainer.Config()
 	r := gin.New()
-	r.Use(middleware.Proxy())
-	r.Use(middleware.Cors())
+	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
+	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
 		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
 	}
 
 	registerStaticFiles(r, frontendFiles, appContainer)
 	registerWebGuiRoutes(r, frontendFiles, appContainer)
+	registerOAuthAuthorizePageRoutes(r, frontendFiles, appContainer)
 
 	r.NoRoute(middleware.NoFound())
 	return r
@@ -136,8 +139,8 @@ func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine 
 func NewShareRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	cfg := appContainer.Config()
 	r := gin.New()
-	r.Use(middleware.Proxy())
-	r.Use(middleware.Cors())
+	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
+	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
 		r.Use(middleware.CustomHeaders(cfg.Server.CustomResponseHeaders))
 	}

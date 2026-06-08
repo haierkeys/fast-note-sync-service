@@ -29,6 +29,25 @@ server:
   # 外部访问 API 的地址（例如 http://api.example.com:9000）。用于 Web 界面定位。
   # External API URL (e.g., http://api.example.com:9000). Used for Web interface positioning.
   ext-api-url: ""
+  # 跨域 Origin 允许白名单，留空则自动从 ext-api-url 推断。
+  # CORS allowed origins. Leave empty to auto-infer from ext-api-url.
+  cors-allowed-origins: []
+  # 可信代理服务器的 IP 或 CIDR 网段白名单（例如 ["192.168.1.100", "10.0.0.0/8"]）。
+  # 只有来自该白名单内代理服务器转发的请求，系统才会信任并解析其携带的 X-Forwarded-Host 和 X-Forwarded-Proto 头部，以防止攻击者伪造 Host/IP 进行漏洞攻击。
+  # 
+  # 部署说明：
+  # 1. 留空（默认值 []）：仅信任本地回环地址（127.0.0.1 和 ::1）。如果 Nginx 或 Cloudflare Tunnel 部署在同一台机器上，请保持留空。
+  # 2. 跨机器部署：如果反向代理（如独立 Nginx 服务器、负载均衡器等）部署在独立的主机上，必须将这些代理服务器的内网 IP / 网段填入该数组中，否则系统将忽略其代理头。
+  # 
+  # Trusted proxies IP/CIDR list (e.g., ["192.168.1.100", "10.0.0.0/8"]).
+  # Only trusts X-Forwarded-Host and X-Forwarded-Proto headers if the request is forwarded by proxies in this whitelist, protecting against HTTP Header injection.
+  # 
+  # Deployment Advice:
+  # 1. Leave empty ([]): Only loopback addresses (127.0.0.1 and ::1) are trusted. Keep it empty if Nginx/Cloudflare Tunnel is on the same machine.
+  # 2. Remote Deployment: If your reverse proxy is on a separate server, you must add its IP or CIDR block to this list.
+  trusted-proxies: []
+
+
   # 所有请求的自定义 HTTP 响应头
   # Custom HTTP response headers for all requests
   custom-response-headers:
@@ -370,6 +389,97 @@ cloudflare:
   # 是否开启 Cloudflare 隧道相关的详细日志
   # Whether to enable detailed logs for Cloudflare Tunnel
   log-enabled: false
+
+# OAuth 2.0 / OIDC 集成与认证服务配置
+# OAuth 2.0 / OIDC integration and authentication server configuration
+oauth:
+  # 是否开启 OAuth 认证
+  # Whether to enable OAuth authentication
+  enabled: false
+  # 受保护的资源标识（例如 https://api.fastnotesync.com/）
+  # Protected resource identifier (e.g., https://api.fastnotesync.com/)
+  resource: ""
+  # OAuth 授权服务端地址列表
+  # List of OAuth authorization servers
+  authorization-servers: []
+  # JWKS (JSON Web Key Set) 的 URL 地址，用于拉取公钥验证 JWT 签名
+  # JWKS URL to fetch public keys for token signature validation
+  jwks-url: ""
+  # 令牌签发者 (Issuer) 标识
+  # Token issuer identifier
+  issuer: ""
+  # 令牌允许受众 (Audience) 列表
+  # List of allowed audiences for the token
+  audience: []
+  # 支持的作用域 (Scope) 列表
+  # Supported scope list
+  scopes-supported: []
+  # 必需的作用域 (Scope) 列表
+  # Required scope list
+  required-scopes: []
+  # 受保护资源的名称
+  # Name of the protected resource
+  resource-name: ""
+  # 是否允许使用静态的 FNS 令牌进行认证
+  # Whether to allow authentication using static FNS tokens
+  allow-static-fns-token: true
+  # 默认的客户端标识
+  # Default client identifier
+  default-client: "ChatGPT"
+  # 默认的客户端名称
+  # Default client name
+  default-client-name: "ChatGPT"
+  # 默认客户端的版本号
+  # Default client version
+  default-client-version: ""
+  # 映射默认的主笔记库 (Vault) 名称
+  # Default vault name to map
+  default-vault-name: ""
+  # 默认的 FNS 权限作用域范围
+  # Default FNS scope
+  default-fns-scope: ""
+  # 用户标识映射配置
+  # User mapping and subject configuration
+  subject-mapping:
+    # 映射模式: email (按邮箱匹配) | fixed_uid (映射到固定 UID) | email_or_fixed_uid (按邮箱匹配，失败则回退到固定 UID)
+    # Mapping mode: email | fixed_uid | email_or_fixed_uid
+    mode: "email_or_fixed_uid"
+    # JWT Claim 中提取邮箱的字段属性名。默认: "email"
+    # Claim name for email mapping. Default: "email"
+    claim: "email"
+    # 当使用 fixed_uid 模式时，指定映射的目标用户 UID
+    # Target User UID when using fixed_uid mapping
+    fixed-uid: 0
+  # Stytch 第三方身份认证托管服务配置
+  # Stytch third-party identity service configuration
+  stytch:
+    # 是否启用 Stytch 服务
+    # Whether to enable Stytch
+    enabled: false
+    # Stytch 类型: consumer (消费者) | b2b (企业级)
+    # Stytch kind: consumer | b2b
+    kind: "consumer"
+    # Stytch 认证服务网关域名
+    # Stytch domain URL
+    domain: ""
+    # Stytch 项目 ID
+    # Stytch Project ID
+    project-id: ""
+    # Stytch 密钥
+    # Stytch Secret
+    secret: ""
+    # 默认的用户识别 ID
+    # Stytch user ID
+    user-id: ""
+    # 自动创建用户的前缀，默认 fns:
+    # User ID prefix (default fns:)
+    user-id-prefix: "fns:"
+    # B2B 组织机构 ID
+    # B2B Organization ID
+    organization-id: ""
+    # B2B 成员 ID
+    # B2B Member ID
+    member-id: ""
 
 # 附件模拟静态访问配置 (免 Token 静态入口，主要提供给 nginx 访问)
 # Attachment mock static access configuration (No token static entry, mainly for nginx)

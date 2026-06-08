@@ -26,6 +26,7 @@ func newFileTestContext(method, url, body string, uid int64) (*gin.Context, *htt
 	} else {
 		req = httptest.NewRequest(method, url, nil)
 	}
+	req.Header.Set("X-Client", "Web")
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req

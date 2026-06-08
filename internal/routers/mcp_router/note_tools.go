@@ -18,15 +18,17 @@ import (
 
 func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp.WebsocketServer) {
 	noteSvc := appContainer.NoteService
+	cfg := appContainer.Config()
 
 	// 1. List Notes
 	toolListNotes := mcp.NewTool("note_list",
 		mcp.WithDescription("List or search notes in a vault. Use this to find a note by title or keyword before calling note_get."),
+		mcp.WithOutputSchema[mcpNoteListOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 		mcp.WithString("searchMode", mcp.Description("Where to match the keyword: 'path' (default) searches note paths and filenames; 'content' searches inside note bodies using full-text search.")),
 	)
-	srv.AddTool(toolListNotes, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolListNotes, cfg, "notes:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -57,16 +59,21 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		for _, n := range notes {
 			resStr += fmt.Sprintf("- %s (ID: %d, Size: %d, Mtime: %d)\n", n.Path, n.ID, n.Size, n.Mtime)
 		}
-		return mcp.NewToolResultText(resStr), nil
+		return mcp.NewToolResultStructured(mcpNoteListOutput{
+			Vault: vault,
+			Count: len(notes),
+			Notes: notes,
+		}, resStr), nil
 	})
 
 	// 2. Get Note
 	toolGetNote := mcp.NewTool("note_get",
 		mcp.WithDescription("Get the full content of a single note. Requires the EXACT vault-relative file path."),
+		mcp.WithOutputSchema[mcpNoteOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Exact vault-relative path to the note.")),
 	)
-	srv.AddTool(toolGetNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetNote, cfg, "notes:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -89,17 +96,21 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(note.Content), nil
+		return mcp.NewToolResultStructured(mcpNoteOutput{
+			Vault: vault,
+			Note:  note,
+		}, note.Content), nil
 	})
 
 	// 3. Create or Update Note
 	toolCreateUpdateNote := mcp.NewTool("note_create_or_update",
 		mcp.WithDescription("Create or update a note"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Note content")),
 	)
-	srv.AddTool(toolCreateUpdateNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolCreateUpdateNote, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -130,16 +141,22 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Successfully saved note: %s (Version: %d)", note.Path, note.Version)), nil
+		fallback := fmt.Sprintf("Successfully saved note: %s (Version: %d)", note.Path, note.Version)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "create_or_update",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 4. Delete Note
 	toolDeleteNote := mcp.NewTool("note_delete",
 		mcp.WithDescription("Delete a note"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
-	srv.AddTool(toolDeleteNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolDeleteNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -163,17 +180,23 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncDelete")
-		return mcp.NewToolResultText(fmt.Sprintf("Deleted note: %s", note.Path)), nil
+		fallback := fmt.Sprintf("Deleted note: %s", note.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "delete",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 5. Rename Note
 	toolRenameNote := mcp.NewTool("note_rename",
 		mcp.WithDescription("Rename a note"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("oldPath", mcp.Required(), mcp.Description("Old note path")),
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New note path")),
 	)
-	srv.AddTool(toolRenameNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRenameNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -209,16 +232,23 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			OldPathHash:      oldNote.PathHash,
 			UpdatedTimestamp: newNote.UpdatedTimestamp,
 		}).WithVault(vault), "NoteSyncRename")
-		return mcp.NewToolResultText(fmt.Sprintf("Renamed note from %s to %s", oldNote.Path, newNote.Path)), nil
+		fallback := fmt.Sprintf("Renamed note from %s to %s", oldNote.Path, newNote.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "rename",
+			OldNote:   oldNote,
+			NewNote:   newNote,
+		}, fallback), nil
 	})
 
 	// 1. Restore Note
 	toolRestoreNote := mcp.NewTool("note_restore",
 		mcp.WithDescription("Restore a deleted note from recycle bin"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
-	srv.AddTool(toolRestoreNote, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRestoreNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -241,16 +271,22 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Restored note: %s", note.Path)), nil
+		fallback := fmt.Sprintf("Restored note: %s", note.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "restore",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 2. Recycle Clear Note
 	toolRecycleClear := mcp.NewTool("note_recycle_clear",
 		mcp.WithDescription("Permanently delete a note from recycle bin (or all if path is empty)"),
+		mcp.WithOutputSchema[mcpNoteRecycleClearOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Description("Note path. If empty, potentially clear all (based on service logic)")),
 	)
-	srv.AddTool(toolRecycleClear, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolRecycleClear, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -272,18 +308,22 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText("Recycle clear successful"), nil
+		return mcp.NewToolResultStructured(mcpNoteRecycleClearOutput{
+			Vault: vault,
+			Path:  path,
+		}, "Recycle clear successful"), nil
 	})
 
 	// 3. Patch Frontmatter
 	toolPatchFrontmatter := mcp.NewTool("note_patch_frontmatter",
 		mcp.WithDescription("Patch (update or remove) frontmatter of a note"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("updates", mcp.Description("JSON string for fields to update (e.g. {\"tags\":[\"t1\"]})")),
 		mcp.WithString("remove", mcp.Description("JSON string array for fields to remove (e.g. [\"old_tag\"])")),
 	)
-	srv.AddTool(toolPatchFrontmatter, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolPatchFrontmatter, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -324,17 +364,23 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Frontmatter patched for %s", note.Path)), nil
+		fallback := fmt.Sprintf("Frontmatter patched for %s", note.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "patch_frontmatter",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 4. Append
 	toolAppend := mcp.NewTool("note_append",
 		mcp.WithDescription("Append content to the end of a note"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to append")),
 	)
-	srv.AddTool(toolAppend, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolAppend, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -359,17 +405,23 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Appended content to %s", note.Path)), nil
+		fallback := fmt.Sprintf("Appended content to %s", note.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "append",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 5. Prepend
 	toolPrepend := mcp.NewTool("note_prepend",
 		mcp.WithDescription("Prepend content to the beginning of a note (after frontmatter)"),
+		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to prepend")),
 	)
-	srv.AddTool(toolPrepend, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolPrepend, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -394,12 +446,18 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Prepended content to %s", note.Path)), nil
+		fallback := fmt.Sprintf("Prepended content to %s", note.Path)
+		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
+			Vault:     vault,
+			Operation: "prepend",
+			Note:      note,
+		}, fallback), nil
 	})
 
 	// 6. Replace
 	toolReplace := mcp.NewTool("note_replace",
 		mcp.WithDescription("Find and replace text in a note"),
+		mcp.WithOutputSchema[mcpNoteReplaceOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("find", mcp.Required(), mcp.Description("Content to find")),
@@ -408,7 +466,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithBoolean("all", mcp.Description("Replace all matches (default true)")),
 		mcp.WithBoolean("failIfNoMatch", mcp.Description("Fail if no match (default true)")),
 	)
-	srv.AddTool(toolReplace, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(writeMCPTool(toolReplace, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -450,16 +508,22 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(res.Note).WithVault(vault), "NoteSyncModify")
-		return mcp.NewToolResultText(fmt.Sprintf("Replaced %d occurrences", res.MatchCount)), nil
+		fallback := fmt.Sprintf("Replaced %d occurrences", res.MatchCount)
+		return mcp.NewToolResultStructured(mcpNoteReplaceOutput{
+			Vault:      vault,
+			MatchCount: res.MatchCount,
+			Note:       res.Note,
+		}, fallback), nil
 	})
 
 	// 7. Get Backlinks
 	toolGetBacklinks := mcp.NewTool("note_get_backlinks",
 		mcp.WithDescription("Get backlinks to a note"),
+		mcp.WithOutputSchema[mcpNoteLinksOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
-	srv.AddTool(toolGetBacklinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetBacklinks, cfg, "notes:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -486,16 +550,22 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(string(b)), nil
+		return mcp.NewToolResultStructured(mcpNoteLinksOutput{
+			Vault: vault,
+			Path:  path,
+			Count: len(links),
+			Links: links,
+		}, string(b)), nil
 	})
 
 	// 8. Get Outlinks
 	toolGetOutlinks := mcp.NewTool("note_get_outlinks",
 		mcp.WithDescription("Get outlinks from a note"),
+		mcp.WithOutputSchema[mcpNoteLinksOutput](),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 	)
-	srv.AddTool(toolGetOutlinks, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	srv.AddTool(readOnlyMCPTool(toolGetOutlinks, cfg, "notes:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -522,6 +592,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(string(b)), nil
+		return mcp.NewToolResultStructured(mcpNoteLinksOutput{
+			Vault: vault,
+			Path:  path,
+			Count: len(links),
+			Links: links,
+		}, string(b)), nil
 	})
 }

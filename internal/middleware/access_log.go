@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +15,7 @@ func AccessLogWithLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		path := c.Request.URL.Path
-		query := c.Request.URL.RawQuery
+		query := sanitizeQuery(c.Request.URL.RawQuery)
 
 		startTime := time.Now()
 		c.Next()
@@ -30,4 +32,34 @@ func AccessLogWithLogger(logger *zap.Logger) gin.HandlerFunc {
 			zap.String("errors", c.Errors.ByType(gin.ErrorTypePrivate).String()),
 		)
 	}
+}
+
+// sanitizeQuery masks sensitive parameters in query string
+// sanitizeQuery 遮蔽请求查询字符串中的敏感参数值
+func sanitizeQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return rawQuery
+	}
+	sensitiveKeys := map[string]bool{
+		"token":        true,
+		"password":     true,
+		"access_token": true,
+		"share-token":  true,
+	}
+	changed := false
+	for k := range values {
+		lowerK := strings.ToLower(k)
+		if sensitiveKeys[lowerK] {
+			values.Set(k, "******")
+			changed = true
+		}
+	}
+	if changed {
+		return values.Encode()
+	}
+	return rawQuery
 }
