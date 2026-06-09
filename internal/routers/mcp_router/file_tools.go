@@ -41,6 +41,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		keyword, _ := args["keyword"].(string)
 
 		pager := &pkgapp.Pager{
@@ -88,6 +91,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Get(ctx, uid, &dto.FileGetRequest{
@@ -123,6 +129,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 
@@ -167,6 +176,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Delete(ctx, uid, &dto.FileDeleteRequest{
@@ -205,6 +217,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
@@ -258,6 +273,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		file, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).Restore(ctx, uid, &dto.FileRestoreRequest{
@@ -296,6 +314,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		err := fileSvc.WithClient(getClientInfoFromContext(ctx)).RecycleClear(ctx, uid, &dto.FileRecycleClearRequest{
@@ -331,6 +352,9 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 		b64Content, _ := args["content"].(string)

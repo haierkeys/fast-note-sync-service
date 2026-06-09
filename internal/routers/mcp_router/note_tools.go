@@ -38,6 +38,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		keyword, _ := args["keyword"].(string)
 		searchMode, _ := args["searchMode"].(string)
 
@@ -87,6 +90,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
@@ -123,6 +129,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
@@ -170,6 +179,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 		pathHash := util.EncodeHash32(path)
 
@@ -209,6 +221,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		oldPath, _ := args["oldPath"].(string)
 		newPath, _ := args["newPath"].(string)
@@ -262,6 +277,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		note, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).Restore(ctx, uid, &dto.NoteRestoreRequest{
@@ -300,6 +318,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		err := noteSvc.WithClient(getClientInfoFromContext(ctx)).RecycleClear(ctx, uid, &dto.NoteRecycleClearRequest{
@@ -336,6 +357,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 		updatesStr, _ := args["updates"].(string)
@@ -394,6 +418,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
 
@@ -434,6 +461,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 		content, _ := args["content"].(string)
@@ -479,6 +509,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 		find, _ := args["find"].(string)
@@ -537,6 +570,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
 		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		path, _ := args["path"].(string)
 
 		linkSvc := appContainer.NoteLinkService
@@ -578,6 +614,9 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		vault, _ := args["vault"].(string)
 		if vault == "" || strings.EqualFold(vault, "default") {
 			vault = getDefaultVaultName(ctx, appContainer)
+		}
+		if err := checkVaultAccess(ctx, vault); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 		path, _ := args["path"].(string)
 
