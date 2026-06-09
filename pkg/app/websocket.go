@@ -29,6 +29,7 @@ type LogType string
 const (
 	WSPingInterval         = 25
 	WSPingWait             = 60
+	WSPingWriteTimeout     = 10      // WritePing write timeout (seconds), must < PingInterval // WritePing 写超时（秒），需小于 PingInterval
 	LogInfo        LogType = "info"
 	LogError       LogType = "error"
 	LogWarn        LogType = "warn"
@@ -469,6 +470,9 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 			if c.conn == nil {
 				return
 			}
+			// Set write deadline to prevent WritePing from blocking indefinitely on dead connections.
+			// 设置写超时，防止 WritePing 在死连接上永久阻塞
+			_ = c.conn.NetConn().SetWriteDeadline(time.Now().Add(WSPingWriteTimeout * time.Second))
 			if err := c.conn.WritePing(nil); err != nil {
 				// Normal error when the connection is closed, lower log level
 				// 连接关闭时的正常错误，降低日志级别
@@ -476,9 +480,16 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 					log(LogDebug, "WS Client Ping: connection closed")
 				} else {
 					log(LogError, "WS Client Ping err ", zap.Error(err))
+					// Force close the underlying connection to trigger gws OnClose callback,
+					// release all resources (buffers, goroutines, worker pool slots).
+					// 强制关闭底层连接，触发 gws OnClose 回调，释放所有资源（缓冲区、goroutine、Worker Pool 槽位）
+					_ = c.conn.NetConn().Close()
 				}
 				return
 			}
+			// Reset write deadline after successful ping.
+			// Ping 成功后重置写超时
+			_ = c.conn.NetConn().SetWriteDeadline(time.Time{})
 			// log(LogInfo, "WS Client Ping", zap.String("uid", c.User.ID))
 		case <-cleanupTicker.C:
 			// Cleanup items expired for more than 1 hour
