@@ -48,6 +48,13 @@ func (m *mockUserTokenService) CreateForLogin(ctx context.Context, uid int64, cl
 	return &domain.AuthToken{ID: 1, UID: uid, Status: 1}, "test-token", nil
 }
 
+func (m *mockUserTokenService) RotateForLogin(ctx context.Context, uid int64, tokenID int64, ip, userAgent string) (*domain.AuthToken, string, error) {
+	if tokenID == 999 {
+		return nil, "", errors.New("mock rotate error")
+	}
+	return &domain.AuthToken{ID: tokenID, UID: uid, Status: 1, ClientType: "webgui"}, "rotated-token", nil
+}
+
 func (m *mockUserTokenService) ListByUser(ctx context.Context, uid int64) ([]*dto.TokenResponse, error) {
 	return nil, errors.New("not implemented")
 }
@@ -261,6 +268,65 @@ func TestUserService_Login_WrongPassword(t *testing.T) {
 	}, "127.0.0.1", "WebGui", "test-agent")
 
 	assert.ErrorIs(t, err, code.ErrorUserLoginPasswordFailed)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Login_Rotate_Success verifies token rotation during login.
+// TestUserService_Login_Rotate_Success 验证登录时令牌成功轮转。
+func TestUserService_Login_Rotate_Success(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+	hashedPwd := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi" // "password"
+
+	user := &domain.User{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: hashedPwd,
+	}
+	mockRepo.On("GetByEmail", mock.Anything, "test@example.com").
+		Return(user, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	result, err := svc.Login(context.Background(), &dto.UserLoginRequest{
+		Credentials: "test@example.com",
+		Password:    "password",
+		TokenID:     123,
+	}, "127.0.0.1", "webgui", "test-agent")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "rotated-token", result.Token)
+	assert.Equal(t, int64(123), result.TokenID)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Login_Rotate_Fallback verifies token creation fallback when rotation fails.
+// TestUserService_Login_Rotate_Fallback 验证轮转失败时降级创建新令牌。
+func TestUserService_Login_Rotate_Fallback(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+	hashedPwd := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi" // "password"
+
+	user := &domain.User{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: hashedPwd,
+	}
+	mockRepo.On("GetByEmail", mock.Anything, "test@example.com").
+		Return(user, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	// mockUserTokenService 遇到 TokenID=999 时会模拟报错，并降级
+	result, err := svc.Login(context.Background(), &dto.UserLoginRequest{
+		Credentials: "test@example.com",
+		Password:    "password",
+		TokenID:     999,
+	}, "127.0.0.1", "webgui", "test-agent")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "test-token", result.Token) // Fallback creates new token returning "test-token"
+	assert.Equal(t, int64(1), result.TokenID) // Mock created token has ID: 1
 	mockRepo.AssertExpectations(t)
 }
 

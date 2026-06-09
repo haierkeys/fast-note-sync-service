@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,6 +32,9 @@ type TokenService interface {
 	Revoke(ctx context.Context, uid int64, tokenID int64) error
 	// Rotate rotates a token (generates new JWT and invalidates old ones)
 	Rotate(ctx context.Context, uid int64, tokenID int64) (*dto.TokenCreateResponse, error)
+	// RotateForLogin rotates a login token for webgui
+	// RotateForLogin 为 webgui 轮转登录令牌
+	RotateForLogin(ctx context.Context, uid int64, tokenID int64, ip, userAgent string) (*domain.AuthToken, string, error)
 	// GetActiveToken gets an active token by ID
 	GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error)
 	// RecordAccessLog records a token access log
@@ -350,6 +354,78 @@ func (s *tokenService) Rotate(ctx context.Context, uid int64, tokenID int64) (*d
 	}
 
 	return res, nil
+}
+
+// RotateForLogin rotates a login token for webgui
+// RotateForLogin 为 webgui 轮转登录令牌
+func (s *tokenService) RotateForLogin(ctx context.Context, uid int64, tokenID int64, ip, userAgent string) (*domain.AuthToken, string, error) {
+	token, err := s.tokenRepo.GetByID(ctx, tokenID)
+	if err != nil {
+		return nil, "", code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	if token.UID != uid {
+		return nil, "", code.ErrorInvalidAuthToken
+	}
+
+	// Verify that the token is for webgui client
+	// 验证该令牌属于 webgui 客户端
+	if strings.ToLower(token.ClientType) != "webgui" {
+		return nil, "", code.ErrorInvalidAuthToken.WithDetails("Only webgui tokens can be rotated for login")
+	}
+
+	// Only active tokens can be rotated
+	// 只有激活状态的令牌才可以轮转
+	if token.Status != 1 {
+		return nil, "", code.ErrorInvalidAuthToken.WithDetails("Token is not active")
+	}
+
+	// Resolve expiry duration from config, fallback to 7 days
+	// 从配置解析过期时长，默认 7 天
+	expiry := 7 * 24 * time.Hour
+	if d, err := util.ParseDuration(s.config.WebGUILoginTokenExpiry); err == nil && d > 0 {
+		expiry = d
+	}
+
+	// Update bound IP if configured
+	// 若配置了绑定 IP 则进行更新
+	boundIP := ""
+	if s.config.WebGUILoginTokenBindIP {
+		boundIP = ip
+	}
+
+	token.BoundIP = boundIP
+	token.UserAgent = userAgent
+	token.ExpiredAt = time.Now().Add(expiry)
+	token.UpdatedAt = time.Now()
+
+	// Generate new JWT using token ID and a random nonce
+	// 使用令牌 ID 和随机 Nonce 生成新 JWT
+	nonce := util.GetRandomString(16)
+	tokenStr, err := s.tokenManager.Generate(uid, "", ip, token.ID, nonce)
+	if err != nil {
+		return nil, "", code.ErrorTokenGenerate.WithDetails(err.Error())
+	}
+
+	// Save new nonce and properties to database
+	// 保存新 Nonce 和属性至数据库
+	err = s.tokenRepo.UpdateTokenString(ctx, token.ID, nonce)
+	if err != nil {
+		return nil, "", code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	token.TokenString = nonce
+	err = s.tokenRepo.Update(ctx, token)
+	if err != nil {
+		return nil, "", code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	// Trigger sync hook (invalidate/refresh client connection)
+	// 触发同步钩子以失效或刷新客户端连接
+	if s.SyncHandler != nil {
+		s.SyncHandler(uid, tokenID, token.Scope, true)
+	}
+
+	return token, tokenStr, nil
 }
 
 func (s *tokenService) RecordAccessLog(ctx context.Context, log *domain.AuthTokenLog) error {

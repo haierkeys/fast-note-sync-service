@@ -121,6 +121,9 @@ func (h *MCPHandler) HandleSSE(c *gin.Context) {
 	if scope, ok := c.Get("scope"); ok {
 		ctx = context.WithValue(ctx, "scope", scope)
 	}
+	if vaults, ok := c.Get("vaults"); ok {
+		ctx = context.WithValue(ctx, "vaults", vaults)
+	}
 
 	// Set SSE headers
 	// 设置 SSE 响应头
@@ -233,6 +236,9 @@ func (h *MCPHandler) HandleMessage(c *gin.Context) {
 	if scope, ok := c.Get("scope"); ok {
 		ctx = context.WithValue(ctx, "scope", scope)
 	}
+	if vaults, ok := c.Get("vaults"); ok {
+		ctx = context.WithValue(ctx, "vaults", vaults)
+	}
 	h.sseServer.MessageHandler().ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }
 
@@ -247,6 +253,9 @@ func (h *MCPHandler) HandleStreamableHTTP(c *gin.Context) {
 	ctx := context.WithValue(c.Request.Context(), "uid", uid)
 	if scope, ok := c.Get("scope"); ok {
 		ctx = context.WithValue(ctx, "scope", scope)
+	}
+	if vaults, ok := c.Get("vaults"); ok {
+		ctx = context.WithValue(ctx, "vaults", vaults)
 	}
 	h.streamableServer.ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 }

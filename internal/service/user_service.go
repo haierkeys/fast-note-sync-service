@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
@@ -145,13 +146,14 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 	}
 
 	// Generate Token with proper IP and UA binding
-	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
+	token, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
 	dto.Token = tokenStr
+	dto.TokenID = token.ID
 	return dto, nil
 }
 
@@ -183,13 +185,33 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 
 	// Generate Token via TokenService
 	// 生成 Token
-	_, tokenStr, err := s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
+	var token *domain.AuthToken
+	var tokenStr string
+	var errToken error
+
+	if params.TokenID > 0 && strings.ToLower(clientType) == "webgui" {
+		// Attempt to rotate existing login token
+		// 尝试轮转现有的登录令牌
+		token, tokenStr, errToken = s.tokenService.RotateForLogin(ctx, user.UID, params.TokenID, clientIP, userAgent)
+		if errToken != nil {
+			s.logger.Warn("UserService.Login rotate token failed, fallback to create new token",
+				zap.Int64("uid", user.UID),
+				zap.Int64("tokenId", params.TokenID),
+				zap.Error(errToken),
+			)
+			token, tokenStr, err = s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
+		}
+	} else {
+		token, tokenStr, err = s.tokenService.CreateForLogin(ctx, user.UID, clientType, clientIP, userAgent)
+	}
+
 	if err != nil {
 		return nil, code.ErrorTokenGenerate.WithDetails(err.Error())
 	}
 
 	dto := s.domainToDTO(user)
 	dto.Token = tokenStr
+	dto.TokenID = token.ID
 	return dto, nil
 }
 

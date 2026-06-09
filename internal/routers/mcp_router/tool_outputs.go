@@ -3,22 +3,22 @@ package mcp_router
 import "github.com/haierkeys/fast-note-sync-service/internal/dto"
 
 type mcpNoteListOutput struct {
-	Vault string                  `json:"vault"`
-	Count int                     `json:"count"`
-	Notes []*dto.NoteNoContentDTO `json:"notes"`
+	Vault string                     `json:"vault"`
+	Count int                        `json:"count"`
+	Notes []*dto.McpNoteNoContentDTO `json:"notes"`
 }
 
 type mcpNoteOutput struct {
-	Vault string       `json:"vault"`
-	Note  *dto.NoteDTO `json:"note"`
+	Vault string          `json:"vault"`
+	Note  *dto.McpNoteDTO `json:"note"`
 }
 
 type mcpNoteMutationOutput struct {
-	Vault     string       `json:"vault"`
-	Operation string       `json:"operation"`
-	Note      *dto.NoteDTO `json:"note,omitempty"`
-	OldNote   *dto.NoteDTO `json:"oldNote,omitempty"`
-	NewNote   *dto.NoteDTO `json:"newNote,omitempty"`
+	Vault     string          `json:"vault"`
+	Operation string          `json:"operation"`
+	Note      *dto.McpNoteDTO `json:"note,omitempty"`
+	OldNote   *dto.McpNoteDTO `json:"oldNote,omitempty"`
+	NewNote   *dto.McpNoteDTO `json:"newNote,omitempty"`
 }
 
 type mcpNoteRecycleClearOutput struct {
@@ -27,9 +27,9 @@ type mcpNoteRecycleClearOutput struct {
 }
 
 type mcpNoteReplaceOutput struct {
-	Vault      string       `json:"vault"`
-	MatchCount int          `json:"matchCount"`
-	Note       *dto.NoteDTO `json:"note"`
+	Vault      string          `json:"vault"`
+	MatchCount int             `json:"matchCount"`
+	Note       *dto.McpNoteDTO `json:"note"`
 }
 
 type mcpNoteLinksOutput struct {
@@ -40,14 +40,14 @@ type mcpNoteLinksOutput struct {
 }
 
 type mcpFileListOutput struct {
-	Vault string         `json:"vault"`
-	Count int            `json:"count"`
-	Files []*dto.FileDTO `json:"files"`
+	Vault string            `json:"vault"`
+	Count int               `json:"count"`
+	Files []*dto.McpFileDTO `json:"files"`
 }
 
 type mcpFileOutput struct {
-	Vault string       `json:"vault"`
-	File  *dto.FileDTO `json:"file"`
+	Vault string          `json:"vault"`
+	File  *dto.McpFileDTO `json:"file"`
 }
 
 type mcpFileReadOutput struct {
@@ -58,11 +58,11 @@ type mcpFileReadOutput struct {
 }
 
 type mcpFileMutationOutput struct {
-	Vault     string       `json:"vault"`
-	Operation string       `json:"operation"`
-	File      *dto.FileDTO `json:"file,omitempty"`
-	OldFile   *dto.FileDTO `json:"oldFile,omitempty"`
-	NewFile   *dto.FileDTO `json:"newFile,omitempty"`
+	Vault     string          `json:"vault"`
+	Operation string          `json:"operation"`
+	File      *dto.McpFileDTO `json:"file,omitempty"`
+	OldFile   *dto.McpFileDTO `json:"oldFile,omitempty"`
+	NewFile   *dto.McpFileDTO `json:"newFile,omitempty"`
 }
 
 type mcpFileRecycleClearOutput struct {

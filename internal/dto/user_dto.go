@@ -18,6 +18,7 @@ type UserCreateRequest struct {
 type UserLoginRequest struct {
 	Credentials string `json:"credentials" form:"credentials" binding:"required" example:"user@example.com"` // Username or Email // 登录凭证（用户名或邮件）
 	Password    string `json:"password" form:"password" binding:"required" example:"password123"`            // Password // 密码
+	TokenID     int64  `json:"tokenId" form:"tokenId" example:"123"`                                         // Last token ID for rotation // 最后一个用于轮转的令牌ID
 }
 
 // UserRegisterSendEmailRequest Request parameters for sending registration email
@@ -43,6 +44,7 @@ type UserDTO struct {
 	Email     string     `json:"email"`     // Email address // 邮件地址
 	Username  string     `json:"username"`  // Username // 用户名
 	Token     string     `json:"token"`     // Authentication Token // 认证 Token
+	TokenID   int64      `json:"tokenId"`   // Authentication Token ID // 认证 Token ID
 	Avatar    string     `json:"avatar"`    // Avatar URL or handle // 头像路径或名称
 	UpdatedAt timex.Time `json:"updatedAt"` // Last updated time // 最后更新时间
 	CreatedAt timex.Time `json:"createdAt"` // Account created time // 账号创建时间
