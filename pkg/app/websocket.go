@@ -240,6 +240,12 @@ type PathHashGetter interface {
 	GetPathHash() string
 }
 
+// SessionCreatedAtGetter interface for sessions that track creation time
+// SessionCreatedAtGetter 接口，用于获取会话创建时间
+type SessionCreatedAtGetter interface {
+	GetCreatedAt() time.Time
+}
+
 // DiffMergeEntry represents an entry in DiffMergePaths
 // DiffMergeEntry 表示 DiffMergePaths 中的条目
 // Contains creation timestamp for timeout cleanup mechanism
@@ -273,6 +279,7 @@ type WebsocketClient struct {
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
 	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
+	lastPongAt          atomic.Int64                    // Unix timestamp of last received pong; used to detect zombie connections // 最后一次收到 pong 的 Unix 时间戳，用于检测僵尸连接
 	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
 	Scope               string                    // Token Scope // 令牌权限范围
 	Vaults              string                    // Restrict Vaults // 限制笔记库
@@ -461,6 +468,13 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 	cleanupTicker := time.NewTicker(10 * time.Minute)
 	defer cleanupTicker.Stop()
 
+	// Initialize last pong time to now (connection just established)
+	// 初始化最后 pong 时间为当前（连接刚建立）
+	c.lastPongAt.Store(time.Now().Unix())
+	// Track whether we've sent a ping and are waiting for a pong
+	// 跟踪是否已发送 ping 并等待 pong
+	pingSent := false
+
 	for {
 		select {
 		case <-c.done:
@@ -469,6 +483,20 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 		case <-ticker.C:
 			if c.conn == nil {
 				return
+			}
+			// If we sent a ping last cycle but never received a pong, the connection is likely dead.
+			// If we sent a ping last cycle but never received a pong, force close.
+			// 如果上一轮发了 ping 但没收到 pong，连接可能已死，强制关闭。
+			if pingSent {
+				lastPong := c.lastPongAt.Load()
+				elapsed := time.Since(time.Unix(lastPong, 0))
+				if elapsed > time.Duration(WSPingWait)*time.Second {
+					log(LogWarn, "WS Client: no pong received within deadline, force closing",
+						zap.Duration("sinceLastPong", elapsed),
+						zap.String("traceID", c.TraceID))
+					_ = c.conn.NetConn().Close()
+					return
+				}
 			}
 			// Set write deadline to prevent WritePing from blocking indefinitely on dead connections.
 			// 设置写超时，防止 WritePing 在死连接上永久阻塞
@@ -485,11 +513,13 @@ func (c *WebsocketClient) PingLoop(PingInterval time.Duration) {
 					// 强制关闭底层连接，触发 gws OnClose 回调，释放所有资源（缓冲区、goroutine、Worker Pool 槽位）
 					_ = c.conn.NetConn().Close()
 				}
+				pingSent = false
 				return
 			}
 			// Reset write deadline after successful ping.
 			// Ping 成功后重置写超时
 			_ = c.conn.NetConn().SetWriteDeadline(time.Time{})
+			pingSent = true
 			// log(LogInfo, "WS Client Ping", zap.String("uid", c.User.ID))
 		case <-cleanupTicker.C:
 			// Cleanup items expired for more than 1 hour
@@ -1370,8 +1400,13 @@ func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
 
 	// No longer clean up BinaryChunkSessions in OnClose, rely on the timeout mechanism for automatic cleanup instead
 	// 不再在 OnClose 中清理 BinaryChunkSessions，改为依赖超时机制自动清理
-	// This way, when a network fluctuation causes reconnection during a large file upload, the existing session can continue to be used
-	// 这样可以支持在大文件上传过程中网络波动导致重连时，继续使用原有会话
+	// However, clean up stale sessions (older than 10 minutes) to prevent memory leaks from zombie connections.
+	// 但是清理超过 10 分钟的过期会话，防止僵尸连接导致内存泄漏。
+	// Recent sessions are kept to support reconnection during network fluctuations.
+	// 保留近期会话以支持网络波动期间的重连。
+	if c.User != nil {
+		w.cleanupStaleSessions(c.User.ID, 10*time.Minute)
+	}
 
 	// Clean up all DiffMergePaths entries
 	// 清理所有 DiffMergePaths 条目
@@ -1392,6 +1427,9 @@ func (w *WebsocketServer) OnPing(socket *gws.Conn, payload []byte) {
 
 func (w *WebsocketServer) OnPong(socket *gws.Conn, payload []byte) {
 	_ = socket.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
+	if c := w.GetClient(socket); c != nil {
+		c.lastPongAt.Store(time.Now().Unix())
+	}
 }
 
 func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
@@ -1602,3 +1640,42 @@ func (w *WebsocketServer) BroadcastToUser(uid int64, code *code.Code, action str
 		}
 	}
 }
+
+// cleanupStaleSessions removes BinaryChunkSessions older than maxAge for a given user.
+// This prevents memory leaks from zombie connections whose timeout goroutines never fired.
+// cleanupStaleSessions 清理指定用户超过 maxAge 的 BinaryChunkSessions。
+// 防止僵尸连接的超时 goroutine 未触发时导致的内存泄漏。
+func (w *WebsocketServer) cleanupStaleSessions(uid string, maxAge time.Duration) {
+	w.sessionsMu.Lock()
+	defer w.sessionsMu.Unlock()
+
+	userSessions, ok := w.binaryChunkSessions[uid]
+	if !ok {
+		return
+	}
+
+	var staleIDs []string
+	for sessionID, session := range userSessions {
+		if getter, ok := session.(SessionCreatedAtGetter); ok {
+			if time.Since(getter.GetCreatedAt()) > maxAge {
+				staleIDs = append(staleIDs, sessionID)
+			}
+		}
+	}
+
+	for _, sessionID := range staleIDs {
+		session := userSessions[sessionID]
+		delete(userSessions, sessionID)
+		if cleaner, ok := session.(SessionCleaner); ok {
+			go cleaner.Cleanup()
+		}
+		log(LogInfo, "cleanupStaleSessions: removed stale session",
+			zap.String("uid", uid),
+			zap.String("sessionID", sessionID))
+	}
+
+	if len(userSessions) == 0 {
+		delete(w.binaryChunkSessions, uid)
+	}
+}
+

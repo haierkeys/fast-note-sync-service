@@ -104,6 +104,10 @@ func (s *FileUploadBinaryChunkSession) GetPathHash() string {
 	return s.PathHash
 }
 
+func (s *FileUploadBinaryChunkSession) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
 // FileDownloadChunkSession defines the session state for file chunk download
 // Used to track progress and file info for large file chunk downloads
 // FileDownloadChunkSession 定义文件分块下载的会话状态。
