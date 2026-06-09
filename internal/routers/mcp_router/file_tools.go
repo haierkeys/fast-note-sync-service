@@ -60,10 +60,14 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		for _, f := range files {
 			resStr += fmt.Sprintf("- %s (Size: %d)\n", f.Path, f.Size)
 		}
+		mcpFiles := make([]*dto.McpFileDTO, len(files))
+		for i, f := range files {
+			mcpFiles[i] = f.ToMcpFileDTO()
+		}
 		return mcp.NewToolResultStructured(mcpFileListOutput{
 			Vault: vault,
 			Count: len(files),
-			Files: files,
+			Files: mcpFiles,
 		}, resStr), nil
 	})
 
@@ -99,7 +103,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		resStr := fmt.Sprintf("File path: %s\nSize: %d bytes\nMtime: %d", file.Path, file.Size, file.Mtime)
 		return mcp.NewToolResultStructured(mcpFileOutput{
 			Vault: vault,
-			File:  file,
+			File:  file.ToMcpFileDTO(),
 		}, resStr), nil
 	})
 
@@ -180,7 +184,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpFileMutationOutput{
 			Vault:     vault,
 			Operation: "delete",
-			File:      file,
+			File:      file.ToMcpFileDTO(),
 		}, fallback), nil
 	})
 
@@ -232,8 +236,8 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpFileMutationOutput{
 			Vault:     vault,
 			Operation: "rename",
-			OldFile:   oldFile,
-			NewFile:   newFile,
+			OldFile:   oldFile.ToMcpFileDTO(),
+			NewFile:   newFile.ToMcpFileDTO(),
 		}, fallback), nil
 	})
 
@@ -271,7 +275,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpFileMutationOutput{
 			Vault:     vault,
 			Operation: "restore",
-			File:      file,
+			File:      file.ToMcpFileDTO(),
 		}, fallback), nil
 	})
 

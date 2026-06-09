@@ -59,10 +59,14 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		for _, n := range notes {
 			resStr += fmt.Sprintf("- %s (ID: %d, Size: %d, Mtime: %d)\n", n.Path, n.ID, n.Size, n.Mtime)
 		}
+		mcpNotes := make([]*dto.McpNoteNoContentDTO, len(notes))
+		for i, n := range notes {
+			mcpNotes[i] = n.ToMcpNoteNoContentDTO()
+		}
 		return mcp.NewToolResultStructured(mcpNoteListOutput{
 			Vault: vault,
 			Count: len(notes),
-			Notes: notes,
+			Notes: mcpNotes,
 		}, resStr), nil
 	})
 
@@ -98,7 +102,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 
 		return mcp.NewToolResultStructured(mcpNoteOutput{
 			Vault: vault,
-			Note:  note,
+			Note:  note.ToMcpNoteDTO(),
 		}, note.Content), nil
 	})
 
@@ -145,7 +149,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "create_or_update",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -184,7 +188,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "delete",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -236,8 +240,8 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "rename",
-			OldNote:   oldNote,
-			NewNote:   newNote,
+			OldNote:   oldNote.ToMcpNoteDTO(),
+			NewNote:   newNote.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -275,7 +279,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "restore",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -368,7 +372,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "patch_frontmatter",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -409,7 +413,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "append",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -450,7 +454,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteMutationOutput{
 			Vault:     vault,
 			Operation: "prepend",
-			Note:      note,
+			Note:      note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
@@ -512,7 +516,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		return mcp.NewToolResultStructured(mcpNoteReplaceOutput{
 			Vault:      vault,
 			MatchCount: res.MatchCount,
-			Note:       res.Note,
+			Note:       res.Note.ToMcpNoteDTO(),
 		}, fallback), nil
 	})
 
