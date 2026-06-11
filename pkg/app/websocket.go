@@ -727,6 +727,7 @@ type WebsocketServer struct {
 	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
 	clients           ConnStorage
 	userClients       map[string]ConnStorage
+	connWg            sync.WaitGroup
 	mu                sync.RWMutex
 	up                *gws.Upgrader
 	config            *WSConfig
@@ -904,6 +905,7 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		client.initContext(traceID)
 
 		w.AddClient(client)
+		w.connWg.Add(1)
 		log(LogInfo, "WS Start",
 			zap.String("type", "ReadLoop"),
 			zap.String("traceID", traceID),
@@ -1226,6 +1228,44 @@ func (w *WebsocketServer) KickToken(uid int64, tokenID int64) {
 	}
 }
 
+// CloseAllConnections sends a close frame to all active WebSocket connections.
+// This must be called before shutting down the Worker Pool and Write Queue Manager
+// to ensure hijacked WebSocket connections are properly terminated.
+// 向所有活跃的 WebSocket 连接发送关闭帧。
+// 必须在关闭 Worker Pool 和 Write Queue Manager 之前调用，以确保被劫持的 WebSocket 连接被正确终止。
+func (w *WebsocketServer) CloseAllConnections() {
+	w.mu.RLock()
+	clients := make([]*WebsocketClient, 0, len(w.clients))
+	for _, c := range w.clients {
+		clients = append(clients, c)
+	}
+	w.mu.RUnlock()
+
+	for _, c := range clients {
+		if c.conn != nil {
+			_ = c.conn.WriteClose(1001, []byte("server shutting down"))
+		}
+	}
+}
+
+// WaitAllClosed waits for all WebSocket connections to be fully closed (OnClose completed).
+// Returns when all connections are closed or timeout is reached.
+// 等待所有 WebSocket 连接完全关闭（OnClose 回调执行完毕）。
+// 在所有连接关闭或超时后返回。
+func (w *WebsocketServer) WaitAllClosed(timeout time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		w.connWg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		log(LogWarn, "WaitAllClosed: timeout waiting for WebSocket connections to close",
+			zap.Int("remaining", len(w.clients)))
+	}
+}
+
 func (w *WebsocketServer) RemoveUserClient(c *WebsocketClient) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -1335,6 +1375,7 @@ func isNormalDisconnectError(err error) bool {
 }
 
 func (w *WebsocketServer) OnClose(conn *gws.Conn, err error) {
+	defer w.connWg.Done()
 
 	c := w.GetClient(conn)
 	if c == nil {
