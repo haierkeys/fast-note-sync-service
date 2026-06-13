@@ -46,6 +46,7 @@
   * 詳情請參閱 [RESTful API 文件](/docs/REST_API.md) 或 [OpenAPI 文件](/docs/swagger.yaml)。
 * **💻 Web 管理面板**：
   * 內建現代化管理介面，輕鬆建立使用者、產生外掛組態、管理倉庫及筆記內容。
+  * 支援 WebGUI OIDC 登入。請參閱 [OIDC 登入執行手冊](/docs/runbook/OIDC.zh-TW.md)。
 * **🔄 多端筆記同步**：
   * 支援 `Vault (倉庫)` 自動建立。
   * 支援筆記管理（增、刪、改、查），變更毫秒級即時分發至所有線上裝置。

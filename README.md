@@ -46,6 +46,7 @@ For users in Mainland China, it is recommended to use the Tencent cnb.cool mirro
   * For details, please refer to the [RESTful API Documentation](docs/REST_API.md) or [OpenAPI Documentation](docs/swagger.yaml).
 * **💻 Web Admin Panel**:
   * Built-in modern administration interface to easily create users, generate plugin configurations, and manage vaults and note content.
+  * Supports WebGUI OIDC login. See the [OIDC login runbook](docs/runbook/OIDC.en.md).
 * **🔄 Multi-Device Note Synchronization**:
   * Supports automatic creation of `Vaults`.
   * Supports note management (CRUD), with millisecond-level real-time change distribution to all online devices.
