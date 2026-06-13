@@ -68,6 +68,7 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version string, cfg, u
 		userConfig: userCfg,
 		migrations: []Migration{
 			&NoteHistoryRenameMigrate{},
+			&UserEmailLowercaseMigrate{},
 		},
 	}
 }

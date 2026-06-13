@@ -147,7 +147,7 @@ func (s *oidcService) findBoundUser(ctx context.Context, issuer, subject string)
 }
 
 func (s *oidcService) findOrCreateUser(ctx context.Context, config OIDCServiceConfig, claims internaloidc.Claims) (*domain.User, error) {
-	email := strings.TrimSpace(claims.Email)
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
 	if email != "" {
 		user, err := s.userRepo.GetByEmail(ctx, email)
 		if err == nil {

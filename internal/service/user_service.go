@@ -107,6 +107,7 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 
 	// Check if email already exists
 	// 检查邮箱是否已存在
+	params.Email = strings.ToLower(strings.TrimSpace(params.Email))
 	emailUser, err := s.userRepo.GetByEmail(ctx, params.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, code.ErrorDBQuery
@@ -166,7 +167,8 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 	// Find user based on credential type
 	// 根据凭证类型查找用户
 	if util.IsValidEmail(params.Credentials) {
-		user, err = s.userRepo.GetByEmail(ctx, params.Credentials)
+		email := strings.ToLower(strings.TrimSpace(params.Credentials))
+		user, err = s.userRepo.GetByEmail(ctx, email)
 		if err != nil {
 			return nil, code.ErrorUserLoginPasswordFailed
 		}

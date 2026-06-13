@@ -73,7 +73,7 @@ func (m *SubjectMapper) mapEmail(ctx context.Context, claims map[string]interfac
 	}
 
 	email, _ := claims[claimName].(string)
-	email = strings.TrimSpace(email)
+	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
 		return 0, fmt.Errorf("%w: claim %q is empty", ErrSubjectNotFound, claimName)
 	}
