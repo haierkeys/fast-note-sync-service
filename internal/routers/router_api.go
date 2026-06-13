@@ -2,6 +2,7 @@ package routers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -61,7 +62,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			noAuthWebgui.GET("/user/auth/oidc/start", oidcHandler.Start)
 			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
 		}
-		api.GET("/user/auth/oidc/callback", oidcHandler.Callback)
+		api.GET(oidcCallbackRoute(cfg.OIDC.CallbackPath), oidcHandler.Callback)
 		api.GET("/user/sync", wss.Run())
 
 		// Add server version interface (no auth required)
@@ -231,4 +232,18 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			}
 		}
 	}
+}
+
+func oidcCallbackRoute(callbackPath string) string {
+	callbackPath = strings.TrimSpace(callbackPath)
+	if callbackPath == "" {
+		return "/user/auth/oidc/callback"
+	}
+	if strings.HasPrefix(callbackPath, "/api/") {
+		return strings.TrimPrefix(callbackPath, "/api")
+	}
+	if strings.HasPrefix(callbackPath, "/") {
+		return callbackPath
+	}
+	return "/" + callbackPath
 }
