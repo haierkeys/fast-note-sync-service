@@ -59,9 +59,9 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			noAuthWebgui.POST("/user/register", userHandler.Register)
 			noAuthWebgui.POST("/user/login", userHandler.Login)
 			noAuthWebgui.GET("/user/auth/oidc/config", oidcHandler.Config)
-			noAuthWebgui.GET("/user/auth/oidc/start", oidcHandler.Start)
 			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
 		}
+		api.GET("/user/auth/oidc/start", oidcHandler.Start)
 		api.GET(oidcCallbackRoute(cfg.OIDC.CallbackPath), oidcHandler.Callback)
 		api.GET("/user/sync", wss.Run())
 
