@@ -151,6 +151,7 @@ func renderOIDCCallbackSuccessHTML(user *dto.UserDTO, redirectTo string) string 
 		"avatar":   user.Avatar,
 		"email":    user.Email,
 		"tokenId":  fmt.Sprintf("%d", user.TokenID),
+		"user":     "true",
 	}
 	raw, _ := json.Marshal(payload)
 	return fmt.Sprintf(`<!doctype html>
