@@ -2,6 +2,10 @@ package mcp_router
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	appconfig "github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -95,6 +99,58 @@ func TestToolMetadataMarshalIncludesSecuritySchemesAndAnnotations(t *testing.T) 
 	}
 	if writeTool.Annotations.DestructiveHint == nil || !*writeTool.Annotations.DestructiveHint {
 		t.Fatalf("write destructiveHint = %#v, want true", writeTool.Annotations.DestructiveHint)
+	}
+}
+
+func TestMCPToolDefinitionsDeclareOutputSchemasAndMetadata(t *testing.T) {
+	files := []string{"note_tools.go", "file_tools.go", "vault_tools.go"}
+	toolDefRE := regexp.MustCompile(`(\w+)\s*:=\s*mcp\.NewTool\("([^"]+)"`)
+	addToolRE := regexp.MustCompile(`srv\.AddTool\(([^,]+),`)
+
+	for _, file := range files {
+		path := filepath.Join(".", file)
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", path, err)
+		}
+		lines := strings.Split(string(raw), "\n")
+		toolNames := map[string]string{}
+
+		for i := 0; i < len(lines); i++ {
+			match := toolDefRE.FindStringSubmatch(lines[i])
+			if match == nil {
+				continue
+			}
+			varName := match[1]
+			toolName := match[2]
+			toolNames[varName] = toolName
+
+			block := lines[i]
+			for j := i + 1; j < len(lines); j++ {
+				block += "\n" + lines[j]
+				if strings.TrimSpace(lines[j]) == ")" {
+					i = j
+					break
+				}
+			}
+			if !strings.Contains(block, "mcp.WithOutputSchema[") {
+				t.Fatalf("%s: tool %s (%s) is missing mcp.WithOutputSchema", file, toolName, varName)
+			}
+		}
+
+		for i, line := range lines {
+			match := addToolRE.FindStringSubmatch(line)
+			if match == nil {
+				continue
+			}
+			expr := strings.TrimSpace(match[1])
+			if strings.HasPrefix(expr, "readOnlyMCPTool(") || strings.HasPrefix(expr, "writeMCPTool(") {
+				continue
+			}
+			if toolName, ok := toolNames[expr]; ok {
+				t.Fatalf("%s:%d: tool %s (%s) is missing MCP metadata wrapper", file, i+1, toolName, expr)
+			}
+		}
 	}
 }
 

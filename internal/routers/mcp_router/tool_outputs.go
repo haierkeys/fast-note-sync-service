@@ -70,6 +70,11 @@ type mcpFileRecycleClearOutput struct {
 	Path  string `json:"path,omitempty"`
 }
 
+type mcpFileWriteOutput struct {
+	Vault string          `json:"vault"`
+	File  *dto.McpFileDTO `json:"file"`
+}
+
 type mcpVaultListOutput struct {
 	Count  int             `json:"count"`
 	Vaults []*dto.VaultDTO `json:"vaults"`
