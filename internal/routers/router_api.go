@@ -2,11 +2,13 @@ package routers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	appconfig "github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -48,6 +50,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
 		tokenHandler := api_router.NewTokenHandler(appContainer)
 		stytchOAuthHandler := api_router.NewStytchOAuthHandler(appContainer)
+		oidcHandler := api_router.NewOIDCHandler(appContainer)
 
 		// No-auth WebGUI restricted routes
 		// 免认证但仅限 WebGUI 访问的路由组
@@ -56,7 +59,13 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		{
 			noAuthWebgui.POST("/user/register", userHandler.Register)
 			noAuthWebgui.POST("/user/login", userHandler.Login)
+			noAuthWebgui.GET("/user/auth/oidc/config", oidcHandler.Config)
 			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
+		}
+		api.GET("/user/auth/oidc/start", oidcHandler.Start)
+		api.GET("/user/auth/oidc/start/:providerID", oidcHandler.Start)
+		for _, route := range oidcCallbackRoutes(cfg.OIDC) {
+			api.GET(route, oidcHandler.Callback)
 		}
 		api.GET("/user/sync", wss.Run())
 
@@ -227,4 +236,48 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			}
 		}
 	}
+}
+
+func oidcCallbackRoute(callbackPath string) string {
+	callbackPath = strings.TrimSpace(callbackPath)
+	if callbackPath == "" {
+		return "/user/auth/oidc/callback"
+	}
+	if strings.HasPrefix(callbackPath, "/api/") {
+		return strings.TrimPrefix(callbackPath, "/api")
+	}
+	if strings.HasPrefix(callbackPath, "/") {
+		return callbackPath
+	}
+	return "/" + callbackPath
+}
+
+func oidcCallbackRoutes(cfg appconfig.OIDCConfig) []string {
+	routes := []string{}
+	seen := map[string]struct{}{}
+	add := func(route string) {
+		if _, ok := seen[route]; ok {
+			return
+		}
+		seen[route] = struct{}{}
+		routes = append(routes, route)
+	}
+
+	add(oidcCallbackRoute(cfg.CallbackPath))
+	for _, provider := range cfg.Providers {
+		route := oidcCallbackRoute(provider.CallbackPath)
+		if route == oidcDefaultProviderCallbackRoute(provider.ID) || strings.Contains(route, ":") {
+			continue
+		}
+		add(route)
+	}
+	add("/user/auth/oidc/callback/:providerID")
+	return routes
+}
+
+func oidcDefaultProviderCallbackRoute(providerID string) string {
+	if providerID == "" || providerID == "default" {
+		return "/user/auth/oidc/callback"
+	}
+	return "/user/auth/oidc/callback/" + providerID
 }
