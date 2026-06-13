@@ -226,6 +226,8 @@ FNS 现已原生支持 **MCP (Model Context Protocol)**，并同时提供 **SSE*
 
 您可以将 FNS 作为 MCP 服务端直接接入 Cherry Studio、Cursor、Claude Code、hermes-agent 等兼容的 AI 客户端。接入后，AI 即可具备读写私人笔记和附件的能力。同时，所有由 MCP 产生的修改，都会通过 WebSocket 实时同步到您的各个设备终端。
 
+如需使用 Stytch 配置受 OAuth 保护的 MCP 部署，请阅读 [MCP OAuth 与 Stytch 运行手册](runbook/mcp-oauth-stytch.zh-CN.md)。
+
 ### 通用请求头参数
 
 无论使用哪种传输模式，均支持以下请求头：
