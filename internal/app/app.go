@@ -588,7 +588,21 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 	var errs []error
 
-	// 0. Shutdown ShareService (sync final statistics)
+	// 0. Close all WebSocket connections and wait for handlers to finish.
+	// This must happen before Worker Pool and Write Queue Manager shutdown
+	// to prevent "write queue is closed" and "worker pool is closed" errors
+	// from zombie WebSocket handlers using closed resources.
+	// 关闭所有 WebSocket 连接并等待处理器完成。
+	// 必须在 Worker Pool 和 Write Queue Manager 关闭之前执行，
+	// 以防止僵尸 WebSocket 处理器使用已关闭的资源导致错误。
+	if a.wss != nil {
+		a.logger.Info("Closing all WebSocket connections...")
+		a.wss.CloseAllConnections()
+		a.wss.WaitAllClosed(10 * time.Second)
+		a.logger.Info("All WebSocket connections closed")
+	}
+
+	// 0.1 Shutdown ShareService (sync final statistics)
 	// 0. 关闭 ShareService（同步最后的统计数据）
 	if a.ShareService != nil {
 		a.logger.Info("Shutting down share service...")
