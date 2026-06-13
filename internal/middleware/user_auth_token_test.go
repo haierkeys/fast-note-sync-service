@@ -47,6 +47,10 @@ func (s *fakeMiddlewareTokenService) Rotate(ctx context.Context, uid int64, toke
 	return nil, errors.New("not implemented")
 }
 
+func (s *fakeMiddlewareTokenService) RotateForLogin(ctx context.Context, uid int64, tokenID int64, ip, userAgent string) (*domain.AuthToken, string, error) {
+	return nil, "", errors.New("not implemented")
+}
+
 func (s *fakeMiddlewareTokenService) GetActiveToken(ctx context.Context, uid int64, tokenID int64) (*domain.AuthToken, error) {
 	return s.activeToken, s.activeErr
 }

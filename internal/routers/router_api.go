@@ -48,6 +48,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		syncLogHandler := api_router.NewSyncLogHandler(appContainer)
 		tokenHandler := api_router.NewTokenHandler(appContainer)
 		stytchOAuthHandler := api_router.NewStytchOAuthHandler(appContainer)
+		oidcHandler := api_router.NewOIDCHandler(appContainer)
 
 		// No-auth WebGUI restricted routes
 		// 免认证但仅限 WebGUI 访问的路由组
@@ -56,8 +57,11 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		{
 			noAuthWebgui.POST("/user/register", userHandler.Register)
 			noAuthWebgui.POST("/user/login", userHandler.Login)
+			noAuthWebgui.GET("/user/auth/oidc/config", oidcHandler.Config)
+			noAuthWebgui.GET("/user/auth/oidc/start", oidcHandler.Start)
 			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
 		}
+		api.GET("/user/auth/oidc/callback", oidcHandler.Callback)
 		api.GET("/user/sync", wss.Run())
 
 		// Add server version interface (no auth required)

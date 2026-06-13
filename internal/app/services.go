@@ -23,6 +23,7 @@ type Services struct {
 	GitSyncService     service.GitSyncService
 	CloudflareService  service.CloudflareService
 	SyncLogService     service.SyncLogService
+	OIDCService        service.OIDCService
 }
 
 // initServices initializes all services
@@ -78,6 +79,16 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 	s.NoteService = service.NewNoteService(repos.UserRepo, repos.NoteRepo, repos.NoteLinkRepo, repos.FileRepo, repos.ShareRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
 	s.TokenService = service.NewTokenService(repos.AuthTokenRepo, repos.AuthTokenLogRepo, infra.TokenManager, logger, svcConfig.Token)
 	s.UserService = service.NewUserService(repos.UserRepo, infra.TokenManager, s.TokenService, logger, svcConfig)
+	s.OIDCService = service.NewOIDCService(repos.UserRepo, repos.OIDCIdentityRepo, s.TokenService, service.OIDCServiceConfig{
+		AutoRegister: cfg.OIDC.AutoRegister,
+		Issuer:       cfg.OIDC.Issuer,
+		UserMapping: service.OIDCUserMappingConfig{
+			SubjectClaim:     cfg.OIDC.UserMapping.SubjectClaim,
+			EmailClaim:       cfg.OIDC.UserMapping.EmailClaim,
+			UsernameClaim:    cfg.OIDC.UserMapping.UsernameClaim,
+			DisplayNameClaim: cfg.OIDC.UserMapping.DisplayNameClaim,
+		},
+	})
 	s.FileService = service.NewFileService(repos.UserRepo, repos.FileRepo, repos.NoteRepo, s.VaultService, s.FolderService, s.BackupService, s.GitSyncService, s.SyncLogService, svcConfig)
 	s.SettingService = service.NewSettingService(repos.SettingRepo, s.VaultService, s.SyncLogService, svcConfig)
 	s.NoteHistoryService = service.NewNoteHistoryService(repos.NoteHistoryRepo, repos.NoteRepo, repos.UserRepo, s.VaultService, s.FolderService, s.NoteService, s.BackupService, s.GitSyncService, logger, &svcConfig.App)
