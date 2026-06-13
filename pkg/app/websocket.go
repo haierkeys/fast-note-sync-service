@@ -1069,9 +1069,9 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) {
 	var info ClientInfoMessage
-	if err := json.Unmarshal(msg.Data, &info); err != nil {
-		log(LogError, "WS ClientInfo Unmarshal FAILD", zap.Error(err))
-		c.ToResponse(code.ErrorInvalidParams.WithDetails(err.Error()))
+	if ok, errs := c.BindAndValidWithAction(msg.Type, msg.Data, &info); !ok {
+		log(LogError, "WS ClientInfo Unmarshal FAILD", zap.Error(fmt.Errorf(errs.ErrorsToString())))
+		c.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()))
 		return
 	}
 
