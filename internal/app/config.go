@@ -37,6 +37,7 @@ type AppConfig struct {
 	WebGUI           config.WebGUIConfig           `yaml:"webgui"`
 	Cloudflare       config.CloudflareConfig       `yaml:"cloudflare"`
 	OAuth            config.OAuthConfig            `yaml:"oauth"`
+	OIDC             config.OIDCConfig             `yaml:"oidc"`
 	AttachmentStatic config.AttachmentStaticConfig `yaml:"attachment-static"` // Attachment static access configuration // 附件模拟静态访问配置
 }
 
@@ -80,6 +81,10 @@ func LoadConfig(f string) (*AppConfig, string, error) {
 	c.OAuth.Normalize()
 	if err := c.OAuth.Validate(); err != nil {
 		return nil, realpath, errors.Wrap(err, "validate oauth config failed")
+	}
+	c.OIDC.Normalize()
+	if err := c.OIDC.Validate(); err != nil {
+		return nil, realpath, errors.Wrap(err, "validate oidc config failed")
 	}
 
 	return c, realpath, nil
