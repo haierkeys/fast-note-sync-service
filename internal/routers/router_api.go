@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	appconfig "github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	"github.com/haierkeys/fast-note-sync-service/internal/routers/api_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -62,7 +63,10 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			noAuthWebgui.GET("/webgui/config", adminControlHandler.Config)
 		}
 		api.GET("/user/auth/oidc/start", oidcHandler.Start)
-		api.GET(oidcCallbackRoute(cfg.OIDC.CallbackPath), oidcHandler.Callback)
+		api.GET("/user/auth/oidc/start/:providerID", oidcHandler.Start)
+		for _, route := range oidcCallbackRoutes(cfg.OIDC) {
+			api.GET(route, oidcHandler.Callback)
+		}
 		api.GET("/user/sync", wss.Run())
 
 		// Add server version interface (no auth required)
@@ -246,4 +250,34 @@ func oidcCallbackRoute(callbackPath string) string {
 		return callbackPath
 	}
 	return "/" + callbackPath
+}
+
+func oidcCallbackRoutes(cfg appconfig.OIDCConfig) []string {
+	routes := []string{}
+	seen := map[string]struct{}{}
+	add := func(route string) {
+		if _, ok := seen[route]; ok {
+			return
+		}
+		seen[route] = struct{}{}
+		routes = append(routes, route)
+	}
+
+	add(oidcCallbackRoute(cfg.CallbackPath))
+	for _, provider := range cfg.Providers {
+		route := oidcCallbackRoute(provider.CallbackPath)
+		if route == oidcDefaultProviderCallbackRoute(provider.ID) || strings.Contains(route, ":") {
+			continue
+		}
+		add(route)
+	}
+	add("/user/auth/oidc/callback/:providerID")
+	return routes
+}
+
+func oidcDefaultProviderCallbackRoute(providerID string) string {
+	if providerID == "" || providerID == "default" {
+		return "/user/auth/oidc/callback"
+	}
+	return "/user/auth/oidc/callback/" + providerID
 }

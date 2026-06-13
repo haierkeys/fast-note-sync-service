@@ -9,14 +9,82 @@
 启用后：
 
 - WebGUI 登录页请求 `/api/user/auth/oidc/config`；
-- 如果服务端启用了 OIDC，登录页会显示配置的 OIDC 登录按钮；
-- `/api/user/auth/oidc/start` 创建 state、nonce 和 PKCE verifier，然后跳转到身份提供方；
-- 身份提供方回调到 `oidc.redirect-url`；
+- 如果服务端启用了 OIDC，登录页会为单个 provider 显示一个 OIDC 登录按钮，或为多个 provider 分别显示按钮；
+- `/api/user/auth/oidc/start` 创建 state、nonce 和 PKCE verifier，然后跳转到选中的身份提供方；
+- 身份提供方回调到对应配置的 `redirect-url`；
 - 服务端验证 `id_token`，把 OIDC subject 映射到本地 FNS 用户，并签发正常的 WebGUI 登录 token。
 
 ## 配置
 
-在 `config/config.yaml` 中添加 `oidc` 配置：
+新的 WebGUI 部署建议在 `oidc.providers` 下配置一个或多个 provider：
+
+```yaml
+oidc:
+  enabled: true
+  callback-path: "/api/user/auth/oidc/callback"
+  auto-register: false
+  user-mapping:
+    subject-claim: "sub"
+    email-claim: "email"
+    username-claim: "preferred_username"
+    display-name-claim: "name"
+  providers:
+    - id: "dex"
+      display-name: "Login with Dex"
+      issuer: "https://dex.example.com/dex"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+      scopes:
+        - openid
+        - profile
+        - email
+    - id: "casdoor"
+      display-name: "Login with Casdoor"
+      issuer: "https://casdoor.example.com"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+      scopes:
+        - openid
+        - profile
+        - email
+      user-mapping:
+        display-name-claim: "displayName"
+    - id: "keycloak"
+      display-name: "Login with Keycloak"
+      issuer: "https://keycloak.example.com/realms/fns"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+```
+
+每个 provider 都有一个稳定的 `id`。建议只使用小写字母、数字和连字符，并保持稳定，让 provider 选择和 callback 处理保持可预测。
+
+每个 provider 必须配置：
+
+- `issuer`
+- `client-id`
+- `client-secret`
+- `redirect-url`
+
+Provider 级别的 `user-mapping` 只覆盖与全局 `oidc.user-mapping` 不同的 claim。例如大多数 provider 使用 `name`，但 Casdoor 需要使用 `displayName` 时，可以只在 Casdoor provider 下覆盖显示名 claim。
+
+默认值：
+
+- `display-name`: `Login with OIDC`
+- `callback-path`: `/api/user/auth/oidc/callback`
+- `scopes`: `openid`, `profile`, `email`
+- `subject-claim`: `sub`
+- `email-claim`: `email`
+- `username-claim`: `preferred_username`
+- `display-name-claim`: `name`
+
+不要把真实的 `client-secret` 提交到公开 Git 配置中。
+
+### 向后兼容的单 Provider 配置
+
+已有的单 provider 部署可以继续使用历史的顶层 provider 字段：
 
 ```yaml
 oidc:
@@ -39,24 +107,7 @@ oidc:
     display-name-claim: "name"
 ```
 
-当 `enabled: true` 时必须配置：
-
-- `issuer`
-- `client-id`
-- `client-secret`
-- `redirect-url`
-
-默认值：
-
-- `display-name`: `Login with OIDC`
-- `callback-path`: `/api/user/auth/oidc/callback`
-- `scopes`: `openid`, `profile`, `email`
-- `subject-claim`: `sub`
-- `email-claim`: `email`
-- `username-claim`: `preferred_username`
-- `display-name-claim`: `name`
-
-不要把真实的 `client-secret` 提交到公开 Git 配置中。
+这种形式等价于 `oidc.providers` 中只有一个 provider。需要多个 WebGUI 登录按钮时，优先使用 `providers`。
 
 ## 用户映射
 
@@ -82,19 +133,29 @@ FNS 会把 OIDC 绑定关系存储在 `user_oidc_identity` 表中。
 
 ## Provider 配置
 
+WebGUI OIDC 登录使用标准 OIDC discovery、authorization code flow、PKCE 和 `id_token` 验证。Google、Microsoft Entra ID、Auth0、Okta、Zitadel 等 provider 只要提供标准 OIDC issuer、client ID、client secret、redirect URL，并返回与用户映射兼容的 claims，通常都可以使用。
+
+GitHub 不同：GitHub OAuth Apps 是 OAuth 2.0 provider，并不以同样方式提供普通 OIDC 登录所需的 discovery 和 `id_token`。如果要使用 GitHub 登录，通常应通过 Dex、Keycloak 或 Casdoor 做 OIDC broker，或使用单独的 OAuth adapter 把 GitHub OAuth 转换成需要的登录流程。
+
 ### Dex
 
 创建 confidential client：
 
 - Client ID: `fns-webgui`
-- Client secret: 与 `oidc.client-secret` 一致
+- Client secret: 与 provider 的 `client-secret` 一致
 - Redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - Scopes: `openid`, `profile`, `email`
 
-`oidc.issuer` 使用 Dex issuer，例如：
+Provider `issuer` 使用 Dex issuer，例如：
 
 ```yaml
-issuer: "https://dex.example.com/dex"
+providers:
+  - id: "dex"
+    display-name: "Login with Dex"
+    issuer: "https://dex.example.com/dex"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 ### Keycloak
@@ -107,10 +168,16 @@ issuer: "https://dex.example.com/dex"
 - Valid redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - PKCE: 支持 `S256`
 
-`oidc.issuer` 使用 realm issuer：
+Provider `issuer` 使用 realm issuer：
 
 ```yaml
-issuer: "https://keycloak.example.com/realms/fns"
+providers:
+  - id: "keycloak"
+    display-name: "Login with Keycloak"
+    issuer: "https://keycloak.example.com/realms/fns"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 ### Casdoor
@@ -119,20 +186,28 @@ issuer: "https://keycloak.example.com/realms/fns"
 
 - Redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - Grant type: `authorization_code`
-- Client ID 和 secret 与 `oidc.client-id`、`oidc.client-secret` 一致
+- Client ID 和 secret 与 provider 的 `client-id`、`client-secret` 一致
 - Scopes: `openid`, `profile`, `email`
 
-`oidc.issuer` 使用 Casdoor 对外地址：
+Provider `issuer` 使用 Casdoor 对外地址：
 
 ```yaml
-issuer: "https://casdoor.example.com"
+providers:
+  - id: "casdoor"
+    display-name: "Login with Casdoor"
+    issuer: "https://casdoor.example.com"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 Casdoor 常见显示名 claim 是 `displayName`，如需映射可配置：
 
 ```yaml
-user-mapping:
-  display-name-claim: "displayName"
+providers:
+  - id: "casdoor"
+    user-mapping:
+      display-name-claim: "displayName"
 ```
 
 ## 公网地址与反向代理
@@ -171,7 +246,7 @@ go test -tags oidc_integration ./internal/oidc -run TestOIDCIntegrationProvider
 
 ## 排错
 
-- `oidc provider discovery failed`：检查 `oidc.issuer` 以及 `/.well-known/openid-configuration`。
+- `oidc provider discovery failed`：检查 provider 的 `issuer` 以及 `/.well-known/openid-configuration`。
 - `OIDC state is invalid or expired`：重新开始登录；callback 被重复使用、已过期，或来自另一个服务实例。
 - `OIDC token exchange failed`：检查 client ID、client secret、redirect URL 和 PKCE 支持。
 - Provider 登录成功但 FNS 登录失败：检查 `email`、`sub` claims，以及是否需要开启 `auto-register`。

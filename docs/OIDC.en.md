@@ -9,14 +9,82 @@ The `oidc` configuration enables SSO login for the WebGUI only.
 When enabled:
 
 - the WebGUI login page fetches `/api/user/auth/oidc/config`;
-- if OIDC is enabled, the login page shows the configured OIDC login button;
-- `/api/user/auth/oidc/start` creates a state, nonce, and PKCE verifier, then redirects the browser to the provider;
-- the provider redirects back to `oidc.redirect-url`;
+- if OIDC is enabled, the login page shows one OIDC login button for a single provider or one button per configured provider;
+- `/api/user/auth/oidc/start` creates a state, nonce, and PKCE verifier, then redirects the browser to the selected provider;
+- the provider redirects back to its configured `redirect-url`;
 - the service verifies the `id_token`, maps the OIDC subject to a local FNS user, and issues the normal WebGUI login token.
 
 ## Configuration
 
-Add an `oidc` section to `config/config.yaml`:
+For new WebGUI deployments, configure one or more providers under `oidc.providers`:
+
+```yaml
+oidc:
+  enabled: true
+  callback-path: "/api/user/auth/oidc/callback"
+  auto-register: false
+  user-mapping:
+    subject-claim: "sub"
+    email-claim: "email"
+    username-claim: "preferred_username"
+    display-name-claim: "name"
+  providers:
+    - id: "dex"
+      display-name: "Login with Dex"
+      issuer: "https://dex.example.com/dex"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+      scopes:
+        - openid
+        - profile
+        - email
+    - id: "casdoor"
+      display-name: "Login with Casdoor"
+      issuer: "https://casdoor.example.com"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+      scopes:
+        - openid
+        - profile
+        - email
+      user-mapping:
+        display-name-claim: "displayName"
+    - id: "keycloak"
+      display-name: "Login with Keycloak"
+      issuer: "https://keycloak.example.com/realms/fns"
+      client-id: "fns-webgui"
+      client-secret: "change-me"
+      redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
+```
+
+Each provider has a stable `id`. Use lowercase letters, numbers, and hyphens, and keep it stable so provider selection and callback handling remain predictable.
+
+Required for each provider:
+
+- `issuer`
+- `client-id`
+- `client-secret`
+- `redirect-url`
+
+Provider-level `user-mapping` overrides only the claims that differ from the global `oidc.user-mapping`. This is useful when most providers use `name`, but one provider uses a different display-name claim such as Casdoor `displayName`.
+
+Defaults:
+
+- `display-name`: `Login with OIDC`
+- `callback-path`: `/api/user/auth/oidc/callback`
+- `scopes`: `openid`, `profile`, `email`
+- `subject-claim`: `sub`
+- `email-claim`: `email`
+- `username-claim`: `preferred_username`
+- `display-name-claim`: `name`
+
+Keep `client-secret` out of Git-managed public configuration.
+
+### Backward-Compatible Single Provider
+
+Existing single-provider deployments can keep the historical top-level provider fields:
 
 ```yaml
 oidc:
@@ -39,24 +107,7 @@ oidc:
     display-name-claim: "name"
 ```
 
-Required when `enabled: true`:
-
-- `issuer`
-- `client-id`
-- `client-secret`
-- `redirect-url`
-
-Defaults:
-
-- `display-name`: `Login with OIDC`
-- `callback-path`: `/api/user/auth/oidc/callback`
-- `scopes`: `openid`, `profile`, `email`
-- `subject-claim`: `sub`
-- `email-claim`: `email`
-- `username-claim`: `preferred_username`
-- `display-name-claim`: `name`
-
-Keep `client-secret` out of Git-managed public configuration.
+This form behaves like a single entry in `oidc.providers`. Prefer `providers` when you want multiple WebGUI login buttons.
 
 ## User Mapping
 
@@ -82,19 +133,29 @@ The value is normalized to FNS username rules: letters, numbers, and underscores
 
 ## Provider Setup
 
+The WebGUI OIDC login uses standard OIDC discovery, authorization code flow, PKCE, and `id_token` verification. Google, Microsoft Entra ID, Auth0, Okta, Zitadel, and similar providers can work as long as they provide a normal OIDC issuer, client ID, client secret, redirect URL, and claims compatible with the configured user mapping.
+
+GitHub is different: GitHub OAuth Apps are OAuth 2.0 providers and do not behave like a plain OIDC login provider with discovery and `id_token` in the same way. For GitHub login, usually put Dex, Keycloak, or Casdoor in front as an OIDC broker, or use a separate OAuth adapter that translates GitHub OAuth into the login flow you need.
+
 ### Dex
 
 Create a confidential client:
 
 - Client ID: `fns-webgui`
-- Client secret: same as `oidc.client-secret`
+- Client secret: same as the provider `client-secret`
 - Redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - Scopes: `openid`, `profile`, `email`
 
-Use the Dex issuer URL as `oidc.issuer`, for example:
+Use the Dex issuer URL as the provider `issuer`, for example:
 
 ```yaml
-issuer: "https://dex.example.com/dex"
+providers:
+  - id: "dex"
+    display-name: "Login with Dex"
+    issuer: "https://dex.example.com/dex"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 ### Keycloak
@@ -107,10 +168,16 @@ Create an OpenID Connect confidential client:
 - Valid redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - PKCE: `S256` is supported
 
-Use the realm issuer as `oidc.issuer`:
+Use the realm issuer as the provider `issuer`:
 
 ```yaml
-issuer: "https://keycloak.example.com/realms/fns"
+providers:
+  - id: "keycloak"
+    display-name: "Login with Keycloak"
+    issuer: "https://keycloak.example.com/realms/fns"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 ### Casdoor
@@ -119,20 +186,28 @@ Create or update an application:
 
 - Redirect URI: `https://fns.example.com/api/user/auth/oidc/callback`
 - Grant type: `authorization_code`
-- Client ID and secret: match `oidc.client-id` and `oidc.client-secret`
+- Client ID and secret: match the provider `client-id` and `client-secret`
 - Scopes: `openid`, `profile`, `email`
 
-Use the Casdoor origin as `oidc.issuer`:
+Use the Casdoor origin as the provider `issuer`:
 
 ```yaml
-issuer: "https://casdoor.example.com"
+providers:
+  - id: "casdoor"
+    display-name: "Login with Casdoor"
+    issuer: "https://casdoor.example.com"
+    client-id: "fns-webgui"
+    client-secret: "change-me"
+    redirect-url: "https://fns.example.com/api/user/auth/oidc/callback"
 ```
 
 Casdoor commonly uses `displayName` rather than `name`. If needed, set:
 
 ```yaml
-user-mapping:
-  display-name-claim: "displayName"
+providers:
+  - id: "casdoor"
+    user-mapping:
+      display-name-claim: "displayName"
 ```
 
 ## Public URL and Reverse Proxy
@@ -171,7 +246,7 @@ go test -tags oidc_integration ./internal/oidc -run TestOIDCIntegrationProvider
 
 ## Troubleshooting
 
-- `oidc provider discovery failed`: verify `oidc.issuer` and `/.well-known/openid-configuration`.
+- `oidc provider discovery failed`: verify the provider `issuer` and `/.well-known/openid-configuration`.
 - `OIDC state is invalid or expired`: restart login; the callback was reused, expired, or generated by another service instance.
 - `OIDC token exchange failed`: verify client ID, client secret, redirect URL, and PKCE support.
 - Login succeeds at the provider but fails in FNS: verify `email` and `sub` claims, and check whether `auto-register` should be enabled.

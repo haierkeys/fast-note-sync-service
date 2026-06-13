@@ -75,4 +75,64 @@ oidc:
 	if !cfg.OIDC.AutoRegister {
 		t.Fatalf("OIDC.AutoRegister = false, want true")
 	}
+	if len(cfg.OIDC.Providers) != 1 || cfg.OIDC.Providers[0].ID != "default" {
+		t.Fatalf("OIDC.Providers = %#v, want synthesized default provider", cfg.OIDC.Providers)
+	}
+}
+
+func TestLoadConfig_OIDCMultipleProviders(t *testing.T) {
+	cfg, _, err := LoadConfig(writeTestConfig(t, `
+oidc:
+  enabled: true
+  providers:
+    - id: dex
+      display-name: Login with Dex
+      issuer: http://localhost:3011/dex
+      client-id: fns-webgui
+      client-secret: secret
+      redirect-url: http://localhost:3010/api/user/auth/oidc/callback/dex
+      auto-register: true
+    - id: keycloak
+      display-name: Login with Keycloak
+      issuer: http://localhost:3012/realms/fns
+      client-id: fns-webgui
+      client-secret: secret
+      redirect-url: http://localhost:3010/api/user/auth/oidc/callback/keycloak
+`))
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if len(cfg.OIDC.Providers) != 2 {
+		t.Fatalf("len(OIDC.Providers) = %d, want 2", len(cfg.OIDC.Providers))
+	}
+	if cfg.OIDC.Providers[0].CallbackPath != "/api/user/auth/oidc/callback/dex" {
+		t.Fatalf("dex CallbackPath = %q", cfg.OIDC.Providers[0].CallbackPath)
+	}
+	if got, want := strings.Join(cfg.OIDC.Providers[1].Scopes, " "), "openid profile email"; got != want {
+		t.Fatalf("keycloak Scopes = %q, want %q", got, want)
+	}
+}
+
+func TestLoadConfig_OIDCMultipleProvidersRejectsDuplicateID(t *testing.T) {
+	_, _, err := LoadConfig(writeTestConfig(t, `
+oidc:
+  enabled: true
+  providers:
+    - id: dex
+      issuer: http://localhost:3011/dex
+      client-id: fns-webgui
+      client-secret: secret
+      redirect-url: http://localhost:3010/api/user/auth/oidc/callback/dex
+    - id: dex
+      issuer: http://localhost:3012/realms/fns
+      client-id: fns-webgui
+      client-secret: secret
+      redirect-url: http://localhost:3010/api/user/auth/oidc/callback/keycloak
+`))
+	if err == nil {
+		t.Fatal("LoadConfig() error = nil, want duplicate provider id error")
+	}
+	if !strings.Contains(err.Error(), "duplicate oidc provider id") {
+		t.Fatalf("LoadConfig() error = %v, want duplicate provider id", err)
+	}
 }

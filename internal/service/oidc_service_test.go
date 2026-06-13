@@ -22,7 +22,8 @@ func TestOIDCServiceAuthenticatesExistingIdentity(t *testing.T) {
 		},
 	}
 	tokenSvc := &fakeOIDCTokenService{}
-	svc := NewOIDCService(userRepo, identityRepo, tokenSvc, OIDCServiceConfig{
+	svc := NewOIDCService(userRepo, identityRepo, tokenSvc)
+	providerConfig := OIDCServiceConfig{
 		AutoRegister: false,
 		Issuer:       "https://issuer.example",
 		UserMapping: OIDCUserMappingConfig{
@@ -31,9 +32,9 @@ func TestOIDCServiceAuthenticatesExistingIdentity(t *testing.T) {
 			UsernameClaim:    "preferred_username",
 			DisplayNameClaim: "name",
 		},
-	})
+	}
 
-	dto, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+	dto, err := svc.Authenticate(context.Background(), providerConfig, internaloidc.Claims{
 		Subject:  "subject-1",
 		Email:    "oidc@example.com",
 		Username: "oidc-user",
@@ -53,15 +54,16 @@ func TestOIDCServiceBindsExistingEmailWhenIdentityMissing(t *testing.T) {
 		},
 	}
 	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}
-	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{}, OIDCServiceConfig{
+	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{})
+	providerConfig := OIDCServiceConfig{
 		Issuer: "https://issuer.example",
 		UserMapping: OIDCUserMappingConfig{
 			SubjectClaim: "sub",
 			EmailClaim:   "email",
 		},
-	})
+	}
 
-	dto, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+	dto, err := svc.Authenticate(context.Background(), providerConfig, internaloidc.Claims{
 		Subject: "subject-1",
 		Email:   "oidc@example.com",
 	}, "127.0.0.1", "WebGUI", "test-agent")
@@ -79,7 +81,8 @@ func TestOIDCServiceBindsExistingEmailWhenIdentityMissing(t *testing.T) {
 func TestOIDCServiceAutoRegistersWhenNoUserMatches(t *testing.T) {
 	userRepo := &fakeOIDCUserRepo{byEmail: map[string]*domain.User{}}
 	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}
-	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{}, OIDCServiceConfig{
+	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{})
+	providerConfig := OIDCServiceConfig{
 		AutoRegister: true,
 		Issuer:       "https://issuer.example",
 		UserMapping: OIDCUserMappingConfig{
@@ -87,9 +90,9 @@ func TestOIDCServiceAutoRegistersWhenNoUserMatches(t *testing.T) {
 			EmailClaim:    "email",
 			UsernameClaim: "preferred_username",
 		},
-	})
+	}
 
-	dto, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+	dto, err := svc.Authenticate(context.Background(), providerConfig, internaloidc.Claims{
 		Subject:  "subject-1",
 		Email:    "new@example.com",
 		Username: "new-user",
@@ -108,7 +111,8 @@ func TestOIDCServiceAutoRegistersWhenNoUserMatches(t *testing.T) {
 func TestOIDCServiceAutoRegisterFallsBackToDisplayNameForUsername(t *testing.T) {
 	userRepo := &fakeOIDCUserRepo{byEmail: map[string]*domain.User{}}
 	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}
-	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{}, OIDCServiceConfig{
+	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{})
+	providerConfig := OIDCServiceConfig{
 		AutoRegister: true,
 		Issuer:       "https://issuer.example",
 		UserMapping: OIDCUserMappingConfig{
@@ -117,9 +121,9 @@ func TestOIDCServiceAutoRegisterFallsBackToDisplayNameForUsername(t *testing.T) 
 			UsernameClaim:    "preferred_username",
 			DisplayNameClaim: "name",
 		},
-	})
+	}
 
-	_, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+	_, err := svc.Authenticate(context.Background(), providerConfig, internaloidc.Claims{
 		Raw: map[string]interface{}{
 			"sub":   "opaque-subject",
 			"email": "oidc@example.com",
@@ -137,16 +141,17 @@ func TestOIDCServiceAutoRegisterFallsBackToDisplayNameForUsername(t *testing.T) 
 func TestOIDCServiceRejectsUnknownUserWhenAutoRegisterDisabled(t *testing.T) {
 	userRepo := &fakeOIDCUserRepo{byEmail: map[string]*domain.User{}}
 	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}
-	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{}, OIDCServiceConfig{
+	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{})
+	providerConfig := OIDCServiceConfig{
 		AutoRegister: false,
 		Issuer:       "https://issuer.example",
 		UserMapping: OIDCUserMappingConfig{
 			SubjectClaim: "sub",
 			EmailClaim:   "email",
 		},
-	})
+	}
 
-	if _, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+	if _, err := svc.Authenticate(context.Background(), providerConfig, internaloidc.Claims{
 		Subject: "subject-1",
 		Email:   "missing@example.com",
 	}, "127.0.0.1", "WebGUI", "test-agent"); err == nil {

@@ -18,7 +18,7 @@ import (
 
 // OIDCService authenticates WebGUI users with an external OIDC provider.
 type OIDCService interface {
-	Authenticate(ctx context.Context, claims internaloidc.Claims, clientIP, clientType, userAgent string) (*dto.UserDTO, error)
+	Authenticate(ctx context.Context, config OIDCServiceConfig, claims internaloidc.Claims, clientIP, clientType, userAgent string) (*dto.UserDTO, error)
 }
 
 type OIDCUserMappingConfig struct {
@@ -42,26 +42,24 @@ type oidcService struct {
 	userRepo     domain.UserRepository
 	identityRepo domain.OIDCIdentityRepository
 	tokenService loginTokenIssuer
-	config       OIDCServiceConfig
 }
 
-func NewOIDCService(userRepo domain.UserRepository, identityRepo domain.OIDCIdentityRepository, tokenService loginTokenIssuer, config OIDCServiceConfig) OIDCService {
+func NewOIDCService(userRepo domain.UserRepository, identityRepo domain.OIDCIdentityRepository, tokenService loginTokenIssuer) OIDCService {
 	return &oidcService{
 		userRepo:     userRepo,
 		identityRepo: identityRepo,
 		tokenService: tokenService,
-		config:       config,
 	}
 }
 
-func (s *oidcService) Authenticate(ctx context.Context, claims internaloidc.Claims, clientIP, clientType, userAgent string) (*dto.UserDTO, error) {
-	claims = s.mappedClaims(claims)
+func (s *oidcService) Authenticate(ctx context.Context, config OIDCServiceConfig, claims internaloidc.Claims, clientIP, clientType, userAgent string) (*dto.UserDTO, error) {
+	claims = mappedOIDCClaims(config.UserMapping, claims)
 	subject := strings.TrimSpace(claims.Subject)
 	if subject == "" {
 		return nil, code.ErrorUserLoginFailed.WithDetails("oidc subject is empty")
 	}
 
-	issuer := strings.TrimSpace(s.config.Issuer)
+	issuer := strings.TrimSpace(config.Issuer)
 	if issuer == "" {
 		return nil, code.ErrorUserLoginFailed.WithDetails("oidc issuer is empty")
 	}
@@ -71,7 +69,7 @@ func (s *oidcService) Authenticate(ctx context.Context, claims internaloidc.Clai
 		return nil, err
 	}
 	if user == nil {
-		user, err = s.findOrCreateUser(ctx, claims)
+		user, err = s.findOrCreateUser(ctx, config, claims)
 		if err != nil {
 			return nil, err
 		}
@@ -106,8 +104,7 @@ func (s *oidcService) Authenticate(ctx context.Context, claims internaloidc.Clai
 	}, nil
 }
 
-func (s *oidcService) mappedClaims(claims internaloidc.Claims) internaloidc.Claims {
-	mapping := s.config.UserMapping
+func mappedOIDCClaims(mapping OIDCUserMappingConfig, claims internaloidc.Claims) internaloidc.Claims {
 	if claims.Raw == nil {
 		return claims
 	}
@@ -149,7 +146,7 @@ func (s *oidcService) findBoundUser(ctx context.Context, issuer, subject string)
 	return user, nil
 }
 
-func (s *oidcService) findOrCreateUser(ctx context.Context, claims internaloidc.Claims) (*domain.User, error) {
+func (s *oidcService) findOrCreateUser(ctx context.Context, config OIDCServiceConfig, claims internaloidc.Claims) (*domain.User, error) {
 	email := strings.TrimSpace(claims.Email)
 	if email != "" {
 		user, err := s.userRepo.GetByEmail(ctx, email)
@@ -161,7 +158,7 @@ func (s *oidcService) findOrCreateUser(ctx context.Context, claims internaloidc.
 		}
 	}
 
-	if !s.config.AutoRegister {
+	if !config.AutoRegister {
 		return nil, code.ErrorUserNotFound
 	}
 	if email == "" || !util.IsValidEmail(email) {

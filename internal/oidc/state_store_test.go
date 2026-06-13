@@ -8,6 +8,7 @@ import (
 func TestStateStoreConsumeRemovesState(t *testing.T) {
 	store := NewStateStore(time.Minute)
 	state := State{
+		ProviderID:   "dex",
 		State:        "state-1",
 		Nonce:        "nonce-1",
 		CodeVerifier: "verifier-1",
@@ -19,7 +20,7 @@ func TestStateStoreConsumeRemovesState(t *testing.T) {
 	if !ok {
 		t.Fatal("Consume() ok = false, want true")
 	}
-	if got.Nonce != "nonce-1" || got.CodeVerifier != "verifier-1" || got.RedirectTo != "/webgui/" {
+	if got.ProviderID != "dex" || got.Nonce != "nonce-1" || got.CodeVerifier != "verifier-1" || got.RedirectTo != "/webgui/" {
 		t.Fatalf("Consume() = %#v", got)
 	}
 

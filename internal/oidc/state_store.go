@@ -6,6 +6,7 @@ import (
 )
 
 type State struct {
+	ProviderID   string
 	State        string
 	Nonce        string
 	CodeVerifier string
