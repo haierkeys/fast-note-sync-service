@@ -226,6 +226,8 @@ FNS now natively supports **MCP (Model Context Protocol)** and provides both **S
 
 You can integrate FNS as an MCP server directly into compatible AI clients like Cherry Studio, Cursor, Claude Code, and hermes-agent. Once integrated, the AI will gain the ability to read and write your personal notes and attachments. In addition, all modifications made via MCP will be synchronized to your client devices in real-time via WebSocket.
 
+For OAuth-protected MCP deployments with Stytch, see [docs/runbook/mcp-oauth-stytch.md](docs/runbook/mcp-oauth-stytch.md) ([简体中文](docs/runbook/mcp-oauth-stytch.zh-CN.md), [繁體中文](docs/runbook/mcp-oauth-stytch.zh-TW.md)).
+
 ### Common Request Header Parameters
 
 The following request headers are supported regardless of the transport mode used:
