@@ -168,7 +168,7 @@ func (s *oidcService) findOrCreateUser(ctx context.Context, claims internaloidc.
 		return nil, code.ErrorUserRegister.WithDetails("oidc email is required for auto registration")
 	}
 
-	username, err := s.availableUsername(ctx, claims.Username, claims.Subject)
+	username, err := s.availableUsername(ctx, usernameCandidates(claims)...)
 	if err != nil {
 		return nil, err
 	}
@@ -188,10 +188,25 @@ func (s *oidcService) findOrCreateUser(ctx context.Context, claims internaloidc.
 	return user, nil
 }
 
-func (s *oidcService) availableUsername(ctx context.Context, claimUsername, subject string) (string, error) {
-	base := normalizeUsername(claimUsername)
-	if base == "" {
-		base = normalizeUsername("oidc_" + subject)
+func usernameCandidates(claims internaloidc.Claims) []string {
+	candidates := []string{
+		claims.Username,
+		claims.DisplayName,
+		emailLocalPart(claims.Email),
+	}
+	if claims.Subject != "" {
+		candidates = append(candidates, "oidc_"+claims.Subject)
+	}
+	return candidates
+}
+
+func (s *oidcService) availableUsername(ctx context.Context, candidates ...string) (string, error) {
+	base := ""
+	for _, candidate := range candidates {
+		base = normalizeUsername(candidate)
+		if base != "" {
+			break
+		}
 	}
 	if base == "" {
 		base = "oidc_user"
@@ -226,6 +241,14 @@ func normalizeUsername(value string) string {
 		return value
 	}
 	return ""
+}
+
+func emailLocalPart(email string) string {
+	local, _, ok := strings.Cut(strings.TrimSpace(email), "@")
+	if !ok {
+		return ""
+	}
+	return local
 }
 
 func truncateUsername(value string, max int) string {

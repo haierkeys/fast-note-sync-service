@@ -71,6 +71,15 @@ FNS 会把 OIDC 绑定关系存储在 `user_oidc_identity` 表中。
 
 更稳妥的上线方式是先设置 `auto-register: false`，提前创建本地用户，让首次 OIDC 登录通过 email 自动绑定。
 
+当 `auto-register: true` 时，本地用户名会按以下顺序从第一个可用值生成：
+
+1. `username-claim`，例如 `preferred_username`
+2. `display-name-claim`，例如 `name`
+3. email 中 `@` 前面的部分
+4. `oidc_` 加 OIDC subject
+
+生成值会规范化为 FNS 用户名格式：字母、数字、下划线，长度 3 到 20。如果用户名已存在，FNS 会追加数字后缀。
+
 ## Provider 配置
 
 ### Dex

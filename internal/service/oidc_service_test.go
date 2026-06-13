@@ -105,6 +105,35 @@ func TestOIDCServiceAutoRegistersWhenNoUserMatches(t *testing.T) {
 	}
 }
 
+func TestOIDCServiceAutoRegisterFallsBackToDisplayNameForUsername(t *testing.T) {
+	userRepo := &fakeOIDCUserRepo{byEmail: map[string]*domain.User{}}
+	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}
+	svc := NewOIDCService(userRepo, identityRepo, &fakeOIDCTokenService{}, OIDCServiceConfig{
+		AutoRegister: true,
+		Issuer:       "https://issuer.example",
+		UserMapping: OIDCUserMappingConfig{
+			SubjectClaim:     "sub",
+			EmailClaim:       "email",
+			UsernameClaim:    "preferred_username",
+			DisplayNameClaim: "name",
+		},
+	})
+
+	_, err := svc.Authenticate(context.Background(), internaloidc.Claims{
+		Raw: map[string]interface{}{
+			"sub":   "opaque-subject",
+			"email": "oidc@example.com",
+			"name":  "OIDC User",
+		},
+	}, "127.0.0.1", "WebGUI", "test-agent")
+	if err != nil {
+		t.Fatalf("Authenticate() error = %v", err)
+	}
+	if len(userRepo.created) != 1 || userRepo.created[0].Username != "OIDC_User" {
+		t.Fatalf("created users = %#v, want username OIDC_User", userRepo.created)
+	}
+}
+
 func TestOIDCServiceRejectsUnknownUserWhenAutoRegisterDisabled(t *testing.T) {
 	userRepo := &fakeOIDCUserRepo{byEmail: map[string]*domain.User{}}
 	identityRepo := &fakeOIDCIdentityRepo{byIssuerSubject: map[string]*domain.OIDCIdentity{}}

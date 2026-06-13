@@ -71,6 +71,15 @@ Login resolution order:
 
 For safer rollout, start with `auto-register: false`, create local users first, and let first login bind them by email.
 
+When `auto-register: true`, the local username is generated from the first usable value in this order:
+
+1. `username-claim` such as `preferred_username`
+2. `display-name-claim` such as `name`
+3. the email local part before `@`
+4. `oidc_` plus the OIDC subject
+
+The value is normalized to FNS username rules: letters, numbers, and underscores, 3 to 20 characters. If the username already exists, FNS appends a numeric suffix.
+
 ## Provider Setup
 
 ### Dex

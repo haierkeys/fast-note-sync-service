@@ -71,6 +71,15 @@ FNS 會把 OIDC 綁定關係儲存在 `user_oidc_identity` 表中。
 
 較穩妥的上線方式是先設定 `auto-register: false`，預先建立本機使用者，讓首次 OIDC 登入透過 email 自動綁定。
 
+當 `auto-register: true` 時，本機使用者名稱會按以下順序從第一個可用值生成：
+
+1. `username-claim`，例如 `preferred_username`
+2. `display-name-claim`，例如 `name`
+3. email 中 `@` 前面的部分
+4. `oidc_` 加 OIDC subject
+
+生成值會正規化為 FNS 使用者名稱格式：字母、數字、底線，長度 3 到 20。如果使用者名稱已存在，FNS 會追加數字後綴。
+
 ## Provider 配置
 
 ### Dex
