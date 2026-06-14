@@ -688,6 +688,14 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		}
 
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{newNoteCreated.ID}, nil)
+		if err := s.folderService.CleanupEmptyAncestors(ctx, uid, vaultID, oldPath); err != nil {
+			zap.L().Warn("noteService.Rename: cleanup empty ancestor folders failed",
+				zap.Int64("uid", uid),
+				zap.Int64("vaultID", vaultID),
+				zap.String("oldPath", oldPath),
+				zap.Error(err),
+			)
+		}
 		go s.Migrate(context.Background(), n.ID, newNoteCreated.ID, uid)
 		if s.backupService != nil {
 			go s.backupService.NotifyUpdated(uid)

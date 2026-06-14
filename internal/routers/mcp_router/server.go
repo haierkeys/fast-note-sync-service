@@ -100,6 +100,9 @@ func NewMCPServer(appContainer *app.App, wss *pkgapp.WebsocketServer) *mcpsrv.MC
 	// File Tools
 	registerFileTools(srv, appContainer, wss)
 
+	// Folder Tools
+	registerFolderTools(srv, appContainer, wss)
+
 	// Vault Tools
 	registerVaultTools(srv, appContainer)
 

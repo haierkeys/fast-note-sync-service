@@ -61,6 +61,14 @@ func (m *MockFolderService) Delete(ctx context.Context, uid int64, params *dto.F
 	return nil, args.Error(1)
 }
 
+func (m *MockFolderService) DeleteTree(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) (*dto.FolderDTO, error) {
+	args := m.Called(ctx, uid, params)
+	if v := args.Get(0); v != nil {
+		return v.(*dto.FolderDTO), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockFolderService) Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) (*dto.FolderDTO, *dto.FolderDTO, error) {
 	args := m.Called(ctx, uid, params)
 	var old, newF *dto.FolderDTO
@@ -92,6 +100,11 @@ func (m *MockFolderService) ListFiles(ctx context.Context, uid int64, params *dt
 func (m *MockFolderService) EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error) {
 	args := m.Called(ctx, uid, vaultID, path)
 	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockFolderService) CleanupEmptyAncestors(ctx context.Context, uid int64, vaultID int64, resourcePath string) error {
+	args := m.Called(ctx, uid, vaultID, resourcePath)
+	return args.Error(0)
 }
 
 func (m *MockFolderService) SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error {

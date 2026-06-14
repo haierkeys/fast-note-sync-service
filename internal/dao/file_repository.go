@@ -712,6 +712,9 @@ func (r *fileRepository) ListByPathPrefix(ctx context.Context, pathPrefix string
 	}
 	var res []*domain.File
 	for _, m := range ms {
+		if !isPathWithinPrefix(m.Path, pathPrefix) {
+			continue
+		}
 		res = append(res, r.toDomain(m, uid))
 	}
 	return res, nil

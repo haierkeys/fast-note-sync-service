@@ -76,6 +76,14 @@ func (m *MockFolderRepository) ListByUpdatedTimestamp(ctx context.Context, times
 	return args.Get(0).([]*domain.Folder), args.Error(1)
 }
 
+func (m *MockFolderRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Folder, error) {
+	args := m.Called(ctx, pathPrefix, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Folder), args.Error(1)
+}
+
 func (m *MockFolderRepository) List(ctx context.Context, vaultID int64, uid int64) ([]*domain.Folder, error) {
 	args := m.Called(ctx, vaultID, uid)
 	if args.Get(0) == nil {

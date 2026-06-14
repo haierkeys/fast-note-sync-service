@@ -887,6 +887,14 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 
 		// 修正目录FID
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
+		if err := s.folderService.CleanupEmptyAncestors(ctx, uid, vaultID, oldPath); err != nil {
+			zap.L().Warn("fileService.Rename: cleanup empty ancestor folders failed",
+				zap.Int64("uid", uid),
+				zap.Int64("vaultID", vaultID),
+				zap.String("oldPath", oldPath),
+				zap.Error(err),
+			)
+		}
 
 		if s.backupService != nil {
 			go s.backupService.NotifyUpdated(uid)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -25,10 +26,12 @@ type FolderService interface {
 	ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error)
 	UpdateOrCreate(ctx context.Context, uid int64, params *dto.FolderCreateRequest) (*dto.FolderDTO, error)
 	Delete(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) (*dto.FolderDTO, error)
+	DeleteTree(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) (*dto.FolderDTO, error)
 	Rename(ctx context.Context, uid int64, params *dto.FolderRenameRequest) (*dto.FolderDTO, *dto.FolderDTO, error)
 	ListNotes(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.NoteNoContentDTO, int, error)
 	ListFiles(ctx context.Context, uid int64, params *dto.FolderContentRequest, pager *app.Pager) ([]*dto.FileDTO, int, error)
 	EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error)
+	CleanupEmptyAncestors(ctx context.Context, uid int64, vaultID int64, resourcePath string) error
 	SyncResourceFID(ctx context.Context, uid int64, vaultID int64, noteIDs []int64, fileIDs []int64) error
 	GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error)
 	CleanDuplicateFolders(ctx context.Context, uid int64, vaultID int64) error
@@ -42,6 +45,7 @@ type folderService struct {
 	vaultService   VaultService
 	sf             singleflight.Group
 	backupService  BackupService
+	gitSyncService GitSyncService
 	pool           *workerpool.Pool
 	syncLogService SyncLogService
 	clientType     string
@@ -49,13 +53,14 @@ type folderService struct {
 	clientVersion  string
 }
 
-func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, backupSvc BackupService, syncLogSvc SyncLogService, pool *workerpool.Pool) FolderService {
+func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRepository, fileRepo domain.FileRepository, vaultSvc VaultService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, pool *workerpool.Pool) FolderService {
 	return &folderService{
 		folderRepo:     folderRepo,
 		noteRepo:       noteRepo,
 		fileRepo:       fileRepo,
 		vaultService:   vaultSvc,
 		backupService:  backupSvc,
+		gitSyncService: gitSyncSvc,
 		syncLogService: syncLogSvc,
 		pool:           pool,
 		sf:             singleflight.Group{},
@@ -200,6 +205,98 @@ func (s *folderService) Delete(ctx context.Context, uid int64, params *dto.Folde
 	}
 
 	return s.domainToDTO(f), nil
+}
+
+func (s *folderService) DeleteTree(ctx context.Context, uid int64, params *dto.FolderDeleteRequest) (*dto.FolderDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	params.Path = strings.Trim(params.Path, "/")
+	if params.Path == "" {
+		return nil, code.ErrorInvalidParams.WithDetails("path cannot be empty")
+	}
+	if params.PathHash == "" {
+		params.PathHash = util.EncodeHash32(params.Path)
+	}
+
+	rootFolders, err := s.folderRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, code.ErrorFolderNotFound
+		}
+		return nil, code.ErrorFolderGetFailed.WithDetails(err.Error())
+	}
+	if len(rootFolders) == 0 {
+		return nil, code.ErrorFolderNotFound
+	}
+	root := rootFolders[0]
+
+	childFolders, err := s.folderRepo.ListByPathPrefix(ctx, params.Path, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorFolderListFailed.WithDetails(err.Error())
+	}
+	notes, err := s.noteRepo.ListByPathPrefix(ctx, params.Path, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorNoteListFailed.WithDetails(err.Error())
+	}
+	files, err := s.fileRepo.ListByPathPrefix(ctx, params.Path, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorFileListFailed.WithDetails(err.Error())
+	}
+
+	now := timex.Now().UnixMilli()
+	for _, n := range notes {
+		n.Action = domain.NoteActionDelete
+		n.Rename = 0
+		n.UpdatedTimestamp = now
+		if err := s.noteRepo.UpdateDelete(ctx, n, uid); err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", n.Path, n.PathHash, s.clientType, s.clientName, s.clientVersion, n.Size)
+		}
+	}
+
+	for _, f := range files {
+		f.Action = domain.FileActionDelete
+		f.Rename = 0
+		f.UpdatedTimestamp = now
+		if _, err := s.fileRepo.Update(ctx, f, uid); err != nil {
+			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionSoftDelete, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, f.Size)
+		}
+	}
+
+	folders := append([]*domain.Folder{}, childFolders...)
+	sort.SliceStable(folders, func(i, j int) bool {
+		return strings.Count(folders[i].Path, "/") > strings.Count(folders[j].Path, "/")
+	})
+	folders = append(folders, rootFolders...)
+	for _, f := range folders {
+		if f.Action == domain.FolderActionDelete {
+			continue
+		}
+		f.Action = domain.FolderActionDelete
+		f.UpdatedTimestamp = now
+		if _, err := s.folderRepo.Update(ctx, f, uid); err != nil {
+			return nil, code.ErrorFolderDeleteFailed.WithDetails(err.Error())
+		}
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionDelete, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
+		}
+	}
+
+	if s.backupService != nil {
+		s.backupService.NotifyUpdated(uid)
+	}
+	if s.gitSyncService != nil && (len(notes) > 0 || len(files) > 0) {
+		s.gitSyncService.NotifyUpdated(uid, vaultID)
+	}
+	return s.domainToDTO(root), nil
 }
 
 func (s *folderService) ListByUpdatedTimestamp(ctx context.Context, uid int64, vault string, lastTime int64) ([]*dto.FolderDTO, error) {
@@ -525,6 +622,98 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 		currentFID = val.(int64)
 	}
 	return currentFID, nil
+}
+
+func (s *folderService) CleanupEmptyAncestors(ctx context.Context, uid int64, vaultID int64, resourcePath string) error {
+	path := strings.Trim(resourcePath, "/")
+	if path == "" || !strings.Contains(path, "/") {
+		return nil
+	}
+
+	parent := path[:strings.LastIndex(path, "/")]
+	for parent != "" {
+		pathHash := util.EncodeHash32(parent)
+		folders, err := s.folderRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return code.ErrorFolderGetFailed.WithDetails(err.Error())
+		}
+		if len(folders) == 0 {
+			parent = parentPath(parent)
+			continue
+		}
+
+		ids := make([]int64, 0, len(folders))
+		for _, f := range folders {
+			if f.Action != domain.FolderActionDelete {
+				ids = append(ids, f.ID)
+			}
+		}
+		if len(ids) == 0 {
+			parent = parentPath(parent)
+			continue
+		}
+
+		empty, err := s.folderIDsAreEmpty(ctx, uid, vaultID, ids)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			return nil
+		}
+
+		for _, f := range folders {
+			if f.Action == domain.FolderActionDelete {
+				continue
+			}
+			f.Action = domain.FolderActionDelete
+			f.UpdatedTimestamp = timex.Now().UnixMilli()
+			if _, err := s.folderRepo.Update(ctx, f, uid); err != nil {
+				return code.ErrorFolderDeleteFailed.WithDetails(err.Error())
+			}
+			if s.syncLogService != nil {
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionDelete, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
+			}
+		}
+
+		parent = parentPath(parent)
+	}
+	return nil
+}
+
+func (s *folderService) folderIDsAreEmpty(ctx context.Context, uid int64, vaultID int64, ids []int64) (bool, error) {
+	for _, id := range ids {
+		children, err := s.folderRepo.GetByFID(ctx, id, vaultID, uid)
+		if err != nil {
+			return false, code.ErrorFolderListFailed.WithDetails(err.Error())
+		}
+		if len(children) > 0 {
+			return false, nil
+		}
+	}
+
+	noteCount, err := s.noteRepo.ListByFIDsCount(ctx, ids, vaultID, uid)
+	if err != nil {
+		return false, code.ErrorNoteListFailed.WithDetails(err.Error())
+	}
+	if noteCount > 0 {
+		return false, nil
+	}
+
+	fileCount, err := s.fileRepo.ListByFIDsCount(ctx, ids, vaultID, uid)
+	if err != nil {
+		return false, code.ErrorFileListFailed.WithDetails(err.Error())
+	}
+	return fileCount == 0, nil
+}
+
+func parentPath(path string) string {
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		return path[:idx]
+	}
+	return ""
 }
 
 // SyncResourceFID syncs FID of resources (called after folder rename/move)

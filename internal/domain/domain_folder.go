@@ -61,6 +61,9 @@ type FolderRepository interface {
 	// ListByUpdatedTimestamp 根据更新时间戳获取文件夹列表
 	ListByUpdatedTimestamp(ctx context.Context, timestamp, vaultID, uid int64) ([]*Folder, error)
 
+	// ListByPathPrefix 获取指定路径下的子文件夹
+	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*Folder, error)
+
 	// List 获取指定仓库下的所有文件夹
 	List(ctx context.Context, vaultID int64, uid int64) ([]*Folder, error)
 	// ListAll 获取该用户所有的文件夹
