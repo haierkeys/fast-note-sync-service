@@ -1,0 +1,38 @@
+==========================
+LICENSE & COPYRIGHT NOTICE
+==========================
+
+ORIGINAL KOREAN (Official Text)
+-------------------------------
+[함초롬체 지적 재산권에 대한 안내]
+① 함초롬체 2종에 대한 지적 재산권은 ’한글과컴퓨터’에 있습니다.
+② 함초롬체는 개인 및 기업 사용자에게 무료로 제공되며, 모든 출판물과 저작물에서 자유롭게 사용이 가능합니다. 단, 저작권 보호 문화를 위해 글꼴의 사용시 글꼴 출처를 표기하는 것을 권장합니다.
+③ 사용자들은 함초롬체를 자유롭게 배포할 수 있으나, 상업적인 목적으로는 배포 및 수정할 수 없습니다.
+
+HAN-MIXED VERSION (informational, Korean text is authoritative)
+---------------------------------------------------------------
+[함초롬體 知的財産權에 대한 案內]
+① 함초롬體 2種에 대한 知的財産權은 ’韓㐎與컴퓨터’에있습니다.
+② 함초롬體는個人및企業使用者에게無料로提供되며,所有出版物과著作物에서自由롭게使用이可能합니다.但,著作權保護文化를위해글꼴의使用時글꼴出處를表記하는것을勸奬합니다.
+③ 使用者들은 함초롬體를自由롭게配布할수있으나,商業的目的으로는配布및修正할수없습니다.
+
+ENGLISH TRANSLATION (informational, Korean text is authoritative)
+-----------------------------------------------------------------
+[Notice Regarding Intellectual Property Rights]
+① The intellectual property rights for the two Hamchorom fonts belong to HANCOM Inc.
+② The Hamchorom font is provided free of charge to personal and corporate users, and may be used freely in all publications and creative works. However, for the sake of copyright protection culture, it is recommended to cite the source of the font when using it.
+③ Users may freely distribute the Hamchorom font, but distributing or modifying it for commercial purposes is prohibited.
+
+CHINESE TRANSLATION (informational, Korean text is authoritative)
+-----------------------------------------------------------------
+[함초롬體之智識財産權如案]
+① 함초롬體２種之智識財産權倂隸「韓㐎與컴퓨터」。
+② 함초롬體嚮人社用者免費提供，凡出版物與著作物皆可自由使用。但，以衞著作權保護之風故，宜標出處于用時。
+③ 許用者自由發佈，但不得以商市佈革其體。
+
+TECHNICAL NOTE & DISCLAIMER
+---------------------------
+The font files provided in this repository ("hcr-lvt" or "Hamchorom_LVT") are derived from the Hamchorom font family, maintained and modified by KTUG (Korean TeX Users Group) for technical optimization (GSUB/GPOS support).
+- Modification: Subsetting and WOFF2 conversion were applied for web performance optimization.
+- Integrity: The original glyph designs and font logic remain unchanged from the KTUG-provided source (https://github.com/dohyunkim/hcr-lvt).
+- Legal Disclaimer: The scripts and feature files (patching logic) used for these modifications are in the Public Domain, as per the KTUG maintainer's notice. The font binaries remain subject to the terms of HANCOM Inc. specified above.
