@@ -216,7 +216,7 @@ type NoteHistoryRestoreRequest struct {
 // NoteDTO Note data transfer object
 // NoteDTO 笔记数据传输对象
 type NoteDTO struct {
-	ID               int64      `json:"-" form:"id"`                    // Note ID // 笔记 ID
+	ID               int64      `json:"id" form:"id"`                    // Note ID // 笔记 ID
 	Action           string     `json:"-" form:"action"`                // Action // 动作
 	Path             string     `json:"path" form:"path"`               // Note path // 笔记路径
 	PathHash         string     `json:"pathHash" form:"pathHash"`       // Path hash // 路径哈希
@@ -237,7 +237,7 @@ type NoteDTO struct {
 // NoteNoContentDTO Note DTO without content
 // NoteNoContentDTO 不包含内容的笔记 DTO
 type NoteNoContentDTO struct {
-	ID               int64      `json:"-" form:"id"`                      // Note ID // 笔记 ID
+	ID               int64      `json:"id" form:"id"`                      // Note ID // 笔记 ID
 	Action           string     `json:"-" form:"action"`                  // Action // 动作
 	Path             string     `json:"path" form:"path"`                 // Note path // 笔记路径
 	PathHash         string     `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希

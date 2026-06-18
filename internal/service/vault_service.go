@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
@@ -65,6 +66,10 @@ type VaultService interface {
 	// RebuildIndex 从数据库和物理文件内容重建指定仓库的全文搜索索引
 	// RebuildIndex rebuilds full-text search index for a specific vault
 	RebuildIndex(ctx context.Context, uid, vaultID int64) error
+
+	// ForceDeleteDataItem permanently deletes a single note or file and writes a sync log
+	// ForceDeleteDataItem 强制物理删除单个笔记或附件数据并记录同步更新日志
+	ForceDeleteDataItem(ctx context.Context, uid int64, vaultID int64, itemType string, itemID int64, clientType, clientName, clientVersion string) error
 }
 
 // vaultService implementation of VaultService interface
@@ -393,5 +398,112 @@ func (s *vaultService) RebuildIndex(ctx context.Context, uid, vaultID int64) err
 		return err
 	}
 	return s.noteRepo.RebuildVaultIndex(ctx, uid, vaultID)
+}
+
+// ForceDeleteDataItem permanently deletes a single note or file and writes a sync log
+// ForceDeleteDataItem 强制物理删除单个笔记或附件数据并记录同步更新日志
+func (s *vaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vaultID int64, itemType string, itemID int64, clientType, clientName, clientVersion string) error {
+	// 1. Verify if vault exists and belongs to user
+	// 1. 确认 Vault 是否存在且属于该用户
+	if _, err := s.Get(ctx, uid, vaultID); err != nil {
+		return err
+	}
+
+	if itemType == "note" {
+		// A. Get note details by ID
+		note, err := s.noteRepo.GetByID(ctx, itemID, uid)
+		if err != nil {
+			return err
+		}
+		if note == nil || note.VaultID != vaultID {
+			return errors.New("note not found or belongs to another vault")
+		}
+
+		// B. Perform physical delete
+		// B. 执行物理删除
+		if err := s.noteRepo.Delete(ctx, note.ID, uid); err != nil {
+			return err
+		}
+
+		// C. Write SyncLogActionDelete to ensure multi-client sync consistency
+		// C. 记录 SyncLogActionDelete，保证多端同步一致性
+		if s.logRepo != nil {
+			entry := &domain.SyncLog{
+				UID:           uid,
+				VaultID:       vaultID,
+				Type:          domain.SyncLogTypeNote,
+				Action:        domain.SyncLogActionDelete,
+				ChangedFields: "",
+				Path:          note.Path,
+				PathHash:      note.PathHash,
+				Size:          note.Size,
+				ClientType:    clientType,
+				ClientName:    clientName,
+				ClientVersion: clientVersion,
+				Status:        1, // success // 成功
+				CreatedAt:     timex.Now(),
+			}
+			_ = s.logRepo.Create(ctx, entry, uid)
+		}
+
+		// D. Async update vault size stats
+		// D. 异步更新库大小统计
+		go func() {
+			res, err := s.noteRepo.CountSizeSum(context.Background(), vaultID, uid)
+			if err == nil && res != nil {
+				_ = s.UpdateNoteStats(context.Background(), res.Size, res.Count, vaultID, uid)
+			}
+		}()
+
+	} else if itemType == "file" {
+		// A. Get file details by ID
+		file, err := s.fileRepo.GetByID(ctx, itemID, uid)
+		if err != nil {
+			return err
+		}
+		if file == nil || file.VaultID != vaultID {
+			return errors.New("file not found or belongs to another vault")
+		}
+
+		// B. Perform physical delete
+		// B. 执行物理删除
+		if err := s.fileRepo.Delete(ctx, file.ID, uid); err != nil {
+			return err
+		}
+
+		// C. Write SyncLogActionDelete
+		// C. 记录 SyncLogActionDelete
+		if s.logRepo != nil {
+			entry := &domain.SyncLog{
+				UID:           uid,
+				VaultID:       vaultID,
+				Type:          domain.SyncLogTypeFile,
+				Action:        domain.SyncLogActionDelete,
+				ChangedFields: "",
+				Path:          file.Path,
+				PathHash:      file.PathHash,
+				Size:          file.Size,
+				ClientType:    clientType,
+				ClientName:    clientName,
+				ClientVersion: clientVersion,
+				Status:        1,
+				CreatedAt:     timex.Now(),
+			}
+			_ = s.logRepo.Create(ctx, entry, uid)
+		}
+
+		// D. Async update file stats
+		// D. 异步更新文件大小统计
+		go func() {
+			res, err := s.fileRepo.CountSizeSum(context.Background(), vaultID, uid)
+			if err == nil && res != nil {
+				_ = s.UpdateFileStats(context.Background(), res.Size, res.Count, vaultID, uid)
+			}
+		}()
+	} else {
+		return errors.New("invalid item type")
+	}
+
+	return nil
 }
 

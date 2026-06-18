@@ -132,7 +132,7 @@ type FileRenameRequest struct {
 // FileDTO File Data Transfer Object
 // FileDTO 文件数据传输对象
 type FileDTO struct {
-	ID               int64      `json:"-"`                                // File ID // 文件 ID
+	ID               int64      `json:"id" form:"id"`                                // File ID // 文件 ID
 	Action           string     `json:"-"`                                // Action // 动作
 	Path             string     `json:"path" form:"path"`                 // File path // 文件路径
 	PathHash         string     `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希

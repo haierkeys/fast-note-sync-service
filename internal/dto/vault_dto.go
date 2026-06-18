@@ -21,6 +21,13 @@ type VaultRebuildIndexRequest struct {
 	ID int64 `json:"id" form:"id" binding:"required,gte=1" example:"1"` // Vault ID // 保险库 ID
 }
 
+// VaultForceDeleteItemRequest 强制物理删除单条数据（笔记/附件）的请求参数
+// VaultForceDeleteItemRequest Request for force-deleting a single note or file in a vault
+type VaultForceDeleteItemRequest struct {
+	VaultID  int64  `json:"vaultId" form:"vaultId" binding:"required" example:"1"`              // Vault ID // 笔记库 ID
+	Type     string `json:"type" form:"type" binding:"required" oneof:"note file"`              // Resource type: note or file // 资源类型
+	ID       int64  `json:"id" form:"id" binding:"required" example:"100"`                      // Resource ID // 资源 ID
+}
 
 // ---------------- DTO / Response ----------------
 // ---------------- DTO / 响应参数 ----------------

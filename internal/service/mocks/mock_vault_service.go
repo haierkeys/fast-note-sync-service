@@ -112,6 +112,13 @@ func (m *MockVaultService) RebuildIndex(ctx context.Context, uid, vaultID int64)
 	return args.Error(0)
 }
 
+// ForceDeleteDataItem mock implementation.
+func (m *MockVaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vaultID int64, itemType string, itemID int64, clientType, clientName, clientVersion string) error {
+	args := m.Called(ctx, uid, vaultID, itemType, itemID, clientType, clientName, clientVersion)
+	return args.Error(0)
+}
+
+
 // Compile-time check: MockVaultService must implement service.VaultService.
 // 编译时检查：MockVaultService 必须实现 service.VaultService 接口。
 var _ service.VaultService = (*MockVaultService)(nil)

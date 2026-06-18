@@ -2,6 +2,7 @@ package api_router
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -288,4 +289,53 @@ func (h *VaultHandler) RebuildIndex(c *gin.Context) {
 
 	response.ToResponse(code.Success)
 }
+
+// ForceDeleteDataItem force-deletes a single note or file in a vault
+// @Summary Force delete a single item
+// @Description Permanently delete a single note or file (attachment) in a vault
+// @Tags Vault
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.VaultForceDeleteItemRequest true "Delete Parameters"
+// @Success 200 {object} pkgapp.Res "Success"
+// @Router /api/vault/force-delete-item [post]
+func (h *VaultHandler) ForceDeleteDataItem(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	params := &dto.VaultForceDeleteItemRequest{}
+
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("VaultHandler.ForceDeleteDataItem.BindAndValid err", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		h.App.Logger().Error("VaultHandler.ForceDeleteDataItem err uid=0")
+		response.ToResponse(code.ErrorNotUserAuthToken)
+		return
+	}
+
+	ctx := c.Request.Context()
+	clientType, clientName, clientVer := h.getClientInfo(c)
+
+	// Restrict to WebGUI client only
+	if strings.ToLower(clientType) != "webgui" {
+		h.App.Logger().Error("VaultHandler.ForceDeleteDataItem restrict WebGUI only err clientType=" + clientType)
+		response.ToResponse(code.ErrorNotUserAuthToken)
+		return
+	}
+
+	if err := h.App.VaultService.ForceDeleteDataItem(ctx, uid, params.VaultID, params.Type, params.ID, clientType, clientName, clientVer); err != nil {
+		h.logError(ctx, "VaultHandler.ForceDeleteDataItem", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.SuccessDelete)
+}
+
 

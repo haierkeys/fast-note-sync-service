@@ -180,6 +180,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 				webguiGroup.POST("/vault", vaultHandler.CreateOrUpdate)
 				webguiGroup.DELETE("/vault", vaultHandler.Delete)
 				webguiGroup.POST("/vault/rebuild-index", vaultHandler.RebuildIndex)
+				webguiGroup.POST("/vault/force-delete-item", vaultHandler.ForceDeleteDataItem)
 
 				// Admin config interface
 				// 管理员配置接口
