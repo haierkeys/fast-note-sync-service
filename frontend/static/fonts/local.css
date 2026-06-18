@@ -5,53 +5,9 @@
   font-style: normal;
   font-display: swap;
 }
-@font-face {
-  font-family: 'Seal Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src:
-    url('./_fallback/SealSans-Regular_v0.woff2') format('woff2');
-  unicode-range:
-    U+3D000-3FC3F;/*Seal Block*/
-}
-@font-face {
-  font-family: 'Old Hangul Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src:
-    url('./_fallback/Hamchorom_LVT/HANDotum-LVT.woff2') format('woff2');
-  unicode-range:
-    U+1100-11FF,/*韓㐎字母 Hangul Jamo*/
-    /*U+1113-115F,/*古韓㐎初聲 Hangul Jamo*/
-    /*U+1160,U+1176-11A7,/*古韓㐎中聲 Hangul Jamo*/
-    /*U+11C3-11FF,/*古韓㐎終聲 Hangul Jamo*/
-    U+302E-302F,/*古韓㐎單𩀱點聲識 Combining Tone Marks*/
-    U+A960-A97F,/*古韓㐎初聲 Hangul Jamo Extended-A*/
-    U+D7B0-D7CA,/*古韓㐎中聲 Hangul Jamo Extended-B*/
-    U+D7CB-D7FF;/*古韓㐎終聲 Hangul Jamo Extended-B*/
-}
-@font-face {
-  font-family: 'Old Hangul Serif';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src:
-    url('./_fallback/Hamchorom_LVT/HANBatang-LVT.woff2') format('woff2');
-  unicode-range:
-    U+1100-11FF,/*韓㐎字母 Hangul Jamo*/
-    /*U+1113-115F,/*古韓㐎初聲 Hangul Jamo*/
-    /*U+1160,U+1176-11A7,/*古韓㐎中聲 Hangul Jamo*/
-    /*U+11C3-11FF,/*古韓㐎終聲 Hangul Jamo*/
-    U+302E-302F,/*古韓㐎單𩀱點聲識 Combining Tone Marks*/
-    U+A960-A97F,/*古韓㐎初聲 Hangul Jamo Extended-A*/
-    U+D7B0-D7CA,/*古韓㐎中聲 Hangul Jamo Extended-B*/
-    U+D7CB-D7FF;/*古韓㐎終聲 Hangul Jamo Extended-B*/
-}
 
 :root {
-  --font-sans: 'Seal Sans', 'Old Hangul Sans', "CustomFont", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "CustomFont", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
