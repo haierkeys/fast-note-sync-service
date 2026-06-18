@@ -161,6 +161,9 @@ func (r *folderRepository) ListByPathPrefix(ctx context.Context, pathPrefix stri
 	}
 	var res []*domain.Folder
 	for _, m := range ms {
+		if !isPathWithinPrefix(m.Path, pathPrefix) {
+			continue
+		}
 		res = append(res, r.modelToDomain(m))
 	}
 	return res, nil

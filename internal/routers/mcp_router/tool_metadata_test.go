@@ -103,7 +103,7 @@ func TestToolMetadataMarshalIncludesSecuritySchemesAndAnnotations(t *testing.T) 
 }
 
 func TestMCPToolDefinitionsDeclareOutputSchemasAndMetadata(t *testing.T) {
-	files := []string{"note_tools.go", "file_tools.go", "vault_tools.go"}
+	files := []string{"note_tools.go", "file_tools.go", "folder_tools.go", "vault_tools.go"}
 	toolDefRE := regexp.MustCompile(`(\w+)\s*:=\s*mcp\.NewTool\("([^"]+)"`)
 	addToolRE := regexp.MustCompile(`srv\.AddTool\(([^,]+),`)
 

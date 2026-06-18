@@ -8,8 +8,11 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	domainmocks "github.com/haierkeys/fast-note-sync-service/internal/domain/mocks"
+	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 )
 
 // TestCleanDuplicateFolders uses table-driven tests to verify dedup logic.
@@ -79,4 +82,117 @@ func TestCleanDuplicateFolders(t *testing.T) {
 			mockRepo.AssertExpectations(t)
 		})
 	}
+}
+
+func TestFolderService_DeleteTree_RecursivelySoftDeletesChildrenAndResources(t *testing.T) {
+	ctx := context.Background()
+	uid := int64(1)
+	vaultID := int64(9)
+	vaultName := "vault"
+
+	folderRepo := new(domainmocks.MockFolderRepository)
+	noteRepo := new(domainmocks.MockNoteRepository)
+	fileRepo := new(domainmocks.MockFileRepository)
+	vaultRepo := new(domainmocks.MockVaultRepository)
+
+	root := &domain.Folder{ID: 10, VaultID: vaultID, Action: domain.FolderActionCreate, Path: "Projects", PathHash: util.EncodeHash32("Projects")}
+	child := &domain.Folder{ID: 11, VaultID: vaultID, Action: domain.FolderActionCreate, Path: "Projects/Archive", PathHash: util.EncodeHash32("Projects/Archive")}
+	note := &domain.Note{ID: 20, VaultID: vaultID, Action: domain.NoteActionCreate, Path: "Projects/Archive/todo.md", PathHash: util.EncodeHash32("Projects/Archive/todo.md")}
+	file := &domain.File{ID: 30, VaultID: vaultID, Action: domain.FileActionCreate, Path: "Projects/assets/image.png", PathHash: util.EncodeHash32("Projects/assets/image.png")}
+
+	vaultRepo.On("GetByName", mock.Anything, vaultName, uid).Return(&domain.Vault{ID: vaultID, Name: vaultName}, nil)
+	folderRepo.On("GetAllByPathHash", mock.Anything, root.PathHash, vaultID, uid).Return([]*domain.Folder{root}, nil)
+	folderRepo.On("ListByPathPrefix", mock.Anything, "Projects", vaultID, uid).Return([]*domain.Folder{child}, nil)
+	noteRepo.On("ListByPathPrefix", mock.Anything, "Projects", vaultID, uid).Return([]*domain.Note{note}, nil)
+	fileRepo.On("ListByPathPrefix", mock.Anything, "Projects", vaultID, uid).Return([]*domain.File{file}, nil)
+
+	folderRepo.On("Update", mock.Anything, mock.MatchedBy(func(f *domain.Folder) bool {
+		return f.ID == child.ID && f.Action == domain.FolderActionDelete
+	}), uid).Return(child, nil)
+	folderRepo.On("Update", mock.Anything, mock.MatchedBy(func(f *domain.Folder) bool {
+		return f.ID == root.ID && f.Action == domain.FolderActionDelete
+	}), uid).Return(root, nil)
+	noteRepo.On("UpdateDelete", mock.Anything, mock.MatchedBy(func(n *domain.Note) bool {
+		return n.ID == note.ID && n.Action == domain.NoteActionDelete && n.Rename == 0
+	}), uid).Return(nil)
+	fileRepo.On("Update", mock.Anything, mock.MatchedBy(func(f *domain.File) bool {
+		return f.ID == file.ID && f.Action == domain.FileActionDelete && f.Rename == 0
+	}), uid).Return(file, nil)
+
+	svc := &folderService{
+		folderRepo:   folderRepo,
+		noteRepo:     noteRepo,
+		fileRepo:     fileRepo,
+		vaultService: NewVaultService(vaultRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, zap.NewNop()),
+	}
+
+	got, err := svc.DeleteTree(ctx, uid, &dto.FolderDeleteRequest{Vault: vaultName, Path: "Projects"})
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Projects", got.Path)
+	folderRepo.AssertExpectations(t)
+	noteRepo.AssertExpectations(t)
+	fileRepo.AssertExpectations(t)
+	vaultRepo.AssertExpectations(t)
+}
+
+func TestFolderService_DeleteTree_RejectsRootPath(t *testing.T) {
+	ctx := context.Background()
+	uid := int64(1)
+	vaultID := int64(9)
+	vaultName := "vault"
+
+	folderRepo := new(domainmocks.MockFolderRepository)
+	vaultRepo := new(domainmocks.MockVaultRepository)
+	vaultRepo.On("GetByName", mock.Anything, vaultName, uid).Return(&domain.Vault{ID: vaultID, Name: vaultName}, nil)
+
+	svc := &folderService{
+		folderRepo:   folderRepo,
+		vaultService: NewVaultService(vaultRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, zap.NewNop()),
+	}
+
+	got, err := svc.DeleteTree(ctx, uid, &dto.FolderDeleteRequest{Vault: vaultName, Path: "/"})
+
+	assert.Nil(t, got)
+	assert.Error(t, err)
+	folderRepo.AssertNotCalled(t, "GetAllByPathHash", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	vaultRepo.AssertExpectations(t)
+}
+
+func TestFolderService_CleanupEmptyAncestors_StopsAtFirstNonEmptyFolder(t *testing.T) {
+	ctx := context.Background()
+	uid := int64(1)
+	vaultID := int64(9)
+
+	folderRepo := new(domainmocks.MockFolderRepository)
+	noteRepo := new(domainmocks.MockNoteRepository)
+	fileRepo := new(domainmocks.MockFileRepository)
+
+	emptyChild := &domain.Folder{ID: 11, VaultID: vaultID, Action: domain.FolderActionCreate, Path: "Projects/Archive", PathHash: util.EncodeHash32("Projects/Archive")}
+	nonEmptyParent := &domain.Folder{ID: 10, VaultID: vaultID, Action: domain.FolderActionCreate, Path: "Projects", PathHash: util.EncodeHash32("Projects")}
+
+	folderRepo.On("GetAllByPathHash", mock.Anything, emptyChild.PathHash, vaultID, uid).Return([]*domain.Folder{emptyChild}, nil)
+	folderRepo.On("GetByFID", mock.Anything, emptyChild.ID, vaultID, uid).Return([]*domain.Folder{}, nil)
+	noteRepo.On("ListByFIDsCount", mock.Anything, []int64{emptyChild.ID}, vaultID, uid).Return(int64(0), nil)
+	fileRepo.On("ListByFIDsCount", mock.Anything, []int64{emptyChild.ID}, vaultID, uid).Return(int64(0), nil)
+	folderRepo.On("Update", mock.Anything, mock.MatchedBy(func(f *domain.Folder) bool {
+		return f.ID == emptyChild.ID && f.Action == domain.FolderActionDelete
+	}), uid).Return(emptyChild, nil)
+
+	folderRepo.On("GetAllByPathHash", mock.Anything, nonEmptyParent.PathHash, vaultID, uid).Return([]*domain.Folder{nonEmptyParent}, nil)
+	folderRepo.On("GetByFID", mock.Anything, nonEmptyParent.ID, vaultID, uid).Return([]*domain.Folder{}, nil)
+	noteRepo.On("ListByFIDsCount", mock.Anything, []int64{nonEmptyParent.ID}, vaultID, uid).Return(int64(1), nil)
+
+	svc := &folderService{
+		folderRepo: folderRepo,
+		noteRepo:   noteRepo,
+		fileRepo:   fileRepo,
+	}
+
+	err := svc.CleanupEmptyAncestors(ctx, uid, vaultID, "Projects/Archive/moved.md")
+
+	assert.NoError(t, err)
+	folderRepo.AssertExpectations(t)
+	noteRepo.AssertExpectations(t)
+	fileRepo.AssertExpectations(t)
 }

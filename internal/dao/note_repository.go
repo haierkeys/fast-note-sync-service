@@ -695,6 +695,9 @@ func (r *noteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string
 	}
 	var res []*domain.Note
 	for _, m := range ms {
+		if !isPathWithinPrefix(m.Path, pathPrefix) {
+			continue
+		}
 		note, err := r.toDomain(m, uid)
 		if err != nil {
 			return nil, err
