@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -90,11 +91,18 @@ func (r *userRepository) toModel(user *domain.User) *model.User {
 	}
 }
 
-// GetByUID retrieves user by UID
+// GetByUID retrieves user by UID with optional filter by isDeleted
 // GetByUID 根据UID获取用户
-func (r *userRepository) GetByUID(ctx context.Context, uid int64) (*domain.User, error) {
+func (r *userRepository) GetByUID(ctx context.Context, uid int64, onlyActive bool) (*domain.User, error) {
 	u := r.user().User
-	m, err := u.WithContext(ctx).Where(u.UID.Eq(uid), u.IsDeleted.Eq(0)).First()
+	query := u.WithContext(ctx).Where(u.UID.Eq(uid))
+	if onlyActive {
+		query = query.Where(u.IsDeleted.Eq(0))
+	}
+	m, err := query.First()
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +146,41 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) (*domain
 	return r.toDomain(m), nil
 }
 
+// Update update a user
+func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
+	u := r.user().User
+	t := timex.Now()
+	var isDeleted int64
+	var deletedAt *timex.Time
+
+	if user.IsDeleted {
+		isDeleted = 1
+		deletedAt = &t
+	} else {
+		isDeleted = 0
+		deletedAt = nil
+	}
+
+	assignments := []field.AssignExpr{
+		u.Email.Value(user.Email),
+		u.Username.Value(user.Username),
+		u.IsDeleted.Value(isDeleted),
+		u.UpdatedAt.Value(t),
+		u.DeletedAt.Value(deletedAt),
+	}
+
+	// Update password if it is not empty.
+	if user.Password != "" {
+		assignments = append(assignments, u.Password.Value(user.Password))
+	}
+
+	_, err := u.WithContext(ctx).
+		Where(u.UID.Eq(user.UID)).
+		UpdateSimple(assignments...)
+
+	return err
+}
+
 // UpdatePassword updates user password
 // UpdatePassword 更新用户密码
 func (r *userRepository) UpdatePassword(ctx context.Context, password string, uid int64) error {
@@ -162,6 +205,22 @@ func (r *userRepository) GetAllUIDs(ctx context.Context) ([]int64, error) {
 		return nil, err
 	}
 	return uids, nil
+}
+
+// GetAll retrieves all users info
+func (r *userRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
+	u := r.user().User
+	modelList, err := u.WithContext(ctx).Order(u.IsDeleted, u.CreatedAt).Find()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*domain.User
+	for _, m := range modelList {
+		list = append(list, r.toDomain(m))
+	}
+	return list, nil
 }
 
 // Ensure userRepository implements domain.UserRepository interface

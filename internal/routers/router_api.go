@@ -196,6 +196,11 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 				webguiGroup.GET("/admin/gc", adminControlHandler.GC)
 				webguiGroup.GET("/admin/cloudflared_tunnel_download", adminControlHandler.CloudflaredTunnelDownload)
 
+				// Admin user managment
+				webguiGroup.GET("/admin/users/list", adminControlHandler.GetUsers)
+				webguiGroup.POST("/admin/users/create", adminControlHandler.CreateUser)
+				webguiGroup.POST("/admin/users/update", adminControlHandler.UpdateUser)
+
 				// Storage management routes
 				// 存储配置接口
 				webguiGroup.GET("/storage", storageHandler.List)

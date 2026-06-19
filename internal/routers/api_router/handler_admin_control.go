@@ -136,40 +136,40 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		HistoryKeepVersions:     &cfg.App.HistoryKeepVersions,
 		HistorySaveDelay:        &cfg.App.HistorySaveDelay,
 		// DefaultAPIFolder:        &cfg.App.DefaultAPIFolder,
-		AdminUID:         &cfg.User.AdminUID,
-		AuthTokenKey:     &cfg.Security.AuthTokenKey,
-		TokenExpiry:      &cfg.Security.TokenExpiry,
-		ShareTokenKey:    &cfg.Security.ShareTokenKey,
-		ShareTokenExpiry: &cfg.Security.ShareTokenExpiry,
-		PullSource:       &cfg.App.PullSource,
-		PullReleaseChannel: &cfg.App.PullReleaseChannel,
-		WebGUILoginTokenExpiry:  &cfg.Security.WebGUILoginTokenExpiry,
-		WebGUILoginTokenBindIP:  cfg.Security.WebGUILoginTokenBindIP,
-		CustomResponseHeaders:   &cfg.Server.CustomResponseHeaders,
-		DefaultPageSize:         &cfg.App.DefaultPageSize,
-		MaxPageSize:             &cfg.App.MaxPageSize,
-		DefaultContextTimeout:   &cfg.App.DefaultContextTimeout,
-		TempPath:                &cfg.App.TempPath,
-		IsReturnSussess:         &cfg.App.IsReturnSussess,
-		SyncLogRetentionTime:    &cfg.App.SyncLogRetentionTime,
-		DownloadSessionTimeout:  &cfg.App.DownloadSessionTimeout,
-		WorkerPoolMaxWorkers:    &cfg.App.WorkerPoolMaxWorkers,
-		WorkerPoolQueueSize:     &cfg.App.WorkerPoolQueueSize,
-		WriteQueueCapacity:      &cfg.App.WriteQueueCapacity,
-		WriteQueueTimeout:       &cfg.App.WriteQueueTimeout,
-		WriteQueueIdleTime:      &cfg.App.WriteQueueIdleTime,
-		WebSocketReadMaxPayloadSize:  &cfg.App.WebSocketReadMaxPayloadSize,
-		WebSocketWriteMaxPayloadSize: &cfg.App.WebSocketWriteMaxPayloadSize,
-		WebSocketParallelEnabled:     cfg.App.WebSocketParallelEnabled,
-		WebSocketParallelGolimit:     &cfg.App.WebSocketParallelGolimit,
-		WebSocketCheckUtf8Enabled:    cfg.App.WebSocketCheckUtf8Enabled,
-		WebSocketCompressionEnabled:  cfg.App.WebSocketCompressionEnabled,
-		WebSocketCompressionLevel:    &cfg.App.WebSocketCompressionLevel,
+		AdminUID:                      &cfg.User.AdminUID,
+		AuthTokenKey:                  &cfg.Security.AuthTokenKey,
+		TokenExpiry:                   &cfg.Security.TokenExpiry,
+		ShareTokenKey:                 &cfg.Security.ShareTokenKey,
+		ShareTokenExpiry:              &cfg.Security.ShareTokenExpiry,
+		PullSource:                    &cfg.App.PullSource,
+		PullReleaseChannel:            &cfg.App.PullReleaseChannel,
+		WebGUILoginTokenExpiry:        &cfg.Security.WebGUILoginTokenExpiry,
+		WebGUILoginTokenBindIP:        cfg.Security.WebGUILoginTokenBindIP,
+		CustomResponseHeaders:         &cfg.Server.CustomResponseHeaders,
+		DefaultPageSize:               &cfg.App.DefaultPageSize,
+		MaxPageSize:                   &cfg.App.MaxPageSize,
+		DefaultContextTimeout:         &cfg.App.DefaultContextTimeout,
+		TempPath:                      &cfg.App.TempPath,
+		IsReturnSussess:               &cfg.App.IsReturnSussess,
+		SyncLogRetentionTime:          &cfg.App.SyncLogRetentionTime,
+		DownloadSessionTimeout:        &cfg.App.DownloadSessionTimeout,
+		WorkerPoolMaxWorkers:          &cfg.App.WorkerPoolMaxWorkers,
+		WorkerPoolQueueSize:           &cfg.App.WorkerPoolQueueSize,
+		WriteQueueCapacity:            &cfg.App.WriteQueueCapacity,
+		WriteQueueTimeout:             &cfg.App.WriteQueueTimeout,
+		WriteQueueIdleTime:            &cfg.App.WriteQueueIdleTime,
+		WebSocketReadMaxPayloadSize:   &cfg.App.WebSocketReadMaxPayloadSize,
+		WebSocketWriteMaxPayloadSize:  &cfg.App.WebSocketWriteMaxPayloadSize,
+		WebSocketParallelEnabled:      cfg.App.WebSocketParallelEnabled,
+		WebSocketParallelGolimit:      &cfg.App.WebSocketParallelGolimit,
+		WebSocketCheckUtf8Enabled:     cfg.App.WebSocketCheckUtf8Enabled,
+		WebSocketCompressionEnabled:   cfg.App.WebSocketCompressionEnabled,
+		WebSocketCompressionLevel:     &cfg.App.WebSocketCompressionLevel,
 		WebSocketCompressionThreshold: &cfg.App.WebSocketCompressionThreshold,
-		FtsBleveEnabled:              cfg.App.FtsBleveEnabled,
-		FtsBleveStoreRaw:             cfg.App.FtsBleveStoreRaw,
-		GitName:                      &cfg.Git.Name,
-		GitEmail:                     &cfg.Git.Email,
+		FtsBleveEnabled:               cfg.App.FtsBleveEnabled,
+		FtsBleveStoreRaw:              cfg.App.FtsBleveStoreRaw,
+		GitName:                       &cfg.Git.Name,
+		GitEmail:                      &cfg.Git.Email,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -771,6 +771,151 @@ func (h *AdminControlHandler) UpdateCloudflareConfig(c *gin.Context) {
 	}
 
 	response.ToResponse(code.Success.WithData(params))
+}
+
+// CreateUser create a new user (requires admin privileges)
+// @Summary Create a new user
+// @Description Create a new user, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.UserCreateRequest true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/users/create [post]
+func (h *AdminControlHandler) CreateUser(c *gin.Context) {
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+	response := pkgapp.NewResponse(c)
+	params := &dto.UserCreateRequest{}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.CreateUser err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	// Parameter binding and validation
+	valid, errs := pkgapp.BindAndValid(c, params)
+	if !valid {
+		h.App.Logger().Error("apiRouter.AdminControl.CreateUser.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Call UserService to perform create user
+	userDTO, err := h.App.UserService.Create(ctx, params)
+	if err != nil {
+		logger.Error("apiRouter.AdminControl.CreateUser.Create err", zap.Error(err))
+		response.ToResponse(code.ErrorUserRegister)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(userDTO))
+}
+
+// UpdateUser update a user (requires admin privileges)
+// @Summary Update a user
+// @Description Update a user, requires admin privileges
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Accept json
+// @Produce json
+// @Param params body dto.UserUpdateRequest true "Config Parameters"
+// @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
+// @Failure 403 {object} pkgapp.Res "Insufficient privileges"
+// @Router /api/admin/users/update [post]
+func (h *AdminControlHandler) UpdateUser(c *gin.Context) {
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+	response := pkgapp.NewResponse(c)
+	params := &dto.UserUpdateRequest{}
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.UpdateUser err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	// Parameter binding and validation
+	valid, errs := pkgapp.BindAndValid(c, params)
+
+	if !valid {
+		h.App.Logger().Error("apiRouter.AdminControl.UpdateUser.BindAndValid errs", zap.Error(errs))
+		response.ToResponse(code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Call UserService to perform update user
+	err := h.App.UserService.Update(ctx, params)
+	if err != nil {
+		logger.Error("apiRouter.AdminControl.UpdateUser.Update err", zap.Error(err))
+		response.ToResponse(code.ErrorUserUpdate)
+		return
+	}
+
+	response.ToResponse(code.SuccessUpdate)
+}
+
+// GetUsers retrieves all users info
+// @Summary Get all users
+// @Description Handle request to get all users.
+// @Tags Config
+// @Security UserAuthToken
+// @Param token header string true "Auth Token"
+// @Produce json
+// @Success 200 {object} pkgapp.Res{data=[]dto.UserDTO} "Success"
+// @Failure 401 {object} pkgapp.Res "Unauthorized"
+// @Router /api/admin/users/list [get]
+func (h *AdminControlHandler) GetUsers(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	cfg := h.App.Config()
+	logger := h.App.Logger()
+
+	uid := pkgapp.GetUID(c)
+	if uid == 0 {
+		logger.Error("apiRouter.AdminControl.GetUsers err uid=0")
+		response.ToResponse(code.ErrorInvalidUserAuthToken)
+		return
+	}
+
+	if cfg.User.AdminUID != 0 && uid != int64(cfg.User.AdminUID) {
+		response.ToResponse(code.ErrorUserIsNotAdmin)
+		return
+	}
+
+	// Get request context
+	// 获取请求上下文
+	ctx := c.Request.Context()
+
+	// Call UserService to get all users
+	userDTO, err := h.App.UserService.GetAll(ctx)
+	if err != nil {
+		logger.Error("apiRouter.AdminControl.GetUsers.GetAll err", zap.Error(err))
+		response.ToResponse(code.ErrorUserNotFound)
+		return
+	}
+
+	response.ToResponse(code.Success.WithData(userDTO))
 }
 
 // GetSystemInfo retrieves system monitoring information (requires admin privileges)

@@ -165,7 +165,7 @@ type fakeOIDCUserRepo struct {
 	created []*domain.User
 }
 
-func (r *fakeOIDCUserRepo) GetByUID(ctx context.Context, uid int64) (*domain.User, error) {
+func (r *fakeOIDCUserRepo) GetByUID(ctx context.Context, uid int64, onlyActive bool) (*domain.User, error) {
 	if user := r.byUID[uid]; user != nil {
 		return user, nil
 	}
@@ -192,8 +192,16 @@ func (r *fakeOIDCUserRepo) Create(ctx context.Context, user *domain.User) (*doma
 	return &created, nil
 }
 
+func (r *fakeOIDCUserRepo) Update(ctx context.Context, user *domain.User) error {
+	return nil
+}
+
 func (r *fakeOIDCUserRepo) UpdatePassword(ctx context.Context, password string, uid int64) error {
 	return nil
+}
+
+func (r *fakeOIDCUserRepo) GetAll(ctx context.Context) ([]*domain.User, error) {
+	return nil, nil
 }
 
 func (r *fakeOIDCUserRepo) GetAllUIDs(ctx context.Context) ([]int64, error) {

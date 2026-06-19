@@ -24,6 +24,12 @@ type UserService interface {
 	// Register 用户注册
 	Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
 
+	// Create user
+	Create(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error)
+
+	// Update user
+	Update(ctx context.Context, params *dto.UserUpdateRequest) error
+
 	// Login user login
 	// Login 用户登录
 	Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error)
@@ -39,6 +45,9 @@ type UserService interface {
 	// GetAllUIDs retrieves all user UIDs
 	// GetAllUIDs 获取所有用户的 UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
+
+	// GetAll retrieves all users info
+	GetAll(ctx context.Context) ([]*dto.UserDTO, error)
 
 	// IsRegisterEnabled checks if registration is allowed
 	// IsRegisterEnabled 检查是否允许注册
@@ -79,6 +88,7 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 		Username:  user.Username,
 		Token:     user.Token,
 		Avatar:    user.Avatar,
+		IsDeleted: user.IsDeleted,
 		UpdatedAt: timex.Time(user.UpdatedAt),
 		CreatedAt: timex.Time(user.CreatedAt),
 	}
@@ -158,6 +168,136 @@ func (s *userService) Register(ctx context.Context, params *dto.UserCreateReques
 	return dto, nil
 }
 
+// Create user
+func (s *userService) Create(ctx context.Context, params *dto.UserCreateRequest) (*dto.UserDTO, error) {
+	// Validate username format
+	// 验证用户名格式
+	if !util.IsValidUsername(params.Username) {
+		return nil, code.ErrorUserUsernameNotValid
+	}
+
+	// Validate password consistency
+	// 验证密码一致性
+	if params.Password != params.ConfirmPassword {
+		return nil, code.ErrorUserPasswordNotMatch
+	}
+
+	// Check if email already exists
+	// 检查邮箱是否已存在
+	params.Email = strings.ToLower(strings.TrimSpace(params.Email))
+	emailUser, err := s.userRepo.GetByEmail(ctx, params.Email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, code.ErrorDBQuery
+	}
+	if emailUser != nil {
+		return nil, code.ErrorUserEmailAlreadyExists
+	}
+
+	// Check if username already exists
+	// 检查用户名是否已存在
+	nameUser, err := s.userRepo.GetByUsername(ctx, params.Username)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, code.ErrorDBQuery
+	}
+	if nameUser != nil {
+		return nil, code.ErrorUserAlreadyExists
+	}
+
+	// Generate password hash
+	// 生成密码哈希
+	password, err := util.GeneratePasswordHash(params.Password)
+	if err != nil {
+		return nil, code.ErrorPasswordNotValid
+	}
+
+	// Create user
+	// 创建用户
+	newUser := &domain.User{
+		Username: params.Username,
+		Email:    params.Email,
+		Password: password,
+	}
+
+	user, err := s.userRepo.Create(ctx, newUser)
+	if err != nil {
+		return nil, code.ErrorUserRegister.WithDetails(err.Error())
+	}
+
+	dto := s.domainToDTO(user)
+	return dto, nil
+}
+
+// Update user
+func (s *userService) Update(ctx context.Context, params *dto.UserUpdateRequest) error {
+	// Validate username format
+	// 验证用户名格式
+	if !util.IsValidUsername(params.Username) {
+		return code.ErrorUserUsernameNotValid
+	}
+
+	// Current user
+	currentUser, err := s.userRepo.GetByUID(ctx, params.UID, false)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return code.ErrorDBQuery
+	}
+
+	if currentUser == nil {
+		return code.ErrorUserNotFound
+	}
+
+	// Check if email already exists
+	// 检查邮箱是否已存在
+	params.Email = strings.ToLower(strings.TrimSpace(params.Email))
+	emailUser, err := s.userRepo.GetByEmail(ctx, params.Email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return code.ErrorDBQuery
+	}
+
+	// Prevent check self email
+	if emailUser != nil && emailUser.UID != currentUser.UID {
+		return code.ErrorUserEmailAlreadyExists
+	}
+
+	// Check if username already exists
+	// 检查用户名是否已存在
+	nameUser, err := s.userRepo.GetByUsername(ctx, params.Username)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return code.ErrorDBQuery
+	}
+
+	// Prevent check self username
+	if nameUser != nil && nameUser.UID != currentUser.UID {
+		return code.ErrorUserAlreadyExists
+	}
+
+	var password string
+	// Generate new password is not empty
+	if strings.TrimSpace(params.Password) != "" {
+		// Generate password hash
+		// 生成密码哈希
+		password, err = util.GeneratePasswordHash(params.Password)
+		if err != nil {
+			return code.ErrorPasswordNotValid
+		}
+	}
+
+	// Update user
+	updatedUser := &domain.User{
+		UID:       params.UID,
+		Username:  params.Username,
+		Email:     params.Email,
+		Password:  password,
+		IsDeleted: params.IsDeleted,
+	}
+
+	err = s.userRepo.Update(ctx, updatedUser)
+	if err != nil {
+		return code.ErrorUserUpdate.WithDetails(err.Error())
+	}
+
+	return nil
+}
+
 // Login user login
 // Login 用户登录
 func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
@@ -228,7 +368,7 @@ func (s *userService) ChangePassword(ctx context.Context, uid int64, params *dto
 
 	// Get user
 	// 获取用户
-	user, err := s.userRepo.GetByUID(ctx, uid)
+	user, err := s.userRepo.GetByUID(ctx, uid, true)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return code.ErrorUserNotFound
@@ -261,7 +401,7 @@ func (s *userService) ChangePassword(ctx context.Context, uid int64, params *dto
 // GetInfo retrieves user information
 // GetInfo 获取用户信息
 func (s *userService) GetInfo(ctx context.Context, uid int64) (*dto.UserDTO, error) {
-	user, err := s.userRepo.GetByUID(ctx, uid)
+	user, err := s.userRepo.GetByUID(ctx, uid, true)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -285,6 +425,20 @@ func (s *userService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return uids, nil
+}
+
+// GetAll retrieves all users info
+func (s *userService) GetAll(ctx context.Context) ([]*dto.UserDTO, error) {
+	users, err := s.userRepo.GetAll(ctx)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	var results []*dto.UserDTO
+	for _, vault := range users {
+		results = append(results, s.domainToDTO(vault))
+	}
+	return results, nil
 }
 
 // IsRegisterEnabled checks if registration is allowed

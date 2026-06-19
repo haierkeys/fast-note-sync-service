@@ -17,7 +17,7 @@ type MockUserRepository struct {
 
 // GetByUID retrieves a user by UID.
 // GetByUID 根据 UID 获取用户。
-func (m *MockUserRepository) GetByUID(ctx context.Context, uid int64) (*domain.User, error) {
+func (m *MockUserRepository) GetByUID(ctx context.Context, uid int64, onlyActive bool) (*domain.User, error) {
 	args := m.Called(ctx, uid)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -55,11 +55,29 @@ func (m *MockUserRepository) Create(ctx context.Context, user *domain.User) (*do
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+// Update update a user
+func (m *MockUserRepository) Update(ctx context.Context, user *domain.User) error {
+	args := m.Called(ctx, user)
+	if args.Get(0) == nil {
+		return args.Error(1)
+	}
+	return args.Error(1)
+}
+
 // UpdatePassword updates the user's password.
 // UpdatePassword 更新用户密码。
 func (m *MockUserRepository) UpdatePassword(ctx context.Context, password string, uid int64) error {
 	args := m.Called(ctx, password, uid)
 	return args.Error(0)
+}
+
+// GetAll retrieves all users info
+func (m *MockUserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.User), args.Error(1)
 }
 
 // GetAllUIDs retrieves all user UIDs.

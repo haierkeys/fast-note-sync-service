@@ -214,6 +214,212 @@ func TestUserService_Register_UsernameExists(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
+// --- Create ---
+
+// TestUserService_Create_Success verifies successful create user.
+func TestUserService_Create_Success(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	params := &dto.UserCreateRequest{
+		Email:           "test@example.com",
+		Username:        "testuser",
+		Password:        "password123",
+		ConfirmPassword: "password123",
+	}
+
+	// Email and username both not found (available)
+	// 邮箱和用户名均未注册（可用）
+	mockRepo.On("GetByEmail", mock.Anything, params.Email).
+		Return(nil, gorm.ErrRecordNotFound)
+	mockRepo.On("GetByUsername", mock.Anything, params.Username).
+		Return(nil, gorm.ErrRecordNotFound)
+
+	created := &domain.User{UID: 1, Email: params.Email, Username: params.Username}
+	mockRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.User")).
+		Return(created, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	result, err := svc.Create(context.Background(), params)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Create_PasswordMismatch verifies error when passwords do not match.
+func TestUserService_Create_PasswordMismatch(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	svc := newUserSvc(mockRepo, true)
+	_, err := svc.Create(context.Background(), &dto.UserCreateRequest{
+		Email:           "a@b.com",
+		Username:        "validuser",
+		Password:        "pass1",
+		ConfirmPassword: "pass2",
+	})
+
+	assert.ErrorIs(t, err, code.ErrorUserPasswordNotMatch)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Create_EmailExists verifies error if a user already exists with this email.
+func TestUserService_Create_EmailExists(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	mockRepo.On("GetByEmail", mock.Anything, "dup@example.com").
+		Return(&domain.User{UID: 99, Email: "dup@example.com"}, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	_, err := svc.Create(context.Background(), &dto.UserCreateRequest{
+		Email:           "dup@example.com",
+		Username:        "newuser",
+		Password:        "password123",
+		ConfirmPassword: "password123",
+	})
+
+	assert.ErrorIs(t, err, code.ErrorUserEmailAlreadyExists)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Create_UsernameExists verifies error when username is already taken.
+func TestUserService_Create_UsernameExists(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	// Email is available, but username is taken
+	// 邮箱可用，但用户名已被占用
+	mockRepo.On("GetByEmail", mock.Anything, "new@example.com").
+		Return(nil, gorm.ErrRecordNotFound)
+	mockRepo.On("GetByUsername", mock.Anything, "takenuser").
+		Return(&domain.User{UID: 99, Username: "takenuser"}, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	_, err := svc.Create(context.Background(), &dto.UserCreateRequest{
+		Email:           "new@example.com",
+		Username:        "takenuser",
+		Password:        "password123",
+		ConfirmPassword: "password123",
+	})
+
+	assert.ErrorIs(t, err, code.ErrorUserAlreadyExists)
+	mockRepo.AssertExpectations(t)
+}
+
+// --- Update ---
+
+// TestUserService_Update_Success verifies successful update user.
+func TestUserService_Update_Success(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	params := &dto.UserUpdateRequest{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	// Updated user exists
+	updated := &domain.User{UID: params.UID, Email: params.Email, Username: params.Username}
+
+	mockRepo.On("GetByUID", mock.Anything, params.UID, mock.Anything).
+		Return(updated, nil)
+
+	// Email and username both not found (available)
+	// 邮箱和用户名均未注册（可用）
+	mockRepo.On("GetByEmail", mock.Anything, params.Email).
+		Return(nil, gorm.ErrRecordNotFound)
+	mockRepo.On("GetByUsername", mock.Anything, params.Username).
+		Return(nil, gorm.ErrRecordNotFound)
+
+	mockRepo.On("Update", mock.Anything, mock.AnythingOfType("*domain.User")).
+		Return(updated, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	err := svc.Update(context.Background(), params)
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Update_Wrong_Uid verifies when user not exists.
+func TestUserService_Update_Wrong_Uid(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	params := &dto.UserUpdateRequest{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	mockRepo.On("GetByUID", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, gorm.ErrRecordNotFound)
+
+	svc := newUserSvc(mockRepo, true)
+	err := svc.Update(context.Background(), params)
+
+	assert.ErrorIs(t, err, code.ErrorUserNotFound)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Update_EmailExists verifies error if a user already exists with this email.
+func TestUserService_Update_EmailExists(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	params := &dto.UserUpdateRequest{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	// Updated user exists
+	updated := &domain.User{UID: params.UID, Email: params.Email, Username: params.Username}
+
+	mockRepo.On("GetByUID", mock.Anything, params.UID, mock.Anything).
+		Return(updated, nil)
+
+	// The email is already in use by an existing user.
+	mockRepo.On("GetByEmail", mock.Anything, params.Email).
+		Return(&domain.User{UID: 99, Email: params.Email}, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	err := svc.Update(context.Background(), params)
+
+	assert.ErrorIs(t, err, code.ErrorUserEmailAlreadyExists)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestUserService_Update_UsernameExists verifies error if a user already exists with this username.
+func TestUserService_Update_UsernameExists(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	params := &dto.UserUpdateRequest{
+		UID:      1,
+		Email:    "test@example.com",
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	// Updated user exists
+	updated := &domain.User{UID: params.UID, Email: params.Email, Username: params.Username}
+
+	mockRepo.On("GetByUID", mock.Anything, params.UID, mock.Anything).
+		Return(updated, nil)
+
+	mockRepo.On("GetByEmail", mock.Anything, params.Email).
+		Return(nil, gorm.ErrRecordNotFound)
+
+	// The email is already in use by an existing user.
+	mockRepo.On("GetByUsername", mock.Anything, params.Username).
+		Return(&domain.User{UID: 99, Username: params.Username}, nil)
+
+	svc := newUserSvc(mockRepo, true)
+	err := svc.Update(context.Background(), params)
+
+	assert.ErrorIs(t, err, code.ErrorUserAlreadyExists)
+	mockRepo.AssertExpectations(t)
+}
+
 // --- Login ---
 
 // TestUserService_Login_ByEmail_Success verifies successful login using email.
@@ -326,7 +532,7 @@ func TestUserService_Login_Rotate_Fallback(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "test-token", result.Token) // Fallback creates new token returning "test-token"
-	assert.Equal(t, int64(1), result.TokenID) // Mock created token has ID: 1
+	assert.Equal(t, int64(1), result.TokenID)   // Mock created token has ID: 1
 	mockRepo.AssertExpectations(t)
 }
 
@@ -338,7 +544,7 @@ func TestUserService_GetInfo_Success(t *testing.T) {
 	mockRepo := new(domainmocks.MockUserRepository)
 
 	user := &domain.User{UID: 1, Email: "a@b.com", Username: "user1"}
-	mockRepo.On("GetByUID", mock.Anything, int64(1)).
+	mockRepo.On("GetByUID", mock.Anything, int64(1), mock.Anything).
 		Return(user, nil)
 
 	svc := newUserSvc(mockRepo, true)
@@ -355,7 +561,7 @@ func TestUserService_GetInfo_Success(t *testing.T) {
 func TestUserService_GetInfo_NotFound(t *testing.T) {
 	mockRepo := new(domainmocks.MockUserRepository)
 
-	mockRepo.On("GetByUID", mock.Anything, int64(99)).
+	mockRepo.On("GetByUID", mock.Anything, int64(99), mock.Anything).
 		Return(nil, gorm.ErrRecordNotFound)
 
 	svc := newUserSvc(mockRepo, true)
@@ -377,7 +583,7 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 		UID:      1,
 		Password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // "password"
 	}
-	mockRepo.On("GetByUID", mock.Anything, int64(1)).Return(user, nil)
+	mockRepo.On("GetByUID", mock.Anything, int64(1), mock.Anything).Return(user, nil)
 	mockRepo.On("UpdatePassword", mock.Anything, mock.AnythingOfType("string"), int64(1)).Return(nil)
 
 	svc := newUserSvc(mockRepo, true)
@@ -388,6 +594,33 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+// --- GetAll ---
+
+// TestUserService_GetAllSuccess verifies returning users list
+func TestUserService_GetAllSuccess(t *testing.T) {
+	mockRepo := new(domainmocks.MockUserRepository)
+
+	// domain
+	mockUsers := []*domain.User{
+		{UID: 1, Email: "user1@example.com", Username: "user1"},
+		{UID: 2, Email: "user2@example.com", Username: "user2"},
+	}
+
+	// DTO
+	expectedDTOs := []*dto.UserDTO{
+		{UID: 1, Email: "user1@example.com", Username: "user1"},
+		{UID: 2, Email: "user2@example.com", Username: "user2"},
+	}
+
+	mockRepo.On("GetAll", mock.Anything).Return(mockUsers, nil)
+	svc := newUserSvc(mockRepo, true)
+	result, err := svc.GetAll(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDTOs, result)
 	mockRepo.AssertExpectations(t)
 }
 
