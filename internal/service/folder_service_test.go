@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 )
 
 // TestCleanDuplicateFolders uses table-driven tests to verify dedup logic.
@@ -75,7 +76,7 @@ func TestCleanDuplicateFolders(t *testing.T) {
 				mockRepo.On("Delete", mock.Anything, id, uid).Return(nil)
 			}
 
-			svc := &folderService{folderRepo: mockRepo}
+			svc := &folderService{folderRepo: mockRepo, sf: &singleflight.Group{}}
 			err := svc.CleanDuplicateFolders(ctx, uid, vaultID)
 
 			assert.NoError(t, err)
@@ -124,6 +125,7 @@ func TestFolderService_DeleteTree_RecursivelySoftDeletesChildrenAndResources(t *
 		noteRepo:     noteRepo,
 		fileRepo:     fileRepo,
 		vaultService: NewVaultService(vaultRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, zap.NewNop()),
+		sf:           &singleflight.Group{},
 	}
 
 	got, err := svc.DeleteTree(ctx, uid, &dto.FolderDeleteRequest{Vault: vaultName, Path: "Projects"})
@@ -149,6 +151,7 @@ func TestFolderService_DeleteTree_RejectsRootPath(t *testing.T) {
 	svc := &folderService{
 		folderRepo:   folderRepo,
 		vaultService: NewVaultService(vaultRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, zap.NewNop()),
+		sf:           &singleflight.Group{},
 	}
 
 	got, err := svc.DeleteTree(ctx, uid, &dto.FolderDeleteRequest{Vault: vaultName, Path: "/"})
@@ -187,6 +190,7 @@ func TestFolderService_CleanupEmptyAncestors_StopsAtFirstNonEmptyFolder(t *testi
 		folderRepo: folderRepo,
 		noteRepo:   noteRepo,
 		fileRepo:   fileRepo,
+		sf:         &singleflight.Group{},
 	}
 
 	err := svc.CleanupEmptyAncestors(ctx, uid, vaultID, "Projects/Archive/moved.md")

@@ -43,7 +43,7 @@ type folderService struct {
 	noteRepo       domain.NoteRepository
 	fileRepo       domain.FileRepository
 	vaultService   VaultService
-	sf             singleflight.Group
+	sf             *singleflight.Group // Singleflight group for concurrency control // 用于并发控制的 Singleflight 组
 	backupService  BackupService
 	gitSyncService GitSyncService
 	pool           *workerpool.Pool
@@ -63,7 +63,7 @@ func NewFolderService(folderRepo domain.FolderRepository, noteRepo domain.NoteRe
 		gitSyncService: gitSyncSvc,
 		syncLogService: syncLogSvc,
 		pool:           pool,
-		sf:             singleflight.Group{},
+		sf:             &singleflight.Group{},
 	}
 }
 
@@ -557,6 +557,50 @@ func (s *folderService) ListFiles(ctx context.Context, uid int64, params *dto.Fo
 // A proper fix would be to either:
 //   - Use singleflight keyed by (vaultID, path) to coalesce concurrent creates
 //   - Add a UNIQUE constraint on (vault_id, path_hash) and handle conflict
+// ensurePathFIDSingle performs the underlying lookup or creation of a folder.
+// ensurePathFIDSingle 执行底层的文件夹查询或创建。
+func (s *folderService) ensurePathFIDSingle(ctx context.Context, uid int64, vaultID int64, pathHash string, currentPath string, currentFID int64, level int) (any, error) {
+	f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			newFolder := &domain.Folder{
+				VaultID:  vaultID,
+				Action:   domain.FolderActionCreate,
+				Path:     currentPath,
+				PathHash: pathHash,
+				Level:    int64(level + 1),
+				FID:      currentFID,
+				Ctime:    timex.Now().UnixMilli(),
+				Mtime:    timex.Now().UnixMilli(),
+			}
+			f, err = s.folderRepo.Create(ctx, newFolder, uid)
+			if err != nil {
+				return 0, err
+			}
+
+			if s.syncLogService != nil {
+				s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
+			}
+			return f.ID, nil
+		}
+		return nil, err
+	} else if f.Action == domain.FolderActionDelete {
+		f.Action = domain.FolderActionCreate
+		f.Ctime = timex.Now().UnixMilli()
+		f.Mtime = timex.Now().UnixMilli()
+		f, err = s.folderRepo.Update(ctx, f, uid)
+		if err != nil {
+			return nil, err
+		}
+
+		if s.syncLogService != nil {
+			s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRestore, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
+		}
+		return f.ID, nil
+	}
+	return f.ID, nil
+}
+
 func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID int64, path string) (int64, error) {
 	path = strings.Trim(path, "/")
 	if path == "" {
@@ -573,47 +617,16 @@ func (s *folderService) EnsurePathFID(ctx context.Context, uid int64, vaultID in
 		pathHash := util.EncodeHash32(currentPath)
 
 		key := fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash)
-		val, err, _ := s.sf.Do(key, func() (any, error) {
-			f, err := s.folderRepo.GetByPathHash(ctx, pathHash, vaultID, uid)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					newFolder := &domain.Folder{
-						VaultID:  vaultID,
-						Action:   domain.FolderActionCreate,
-						Path:     currentPath,
-						PathHash: pathHash,
-						Level:    int64(i + 1),
-						FID:      currentFID,
-						Ctime:    timex.Now().UnixMilli(),
-						Mtime:    timex.Now().UnixMilli(),
-					}
-					f, err = s.folderRepo.Create(ctx, newFolder, uid)
-					if err != nil {
-						return 0, err
-					}
-
-					if s.syncLogService != nil {
-						s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionCreate, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
-					}
-					return f.ID, nil
-				}
-				return nil, err
-			} else if f.Action == domain.FolderActionDelete {
-				f.Action = domain.FolderActionCreate
-				f.Ctime = timex.Now().UnixMilli()
-				f.Mtime = timex.Now().UnixMilli()
-				f, err = s.folderRepo.Update(ctx, f, uid)
-				if err != nil {
-					return nil, err
-				}
-
-				if s.syncLogService != nil {
-					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFolder, domain.SyncLogActionRestore, "", f.Path, f.PathHash, s.clientType, s.clientName, s.clientVersion, 0)
-				}
-				return f.ID, nil
-			}
-			return f.ID, nil
-		})
+		var val any
+		var err error
+		if s.sf != nil {
+			var _ bool
+			val, err, _ = s.sf.Do(key, func() (any, error) {
+				return s.ensurePathFIDSingle(ctx, uid, vaultID, pathHash, currentPath, currentFID, i)
+			})
+		} else {
+			val, err = s.ensurePathFIDSingle(ctx, uid, vaultID, pathHash, currentPath, currentFID, i)
+		}
 
 		if err != nil {
 			return 0, err
@@ -962,7 +975,9 @@ func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, va
 			// 如果存在已删除记录，则删除所有未标记删除的记录（解决已删除但仍被 EnsurePathFID 误创出的活跃记录）
 			for _, f := range list {
 				if f.Action != domain.FolderActionDelete {
-					s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					if s.sf != nil {
+						s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					}
 					_ = s.folderRepo.Delete(ctx, f.ID, uid)
 				}
 			}
@@ -978,7 +993,9 @@ func (s *folderService) CleanDuplicateFolders(ctx context.Context, uid int64, va
 
 			for _, f := range list {
 				if f.ID != maxID {
-					s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					if s.sf != nil {
+						s.sf.Forget(fmt.Sprintf("ensure_folder_%d_%d_%s", uid, vaultID, pathHash))
+					}
 					_ = s.folderRepo.Delete(ctx, f.ID, uid)
 				}
 			}
