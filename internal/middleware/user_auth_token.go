@@ -18,7 +18,7 @@ import (
 func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := app.NewResponse(c)
-		user, scope, vaults, appErr := AuthenticateUserToken(c, secretKey, tokenService)
+		user, scope, vaults, dbToken, appErr := AuthenticateUserToken(c, secretKey, tokenService)
 		if appErr != nil {
 			response.ToResponse(appErr)
 			c.Abort()
@@ -27,6 +27,10 @@ func UserAuthTokenWithConfig(secretKey string, tokenService service.TokenService
 		c.Set("user_token", user)
 		c.Set("scope", scope)
 		c.Set("vaults", vaults)
+		// Inject server-side token attributes for downstream middleware (e.g. RequireWebGUI)
+		// 注入服务端 Token 属性，供下游中间件（如 RequireWebGUI）进行联合校验，防止请求头伪造绕过
+		c.Set("token_issue_type", dbToken.IssueType)
+		c.Set("token_client_type", dbToken.ClientType)
 		c.Next()
 	}
 }
@@ -47,31 +51,31 @@ func ExtractUserAuthToken(c *gin.Context) string {
 	return c.Query("token")
 }
 
-func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService service.TokenService) (*app.UserEntity, string, string, *code.Code) {
+func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService service.TokenService) (*app.UserEntity, string, string, *domain.AuthToken, *code.Code) {
 	token := ExtractUserAuthToken(c)
 	if token == "" {
-		return nil, "", "", code.ErrorNotUserAuthToken
+		return nil, "", "", nil, code.ErrorNotUserAuthToken
 	}
 
 	user, err := app.ParseTokenWithKey(token, secretKey)
 	if err != nil {
 		if appErr, ok := err.(*code.Code); ok {
-			return nil, "", "", appErr
+			return nil, "", "", nil, appErr
 		}
-		return nil, "", "", code.ErrorInvalidUserAuthToken
+		return nil, "", "", nil, code.ErrorInvalidUserAuthToken
 	}
 
 	ctx := c.Request.Context()
 	dbToken, err := tokenService.GetActiveToken(ctx, user.UID, user.TokenID)
 	if err != nil || dbToken == nil {
 		if appErr, ok := err.(*code.Code); ok {
-			return nil, "", "", appErr
+			return nil, "", "", nil, appErr
 		}
-		return nil, "", "", code.ErrorInvalidUserAuthToken
+		return nil, "", "", nil, code.ErrorInvalidUserAuthToken
 	}
 
 	if dbToken.TokenString != "" && user.Nonce != dbToken.TokenString {
-		return nil, "", "", code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated")
+		return nil, "", "", nil, code.ErrorInvalidUserAuthToken.WithDetails("Token has been rotated")
 	}
 
 	reqClientType := c.GetHeader("x-client")
@@ -83,18 +87,18 @@ func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService servic
 	}
 
 	if dbToken.IssueType == 1 && !app.MatchWildcard(dbToken.ClientType, reqClientType) {
-		return nil, "", "", code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
+		return nil, "", "", nil, code.ErrorAuthTokenClientRestricted.WithDetails("Client mismatch")
 	}
 
 	if dbToken.UserAgent != "" {
 		if reqUserAgent := c.GetHeader("User-Agent"); !app.MatchWildcard(dbToken.UserAgent, reqUserAgent) {
-			return nil, "", "", code.ErrorAuthTokenUARestricted.WithDetails("User-Agent mismatch")
+			return nil, "", "", nil, code.ErrorAuthTokenUARestricted.WithDetails("User-Agent mismatch")
 		}
 	}
 
 	if dbToken.BoundIP != "" {
 		if reqIP := c.ClientIP(); !app.MatchWildcard(dbToken.BoundIP, reqIP) {
-			return nil, "", "", code.ErrorAuthTokenIPRestricted.WithDetails("IP mismatch")
+			return nil, "", "", nil, code.ErrorAuthTokenIPRestricted.WithDetails("IP mismatch")
 		}
 	}
 
@@ -135,13 +139,13 @@ func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService servic
 		if resPath == "" {
 			resPath = path
 		}
-		return nil, "", "", code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: " + resPath)
+		return nil, "", "", nil, code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: " + resPath)
 	}
 
 	if dbToken.Vaults != "" {
 		targetVault := app.RequestParam(c, "vault")
 		if targetVault != "" && !util.VerifyVaultAccess(dbToken.Vaults, targetVault) {
-			return nil, "", "", code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: " + targetVault)
+			return nil, "", "", nil, code.ErrorAuthTokenScopeRestricted.WithDetails("Vault access restricted: " + targetVault)
 		}
 	}
 
@@ -167,7 +171,7 @@ func AuthenticateUserToken(c *gin.Context, secretKey string, tokenService servic
 		_ = tokenService.RecordAccessLog(context.Background(), log)
 	}()
 
-	return user, dbToken.Scope, dbToken.Vaults, nil
+	return user, dbToken.Scope, dbToken.Vaults, dbToken, nil
 }
 
 func isHeaderlessLoginTokenResourceRead(c *gin.Context) bool {

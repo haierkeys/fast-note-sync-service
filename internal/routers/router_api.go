@@ -55,7 +55,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 		// No-auth WebGUI restricted routes
 		// 免认证但仅限 WebGUI 访问的路由组
 		noAuthWebgui := api.Group("")
-		noAuthWebgui.Use(pkgapp.RequireWebGUI())
+		noAuthWebgui.Use(middleware.RequireWebGUI())
 		{
 			noAuthWebgui.POST("/user/register", userHandler.Register)
 			noAuthWebgui.POST("/user/login", userHandler.Login)
@@ -168,7 +168,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			// WebGUI restricted routes
 			// 仅限 WebGUI 访问的路由组
 			webguiGroup := auth.Group("")
-			webguiGroup.Use(pkgapp.RequireWebGUI())
+			webguiGroup.Use(middleware.RequireWebGUI())
 			{
 				// User management routes
 				// 用户管理接口

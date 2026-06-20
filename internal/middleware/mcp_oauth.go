@@ -65,7 +65,7 @@ func MCPMixedAuthWithConfig(secretKey string, tokenService service.TokenService,
 		}
 
 		if cfg.AllowStaticFNSToken && ExtractUserAuthToken(c) != "" {
-			if user, scope, vaults, err := AuthenticateUserToken(c, secretKey, tokenService); err == nil {
+			if user, scope, vaults, _, err := AuthenticateUserToken(c, secretKey, tokenService); err == nil {
 				c.Set("user_token", user)
 				c.Set("scope", scope)
 				c.Set("vaults", vaults)

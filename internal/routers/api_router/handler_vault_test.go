@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	svcmocks "github.com/haierkeys/fast-note-sync-service/internal/service/mocks"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
@@ -257,9 +258,9 @@ func TestVaultHandler_RebuildIndex_ClientRestricted(t *testing.T) {
 	c, w := newVaultTestContext("POST", "/api/vault/rebuild-index", body, 1)
 	c.Request.Header.Set("X-Client", "not-webgui")
 
-	// Execute RequireWebGUI middleware since validation is moved to it
-	// 执行 RequireWebGUI 中间件，因为校验逻辑已移至其中
-	pkgapp.RequireWebGUI()(c)
+	// Execute middleware.RequireWebGUI to verify non-webgui client is rejected
+	// 执行 middleware.RequireWebGUI 验证非 webgui 客户端被拦截（与生产路由行为一致）
+	middleware.RequireWebGUI()(c)
 	if !c.IsAborted() {
 		handler.RebuildIndex(c)
 	}

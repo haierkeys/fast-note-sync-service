@@ -240,3 +240,53 @@ func TestUserAuthTokenWithConfig_RejectsManualTokenWithoutClientHeader(t *testin
 
 	assert.Equal(t, code.ErrorAuthTokenScopeRestricted.Code(), res.Code)
 }
+
+// TestUserAuthTokenWithConfig_InjectsTokenContextAttributes verifies that UserAuthTokenWithConfig
+// correctly injects token_issue_type and token_client_type into gin.Context after successful authentication.
+// These context values are consumed by middleware.RequireWebGUI for multi-factor verification.
+// 验证 UserAuthTokenWithConfig 在认证成功后将 token_issue_type 和 token_client_type
+// 正确注入到 gin.Context，这些值供 RequireWebGUI 进行联合校验防止请求头伪造
+func TestUserAuthTokenWithConfig_InjectsTokenContextAttributes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tokenSvc := &fakeMiddlewareTokenService{activeToken: &domain.AuthToken{
+		ID:          3,
+		UID:         1,
+		TokenString: "nonce-inject",
+		Status:      1,
+		Scope:       "p:rest c:WebGui f:*",
+		ClientType:  "WebGui",
+		IssueType:   1,
+		ExpiredAt:   time.Now().Add(time.Hour),
+	}}
+
+	var capturedIssueType interface{}
+	var capturedClientType interface{}
+
+	router := gin.New()
+	router.Use(UserAuthTokenWithConfig("test-secret", tokenSvc))
+	router.GET("/api/note/list", func(c *gin.Context) {
+		capturedIssueType, _ = c.Get("token_issue_type")
+		capturedClientType, _ = c.Get("token_client_type")
+		c.JSON(http.StatusOK, gin.H{"code": code.Success.Code()})
+	})
+
+	token, err := app.NewTokenManager(app.TokenConfig{
+		SecretKey: "test-secret",
+		Expiry:    time.Hour,
+	}).Generate(1, "", "", 1, "nonce-inject")
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/note/list?path=test.md", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("x-client", "WebGui")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	// Verify token_issue_type injected correctly // 验证 token_issue_type 注入正确
+	assert.Equal(t, 1, capturedIssueType, "token_issue_type should be 1 (Login)")
+	// Verify token_client_type injected correctly // 验证 token_client_type 注入正确
+	assert.Equal(t, "WebGui", capturedClientType, "token_client_type should match dbToken.ClientType")
+}
