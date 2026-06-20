@@ -136,7 +136,7 @@ func (s *oidcService) findBoundUser(ctx context.Context, issuer, subject string)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
-	user, err := s.userRepo.GetByUID(ctx, identity.UID)
+	user, err := s.userRepo.GetByUID(ctx, identity.UID, true)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, code.ErrorUserNotFound
 	}

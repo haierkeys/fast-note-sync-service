@@ -38,7 +38,7 @@ func (u *User) IsActive() bool {
 // UserRepository 用户仓储接口
 type UserRepository interface {
 	// GetByUID 根据UID获取用户
-	GetByUID(ctx context.Context, uid int64) (*User, error)
+	GetByUID(ctx context.Context, uid int64, onlyActive bool) (*User, error)
 
 	// GetByEmail 根据邮箱获取用户
 	GetByEmail(ctx context.Context, email string) (*User, error)
@@ -49,9 +49,15 @@ type UserRepository interface {
 	// Create 创建用户
 	Create(ctx context.Context, user *User) (*User, error)
 
+	// Update
+	Update(ctx context.Context, user *User) error
+
 	// UpdatePassword 更新用户密码
 	UpdatePassword(ctx context.Context, password string, uid int64) error
 
 	// GetAllUIDs 获取所有用户UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
+
+	// GetAll
+	GetAll(ctx context.Context) ([]*User, error)
 }

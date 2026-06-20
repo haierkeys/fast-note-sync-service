@@ -148,8 +148,22 @@ definitions:
       authTokenKey:
         description: Auth token key // 认证 Token 密钥
         type: string
+      customResponseHeaders:
+        additionalProperties:
+          type: string
+        description: Custom HTTP response headers // 自定义 HTTP 响应头
+        type: object
       defaultApiFolder:
         description: Default API folder // 默认 API 目录
+        type: string
+      defaultContextTimeout:
+        description: Default context timeout // 默认上下文超时
+        type: integer
+      defaultPageSize:
+        description: Default page size // 默认每页显示数
+        type: integer
+      downloadSessionTimeout:
+        description: Download session timeout // 下载分片超时
         type: string
       fileChunkSize:
         description: File chunk size // 文件分块大小
@@ -157,12 +171,30 @@ definitions:
       fontSet:
         description: Font set // 字体设置
         type: string
+      ftsBleveEnabled:
+        description: Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
+        type: boolean
+      ftsBleveStoreRaw:
+        description: Whether Bleve stores raw content // Bleve 全文搜索是否存储原始文本
+        type: boolean
+      gitEmail:
+        description: Git author email // Git 提交的作者邮箱
+        type: string
+      gitName:
+        description: Git author name // Git 提交的作者名称
+        type: string
       historyKeepVersions:
         description: History versions to keep // 历史版本保留数
         type: integer
       historySaveDelay:
         description: History save delay // 历史保存延迟
         type: string
+      isReturnSussess:
+        description: Whether to return success detail // 是否返回成功详情
+        type: boolean
+      maxPageSize:
+        description: Max page size // 最大每页显示限制
+        type: integer
       pullReleaseChannel:
         description: 'Update version channel: stable | beta // 更新版本通道：stable | beta'
         type: string
@@ -182,6 +214,12 @@ definitions:
       softDeleteRetentionTime:
         description: Soft delete retention time // 软删除保留时间
         type: string
+      syncLogRetentionTime:
+        description: Sync log retention time // 同步日志保留时长
+        type: string
+      tempPath:
+        description: Temporary file path // 临时文件路径
+        type: string
       tokenExpiry:
         description: Token expiry // Token 有效期
         type: string
@@ -193,6 +231,45 @@ definitions:
         type: boolean
       webguiLoginTokenExpiry:
         description: WebGUI login token expiry // WebGUI 登录 Token 有效期
+        type: string
+      workerPoolMaxWorkers:
+        description: Worker pool max workers // 协程池最大协程数
+        type: integer
+      workerPoolQueueSize:
+        description: Worker pool queue size // 协程池队列大小
+        type: integer
+      writeQueueCapacity:
+        description: Write queue capacity // 写入队列容量
+        type: integer
+      writeQueueIdleTime:
+        description: Write queue idle cleanup time // 写入队列空闲清理时长
+        type: string
+      writeQueueTimeout:
+        description: Write queue timeout // 写入队列超时
+        type: string
+      wsCheckUtf8Enabled:
+        description: Whether ws check UTF-8 is enabled // WebSocket 是否开启 UTF-8 校验
+        type: boolean
+      wsCompressionEnabled:
+        description: Whether ws compression is enabled // WebSocket 是否开启压缩
+        type: boolean
+      wsCompressionLevel:
+        description: Ws compression level // WebSocket 压缩级别
+        type: integer
+      wsCompressionThreshold:
+        description: Ws compression threshold // WebSocket 压缩阈值
+        type: integer
+      wsParallelEnabled:
+        description: Whether ws parallel is enabled // WebSocket 并行处理是否开启
+        type: boolean
+      wsParallelGolimit:
+        description: Ws parallel goroutine limit // WebSocket 并行协程限制
+        type: integer
+      wsReadMaxPayloadSize:
+        description: WebSocket max read payload // WebSocket 最大读取负载
+        type: string
+      wsWriteMaxPayloadSize:
+        description: WebSocket max write payload // WebSocket 最大写入负载
         type: string
     type: object
   dto.AdminHostInfo:
@@ -620,6 +697,9 @@ definitions:
       ctime:
         description: Creation timestamp // 创建时间戳
         type: integer
+      id:
+        description: File ID // 文件 ID
+        type: integer
       lastTime:
         description: Updated timestamp // 更新时间戳
         type: integer
@@ -982,6 +1062,9 @@ definitions:
       ctime:
         description: Creation timestamp // 创建时间戳
         type: integer
+      id:
+        description: Note ID // 笔记 ID
+        type: integer
       lastTime:
         description: Record update timestamp // 记录更新时间戳
         type: integer
@@ -1136,6 +1219,9 @@ definitions:
         type: string
       ctime:
         description: Creation timestamp // 创建时间戳
+        type: integer
+      id:
+        description: Note ID // 笔记 ID
         type: integer
       lastTime:
         description: Record update timestamp // 记录更新时间戳
@@ -1854,9 +1940,15 @@ definitions:
       email:
         description: Email address // 邮件地址
         type: string
+      isDeleted:
+        description: User is blocked
+        type: boolean
       token:
         description: Authentication Token // 认证 Token
         type: string
+      tokenId:
+        description: Authentication Token ID // 认证 Token ID
+        type: integer
       uid:
         description: User ID (primary key) // 用户唯一标识（主键）
         type: integer
@@ -1877,9 +1969,40 @@ definitions:
         description: Password // 密码
         example: password123
         type: string
+      tokenId:
+        description: Last token ID for rotation // 最后一个用于轮转的令牌ID
+        example: 123
+        type: integer
     required:
     - credentials
     - password
+    type: object
+  dto.UserUpdateRequest:
+    properties:
+      email:
+        description: User email // 用户邮件
+        example: user@example.com
+        type: string
+      isDeleted:
+        description: User deleted flag
+        example: true
+        type: boolean
+      password:
+        description: User password // 用户密码
+        example: password123
+        type: string
+      uid:
+        description: User ID (primary key) // 用户唯一标识（主键）
+        example: 123
+        type: integer
+      username:
+        description: User name // 用户名
+        example: username123
+        type: string
+    required:
+    - email
+    - uid
+    - username
     type: object
   dto.VaultDTO:
     properties:
@@ -1910,6 +2033,24 @@ definitions:
       vault:
         description: Vault name // 保险库名称
         type: string
+    type: object
+  dto.VaultForceDeleteItemRequest:
+    properties:
+      id:
+        description: Resource ID // 资源 ID
+        example: 100
+        type: integer
+      type:
+        description: 'Resource type: note or file // 资源类型'
+        type: string
+      vaultId:
+        description: Vault ID // 笔记库 ID
+        example: 1
+        type: integer
+    required:
+    - id
+    - type
+    - vaultId
     type: object
   dto.VaultPostRequest:
     properties:
@@ -2344,6 +2485,114 @@ paths:
       summary: Trigger server upgrade
       tags:
       - System
+  /api/admin/users/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Config Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserDTO'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Create a new user
+      tags:
+      - Config
+  /api/admin/users/list:
+    get:
+      description: Handle request to get all users.
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.UserDTO'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Get all users
+      tags:
+      - Config
+  /api/admin/users/update:
+    post:
+      consumes:
+      - application/json
+      description: Update a user, requires admin privileges
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Config Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserDTO'
+              type: object
+        "403":
+          description: Insufficient privileges
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Update a user
+      tags:
+      - Config
   /api/admin/ws_client/{traceId}:
     delete:
       description: Kick a WebSocket client by TraceID, requires admin privileges
@@ -5244,6 +5493,35 @@ paths:
       security:
       - UserAuthToken: []
       summary: Create or update vault
+      tags:
+      - Vault
+  /api/vault/force-delete-item:
+    post:
+      consumes:
+      - application/json
+      description: Permanently delete a single note or file (attachment) in a vault
+      parameters:
+      - description: Auth Token
+        in: header
+        name: token
+        required: true
+        type: string
+      - description: Delete Parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VaultForceDeleteItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/app.Res'
+      security:
+      - UserAuthToken: []
+      summary: Force delete a single item
       tags:
       - Vault
   /api/vault/get:
