@@ -11,6 +11,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	domainmocks "github.com/haierkeys/fast-note-sync-service/internal/domain/mocks"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/stretchr/testify/assert"
@@ -597,31 +598,101 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-// --- GetAll ---
+// --- GetList ---
 
-// TestUserService_GetAllSuccess verifies returning users list
-func TestUserService_GetAllSuccess(t *testing.T) {
-	mockRepo := new(domainmocks.MockUserRepository)
-
-	// domain
+func TestUserService_GetList(t *testing.T) {
+	// Domain data
 	mockUsers := []*domain.User{
 		{UID: 1, Email: "user1@example.com", Username: "user1"},
 		{UID: 2, Email: "user2@example.com", Username: "user2"},
 	}
 
-	// DTO
+	// DTOs
 	expectedDTOs := []*dto.UserDTO{
 		{UID: 1, Email: "user1@example.com", Username: "user1"},
 		{UID: 2, Email: "user2@example.com", Username: "user2"},
 	}
 
-	mockRepo.On("GetAll", mock.Anything).Return(mockUsers, nil)
-	svc := newUserSvc(mockRepo, true)
-	result, err := svc.GetAll(context.Background())
+	dbError := errors.New("database connection failed")
 
-	assert.NoError(t, err)
-	assert.Equal(t, expectedDTOs, result)
-	mockRepo.AssertExpectations(t)
+	// cases
+	tests := []struct {
+		name           string
+		pager          *app.Pager
+		mockSetup      func(m *domainmocks.MockUserRepository)
+		expectedResult []*dto.UserDTO
+		expectedTotal  int64
+		expectedErr    error
+	}{
+		{
+			name: "Success - First page",
+			pager: &app.Pager{
+				Page:     1,
+				PageSize: 10,
+			},
+			mockSetup: func(m *domainmocks.MockUserRepository) {
+				// expect: offset = 0, limit = 10
+				m.On("GetList", mock.Anything, 0, 10).
+					Return(mockUsers, 25, nil) // total in db = 25
+			},
+			expectedResult: expectedDTOs,
+			expectedTotal:  25,
+			expectedErr:    nil,
+		},
+		{
+			name: "Success - second page",
+			pager: &app.Pager{
+				Page:     2,
+				PageSize: 10,
+			},
+			mockSetup: func(m *domainmocks.MockUserRepository) {
+				// expect: offset = 10, limit = 10
+				m.On("GetList", mock.Anything, 10, 10).
+					Return(mockUsers, 25, nil)
+			},
+			expectedResult: expectedDTOs,
+			expectedTotal:  25,
+			expectedErr:    nil,
+		},
+		{
+			name: "Failure - error db",
+			pager: &app.Pager{
+				Page:     1,
+				PageSize: 10,
+			},
+			mockSetup: func(m *domainmocks.MockUserRepository) {
+				m.On("GetList", mock.Anything, 0, 10).
+					Return(nil, 0, dbError)
+			},
+			expectedResult: nil,
+			expectedTotal:  0,
+			expectedErr:    code.ErrorDBQuery,
+		},
+	}
+
+	// run all test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := new(domainmocks.MockUserRepository)
+			tt.mockSetup(mockRepo)
+			svc := newUserSvc(mockRepo, true)
+
+			result, total, err := svc.GetList(context.Background(), tt.pager)
+
+			// check error
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// check total and result
+			assert.Equal(t, tt.expectedTotal, total)
+			assert.Equal(t, tt.expectedResult, result)
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
 }
 
 // --- IsRegisterEnabled ---

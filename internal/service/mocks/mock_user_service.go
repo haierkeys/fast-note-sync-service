@@ -82,15 +82,6 @@ func (m *MockUserService) GetAllUIDs(ctx context.Context) ([]int64, error) {
 	return args.Get(0).([]int64), args.Error(1)
 }
 
-// GetAll retrieves all users info
-func (m *MockUserService) GetAll(ctx context.Context) ([]*dto.UserDTO, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*dto.UserDTO), args.Error(1)
-}
-
 // GetList retrieves users with pagination // GetList 分页获取用户列表
 func (m *MockUserService) GetList(ctx context.Context, pager *pkgapp.Pager) ([]*dto.UserDTO, int64, error) {
 	args := m.Called(ctx, pager)
