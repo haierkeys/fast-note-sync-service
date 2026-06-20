@@ -2175,12 +2175,6 @@ paths:
   /api/admin/config:
     get:
       description: Get full system configuration information, requires admin privileges
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2207,11 +2201,6 @@ paths:
       - application/json
       description: Modify full system configuration information, requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2242,12 +2231,6 @@ paths:
   /api/admin/config/cloudflare:
     get:
       description: Get Cloudflare tunnel configuration, requires admin privileges
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2274,11 +2257,6 @@ paths:
       - application/json
       description: Modify Cloudflare tunnel configuration, requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2309,12 +2287,6 @@ paths:
   /api/admin/config/user_database:
     get:
       description: Get user database configuration information, requires admin privileges
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2342,11 +2314,6 @@ paths:
       description: Modify user database configuration information, requires admin
         privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2381,11 +2348,6 @@ paths:
       description: Test if the provided database configuration can connect successfully,
         requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2491,11 +2453,6 @@ paths:
       - application/json
       description: Create a new user, requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2526,12 +2483,6 @@ paths:
   /api/admin/users/list:
     get:
       description: Handle request to get all users.
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2561,11 +2512,6 @@ paths:
       - application/json
       description: Update a user, requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config Parameters
         in: body
         name: params
@@ -2597,11 +2543,6 @@ paths:
     delete:
       description: Kick a WebSocket client by TraceID, requires admin privileges
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Trace ID of the client
         in: path
         name: traceId
@@ -2627,12 +2568,6 @@ paths:
     get:
       description: Get a list of all current WebSocket connections, requires admin
         privileges
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2661,12 +2596,6 @@ paths:
       description: |-
         Handle user logout HTTP request, revoke current auth token.
         处理用户退出登录 HTTP 请求，注销当前认证 Token。
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       responses:
         "200":
           description: Success
@@ -2680,11 +2609,6 @@ paths:
   /api/backup/config:
     delete:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: ID // ID
         example: 1
         in: query
@@ -2718,11 +2642,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Backup Parameters
         in: body
         name: params
@@ -2760,12 +2679,6 @@ paths:
       - Backup
   /api/backup/configs:
     get:
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -2796,11 +2709,6 @@ paths:
   /api/backup/execute:
     post:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Backup Execute Parameters
         in: body
         name: params
@@ -2834,11 +2742,6 @@ paths:
   /api/backup/historys:
     get:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Config ID // 配置 ID
         example: 1
         in: query
@@ -2896,11 +2799,6 @@ paths:
       description: Permanently delete a specific attachment record and its physical
         file
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: File path // 文件路径
         example: Image.png
         in: query
@@ -2940,11 +2838,6 @@ paths:
       description: Get raw binary data of an attachment by path, supports strong cache
         control
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -2984,11 +2877,6 @@ paths:
       - multipart/form-data
       description: Upload a file as an attachment
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Vault name
         in: formData
         name: vault
@@ -3035,11 +2923,6 @@ paths:
     get:
       description: Get attachment metadata (FileDTO) by path
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -3085,11 +2968,6 @@ paths:
       - application/json
       description: Permanently clear selected files from recycle bin
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Clear Parameters
         in: body
         name: params
@@ -3114,11 +2992,6 @@ paths:
       - application/json
       description: Rename an attachment to a new path
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Rename Parameters
         in: body
         name: params
@@ -3146,11 +3019,6 @@ paths:
     put:
       description: Restore deleted attachment from trash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Restore Parameters
         in: body
         name: params
@@ -3179,11 +3047,6 @@ paths:
       description: Get attachment list for current user with pagination, search, filter,
         and sort support
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -3248,11 +3111,6 @@ paths:
       - application/json
       description: Soft delete a folder by path or pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Delete Parameters
         in: body
         name: params
@@ -3274,11 +3132,6 @@ paths:
     get:
       description: Get folder info for current user by path or pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Folder path // 文件夹路径
         example: Projects/Work
         in: query
@@ -3317,11 +3170,6 @@ paths:
       - application/json
       description: Create a new folder or restore a deleted one by path
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Create Parameters
         in: body
         name: params
@@ -3350,11 +3198,6 @@ paths:
       description: List non-deleted files in a specific folder with pagination and
         sorting
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Folder path // 文件夹路径
         example: Projects
         in: query
@@ -3418,11 +3261,6 @@ paths:
       description: List non-deleted notes in a specific folder with pagination and
         sorting
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Folder path // 文件夹路径
         example: Projects
         in: query
@@ -3485,11 +3323,6 @@ paths:
     get:
       description: Get the complete folder tree structure for a vault
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Tree depth // 树深度
         example: 3
         in: query
@@ -3522,11 +3355,6 @@ paths:
     get:
       description: Get folder list for current user by parent path or pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Folder path // 文件夹路径
         example: Projects
         in: query
@@ -3565,11 +3393,6 @@ paths:
   /api/git-sync/config:
     delete:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Git Sync ID
         in: body
         name: params
@@ -3604,11 +3427,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Git Sync Parameters
         in: body
         name: params
@@ -3649,11 +3467,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Clean Parameters
         in: body
         name: params
@@ -3689,11 +3502,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Execute Parameters
         in: body
         name: params
@@ -3726,12 +3534,6 @@ paths:
       - GitSync
   /api/git-sync/configs:
     get:
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -3762,11 +3564,6 @@ paths:
   /api/git-sync/histories:
     get:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - in: query
         name: configId
         type: integer
@@ -3813,11 +3610,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Validation Parameters
         in: body
         name: params
@@ -3865,11 +3657,6 @@ paths:
     delete:
       description: Move note to trash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Note path // 笔记路径
         example: ReadMe.md
         in: query
@@ -3907,11 +3694,6 @@ paths:
     get:
       description: Get specific note content and metadata by path or path hash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -3957,11 +3739,6 @@ paths:
       description: Handle note creation, modification, or renaming (identified by
         path change)
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Note Content
         in: body
         name: params
@@ -3991,11 +3768,6 @@ paths:
       - application/json
       description: Append content to the end of a note
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Append Parameters
         in: body
         name: params
@@ -4023,11 +3795,6 @@ paths:
     get:
       description: Get all other notes that link to the specified note
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Note path // 笔记路径
         example: ReadMe.md
         in: query
@@ -4070,11 +3837,6 @@ paths:
       - application/json
       description: Update or delete note frontmatter fields
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Frontmatter Modification Parameters
         in: body
         name: params
@@ -4102,11 +3864,6 @@ paths:
     get:
       description: Get all history records for a specific note with pagination
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -4165,11 +3922,6 @@ paths:
     get:
       description: Get specific note history content by history record ID
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: History Record ID
         format: int64
         in: query
@@ -4199,11 +3951,6 @@ paths:
       - application/json
       description: Restore note content to a specific history version
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Restore Parameters
         in: body
         name: params
@@ -4231,11 +3978,6 @@ paths:
     get:
       description: Get other notes that the specified note links to
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Note path // 笔记路径
         example: ReadMe.md
         in: query
@@ -4278,11 +4020,6 @@ paths:
       - application/json
       description: Insert content at the beginning of a note (after frontmatter)
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Prepend Parameters
         in: body
         name: params
@@ -4312,11 +4049,6 @@ paths:
       - application/json
       description: Permanently clear selected notes from recycle bin
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Clear Parameters
         in: body
         name: params
@@ -4341,11 +4073,6 @@ paths:
       - application/json
       description: Rename a note to a new path
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Rename Parameters
         in: body
         name: params
@@ -4376,11 +4103,6 @@ paths:
       description: Perform find and replace operation in a note, supporting regular
         expressions
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Find and Replace Parameters
         in: body
         name: params
@@ -4408,11 +4130,6 @@ paths:
     put:
       description: Restore deleted note from trash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Restore Parameters
         in: body
         name: params
@@ -4440,11 +4157,6 @@ paths:
     get:
       description: Get note list for current user with pagination
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Is in recycle bin // 是否在回收站
         example: false
         in: query
@@ -4521,11 +4233,6 @@ paths:
   /api/notes/share-paths:
     get:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Vault name
         in: query
         name: vault
@@ -4554,11 +4261,6 @@ paths:
       - application/json
       description: Soft delete a setting by path or pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Delete Parameters
         in: body
         name: params
@@ -4580,11 +4282,6 @@ paths:
     get:
       description: Get setting info for current user by path or pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Setting path // 配置路径
         example: User/Theme
         in: query
@@ -4623,11 +4320,6 @@ paths:
       - application/json
       description: Create a new setting or update an existing one
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Create/Update Parameters
         in: body
         name: params
@@ -4657,11 +4349,6 @@ paths:
       - application/json
       description: Rename a setting and update its path and pathHash
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Rename Parameters
         in: body
         name: params
@@ -4689,11 +4376,6 @@ paths:
     get:
       description: Get setting list for current user with pagination and keyword filtering
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Keyword // 关键词
         example: User/
         in: query
@@ -4743,11 +4425,6 @@ paths:
       - application/json
       description: Cancel a share by ID or path parameters
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Cancel Parameters
         in: body
         name: params
@@ -4769,11 +4446,6 @@ paths:
     get:
       description: Get share token and info by vault and path
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Resource path // 资源路径
         example: ReadMe.md
         in: query
@@ -4813,11 +4485,6 @@ paths:
       description: Create a share token for a specific note or attachment, automatically
         resolve attachment references and authorize
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Share Parameters
         in: body
         name: params
@@ -4917,11 +4584,6 @@ paths:
       - application/json
       description: Set or update password for a share record
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Update Parameters
         in: body
         name: params
@@ -4946,11 +4608,6 @@ paths:
       - application/json
       description: Call sink.cool API to generate a short link for a given share record
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Short Link Parameters
         in: body
         name: params
@@ -4979,11 +4636,6 @@ paths:
       description: Get all active and inactive shares of the user, supports sorting
         and pagination
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: 'Sort field: created_at, updated_at, expires_at (default: created_at)'
         in: query
         name: sort_by
@@ -5027,11 +4679,6 @@ paths:
   /api/storage:
     delete:
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Storage ID
         format: int64
         in: query
@@ -5051,12 +4698,6 @@ paths:
       tags:
       - Storage
     get:
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -5080,11 +4721,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Storage Parameters
         in: body
         name: params
@@ -5134,11 +4770,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Storage Parameters
         in: body
         name: params
@@ -5214,11 +4845,6 @@ paths:
       description: Get sync log list for current user with optional type/action filters
         and pagination
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Action type // 操作类型
         example: modify
         in: query
@@ -5274,11 +4900,6 @@ paths:
         Handle password change request for current user, validate old password and update new password.
         处理当前用户的修改密码请求，验证旧密码并更新新密码。
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Change Password Parameters
         in: body
         name: params
@@ -5312,12 +4933,6 @@ paths:
       description: |-
         Handle request to get current user info.
         处理获取当前用户信息的请求。
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -5410,11 +5025,6 @@ paths:
       description: Permanently delete a specific note vault and all associated notes
         and attachments
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Vault ID // 保险库 ID
         example: 1
         in: query
@@ -5436,12 +5046,6 @@ paths:
       - Vault
     get:
       description: Get all note vaults for current user
-      parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -5467,11 +5071,6 @@ paths:
       description: Be used to create a new vault or update an existing vault configuration
         based on the ID in the request parameters
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Vault Parameters
         in: body
         name: params
@@ -5501,11 +5100,6 @@ paths:
       - application/json
       description: Permanently delete a single note or file (attachment) in a vault
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Delete Parameters
         in: body
         name: params
@@ -5528,11 +5122,6 @@ paths:
     get:
       description: Get specific vault configuration details by vault ID
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Vault ID
         format: int64
         in: query
@@ -5563,11 +5152,6 @@ paths:
       description: Rebuild full-text search index from physical database and files
         for a specific vault, restricted to webgui client
       parameters:
-      - description: Auth Token
-        in: header
-        name: token
-        required: true
-        type: string
       - description: Rebuild Index Parameters
         in: body
         name: params

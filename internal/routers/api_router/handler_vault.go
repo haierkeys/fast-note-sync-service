@@ -36,7 +36,6 @@ func NewVaultHandler(a *app.App) *VaultHandler {
 // @Description Be used to create a new vault or update an existing vault configuration based on the ID in the request parameters
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.VaultPostRequest true "Vault Parameters"
@@ -97,7 +96,6 @@ func (h *VaultHandler) CreateOrUpdate(c *gin.Context) {
 // @Description Get specific vault configuration details by vault ID
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param id query int64 true "Vault ID"
 // @Success 200 {object} pkgapp.Res{data=dto.VaultDTO} "Success"
@@ -138,7 +136,6 @@ func (h *VaultHandler) Get(c *gin.Context) {
 // @Description Get all note vaults for current user
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Success 200 {object} pkgapp.Res{data=[]dto.VaultDTO} "Success"
 // @Router /api/vault [get]
@@ -189,7 +186,6 @@ func (h *VaultHandler) List(c *gin.Context) {
 // @Description Permanently delete a specific note vault and all associated notes and attachments
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.VaultGetRequest true "Delete Parameters"
 // @Success 200 {object} pkgapp.Res "Success"
@@ -245,7 +241,6 @@ func (h *VaultHandler) logError(ctx context.Context, method string, err error) {
 // @Description Rebuild full-text search index from physical database and files for a specific vault, restricted to webgui client
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.VaultRebuildIndexRequest true "Rebuild Index Parameters"
@@ -295,7 +290,6 @@ func (h *VaultHandler) RebuildIndex(c *gin.Context) {
 // @Description Permanently delete a single note or file (attachment) in a vault
 // @Tags Vault
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.VaultForceDeleteItemRequest true "Delete Parameters"
@@ -337,5 +331,3 @@ func (h *VaultHandler) ForceDeleteDataItem(c *gin.Context) {
 
 	response.ToResponse(code.SuccessDelete)
 }
-
-

@@ -23,7 +23,6 @@ func NewFolderHandler(appContainer *app.App) *FolderHandler {
 // @Description Get folder info for current user by path or pathHash
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderGetRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.FolderDTO} "Success"
@@ -52,7 +51,6 @@ func (h *FolderHandler) Get(c *gin.Context) {
 // @Description Get folder list for current user by parent path or pathHash
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderListRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=[]dto.FolderDTO} "Success"
@@ -81,7 +79,6 @@ func (h *FolderHandler) List(c *gin.Context) {
 // @Description Create a new folder or restore a deleted one by path
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.FolderCreateRequest true "Create Parameters"
@@ -111,7 +108,6 @@ func (h *FolderHandler) Create(c *gin.Context) {
 // @Description Soft delete a folder by path or pathHash
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.FolderDeleteRequest true "Delete Parameters"
@@ -141,7 +137,6 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 // @Description List non-deleted notes in a specific folder with pagination and sorting
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
@@ -173,7 +168,6 @@ func (h *FolderHandler) ListNotes(c *gin.Context) {
 // @Description List non-deleted files in a specific folder with pagination and sorting
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderContentRequest true "Query Parameters"
 // @Param params query pkgapp.PaginationRequest true "Query Parameters"
@@ -204,7 +198,6 @@ func (h *FolderHandler) ListFiles(c *gin.Context) {
 // @Description Get the complete folder tree structure for a vault
 // @Tags Folder
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FolderTreeRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.FolderTreeResponse} "Success"

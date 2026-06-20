@@ -29,7 +29,6 @@ func NewStorageHandler(a *app.App) *StorageHandler {
 // @Summary Create or update storage configuration
 // @Tags Storage
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.StoragePostRequest true "Storage Parameters"
@@ -69,7 +68,6 @@ func (h *StorageHandler) CreateOrUpdate(c *gin.Context) {
 // @Summary Get storage configuration list
 // @Tags Storage
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Success 200 {object} pkgapp.Res{data=[]dto.StorageDTO} "Success"
 // @Router /api/storage [get]
@@ -96,7 +94,6 @@ func (h *StorageHandler) List(c *gin.Context) {
 // @Summary Delete storage configuration
 // @Tags Storage
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param id query int64 true "Storage ID"
 // @Success 200 {object} pkgapp.Res "Success"
@@ -150,7 +147,6 @@ func (h *StorageHandler) EnabledTypes(c *gin.Context) {
 // @Summary Validate storage connection
 // @Tags Storage
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.StoragePostRequest true "Storage Parameters"

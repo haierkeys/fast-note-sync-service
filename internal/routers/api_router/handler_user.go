@@ -121,7 +121,6 @@ func (h *UserHandler) Login(c *gin.Context) {
 // @Description 处理用户退出登录 HTTP 请求，注销当前认证 Token。
 // @Tags User
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Success 200 {object} pkgapp.Res "Success"
 // @Router /api/auth/logout [post]
 func (h *UserHandler) Logout(c *gin.Context) {
@@ -151,7 +150,6 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Description 处理当前用户的修改密码请求，验证旧密码并更新新密码。
 // @Tags User
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.UserChangePasswordRequest true "Change Password Parameters"
@@ -205,7 +203,6 @@ func (h *UserHandler) UserChangePassword(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Success 200 {object} pkgapp.Res{data=dto.UserDTO} "Success"
 // @Failure 401 {object} pkgapp.Res "Unauthorized"
 // @Router /api/user/info [get]

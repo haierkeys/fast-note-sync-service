@@ -29,7 +29,6 @@ func NewGitSyncHandler(a *app.App) *GitSyncHandler {
 // @Summary Get git sync configurations
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Success 200 {object} pkgapp.Res{data=[]dto.GitSyncConfigDTO} "Success"
 // @Failure 401 {object} pkgapp.Res "Token Required"
@@ -57,7 +56,6 @@ func (h *GitSyncHandler) GetConfigs(c *gin.Context) {
 // @Summary Update git sync configuration
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.GitSyncConfigRequest true "Git Sync Parameters"
@@ -94,7 +92,6 @@ func (h *GitSyncHandler) UpdateConfig(c *gin.Context) {
 // @Summary Delete git sync configuration
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params body dto.GitSyncDeleteRequest true "Git Sync ID"
 // @Success 200 {object} pkgapp.Res "Success"
@@ -130,7 +127,6 @@ func (h *GitSyncHandler) DeleteConfig(c *gin.Context) {
 // @Summary Validate git sync parameters
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.GitSyncValidateRequest true "Validation Parameters"
@@ -161,7 +157,6 @@ func (h *GitSyncHandler) Validate(c *gin.Context) {
 // @Summary Trigger a manual git sync
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.GitSyncExecuteRequest true "Execute Parameters"
@@ -198,7 +193,6 @@ func (h *GitSyncHandler) Execute(c *gin.Context) {
 // @Summary Clean local git workspace
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.GitSyncCleanRequest true "Clean Parameters"
@@ -235,7 +229,6 @@ func (h *GitSyncHandler) CleanWorkspace(c *gin.Context) {
 // @Summary Get git sync histories
 // @Tags GitSync
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.GitSyncHistoryRequest true "Parameters"
 // @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.GitSyncHistoryDTO}} "Success"

@@ -19,7 +19,7 @@ func registerOpenAPIRoutes(r *gin.Engine, frontendFiles embed.FS) {
 			c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
 			return
 		}
-		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+		ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.PersistAuthorization(true))(c)
 	})
 
 	// Read debug page from embedded FS

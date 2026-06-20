@@ -32,7 +32,6 @@ func NewSyncLogHandler(a *app.App) *SyncLogHandler {
 // @Description Get sync log list for current user with optional type/action filters and pagination
 // @Tags Sync Log
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.SyncLogListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
