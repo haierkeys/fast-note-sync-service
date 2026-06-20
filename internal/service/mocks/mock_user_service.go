@@ -7,6 +7,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
+	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -88,6 +89,15 @@ func (m *MockUserService) GetAll(ctx context.Context) ([]*dto.UserDTO, error) {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*dto.UserDTO), args.Error(1)
+}
+
+// GetList retrieves users with pagination // GetList 分页获取用户列表
+func (m *MockUserService) GetList(ctx context.Context, pager *pkgapp.Pager) ([]*dto.UserDTO, int64, error) {
+	args := m.Called(ctx, pager)
+	if args.Get(0) == nil {
+		return nil, int64(args.Int(1)), args.Error(2)
+	}
+	return args.Get(0).([]*dto.UserDTO), int64(args.Int(1)), args.Error(2)
 }
 
 // IsRegisterEnabled checks if registration is allowed.

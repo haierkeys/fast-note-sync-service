@@ -90,6 +90,15 @@ func (m *MockUserRepository) GetAllUIDs(ctx context.Context) ([]int64, error) {
 	return args.Get(0).([]int64), args.Error(1)
 }
 
+// GetList retrieves users with pagination // GetList 分页获取用户列表
+func (m *MockUserRepository) GetList(ctx context.Context, offset, limit int) ([]*domain.User, int64, error) {
+	args := m.Called(ctx, offset, limit)
+	if args.Get(0) == nil {
+		return nil, int64(args.Int(1)), args.Error(2)
+	}
+	return args.Get(0).([]*domain.User), int64(args.Int(1)), args.Error(2)
+}
+
 // Compile-time check: MockUserRepository must implement domain.UserRepository.
 // 编译时检查：MockUserRepository 必须实现 domain.UserRepository 接口。
 var _ domain.UserRepository = (*MockUserRepository)(nil)

@@ -906,16 +906,17 @@ func (h *AdminControlHandler) GetUsers(c *gin.Context) {
 	// Get request context
 	// 获取请求上下文
 	ctx := c.Request.Context()
+	pager := pkgapp.NewPager(c)
 
-	// Call UserService to get all users
-	userDTO, err := h.App.UserService.GetAll(ctx)
+	// Call UserService to get users with pagination // 调用 UserService 分页查询用户列表
+	userDTO, total, err := h.App.UserService.GetList(ctx, pager)
 	if err != nil {
-		logger.Error("apiRouter.AdminControl.GetUsers.GetAll err", zap.Error(err))
+		logger.Error("apiRouter.AdminControl.GetUsers.GetList err", zap.Error(err))
 		response.ToResponse(code.ErrorUserNotFound)
 		return
 	}
 
-	response.ToResponse(code.Success.WithData(userDTO))
+	response.ToResponseList(code.Success, userDTO, int(total))
 }
 
 // GetSystemInfo retrieves system monitoring information (requires admin privileges)
