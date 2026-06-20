@@ -410,7 +410,7 @@ func TestUserService_Update_UsernameExists(t *testing.T) {
 	mockRepo.On("GetByEmail", mock.Anything, params.Email).
 		Return(nil, gorm.ErrRecordNotFound)
 
-	// The email is already in use by an existing user.
+	// The username is already in use by an existing user.
 	mockRepo.On("GetByUsername", mock.Anything, params.Username).
 		Return(&domain.User{UID: 99, Username: params.Username}, nil)
 
@@ -600,6 +600,7 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 
 // --- GetList ---
 
+// TestUserService_GetList verifies returning users list with pagination
 func TestUserService_GetList(t *testing.T) {
 	// Domain data
 	mockUsers := []*domain.User{
