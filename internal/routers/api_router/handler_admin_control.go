@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -817,7 +818,12 @@ func (h *AdminControlHandler) CreateUser(c *gin.Context) {
 	userDTO, err := h.App.UserService.Create(ctx, params)
 	if err != nil {
 		logger.Error("apiRouter.AdminControl.CreateUser.Create err", zap.Error(err))
-		response.ToResponse(code.ErrorUserRegister)
+		var codeErr *code.Code
+		if errors.As(err, &codeErr) {
+			response.ToResponse(codeErr)
+		} else {
+			response.ToResponse(code.ErrorUserRegister.WithDetails(err.Error()))
+		}
 		return
 	}
 
@@ -869,7 +875,12 @@ func (h *AdminControlHandler) UpdateUser(c *gin.Context) {
 	err := h.App.UserService.Update(ctx, params)
 	if err != nil {
 		logger.Error("apiRouter.AdminControl.UpdateUser.Update err", zap.Error(err))
-		response.ToResponse(code.ErrorUserUpdate)
+		var codeErr *code.Code
+		if errors.As(err, &codeErr) {
+			response.ToResponse(codeErr)
+		} else {
+			response.ToResponse(code.ErrorUserUpdate.WithDetails(err.Error()))
+		}
 		return
 	}
 
