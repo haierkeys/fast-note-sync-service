@@ -31,9 +31,10 @@ type UpgradeRequest struct {
 
 // SourceProbeItem is one source's reachability + latency result.
 // SourceProbeItem 单个源的可达性与延迟结果。
+// @Description Single source probe result: reachability and latency
 type SourceProbeItem struct {
-	OK        bool  `json:"ok"`        // Whether the source is reachable // 该源是否可达
-	LatencyMs int64 `json:"latencyMs"` // Round-trip latency in ms // 往返延迟（毫秒）
+	OK        bool  `json:"ok" example:"true"`                            // Whether the source is reachable // 该源是否可达
+	LatencyMs int64 `json:"latencyMs" example:"280"`                      // Round-trip latency in ms // 往返延迟（毫秒）
 }
 
 // SourceProbeDTO is the payload returned by GET /api/version/probe, consumed by
@@ -41,9 +42,10 @@ type SourceProbeItem struct {
 // is the current configured pull-source mode (auto|github|cnb).
 // SourceProbeDTO 是 GET /api/version/probe 的响应，供 webgui「测试延迟」面板使用。
 // Recommended 为推荐的源（github 或 cnb）；SelectedMode 为当前配置的选源模式。
+// @Description Probe result containing GitHub/CNB reachability, latency, recommended source and current mode
 type SourceProbeDTO struct {
-	GitHub       SourceProbeItem `json:"github"`
-	CNB          SourceProbeItem `json:"cnb"`
-	Recommended  string          `json:"recommended"`  // "github" or "cnb" // 推荐源
-	SelectedMode string          `json:"selectedMode"` // current configured mode // 当前配置的模式
+	GitHub       SourceProbeItem `json:"github"`       // GitHub probe result // GitHub 探测结果
+	CNB          SourceProbeItem `json:"cnb"`          // CNB probe result // CNB 探测结果
+	Recommended  string          `json:"recommended" example:"github"` // Recommended source: "github" or "cnb" // 推荐源
+	SelectedMode string          `json:"selectedMode" example:"auto"`  // Current configured pull-source mode // 当前配置的选源模式
 }

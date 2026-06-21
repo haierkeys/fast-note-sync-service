@@ -82,24 +82,6 @@ definitions:
       uid:
         type: string
     type: object
-  diffmatchpatch.Diff:
-    properties:
-      text:
-        type: string
-      type:
-        $ref: '#/definitions/diffmatchpatch.Operation'
-    type: object
-  diffmatchpatch.Operation:
-    enum:
-    - -1
-    - 1
-    - 0
-    format: int32
-    type: integer
-    x-enum-varnames:
-    - DiffDelete
-    - DiffInsert
-    - DiffEqual
   dto.AdminCPUInfo:
     properties:
       loadAvg:
@@ -1110,7 +1092,7 @@ definitions:
       diffs:
         description: Text differences // 文本差异内容
         items:
-          $ref: '#/definitions/diffmatchpatch.Diff'
+          type: object
         type: array
       id:
         description: History entry ID // 历史项 ID
@@ -1734,6 +1716,39 @@ definitions:
     - path
     - pathHash
     - vault
+    type: object
+  dto.SourceProbeDTO:
+    description: Probe result containing GitHub/CNB reachability, latency, recommended
+      source and current mode
+    properties:
+      cnb:
+        allOf:
+        - $ref: '#/definitions/dto.SourceProbeItem'
+        description: CNB probe result // CNB 探测结果
+      github:
+        allOf:
+        - $ref: '#/definitions/dto.SourceProbeItem'
+        description: GitHub probe result // GitHub 探测结果
+      recommended:
+        description: 'Recommended source: "github" or "cnb" // 推荐源'
+        example: github
+        type: string
+      selectedMode:
+        description: Current configured pull-source mode // 当前配置的选源模式
+        example: auto
+        type: string
+    type: object
+  dto.SourceProbeItem:
+    description: 'Single source probe result: reachability and latency'
+    properties:
+      latencyMs:
+        description: Round-trip latency in ms // 往返延迟（毫秒）
+        example: 280
+        type: integer
+      ok:
+        description: Whether the source is reachable // 该源是否可达
+        example: true
+        type: boolean
     type: object
   dto.StorageDTO:
     properties:
@@ -5200,6 +5215,27 @@ paths:
                   $ref: '#/definitions/dto.VersionDTO'
               type: object
       summary: Get server version info
+      tags:
+      - System
+  /api/version/probe:
+    get:
+      description: Parallel-probe GitHub and CNB release endpoints, return reachability,
+        latency, recommended source and current selected mode
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Res'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SourceProbeDTO'
+              type: object
+      security:
+      - UserAuthToken: []
+      summary: Probe version sources latency
       tags:
       - System
   /api/webgui/config:

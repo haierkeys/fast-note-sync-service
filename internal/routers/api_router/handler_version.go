@@ -60,9 +60,10 @@ func (h *VersionHandler) ServerVersion(c *gin.Context) {
 // reachability + latency for each, plus the recommended source. Used by the
 // webgui settings "test latency" panel.
 // @Summary Probe version sources latency
-// @Description Parallel-probe GitHub and CNB release endpoints, return reachability, latency and recommended source
+// @Description Parallel-probe GitHub and CNB release endpoints, return reachability, latency, recommended source and current selected mode
 // @Tags System
 // @Produce json
+// @Security UserAuthToken
 // @Success 200 {object} pkgapp.Res{data=dto.SourceProbeDTO} "Success"
 // @Router /api/version/probe [get]
 func (h *VersionHandler) ProbeSources(c *gin.Context) {
