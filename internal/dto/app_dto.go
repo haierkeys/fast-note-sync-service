@@ -28,3 +28,22 @@ type VersionDTO struct {
 type UpgradeRequest struct {
 	Version string `form:"version" binding:"required"` // Version to upgrade (e.g. 2.0.10 or latest) // 升级版本
 }
+
+// SourceProbeItem is one source's reachability + latency result.
+// SourceProbeItem 单个源的可达性与延迟结果。
+type SourceProbeItem struct {
+	OK        bool  `json:"ok"`        // Whether the source is reachable // 该源是否可达
+	LatencyMs int64 `json:"latencyMs"` // Round-trip latency in ms // 往返延迟（毫秒）
+}
+
+// SourceProbeDTO is the payload returned by GET /api/version/probe, consumed by
+// the webgui "test latency" panel. Recommended is "github" or "cnb"; SelectedMode
+// is the current configured pull-source mode (auto|github|cnb).
+// SourceProbeDTO 是 GET /api/version/probe 的响应，供 webgui「测试延迟」面板使用。
+// Recommended 为推荐的源（github 或 cnb）；SelectedMode 为当前配置的选源模式。
+type SourceProbeDTO struct {
+	GitHub       SourceProbeItem `json:"github"`
+	CNB          SourceProbeItem `json:"cnb"`
+	Recommended  string          `json:"recommended"`  // "github" or "cnb" // 推荐源
+	SelectedMode string          `json:"selectedMode"` // current configured mode // 当前配置的模式
+}

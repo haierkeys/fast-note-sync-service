@@ -332,6 +332,10 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	}
 	if params.PullSource != nil {
 		cfg.App.PullSource = *params.PullSource
+		// Sync the running SourceSelector so the change takes effect immediately
+		// instead of waiting for a server restart.
+		// 同步到运行中的 SourceSelector，使改动立即生效，无需重启服务端。
+		h.App.SetPullSourceMode(*params.PullSource)
 	}
 	if params.PullReleaseChannel != nil {
 		cfg.App.PullReleaseChannel = *params.PullReleaseChannel
@@ -1144,14 +1148,22 @@ func (h *AdminControlHandler) Upgrade(c *gin.Context) {
 	versionRaw := strings.TrimPrefix(version, "v")
 
 	// Determine download URL
-	// 确定下载地址
+	// At upgrade time, probe both sources in auto mode to pick the best one
+	// rather than relying on the cached background-task result.
+	// 确定下载地址：auto 模式在升级时主动探测两源，不依赖后台任务缓存。
+	useGitHub := checkInfo.GithubAvailable
+	if cfg.App.PullSource == "auto" {
+		snap := h.App.SourceSelector().Probe(c.Request.Context())
+		useGitHub = snap.UseGitHub
+	}
+
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 
 	// Example: fast-note-sync-service-2.0.10-linux-amd64.tar.gz
 	fileName := fmt.Sprintf("fast-note-sync-service-%s-%s-%s.tar.gz", versionRaw, goos, goarch)
 	downloadURL := ""
-	if checkInfo.GithubAvailable {
+	if useGitHub {
 		// GitHub releases/download/[tag]/[filename]
 		// Based on user feedback: URL should NOT have 'v' in the tag part if the tag itself doesn't have it
 		downloadURL = fmt.Sprintf("https://github.com/haierkeys/fast-note-sync-service/releases/download/%s/%s", versionRaw, fileName)
