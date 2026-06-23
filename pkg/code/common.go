@@ -41,6 +41,7 @@ var (
 	ErrorUserIsNotAdmin          = NewError(411)
 	ErrorUserLocalFSDisabled     = NewError(412)
 	ErrorUserUpdate              = NewError(413)
+	ErrorUserAdminBlock          = NewError(414)
 
 	// --- Vault Related (420-429) ---
 	ErrorVaultNotFound           = NewError(420)

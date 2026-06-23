@@ -39,6 +39,8 @@ var en_messages = map[int]string{
 	410: "User registration is closed, please contact the administrator to configure the config.user.register-is-enable option",
 	411: "This operation requires administrator privileges",
 	412: "User local file system is disabled",
+	413: "User update failed",
+	414: "Cannot block an administrator",
 
 	// --- Vault Related (420-429) ---
 	420: "Note Vault does not exist",

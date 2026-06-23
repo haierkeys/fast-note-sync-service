@@ -858,6 +858,14 @@ func (h *AdminControlHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Prevent block an administrator
+	if params.IsDeleted {
+		if params.UID == int64(cfg.User.AdminUID) {
+			response.ToResponse(code.ErrorUserAdminBlock.WithDetails(errs.ErrorsToString()).WithData(errs.MapsToString()))
+			return
+		}
+	}
+
 	ctx := c.Request.Context()
 
 	// Call UserService to perform update user
