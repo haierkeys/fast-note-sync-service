@@ -94,15 +94,6 @@
                     "Config"
                 ],
                 "summary": "Get full admin config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -148,13 +139,6 @@
                 ],
                 "summary": "Update admin config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -208,15 +192,6 @@
                     "Config"
                 ],
                 "summary": "Get Cloudflare config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -262,13 +237,6 @@
                 ],
                 "summary": "Update Cloudflare config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -322,15 +290,6 @@
                     "Config"
                 ],
                 "summary": "Get user database config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -376,13 +335,6 @@
                 ],
                 "summary": "Update user database config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -440,13 +392,6 @@
                 ],
                 "summary": "Test user database connection",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -620,13 +565,6 @@
                 "summary": "Create a new user",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Config Parameters",
                         "name": "params",
                         "in": "body",
@@ -680,13 +618,6 @@
                 ],
                 "summary": "Get all users",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "description": "Page number // 页码",
@@ -763,13 +694,6 @@
                 "summary": "Update a user",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Config Parameters",
                         "name": "params",
                         "in": "body",
@@ -825,13 +749,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Trace ID of the client",
                         "name": "traceId",
                         "in": "path",
@@ -869,15 +786,6 @@
                     "System"
                 ],
                 "summary": "Get connected WebSocket clients",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -921,15 +829,6 @@
                     "User"
                 ],
                 "summary": "User logout",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -958,13 +857,6 @@
                 ],
                 "summary": "Update backup configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Backup Parameters",
                         "name": "params",
@@ -1029,13 +921,6 @@
                 "summary": "Delete backup configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "example": 1,
                         "description": "ID // ID",
@@ -1085,15 +970,6 @@
                     "Backup"
                 ],
                 "summary": "Get backup configurations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -1147,13 +1023,6 @@
                 "summary": "Trigger a backup manually",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Backup Execute Parameters",
                         "name": "params",
                         "in": "body",
@@ -1206,13 +1075,6 @@
                 ],
                 "summary": "Get backup history list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "example": 1,
@@ -1308,13 +1170,6 @@
                 "summary": "Get attachment content",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "boolean",
                         "example": false,
                         "description": "Is in recycle bin // 是否在回收站",
@@ -1372,13 +1227,6 @@
                 ],
                 "summary": "Upload attachment",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Vault name",
@@ -1453,13 +1301,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Image.png",
                         "description": "File path // 文件路径",
                         "name": "path",
@@ -1521,13 +1362,6 @@
                 ],
                 "summary": "Get attachment info",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -1601,13 +1435,6 @@
                 "summary": "Clear recycle bin",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Clear Parameters",
                         "name": "params",
                         "in": "body",
@@ -1646,13 +1473,6 @@
                 ],
                 "summary": "Rename attachment",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -1702,13 +1522,6 @@
                 "summary": "Restore attachment",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -1756,13 +1569,6 @@
                 ],
                 "summary": "Get file list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -1867,13 +1673,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Projects/Work",
                         "description": "Folder path // 文件夹路径",
                         "name": "path",
@@ -1935,13 +1734,6 @@
                 "summary": "Create folder",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create Parameters",
                         "name": "params",
                         "in": "body",
@@ -1991,13 +1783,6 @@
                 "summary": "Delete folder",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -2033,13 +1818,6 @@
                 ],
                 "summary": "List files in folder",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "Projects",
@@ -2144,13 +1922,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Projects",
                         "description": "Folder path // 文件夹路径",
                         "name": "path",
@@ -2252,13 +2023,6 @@
                 "summary": "Get folder tree",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "example": 3,
                         "description": "Tree depth // 树深度",
@@ -2312,13 +2076,6 @@
                 ],
                 "summary": "Get folder list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "Projects",
@@ -2386,13 +2143,6 @@
                 "summary": "Update git sync configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Git Sync Parameters",
                         "name": "params",
                         "in": "body",
@@ -2456,13 +2206,6 @@
                 "summary": "Delete git sync configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Git Sync ID",
                         "name": "params",
                         "in": "body",
@@ -2518,13 +2261,6 @@
                 ],
                 "summary": "Clean local git workspace",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Clean Parameters",
                         "name": "params",
@@ -2582,13 +2318,6 @@
                 "summary": "Trigger a manual git sync",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Execute Parameters",
                         "name": "params",
                         "in": "body",
@@ -2640,15 +2369,6 @@
                     "GitSync"
                 ],
                 "summary": "Get git sync configurations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -2701,13 +2421,6 @@
                 ],
                 "summary": "Get git sync histories",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "name": "configId",
@@ -2792,13 +2505,6 @@
                 "summary": "Validate git sync parameters",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Validation Parameters",
                         "name": "params",
                         "in": "body",
@@ -2873,13 +2579,6 @@
                 "summary": "Get note details",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "boolean",
                         "example": false,
                         "description": "Is in recycle bin // 是否在回收站",
@@ -2950,13 +2649,6 @@
                 "summary": "Create or update note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Note Content",
                         "name": "params",
                         "in": "body",
@@ -3002,13 +2694,6 @@
                 ],
                 "summary": "Delete note",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3075,13 +2760,6 @@
                 "summary": "Append content to note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Append Parameters",
                         "name": "params",
                         "in": "body",
@@ -3129,13 +2807,6 @@
                 ],
                 "summary": "Get backlinks",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3205,13 +2876,6 @@
                 "summary": "Modify note frontmatter",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Frontmatter Modification Parameters",
                         "name": "params",
                         "in": "body",
@@ -3259,13 +2923,6 @@
                 ],
                 "summary": "Get note history list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -3363,13 +3020,6 @@
                 "summary": "Get note history details",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "format": "int64",
                         "description": "History Record ID",
@@ -3420,13 +3070,6 @@
                 "summary": "Restore note from history",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -3474,13 +3117,6 @@
                 ],
                 "summary": "Get outgoing links",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3550,13 +3186,6 @@
                 "summary": "Prepend content to note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Prepend Parameters",
                         "name": "params",
                         "in": "body",
@@ -3608,13 +3237,6 @@
                 "summary": "Clear recycle bin",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Clear Parameters",
                         "name": "params",
                         "in": "body",
@@ -3653,13 +3275,6 @@
                 ],
                 "summary": "Rename note",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -3712,13 +3327,6 @@
                 "summary": "Find and replace in note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Find and Replace Parameters",
                         "name": "params",
                         "in": "body",
@@ -3767,13 +3375,6 @@
                 "summary": "Restore note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -3821,13 +3422,6 @@
                 ],
                 "summary": "Get note list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -3949,13 +3543,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Vault name",
                         "name": "vault",
                         "in": "query",
@@ -4003,13 +3590,6 @@
                 ],
                 "summary": "Get setting info",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "User/Theme",
@@ -4073,13 +3653,6 @@
                 "summary": "Create or update setting",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create/Update Parameters",
                         "name": "params",
                         "in": "body",
@@ -4129,13 +3702,6 @@
                 "summary": "Delete setting",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -4174,13 +3740,6 @@
                 ],
                 "summary": "Rename setting",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -4229,13 +3788,6 @@
                 ],
                 "summary": "Get setting list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "User/",
@@ -4316,13 +3868,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "ReadMe.md",
                         "description": "Resource path // 资源路径",
                         "name": "path",
@@ -4386,13 +3931,6 @@
                 "summary": "Create resource share",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Share Parameters",
                         "name": "params",
                         "in": "body",
@@ -4441,13 +3979,6 @@
                 ],
                 "summary": "Cancel share",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Cancel Parameters",
                         "name": "params",
@@ -4598,13 +4129,6 @@
                 "summary": "Update share password",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Update Parameters",
                         "name": "params",
                         "in": "body",
@@ -4643,13 +4167,6 @@
                 ],
                 "summary": "Create short link for share",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Short Link Parameters",
                         "name": "params",
@@ -4698,13 +4215,6 @@
                 ],
                 "summary": "List shares",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Sort field: created_at, updated_at, expires_at (default: created_at)",
@@ -4781,15 +4291,6 @@
                     "Storage"
                 ],
                 "summary": "Get storage configuration list",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -4831,13 +4332,6 @@
                 ],
                 "summary": "Create or update storage configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Storage Parameters",
                         "name": "params",
@@ -4883,13 +4377,6 @@
                 ],
                 "summary": "Delete storage configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "format": "int64",
@@ -4962,13 +4449,6 @@
                 ],
                 "summary": "Validate storage connection",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Storage Parameters",
                         "name": "params",
@@ -5089,13 +4569,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "modify",
                         "description": "Action type // 操作类型",
                         "name": "action",
@@ -5185,13 +4658,6 @@
                 "summary": "Change user password",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Change Password Parameters",
                         "name": "params",
                         "in": "body",
@@ -5241,15 +4707,6 @@
                     "User"
                 ],
                 "summary": "Get user info",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -5397,15 +4854,6 @@
                     "Vault"
                 ],
                 "summary": "Get vault list",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -5448,13 +4896,6 @@
                 ],
                 "summary": "Create or update vault",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Vault Parameters",
                         "name": "params",
@@ -5502,13 +4943,6 @@
                 "summary": "Delete vault",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "minimum": 1,
                         "type": "integer",
                         "example": 1,
@@ -5548,13 +4982,6 @@
                 "summary": "Force delete a single item",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -5590,13 +5017,6 @@
                 ],
                 "summary": "Get vault details",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "format": "int64",
@@ -5647,13 +5067,6 @@
                 ],
                 "summary": "Rebuild vault FTS index",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rebuild Index Parameters",
                         "name": "params",

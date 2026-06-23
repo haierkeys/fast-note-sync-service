@@ -1,13 +1,14 @@
 package api_router
 
 import (
-	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -37,7 +38,6 @@ func NewShareHandler(app *app.App, wss *pkgapp.WebsocketServer) *ShareHandler {
 // @Description Create a share token for a specific note or attachment, automatically resolve attachment references and authorize
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.ShareCreateRequest true "Share Parameters"
@@ -188,7 +188,6 @@ func (h *ShareHandler) FileGet(c *gin.Context) {
 // @Description Get share token and info by vault and path
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Param params query dto.ShareQueryRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.ShareCreateResponse} "Success"
 // @Router /api/share [get]
@@ -248,7 +247,6 @@ func (h *ShareHandler) Query(c *gin.Context) {
 // @Description Cancel a share by ID or path parameters
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.ShareCancelRequest true "Cancel Parameters"
@@ -294,7 +292,6 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 // @Description Set or update password for a share record
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.SharePasswordUpdateRequest true "Update Parameters"
@@ -330,7 +327,6 @@ func (h *ShareHandler) UpdatePassword(c *gin.Context) {
 // @Description Call sink.cool API to generate a short link for a given share record
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.ShareShortLinkCreateRequest true "Short Link Parameters"
@@ -372,7 +368,6 @@ func (h *ShareHandler) CreateShortLink(c *gin.Context) {
 // @Description Get all active and inactive shares of the user, supports sorting and pagination
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Param sort_by query string false "Sort field: created_at, updated_at, expires_at (default: created_at)"
 // @Param sort_order query string false "Sort direction: asc or desc (default: desc)"
 // @Param page query int false "Page number"
@@ -412,7 +407,6 @@ func (h *ShareHandler) List(c *gin.Context) {
 // @Summary Get active shared note paths
 // @Tags Share
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Param vault query string true "Vault name"
 // @Success 200 {object} pkgapp.Res{data=[]string} "Success"
 // @Router /api/notes/share-paths [get]

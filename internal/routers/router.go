@@ -110,9 +110,11 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// 注册 API 路由
 	registerAPIRoutes(r, appContainer, wss, uni)
 
-	// Register OpenAPI/Swagger routes
+	// Register OpenAPI/Swagger routes only for non ReleaseMode
 	// 注册 OpenAPI/Swagger 路由
-	registerOpenAPIRoutes(r, frontendFiles)
+	if gin.Mode() != gin.ReleaseMode {
+		registerOpenAPIRoutes(r, frontendFiles)
+	}
 
 	r.NoRoute(middleware.NoFound())
 

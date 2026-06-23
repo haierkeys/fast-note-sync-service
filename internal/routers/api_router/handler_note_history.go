@@ -41,7 +41,6 @@ type NoteHistoryGetRequestParams struct {
 // @Description Get specific note history content by history record ID
 // @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param id query int64 true "History Record ID"
 // @Success 200 {object} pkgapp.Res{data=dto.NoteHistoryDTO} "Success"
@@ -87,7 +86,6 @@ func (h *NoteHistoryHandler) Get(c *gin.Context) {
 // @Description Get all history records for a specific note with pagination
 // @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.NoteHistoryListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
@@ -150,7 +148,6 @@ func (h *NoteHistoryHandler) logError(ctx context.Context, method string, err er
 // @Description Restore note content to a specific history version
 // @Tags Note History
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.NoteHistoryRestoreRequest true "Restore Parameters"

@@ -21,6 +21,13 @@ import (
 //     从根本上防止手动 API 令牌伪造请求头绕过 WebGUI 专属管理接口
 func RequireWebGUI() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		// Check disabled for all modes except ReleaseMode for Swagger/tool testing.
+		if gin.Mode() != gin.ReleaseMode {
+			c.Next()
+			return
+		}
+
 		response := pkgapp.NewResponse(c)
 
 		// Layer 1: Header/query parameter check (applies to all routes)

@@ -96,6 +96,22 @@
     "name": "xuhsu"
   },
   {
+    "time": "2026/06/18 10:29:22",
+    "item": "Three cups of coffee ☕",
+    "amount": "90.00",
+    "unit": "¥",
+    "message": "Thank you for developing such a great plugin. I hope it continues to improve!",
+    "name": "i_orange"
+  },
+  {
+    "time": "2026/06/08 14:30:08",
+    "item": "Three cups of coffee ☕",
+    "amount": "90.00",
+    "unit": "¥",
+    "message": "Supporting it again! Keep up the great work!!!",
+    "name": "southzen"
+  },
+  {
     "time": "2026/05/04 05:05:07",
     "item": "Three cups of coffee ☕",
     "amount": "90.00",
@@ -118,6 +134,14 @@
     "unit": "¥",
     "message": "Limited ability, but please accept this small gesture.",
     "name": "wutay"
+  },
+  {
+    "time": "2026/06/17 19:15:11",
+    "item": "Custom Amount",
+    "amount": "68.00",
+    "unit": "¥",
+    "message": "Thanks for your work. Hope you keep updating! Thank you.",
+    "name": "火气"
   },
   {
     "time": "2026/04/30 21:08:11",
@@ -166,6 +190,30 @@
     "unit": "¥",
     "message": "Happy New Year",
     "name": "Jack"
+  },
+  {
+    "time": "2026/06/20 13:16:56",
+    "item": "Two cups of coffee ☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "Bro, you're amazing! You've cured my indecisiveness. All terminals sync in seconds, and it even supports OSS and Git backups!",
+    "name": "旭平"
+  },
+  {
+    "time": "2026/06/12 12:12:56",
+    "item": "Two cups of coffee ☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "🐮",
+    "name": "陈威利"
+  },
+  {
+    "time": "2026/06/05 16:33:05",
+    "item": "Two cups of coffee ☕",
+    "amount": "60.00",
+    "unit": "¥",
+    "message": "Hope you keep updating and making it even better.",
+    "name": "風車轉啊轉"
   },
   {
     "time": "2026/05/16 17:20:29",
@@ -376,12 +424,108 @@
     "name": "喆"
   },
   {
+    "time": "2026/06/08 22:53:28",
+    "item": "Custom Amount",
+    "amount": "38.00",
+    "unit": "¥",
+    "message": "Very easy to use, supporting it",
+    "name": "snklvm"
+  },
+  {
     "time": "2026/04/13 05:52:00",
     "item": "Ko-fi Support",
     "amount": "5.00",
     "unit": "USD",
     "message": "Nice work!",
     "name": "joehwang"
+  },
+  {
+    "time": "2026/06/22 10:52:20",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thanks to the expert. I've been using it for over a week, and it's very smooth.",
+    "name": "buptxxn"
+  },
+  {
+    "time": "2026/06/21 19:34:42",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "The plugin is awesome. Thanks to the developer. Here's a small token of my appreciation.",
+    "name": "liviter"
+  },
+  {
+    "time": "2026/06/20 21:10:35",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Having coffee",
+    "name": "JRS"
+  },
+  {
+    "time": "2026/06/17 22:50:41",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Thank you. It's much better than Syncthing.",
+    "name": "互动海洋"
+  },
+  {
+    "time": "2026/06/16 17:14:56",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "A great tool deserves support.",
+    "name": "Evan"
+  },
+  {
+    "time": "2026/06/09 18:12:16",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Keep it up! Continue updating and optimizing.",
+    "name": "Yunfei"
+  },
+  {
+    "time": "2026/06/07 17:20:38",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Really useful. Keep up the good work.",
+    "name": "浮生若茶"
+  },
+  {
+    "time": "2026/06/06 23:10:17",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Absolutely fantastic!",
+    "name": "杨大锤"
+  },
+  {
+    "time": "2026/06/06 15:57:38",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Very convenient. Keep it up!",
+    "name": "wilder"
+  },
+  {
+    "time": "2026/06/05 06:27:12",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Perfect! Thank you!",
+    "name": "forever young"
+  },
+  {
+    "time": "2026/06/04 18:26:36",
+    "item": "A cup of coffee ☕",
+    "amount": "30.00",
+    "unit": "¥",
+    "message": "Very useful. Keep it up!",
+    "name": "Hexforge"
   },
   {
     "time": "2026/06/03 14:55:44",
@@ -622,6 +766,14 @@
     "unit": "¥",
     "message": "Very professional and easy to use! Extremely useful!",
     "name": "王东方"
+  },
+  {
+    "time": "2026/06/10 13:27:09",
+    "item": "Custom Amount",
+    "amount": "20.00",
+    "unit": "¥",
+    "message": "Thanks, the software is amazing. Instant sync.",
+    "name": "渤海飓风"
   },
   {
     "time": "2026/05/12 15:39:05",
@@ -1136,6 +1288,62 @@
     "name": "下鞅"
   },
   {
+    "time": "2026/06/05 15:49:08",
+    "item": "Custom Amount",
+    "amount": "15.00",
+    "unit": "¥",
+    "message": "Thank you, author.",
+    "name": "kk"
+  },
+  {
+    "time": "2026/06/23 12:03:31",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Thank you for open-sourcing such great software. Cheers to the open-source community!",
+    "name": "柴特"
+  },
+  {
+    "time": "2026/06/21 09:48:52",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Supporting this!",
+    "name": "laov"
+  },
+  {
+    "time": "2026/06/19 00:30:51",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Thanks, it's very useful.",
+    "name": "kk"
+  },
+  {
+    "time": "2026/06/13 10:32:06",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Support ✊ It's very useful.",
+    "name": "Tong"
+  },
+  {
+    "time": "2026/06/08 23:10:28",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Thanks, it's quite useful, but I'm not sure how to manage accounts 🤔",
+    "name": "haohan"
+  },
+  {
+    "time": "2026/06/06 00:31:14",
+    "item": "Custom Amount",
+    "amount": "10.00",
+    "unit": "¥",
+    "message": "Very useful! As a student, I'm doing my small part to support it!",
+    "name": "傻东西大星星"
+  },
+  {
     "time": "2026/05/31 21:00:52",
     "item": "Custom Amount",
     "amount": "10.00",
@@ -1248,6 +1456,14 @@
     "name": "羽山猫四叶"
   },
   {
+    "time": "2026/06/14 16:34:05",
+    "item": "Custom Amount",
+    "amount": "9.99",
+    "unit": "¥",
+    "message": "Please do not write to the supported list. Also, is it possible to disable the supported list?",
+    "name": "Ling"
+  },
+  {
     "time": "2026/03/22 15:09:43",
     "item": "Custom Tip",
     "amount": "9.90",
@@ -1302,6 +1518,22 @@
     "unit": "¥",
     "message": "Very complete, even the server interface looks great",
     "name": "yang"
+  },
+  {
+    "time": "2026/06/19 11:23:06",
+    "item": "Custom Amount",
+    "amount": "6.66",
+    "unit": "¥",
+    "message": "Amazing, super useful!! Keep it up!",
+    "name": "666"
+  },
+  {
+    "time": "2026/06/06 21:30:20",
+    "item": "Custom Amount",
+    "amount": "6.66",
+    "unit": "¥",
+    "message": "Thanks! Here are two bottles of happy soda 🥤🥤. Looking forward to even better things!",
+    "name": "kunnyl"
   },
   {
     "time": "2026/06/03 19:11:55",
@@ -1496,6 +1728,22 @@
     "name": "Skins"
   },
   {
+    "time": "2026/06/15 00:26:34",
+    "item": "Custom Amount",
+    "amount": "2.33",
+    "unit": "¥",
+    "message": "Very easy to use",
+    "name": "叶子"
+  },
+  {
+    "time": "2026/06/05 14:41:29",
+    "item": "Custom Amount",
+    "amount": "2.00",
+    "unit": "¥",
+    "message": "So easy to use, keep it up! ⬆️",
+    "name": "泽胜"
+  },
+  {
     "time": "2026/05/30 21:41:41",
     "item": "Custom Amount",
     "amount": "2.00",
@@ -1534,6 +1782,14 @@
     "unit": "¥",
     "message": "Just here to show my support, please forgive me!",
     "name": "ikkyu"
+  },
+  {
+    "time": "2026/06/13 15:55:41",
+    "item": "Custom Amount",
+    "amount": "1.00",
+    "unit": "¥",
+    "message": "Thanks, very useful. Hope the project can be maintained long-term and continue to improve.",
+    "name": "李寒"
   },
   {
     "time": "2026/05/19 17:16:10",
