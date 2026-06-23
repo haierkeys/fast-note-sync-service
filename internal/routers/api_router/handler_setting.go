@@ -1,10 +1,10 @@
 package api_router
 
 import (
-	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/internal/routers/websocket_router"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
@@ -27,7 +27,6 @@ func NewSettingHandler(appContainer *app.App, wss *pkgapp.WebsocketServer) *Sett
 // @Description Get setting info for current user by path or pathHash
 // @Tags Setting
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.SettingGetRequest true "Query Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.SettingDTO} "Success"
@@ -56,7 +55,6 @@ func (h *SettingHandler) Get(c *gin.Context) {
 // @Description Get setting list for current user with pagination and keyword filtering
 // @Tags Setting
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.SettingListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
@@ -88,7 +86,6 @@ func (h *SettingHandler) List(c *gin.Context) {
 // @Description Create a new setting or update an existing one
 // @Tags Setting
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.SettingModifyOrCreateRequest true "Create/Update Parameters"
@@ -131,7 +128,6 @@ func (h *SettingHandler) CreateOrUpdate(c *gin.Context) {
 // @Description Soft delete a setting by path or pathHash
 // @Tags Setting
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.SettingDeleteRequest true "Delete Parameters"
@@ -168,7 +164,6 @@ func (h *SettingHandler) Delete(c *gin.Context) {
 // @Description Rename a setting and update its path and pathHash
 // @Tags Setting
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.SettingRenameRequest true "Rename Parameters"

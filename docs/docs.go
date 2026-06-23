@@ -100,15 +100,6 @@ const docTemplate = `{
                     "Config"
                 ],
                 "summary": "Get full admin config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -154,13 +145,6 @@ const docTemplate = `{
                 ],
                 "summary": "Update admin config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -214,15 +198,6 @@ const docTemplate = `{
                     "Config"
                 ],
                 "summary": "Get Cloudflare config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -268,13 +243,6 @@ const docTemplate = `{
                 ],
                 "summary": "Update Cloudflare config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -328,15 +296,6 @@ const docTemplate = `{
                     "Config"
                 ],
                 "summary": "Get user database config",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -382,13 +341,6 @@ const docTemplate = `{
                 ],
                 "summary": "Update user database config",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -446,13 +398,6 @@ const docTemplate = `{
                 ],
                 "summary": "Test user database connection",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -626,13 +571,6 @@ const docTemplate = `{
                 "summary": "Create a new user",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Config Parameters",
                         "name": "params",
                         "in": "body",
@@ -685,15 +623,6 @@ const docTemplate = `{
                     "Config"
                 ],
                 "summary": "Get all users",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -744,13 +673,6 @@ const docTemplate = `{
                 ],
                 "summary": "Update a user",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Config Parameters",
                         "name": "params",
@@ -807,13 +729,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Trace ID of the client",
                         "name": "traceId",
                         "in": "path",
@@ -851,15 +766,6 @@ const docTemplate = `{
                     "System"
                 ],
                 "summary": "Get connected WebSocket clients",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -903,15 +809,6 @@ const docTemplate = `{
                     "User"
                 ],
                 "summary": "User logout",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -940,13 +837,6 @@ const docTemplate = `{
                 ],
                 "summary": "Update backup configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Backup Parameters",
                         "name": "params",
@@ -1011,13 +901,6 @@ const docTemplate = `{
                 "summary": "Delete backup configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "example": 1,
                         "description": "ID // ID",
@@ -1067,15 +950,6 @@ const docTemplate = `{
                     "Backup"
                 ],
                 "summary": "Get backup configurations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -1129,13 +1003,6 @@ const docTemplate = `{
                 "summary": "Trigger a backup manually",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Backup Execute Parameters",
                         "name": "params",
                         "in": "body",
@@ -1188,13 +1055,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get backup history list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "example": 1,
@@ -1290,13 +1150,6 @@ const docTemplate = `{
                 "summary": "Get attachment content",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "boolean",
                         "example": false,
                         "description": "Is in recycle bin // 是否在回收站",
@@ -1354,13 +1207,6 @@ const docTemplate = `{
                 ],
                 "summary": "Upload attachment",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Vault name",
@@ -1435,13 +1281,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Image.png",
                         "description": "File path // 文件路径",
                         "name": "path",
@@ -1503,13 +1342,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get attachment info",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -1583,13 +1415,6 @@ const docTemplate = `{
                 "summary": "Clear recycle bin",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Clear Parameters",
                         "name": "params",
                         "in": "body",
@@ -1628,13 +1453,6 @@ const docTemplate = `{
                 ],
                 "summary": "Rename attachment",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -1684,13 +1502,6 @@ const docTemplate = `{
                 "summary": "Restore attachment",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -1738,13 +1549,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get file list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -1849,13 +1653,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Projects/Work",
                         "description": "Folder path // 文件夹路径",
                         "name": "path",
@@ -1917,13 +1714,6 @@ const docTemplate = `{
                 "summary": "Create folder",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create Parameters",
                         "name": "params",
                         "in": "body",
@@ -1973,13 +1763,6 @@ const docTemplate = `{
                 "summary": "Delete folder",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -2015,13 +1798,6 @@ const docTemplate = `{
                 ],
                 "summary": "List files in folder",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "Projects",
@@ -2126,13 +1902,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "Projects",
                         "description": "Folder path // 文件夹路径",
                         "name": "path",
@@ -2234,13 +2003,6 @@ const docTemplate = `{
                 "summary": "Get folder tree",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "example": 3,
                         "description": "Tree depth // 树深度",
@@ -2294,13 +2056,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get folder list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "Projects",
@@ -2368,13 +2123,6 @@ const docTemplate = `{
                 "summary": "Update git sync configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Git Sync Parameters",
                         "name": "params",
                         "in": "body",
@@ -2438,13 +2186,6 @@ const docTemplate = `{
                 "summary": "Delete git sync configuration",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Git Sync ID",
                         "name": "params",
                         "in": "body",
@@ -2500,13 +2241,6 @@ const docTemplate = `{
                 ],
                 "summary": "Clean local git workspace",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Clean Parameters",
                         "name": "params",
@@ -2564,13 +2298,6 @@ const docTemplate = `{
                 "summary": "Trigger a manual git sync",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Execute Parameters",
                         "name": "params",
                         "in": "body",
@@ -2622,15 +2349,6 @@ const docTemplate = `{
                     "GitSync"
                 ],
                 "summary": "Get git sync configurations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -2683,13 +2401,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get git sync histories",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "name": "configId",
@@ -2774,13 +2485,6 @@ const docTemplate = `{
                 "summary": "Validate git sync parameters",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Validation Parameters",
                         "name": "params",
                         "in": "body",
@@ -2855,13 +2559,6 @@ const docTemplate = `{
                 "summary": "Get note details",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "boolean",
                         "example": false,
                         "description": "Is in recycle bin // 是否在回收站",
@@ -2932,13 +2629,6 @@ const docTemplate = `{
                 "summary": "Create or update note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Note Content",
                         "name": "params",
                         "in": "body",
@@ -2984,13 +2674,6 @@ const docTemplate = `{
                 ],
                 "summary": "Delete note",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3057,13 +2740,6 @@ const docTemplate = `{
                 "summary": "Append content to note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Append Parameters",
                         "name": "params",
                         "in": "body",
@@ -3111,13 +2787,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get backlinks",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3187,13 +2856,6 @@ const docTemplate = `{
                 "summary": "Modify note frontmatter",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Frontmatter Modification Parameters",
                         "name": "params",
                         "in": "body",
@@ -3241,13 +2903,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get note history list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -3345,13 +3000,6 @@ const docTemplate = `{
                 "summary": "Get note history details",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "format": "int64",
                         "description": "History Record ID",
@@ -3402,13 +3050,6 @@ const docTemplate = `{
                 "summary": "Restore note from history",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -3456,13 +3097,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get outgoing links",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -3532,13 +3166,6 @@ const docTemplate = `{
                 "summary": "Prepend content to note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Prepend Parameters",
                         "name": "params",
                         "in": "body",
@@ -3590,13 +3217,6 @@ const docTemplate = `{
                 "summary": "Clear recycle bin",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Clear Parameters",
                         "name": "params",
                         "in": "body",
@@ -3635,13 +3255,6 @@ const docTemplate = `{
                 ],
                 "summary": "Rename note",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -3694,13 +3307,6 @@ const docTemplate = `{
                 "summary": "Find and replace in note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Find and Replace Parameters",
                         "name": "params",
                         "in": "body",
@@ -3749,13 +3355,6 @@ const docTemplate = `{
                 "summary": "Restore note",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Restore Parameters",
                         "name": "params",
                         "in": "body",
@@ -3803,13 +3402,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get note list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -3931,13 +3523,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Vault name",
                         "name": "vault",
                         "in": "query",
@@ -3985,13 +3570,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get setting info",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "User/Theme",
@@ -4055,13 +3633,6 @@ const docTemplate = `{
                 "summary": "Create or update setting",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create/Update Parameters",
                         "name": "params",
                         "in": "body",
@@ -4111,13 +3682,6 @@ const docTemplate = `{
                 "summary": "Delete setting",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -4156,13 +3720,6 @@ const docTemplate = `{
                 ],
                 "summary": "Rename setting",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rename Parameters",
                         "name": "params",
@@ -4211,13 +3768,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get setting list",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "example": "User/",
@@ -4298,13 +3848,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "ReadMe.md",
                         "description": "Resource path // 资源路径",
                         "name": "path",
@@ -4368,13 +3911,6 @@ const docTemplate = `{
                 "summary": "Create resource share",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Share Parameters",
                         "name": "params",
                         "in": "body",
@@ -4423,13 +3959,6 @@ const docTemplate = `{
                 ],
                 "summary": "Cancel share",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Cancel Parameters",
                         "name": "params",
@@ -4580,13 +4109,6 @@ const docTemplate = `{
                 "summary": "Update share password",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Update Parameters",
                         "name": "params",
                         "in": "body",
@@ -4625,13 +4147,6 @@ const docTemplate = `{
                 ],
                 "summary": "Create short link for share",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Short Link Parameters",
                         "name": "params",
@@ -4680,13 +4195,6 @@ const docTemplate = `{
                 ],
                 "summary": "List shares",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Sort field: created_at, updated_at, expires_at (default: created_at)",
@@ -4763,15 +4271,6 @@ const docTemplate = `{
                     "Storage"
                 ],
                 "summary": "Get storage configuration list",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -4813,13 +4312,6 @@ const docTemplate = `{
                 ],
                 "summary": "Create or update storage configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Storage Parameters",
                         "name": "params",
@@ -4865,13 +4357,6 @@ const docTemplate = `{
                 ],
                 "summary": "Delete storage configuration",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "format": "int64",
@@ -4944,13 +4429,6 @@ const docTemplate = `{
                 ],
                 "summary": "Validate storage connection",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Storage Parameters",
                         "name": "params",
@@ -5071,13 +4549,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "example": "modify",
                         "description": "Action type // 操作类型",
                         "name": "action",
@@ -5167,13 +4638,6 @@ const docTemplate = `{
                 "summary": "Change user password",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Change Password Parameters",
                         "name": "params",
                         "in": "body",
@@ -5223,15 +4687,6 @@ const docTemplate = `{
                     "User"
                 ],
                 "summary": "Get user info",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -5379,15 +4834,6 @@ const docTemplate = `{
                     "Vault"
                 ],
                 "summary": "Get vault list",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -5430,13 +4876,6 @@ const docTemplate = `{
                 ],
                 "summary": "Create or update vault",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Vault Parameters",
                         "name": "params",
@@ -5484,13 +4923,6 @@ const docTemplate = `{
                 "summary": "Delete vault",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "minimum": 1,
                         "type": "integer",
                         "example": 1,
@@ -5530,13 +4962,6 @@ const docTemplate = `{
                 "summary": "Force delete a single item",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Delete Parameters",
                         "name": "params",
                         "in": "body",
@@ -5572,13 +4997,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get vault details",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "integer",
                         "format": "int64",
@@ -5629,13 +5047,6 @@ const docTemplate = `{
                 ],
                 "summary": "Rebuild vault FTS index",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Auth Token",
-                        "name": "token",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Rebuild Index Parameters",
                         "name": "params",

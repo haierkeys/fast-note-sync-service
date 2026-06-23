@@ -38,7 +38,6 @@ func NewFileHandler(a *app.App, wss *pkgapp.WebsocketServer) *FileHandler {
 // @Description Get attachment list for current user with pagination, search, filter, and sort support
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FileListRequest true "Query Parameters"
 // @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
@@ -87,7 +86,6 @@ func (h *FileHandler) List(c *gin.Context) {
 // @Description Get raw binary data of an attachment by path, supports strong cache control
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce octet-stream
 // @Param params query dto.FileGetRequest true "Get Parameters"
 // @Success 200 {file} binary "Success"
@@ -162,7 +160,6 @@ func (h *FileHandler) GetInfo(c *gin.Context) {
 // @Description Permanently delete a specific attachment record and its physical file
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FileDeleteRequest true "Delete Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
@@ -228,7 +225,6 @@ func (h *FileHandler) Delete(c *gin.Context) {
 // @Description Get attachment metadata (FileDTO) by path
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params query dto.FileGetRequest true "Get Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
@@ -286,7 +282,6 @@ func (h *FileHandler) Get(c *gin.Context) {
 // @Description Restore deleted attachment from trash
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Produce json
 // @Param params body dto.FileRestoreRequest true "Restore Parameters"
 // @Success 200 {object} pkgapp.Res{data=dto.FileDTO} "Success"
@@ -353,7 +348,6 @@ func (h *FileHandler) logError(ctx context.Context, method string, err error) {
 // @Description Permanently clear selected files from recycle bin
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.FileRecycleClearRequest true "Clear Parameters"
@@ -392,7 +386,6 @@ func (h *FileHandler) RecycleClear(c *gin.Context) {
 // @Description Rename an attachment to a new path
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept json
 // @Produce json
 // @Param params body dto.FileRenameRequest true "Rename Parameters"
@@ -469,7 +462,6 @@ func (h *FileHandler) Rename(c *gin.Context) {
 // @Description Upload a file as an attachment
 // @Tags File
 // @Security UserAuthToken
-// @Param token header string true "Auth Token"
 // @Accept multipart/form-data
 // @Produce json
 // @Param vault formData string true "Vault name"
