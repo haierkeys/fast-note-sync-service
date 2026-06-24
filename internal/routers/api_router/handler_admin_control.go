@@ -890,7 +890,8 @@ func (h *AdminControlHandler) UpdateUser(c *gin.Context) {
 // @Tags Config
 // @Security UserAuthToken
 // @Produce json
-// @Success 200 {object} pkgapp.Res{data=[]dto.UserDTO} "Success"
+// @Param pagination query pkgapp.PaginationRequest true "Pagination Parameters"
+// @Success 200 {object} pkgapp.Res{data=pkgapp.ListRes{list=[]dto.UserDTO}} "Success"
 // @Failure 401 {object} pkgapp.Res "Unauthorized"
 // @Router /api/admin/users/list [get]
 func (h *AdminControlHandler) GetUsers(c *gin.Context) {

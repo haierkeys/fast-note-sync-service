@@ -71,15 +71,6 @@ func (m *MockUserRepository) UpdatePassword(ctx context.Context, password string
 	return args.Error(0)
 }
 
-// GetAll retrieves all users info
-func (m *MockUserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*domain.User), args.Error(1)
-}
-
 // GetAllUIDs retrieves all user UIDs.
 // GetAllUIDs 获取所有用户的 UID 列表。
 func (m *MockUserRepository) GetAllUIDs(ctx context.Context) ([]int64, error) {

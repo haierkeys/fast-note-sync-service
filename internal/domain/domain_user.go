@@ -58,9 +58,6 @@ type UserRepository interface {
 	// GetAllUIDs 获取所有用户UID
 	GetAllUIDs(ctx context.Context) ([]int64, error)
 
-	// GetAll
-	GetAll(ctx context.Context) ([]*User, error)
-
 	// GetList retrieves users with pagination // GetList 分页获取用户列表
 	GetList(ctx context.Context, offset, limit int) ([]*User, int64, error)
 }

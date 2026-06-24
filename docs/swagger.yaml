@@ -2483,6 +2483,15 @@ paths:
   /api/admin/users/list:
     get:
       description: Handle request to get all users.
+      parameters:
+      - description: Page number // 页码
+        in: query
+        name: page
+        type: integer
+      - description: Page size // 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
@@ -2493,9 +2502,14 @@ paths:
             - $ref: '#/definitions/app.Res'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.UserDTO'
-                  type: array
+                  allOf:
+                  - $ref: '#/definitions/app.ListRes'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/dto.UserDTO'
+                        type: array
+                    type: object
               type: object
         "401":
           description: Unauthorized
