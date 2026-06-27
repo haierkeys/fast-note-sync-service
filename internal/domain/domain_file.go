@@ -22,6 +22,7 @@ type File struct {
 	ContentHash      string
 	SavePath         string
 	Rename           int64
+	RenamedToID      int64  // 重命名目标记录ID: 当 Rename=1 时, 指向被创建的新记录
 	Size             int64
 	Ctime            int64
 	Mtime            int64

@@ -19,6 +19,7 @@ type File struct {
 	ContentHash      string     `gorm:"column:content_hash;default:''" json:"contentHash" form:"contentHash"`
 	SavePath         string     `gorm:"column:save_path;default:''" json:"savePath" form:"savePath"`
 	Rename           int64      `gorm:"column:rename;index:idx_file_vault_id_rename,priority:2;index:idx_file_vault_id_action_rename,priority:3;default:0" json:"rename" form:"rename"`
+	RenamedToID      int64      `gorm:"column:renamed_to_id;default:0" json:"renamedToId" form:"renamedToId"`
 	Size             int64      `gorm:"column:size;not null;default:0" json:"size" form:"size"`
 	Ctime            int64      `gorm:"column:ctime;not null;default:0" json:"ctime" form:"ctime"`
 	Mtime            int64      `gorm:"column:mtime;not null;default:0" json:"mtime" form:"mtime"`

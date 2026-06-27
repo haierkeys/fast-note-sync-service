@@ -1,4 +1,3 @@
-// Package dao 实现数据访问层
 package dao
 
 import (
@@ -64,6 +63,7 @@ func (r *fileRepository) toDomain(m *model.File, uid int64) *domain.File {
 		ContentHash:      m.ContentHash,
 		SavePath:         m.SavePath,
 		Rename:           m.Rename,
+		RenamedToID:      m.RenamedToID,
 		Size:             m.Size,
 		Ctime:            m.Ctime,
 		Mtime:            m.Mtime,
@@ -90,6 +90,7 @@ func (r *fileRepository) toModel(file *domain.File) *model.File {
 		ContentHash:      file.ContentHash,
 		SavePath:         file.SavePath,
 		Rename:           file.Rename,
+		RenamedToID:      file.RenamedToID,
 		Size:             file.Size,
 		Ctime:            file.Ctime,
 		Mtime:            file.Mtime,

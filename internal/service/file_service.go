@@ -256,8 +256,44 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			return isNew, s.domainToDTO(file), nil
 		}
 
-		// Set action
-		// 设置 action
+	// When the old file is marked Delete with Rename=1, it means a rename
+	// happened while the upload was in progress. Use RenamedToID to find
+	// the renamed record and update THAT record instead.
+	// This fixes the race condition where Rename and UploadComplete run
+	// concurrently: Rename marks A as Delete (reusing its SavePath for B),
+	// then UploadComplete updates A's record and moves the temp file away,
+	// leaving B's SavePath pointing to a nonexistent file.
+	if file.Action == domain.FileActionDelete && file.Rename == 1 && file.RenamedToID > 0 {
+		renamedFile, errFind := s.fileRepo.GetByID(ctx, file.RenamedToID, uid)
+		if errFind == nil && renamedFile != nil {
+			renamedFile.VaultID = vaultID
+			renamedFile.ContentHash = params.ContentHash
+			renamedFile.SavePath = params.SavePath
+			renamedFile.Size = params.Size
+			renamedFile.Mtime = params.Mtime
+			renamedFile.Ctime = params.Ctime
+			renamedFile.Action = domain.FileActionCreate
+			renamedFile.Rename = 0
+
+			updated, err := s.fileRepo.Update(ctx, renamedFile, uid)
+			if err != nil {
+				return isNew, nil, code.ErrorDBQuery.WithDetails(err.Error())
+			}
+
+			go s.CountSizeSum(context.Background(), vaultID, uid)
+			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
+			if s.backupService != nil {
+				go s.backupService.NotifyUpdated(uid)
+			}
+			if s.gitSyncService != nil {
+				go s.gitSyncService.NotifyUpdated(uid, vaultID)
+			}
+			return isNew, s.domainToDTO(updated), nil
+		}
+	}
+
+		// Update file
+		// 更新文件
 		var action domain.FileAction
 		if file.Action == domain.FileActionDelete {
 			action = domain.FileActionCreate
@@ -265,8 +301,6 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			action = domain.FileActionModify
 		}
 
-		// Update file
-		// 更新文件
 		file.VaultID = vaultID
 		file.Path = params.Path
 		file.PathHash = params.PathHash
@@ -740,10 +774,6 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 	f.Action = domain.FileActionDelete
 	f.Rename = 1
 	f.UpdatedTimestamp = timex.Now().UnixMilli()
-	oldFile, err := s.fileRepo.Update(ctx, f, uid)
-	if err != nil {
-		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
 
 	// 4. 新建或复用文件记录
 	var newFileCreated *domain.File
@@ -787,6 +817,13 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		newFileCreated, err = s.fileRepo.Create(ctx, newFile, uid)
 	}
 
+	// 5. 更新旧记录的 RenamedToID, 关联到新记录
+	if err == nil && newFileCreated != nil {
+		f.RenamedToID = newFileCreated.ID
+		_, _ = s.fileRepo.Update(ctx, f, uid)
+	}
+
+	oldFile, err := s.fileRepo.GetByID(ctx, f.ID, uid)
 	if err != nil {
 		return nil, nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
