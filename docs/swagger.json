@@ -5119,6 +5119,43 @@
                 }
             }
         },
+        "/api/version/probe": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuthToken": []
+                    }
+                ],
+                "description": "Parallel-probe GitHub and CNB release endpoints, return reachability, latency, recommended source and current selected mode",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Probe version sources latency",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Res"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SourceProbeDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/webgui/config": {
             "get": {
                 "description": "Get non-sensitive configuration required for frontend display, such as font settings, registration status, etc.",
@@ -5273,31 +5310,6 @@
                     "type": "string"
                 }
             }
-        },
-        "diffmatchpatch.Diff": {
-            "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/diffmatchpatch.Operation"
-                }
-            }
-        },
-        "diffmatchpatch.Operation": {
-            "type": "integer",
-            "format": "int32",
-            "enum": [
-                -1,
-                1,
-                0
-            ],
-            "x-enum-varnames": [
-                "DiffDelete",
-                "DiffInsert",
-                "DiffEqual"
-            ]
         },
         "dto.AdminCPUInfo": {
             "type": "object",
@@ -6680,7 +6692,7 @@
                     "description": "Text differences // 文本差异内容",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/diffmatchpatch.Diff"
+                        "type": "object"
                     }
                 },
                 "id": {
@@ -7510,6 +7522,54 @@
                     "description": "Vault name // 库名",
                     "type": "string",
                     "example": "work"
+                }
+            }
+        },
+        "dto.SourceProbeDTO": {
+            "description": "Probe result containing GitHub/CNB reachability, latency, recommended source and current mode",
+            "type": "object",
+            "properties": {
+                "cnb": {
+                    "description": "CNB probe result // CNB 探测结果",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SourceProbeItem"
+                        }
+                    ]
+                },
+                "github": {
+                    "description": "GitHub probe result // GitHub 探测结果",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SourceProbeItem"
+                        }
+                    ]
+                },
+                "recommended": {
+                    "description": "Recommended source: \"github\" or \"cnb\" // 推荐源",
+                    "type": "string",
+                    "example": "github"
+                },
+                "selectedMode": {
+                    "description": "Current configured pull-source mode // 当前配置的选源模式",
+                    "type": "string",
+                    "example": "auto"
+                }
+            }
+        },
+        "dto.SourceProbeItem": {
+            "description": "Single source probe result: reachability and latency",
+            "type": "object",
+            "properties": {
+                "latencyMs": {
+                    "description": "Round-trip latency in ms // 往返延迟（毫秒）",
+                    "type": "integer",
+                    "example": 280
+                },
+                "ok": {
+                    "description": "Whether the source is reachable // 该源是否可达",
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

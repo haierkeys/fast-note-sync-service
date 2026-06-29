@@ -16,6 +16,7 @@ import (
 
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/fileurl"
 	"github.com/haierkeys/fast-note-sync-service/pkg/workerpool"
 	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
 	"golang.org/x/mod/semver"
@@ -315,6 +316,21 @@ func (a *App) GetTokenService() any {
 // IsPullFromGitHub 返回当前拉取源是否为 GitHub
 func (a *App) IsPullFromGitHub() bool {
 	return a.sourceSelector.IsGitHub()
+}
+
+// SourceSelector returns the underlying SourceSelector, exposing Probe/Snapshot
+// for the version-probe API and webgui latency panel.
+// SourceSelector 返回底层的 SourceSelector，供版本探测接口与前端测速面板使用。
+func (a *App) SourceSelector() *fileurl.SourceSelector {
+	return a.sourceSelector
+}
+
+// SetPullSourceMode updates the runtime source selection mode and invalidates
+// the cached probe snapshot. Called after config hot-reload changes pull-source.
+// SetPullSourceMode 更新运行时的选源模式并使缓存的探测快照失效，
+// 在配置热重载修改 pull-source 后调用。
+func (a *App) SetPullSourceMode(mode string) {
+	a.sourceSelector.SetMode(mode)
 }
 
 // ExecuteWrite executes write operation (serialized through Write Queue)

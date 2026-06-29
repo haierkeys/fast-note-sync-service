@@ -112,6 +112,10 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.GET("/admin/ws_clients", adminControlHandler.GetWSClients)
 			auth.DELETE("/admin/ws_client/:traceId", adminControlHandler.KickWSClient)
 
+			// Version source latency probe (auth required: triggers real outbound requests)
+			// 版本源延迟探测（需认证：会触发真实的外部网络请求）
+			auth.GET("/version/probe", versionHandler.ProbeSources)
+
 			auth.GET("/user/info", userHandler.UserInfo)
 			auth.POST("/oauth/stytch/authorize/start", stytchOAuthHandler.AuthorizeStart)
 			auth.POST("/oauth/stytch/authorize/submit", stytchOAuthHandler.AuthorizeSubmit)

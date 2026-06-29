@@ -293,7 +293,7 @@ type NoteHistoryDTO struct {
 	NoteID        int64                 `json:"noteId" form:"noteId"`               // Associated note ID // 笔记 ID
 	VaultID       int64                 `json:"vaultId" form:"vaultId"`             // Associated vault ID // 保险库 ID
 	Path          string                `json:"path" form:"path"`                   // Note path at that time // 当时的笔记路径
-	Diffs         []diffmatchpatch.Diff `json:"diffs"`                              // Text differences // 文本差异内容
+	Diffs         []diffmatchpatch.Diff `json:"diffs" swaggertype:"array,object"`    // Text differences // 文本差异内容
 	Content       string                `json:"content" form:"content"`             // Full historical content // 完整历史内容
 	ContentHash   string                `json:"contentHash" form:"contentHash"`     // Content hash // 内容哈希
 	ClientName    string                `json:"clientName" form:"clientName"`       // Client that made changes // 产生变更的客户端
