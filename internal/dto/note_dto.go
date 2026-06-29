@@ -151,6 +151,8 @@ type NoteSyncRequest struct {
 	Context      string                 `json:"context" form:"context" example:"task123"`                // Context // 上下文
 	Vault        string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	LastTime     int64                  `json:"lastTime" form:"lastTime" example:"1700000000"`           // Last sync time // 最后同步时间
+	BatchIndex   int                    `json:"batchIndex" form:"batchIndex" example:"0"`               // Current batch index (0-based) // 当前批次索引（0 起）
+	TotalBatches int                    `json:"totalBatches" form:"totalBatches" example:"1"`           // Total batch count // 总批次数
 	Notes        []NoteSyncCheckRequest `json:"notes" form:"notes"`                                      // Notes to check // 待检查笔记列表
 	DelNotes     []NoteSyncDelNote      `json:"delNotes" form:"delNotes"`                                // Notes to delete // 待删除笔记列表
 	MissingNotes []NoteSyncDelNote      `json:"missingNotes" form:"missingNotes"`                        // Missing notes // 缺失笔记列表

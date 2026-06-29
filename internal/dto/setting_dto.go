@@ -89,6 +89,8 @@ type SettingSyncRequest struct {
 	Vault           string                    `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	LastTime        int64                     `json:"lastTime" form:"lastTime" example:"1700000000"`           // Last sync time // 最后同步时间
 	Cover           bool                      `json:"cover" form:"cover" example:"false"`                      // Whether to cover existing // 是否覆盖现有配置
+	BatchIndex      int                       `json:"batchIndex" form:"batchIndex" example:"0"`               // Current batch index (0-based) // 当前批次索引（0 起）
+	TotalBatches    int                       `json:"totalBatches" form:"totalBatches" example:"1"`           // Total batch count // 总批次数
 	Settings        []SettingSyncCheckRequest `json:"settings" form:"settings"`                                // Settings to check // 待检查配置列表
 	DelSettings     []SettingSyncDelSetting   `json:"delSettings" form:"delSettings"`                          // Settings to delete // 待删除配置列表
 	MissingSettings []SettingSyncDelSetting   `json:"missingFiles" form:"missingFiles"`                        // Missing settings // 缺失配置列表
