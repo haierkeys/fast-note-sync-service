@@ -131,6 +131,9 @@ const (
 	// FolderDeleteAck folder delete operation ack
 	// FolderDeleteAck 文件夹删除操作 ack
 	FolderDeleteAck WebSocketSendAction = "FolderDeleteAck"
+	// FolderSyncBatchAck folder sync batch receive ack
+	// FolderSyncBatchAck 文件夹分批同步接收确认，服务端接收到中间批次后发回客户端
+	FolderSyncBatchAck WebSocketSendAction = "FolderSyncBatchAck"
 
 	// ---------------- Note ----------------
 
@@ -161,6 +164,9 @@ const (
 	// NoteDeleteAck note delete operation ack
 	// NoteDeleteAck 笔记删除操作 ack
 	NoteDeleteAck WebSocketSendAction = "NoteDeleteAck"
+	// NoteSyncBatchAck note sync batch receive ack
+	// NoteSyncBatchAck 笔记分批同步接收确认，服务端接收到中间批次后发回客户端
+	NoteSyncBatchAck WebSocketSendAction = "NoteSyncBatchAck"
 
 	// ---------------- File ----------------
 
@@ -194,6 +200,9 @@ const (
 	// FileDeleteAck file delete operation ack
 	// FileDeleteAck 文件删除操作 ack
 	FileDeleteAck WebSocketSendAction = "FileDeleteAck"
+	// FileSyncBatchAck file sync batch receive ack
+	// FileSyncBatchAck 附件分批同步接收确认，服务端接收到中间批次后发回客户端
+	FileSyncBatchAck WebSocketSendAction = "FileSyncBatchAck"
 
 	// ---------------- Setting ----------------
 
@@ -221,12 +230,43 @@ const (
 	// SettingDeleteAck setting delete operation ack
 	// SettingDeleteAck 设置删除操作 ack
 	SettingDeleteAck WebSocketSendAction = "SettingDeleteAck"
+	// SettingSyncBatchAck setting sync batch receive ack
+	// SettingSyncBatchAck 配置分批同步接收确认，服务端接收到中间批次后发回客户端
+	SettingSyncBatchAck WebSocketSendAction = "SettingSyncBatchAck"
 
 	// ---------------- Share ----------------
 
 	// ShareSyncRefresh notify clients to refresh share state
 	// ShareSyncRefresh 通知客户端刷新分享状态
 	ShareSyncRefresh WebSocketSendAction = "ShareSyncRefresh"
+
+	// ---------------- Page Sync ----------------
+
+	// NoteSyncPage note sync page message
+	// NoteSyncPage 笔记同步分页消息
+	NoteSyncPage WebSocketSendAction = "NoteSyncPage"
+	// FileSyncPage file sync page message
+	// FileSyncPage 文件同步分页消息
+	FileSyncPage WebSocketSendAction = "FileSyncPage"
+	// SettingSyncPage setting sync page message
+	// SettingSyncPage 配置同步分页消息
+	SettingSyncPage WebSocketSendAction = "SettingSyncPage"
+	// FolderSyncPage folder sync page message
+	// FolderSyncPage 文件夹同步分页消息
+	FolderSyncPage WebSocketSendAction = "FolderSyncPage"
+
+	// NoteSyncPageAck note sync page ack request
+	// NoteSyncPageAck 笔记同步分页确认接收
+	NoteSyncPageAck WebSocketReceiveAction = "NoteSyncPageAck"
+	// FileSyncPageAck file sync page ack request
+	// FileSyncPageAck 文件同步分页确认接收
+	FileSyncPageAck WebSocketReceiveAction = "FileSyncPageAck"
+	// SettingSyncPageAck setting sync page ack request
+	// SettingSyncPageAck 配置同步分页确认接收
+	SettingSyncPageAck WebSocketReceiveAction = "SettingSyncPageAck"
+	// FolderSyncPageAck folder sync page ack request
+	// FolderSyncPageAck 文件夹同步分页确认接收
+	FolderSyncPageAck WebSocketReceiveAction = "FolderSyncPageAck"
 )
 
 // WSQueuedMessage represents a message item to be sent

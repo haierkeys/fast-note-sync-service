@@ -595,6 +595,51 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		return
 	}
 
+	// 分批协议快速路径：totalBatches <= 1 时直接执行，无需缓存归集
+	// Fast path: totalBatches <= 1 means single batch, skip cache accumulation
+	if params.TotalBatches > 1 {
+		entry := syncBatchGetOrCreate(params.Context, "file", params.TotalBatches)
+
+		entry.mu.Lock()
+		for _, f := range params.Files {
+			entry.Items = append(entry.Items, f)
+		}
+		entry.ReceivedCount++
+		// 元数据每批次覆盖写（最后一批的值覆盖前批），保证重传时的幂等性
+		// Overwrite meta every batch; last batch's value wins for idempotence on retransmit
+		entry.DelItems = params.DelFiles
+		entry.MissingItems = params.MissingFiles
+		entry.UpdatedAt = time.Now()
+		received := entry.ReceivedCount
+		total := entry.TotalBatches
+		entry.mu.Unlock()
+
+		if received < total {
+			// 未集齐：回送 BatchAck，通知客户端可以发送下一批
+			// Not all batches received: send BatchAck to signal client to send next batch
+			c.ToResponse(code.Success.WithData(map[string]interface{}{
+				"context":    params.Context,
+				"batchIndex": params.BatchIndex,
+			}).WithVault(params.Vault), FileSyncBatchAck)
+			return
+		}
+
+		// 全部批次到达：从缓存中提取数据，清理缓存，执行差量比对
+		// All batches received: extract from cache, delete cache, run differential sync
+		syncBatchDelete(params.Context, "file")
+		allFiles := make([]dto.FileSyncCheckRequest, 0, len(entry.Items))
+		for _, item := range entry.Items {
+			allFiles = append(allFiles, item.(dto.FileSyncCheckRequest))
+		}
+		params.Files = allFiles
+		params.DelFiles, _ = entry.DelItems.([]dto.FileSyncDelFile)
+		params.MissingFiles, _ = entry.MissingItems.([]dto.FileSyncDelFile)
+	}
+
+	h.doFileSync(c, params)
+}
+
+func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSyncRequest) {
 	ctx := c.Context()
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "FileSync", "", params.Vault)
@@ -945,21 +990,69 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		},
 	).WithVault(params.Vault).WithContext(params.Context), FileSyncEnd)
 
-	// Send queued messages in batches to reduce CPU/memory pressure
-	// 分批发送队列中的消息，以减轻 CPU 和内存压力
-	batchSize := 200
-	for i := 0; i < len(messageQueue); i += batchSize {
-		end := i + batchSize
-		if end > len(messageQueue) {
-			end = len(messageQueue)
+	// 在 End 消息后，启动受控分页发送流程
+	if len(messageQueue) > 0 {
+		pageSize := h.App.Config().App.SyncDownloadChunkNum
+		if pageSize <= 0 {
+			pageSize = 50 // 默认值防呆
 		}
-		for _, item := range messageQueue[i:end] {
-			c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+		entry := &syncDownloadEntry{
+			Context:      params.Context,
+			TypeName:     "file",
+			Vault:        params.Vault,
+			MessageQueue: messageQueue,
+			PageSize:     pageSize,
+			CurrentPage:  0,
 		}
-		// Optional: slight pause could be added here if network congestion is a concern,
-		// but the primary goal is reducing serialization overhead per message block.
+		syncDownloadStore(params.Context, "file", entry)
+		sendSyncPage(c, entry)
 	}
 }
+
+// FileSyncPageAck handles WebSocket messages for client page ACK
+// FileSyncPageAck 处理客户端发来的分页下载 ACK 消息
+func (h *FileWSHandler) FileSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.SyncPageAckRequest{}
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.file.FileSyncPageAck.BindAndValid")
+		return
+	}
+
+	entry, ok := syncDownloadGet(params.Context, "file")
+	if !ok {
+		h.App.Logger().Warn("FileSyncPageAck: sync download entry not found",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if params.PageIndex != entry.CurrentPage {
+		h.App.Logger().Warn("FileSyncPageAck: page index mismatch",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.Int("expected", entry.CurrentPage),
+			zap.Int("got", params.PageIndex))
+		return
+	}
+
+	start := entry.CurrentPage * entry.PageSize
+	end := start + entry.PageSize
+	if end >= len(entry.MessageQueue) {
+		syncDownloadDelete(params.Context, "file")
+		h.App.Logger().Info("FileSyncPageAck: sync finished, cache cleared",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.CurrentPage++
+	entry.UpdatedAt = time.Now()
+	sendSyncPage(c, entry)
+}
+
 
 // cleanupSession cleans up discarded upload sessions due to completion or timeout.
 // cleanupSession 清理因为完成或超时而废弃的上传会话。

@@ -84,6 +84,8 @@ message NoteSyncRequest {
     repeated NoteSyncCheckRequest notes = 4;
     repeated NoteSyncDelNote delNotes = 5;
     repeated NoteSyncDelNote missingNotes = 6;
+    int32 batchIndex = 7;
+    int32 totalBatches = 8;
 }
 
 message NoteModifyOrCreateRequest {
@@ -211,6 +213,8 @@ message FileSyncRequest {
     repeated FileSyncCheckRequest files = 4;
     repeated FileSyncDelFile delFiles = 5;
     repeated FileSyncDelFile missingFiles = 6;
+    int32 batchIndex = 7;
+    int32 totalBatches = 8;
 }
 
 message FileSyncCheckRequest {
@@ -360,6 +364,8 @@ message SettingSyncRequest {
     repeated SettingSyncCheckRequest settings = 4;
     repeated SettingSyncDelSetting delSettings = 5;
     repeated SettingSyncDelSetting missingSettings = 6;
+    int32 batchIndex = 7;
+    int32 totalBatches = 8;
 }
 
 message SettingSyncCheckRequest {
@@ -484,6 +490,8 @@ message FolderSyncRequest {
     repeated FolderSyncCheckRequest folders = 4;
     repeated FolderSyncDelFolder delFolders = 5;
     repeated FolderSyncDelFolder missingFolders = 6;
+    int32 batchIndex = 7;
+    int32 totalBatches = 8;
 }
 
 message FolderCreateRequest {
@@ -557,3 +565,64 @@ message FolderDeleteAckMessage {
     string path = 2;
     string pathHash = 3;
 }
+
+// ------------------------------------
+// 5. Sync Page Messages
+// ------------------------------------
+
+message NoteSyncPageMessage {
+    string context = 1;
+    int32 pageIndex = 2;
+    int32 pageSize = 3;
+    int32 totalCount = 4;
+    bool isLast = 5;
+}
+
+message NoteSyncPageAckRequest {
+    string context = 1;
+    string vault = 2;
+    int32 pageIndex = 3;
+}
+
+message FileSyncPageMessage {
+    string context = 1;
+    int32 pageIndex = 2;
+    int32 pageSize = 3;
+    int32 totalCount = 4;
+    bool isLast = 5;
+}
+
+message FileSyncPageAckRequest {
+    string context = 1;
+    string vault = 2;
+    int32 pageIndex = 3;
+}
+
+message SettingSyncPageMessage {
+    string context = 1;
+    int32 pageIndex = 2;
+    int32 pageSize = 3;
+    int32 totalCount = 4;
+    bool isLast = 5;
+}
+
+message SettingSyncPageAckRequest {
+    string context = 1;
+    string vault = 2;
+    int32 pageIndex = 3;
+}
+
+message FolderSyncPageMessage {
+    string context = 1;
+    int32 pageIndex = 2;
+    int32 pageSize = 3;
+    int32 totalCount = 4;
+    bool isLast = 5;
+}
+
+message FolderSyncPageAckRequest {
+    string context = 1;
+    string vault = 2;
+    int32 pageIndex = 3;
+}
+

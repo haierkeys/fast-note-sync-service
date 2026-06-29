@@ -65,6 +65,8 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Context = pbMsg.Context
 			dest.Vault = pbMsg.Vault
 			dest.LastTime = pbMsg.LastTime
+			dest.BatchIndex = int(pbMsg.BatchIndex)
+			dest.TotalBatches = int(pbMsg.TotalBatches)
 			dest.Notes = make([]dto.NoteSyncCheckRequest, len(pbMsg.Notes))
 			for i, v := range pbMsg.Notes {
 				dest.Notes[i] = dto.NoteSyncCheckRequest{
@@ -176,6 +178,8 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Context = pbMsg.Context
 			dest.Vault = pbMsg.Vault
 			dest.LastTime = pbMsg.LastTime
+			dest.BatchIndex = int(pbMsg.BatchIndex)
+			dest.TotalBatches = int(pbMsg.TotalBatches)
 			dest.Files = make([]dto.FileSyncCheckRequest, len(pbMsg.Files))
 			for i, v := range pbMsg.Files {
 				dest.Files[i] = dto.FileSyncCheckRequest{
@@ -281,6 +285,8 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Context = pbMsg.Context
 			dest.Vault = pbMsg.Vault
 			dest.LastTime = pbMsg.LastTime
+			dest.BatchIndex = int(pbMsg.BatchIndex)
+			dest.TotalBatches = int(pbMsg.TotalBatches)
 			dest.Settings = make([]dto.SettingSyncCheckRequest, len(pbMsg.Settings))
 			for i, v := range pbMsg.Settings {
 				dest.Settings[i] = dto.SettingSyncCheckRequest{
@@ -381,6 +387,8 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Context = pbMsg.Context
 			dest.Vault = pbMsg.Vault
 			dest.LastTime = pbMsg.LastTime
+			dest.BatchIndex = int(pbMsg.BatchIndex)
+			dest.TotalBatches = int(pbMsg.TotalBatches)
 			dest.Folders = make([]dto.FolderSyncCheckRequest, len(pbMsg.Folders))
 			for i, f := range pbMsg.Folders {
 				dest.Folders[i] = dto.FolderSyncCheckRequest{
@@ -443,6 +451,50 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.OldPathHash = pbMsg.OldPathHash
 			return true, nil
 		}
+	case NoteSyncPageAck:
+		var pbMsg v1.NoteSyncPageAckRequest
+		if err := proto.Unmarshal(data, &pbMsg); err != nil {
+			return false, err
+		}
+		if dest, ok := obj.(*dto.SyncPageAckRequest); ok {
+			dest.Context = pbMsg.Context
+			dest.Vault = pbMsg.Vault
+			dest.PageIndex = int(pbMsg.PageIndex)
+			return true, nil
+		}
+	case FileSyncPageAck:
+		var pbMsg v1.FileSyncPageAckRequest
+		if err := proto.Unmarshal(data, &pbMsg); err != nil {
+			return false, err
+		}
+		if dest, ok := obj.(*dto.SyncPageAckRequest); ok {
+			dest.Context = pbMsg.Context
+			dest.Vault = pbMsg.Vault
+			dest.PageIndex = int(pbMsg.PageIndex)
+			return true, nil
+		}
+	case SettingSyncPageAck:
+		var pbMsg v1.SettingSyncPageAckRequest
+		if err := proto.Unmarshal(data, &pbMsg); err != nil {
+			return false, err
+		}
+		if dest, ok := obj.(*dto.SyncPageAckRequest); ok {
+			dest.Context = pbMsg.Context
+			dest.Vault = pbMsg.Vault
+			dest.PageIndex = int(pbMsg.PageIndex)
+			return true, nil
+		}
+	case FolderSyncPageAck:
+		var pbMsg v1.FolderSyncPageAckRequest
+		if err := proto.Unmarshal(data, &pbMsg); err != nil {
+			return false, err
+		}
+		if dest, ok := obj.(*dto.SyncPageAckRequest); ok {
+			dest.Context = pbMsg.Context
+			dest.Vault = pbMsg.Vault
+			dest.PageIndex = int(pbMsg.PageIndex)
+			return true, nil
+		}
 	}
 	return false, fmt.Errorf("unknown action: %s", action)
 }
@@ -498,6 +550,50 @@ func EnSendDTOToProtobuf(action WebSocketSendAction, res *pkgapp.Res) ([]byte, e
 // enSendDataPayload 根据动作类型序列化要发送的数据荷载
 func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 	switch action {
+	case NoteSyncPage:
+		if src, ok := data.(dto.SyncPageMessage); ok {
+			pbMsg := &v1.NoteSyncPageMessage{
+				Context:    src.Context,
+				PageIndex:  int32(src.PageIndex),
+				PageSize:   int32(src.PageSize),
+				TotalCount: int32(src.TotalCount),
+				IsLast:     src.IsLast,
+			}
+			return proto.Marshal(pbMsg)
+		}
+	case FileSyncPage:
+		if src, ok := data.(dto.SyncPageMessage); ok {
+			pbMsg := &v1.FileSyncPageMessage{
+				Context:    src.Context,
+				PageIndex:  int32(src.PageIndex),
+				PageSize:   int32(src.PageSize),
+				TotalCount: int32(src.TotalCount),
+				IsLast:     src.IsLast,
+			}
+			return proto.Marshal(pbMsg)
+		}
+	case SettingSyncPage:
+		if src, ok := data.(dto.SyncPageMessage); ok {
+			pbMsg := &v1.SettingSyncPageMessage{
+				Context:    src.Context,
+				PageIndex:  int32(src.PageIndex),
+				PageSize:   int32(src.PageSize),
+				TotalCount: int32(src.TotalCount),
+				IsLast:     src.IsLast,
+			}
+			return proto.Marshal(pbMsg)
+		}
+	case FolderSyncPage:
+		if src, ok := data.(dto.SyncPageMessage); ok {
+			pbMsg := &v1.FolderSyncPageMessage{
+				Context:    src.Context,
+				PageIndex:  int32(src.PageIndex),
+				PageSize:   int32(src.PageSize),
+				TotalCount: int32(src.TotalCount),
+				IsLast:     src.IsLast,
+			}
+			return proto.Marshal(pbMsg)
+		}
 	// "ClientInfo"
 	case ClientInfo:
 		if src, ok := data.(pkgapp.CheckVersionInfo); ok {

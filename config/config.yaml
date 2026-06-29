@@ -91,6 +91,9 @@ app:
   # 文件分片下载超时时长
   # Timeout duration for file chunk downloading
   download-session-timeout: "1h"
+  # 串行下载同步的分块数量
+  # Serial download sync page chunk size
+  sync-download-chunk-num: 50
   # Worker Pool 最大工作协程数
   # Worker Pool maximum number of worker goroutines
   worker-pool-max-workers: 100

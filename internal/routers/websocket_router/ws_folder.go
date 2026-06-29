@@ -1,6 +1,8 @@
 package websocket_router
 
 import (
+	"time"
+
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -27,6 +29,47 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		return
 	}
 
+	// 分批协议：totalBatches > 1 时归集到缓存，集齐后统一执行差量同步
+	// Batch protocol: accumulate into cache when totalBatches > 1, then run diff sync when all collected
+	if params.TotalBatches > 1 {
+		entry := syncBatchGetOrCreate(params.Context, "folder", params.TotalBatches)
+
+		entry.mu.Lock()
+		for _, f := range params.Folders {
+			entry.Items = append(entry.Items, f)
+		}
+		entry.ReceivedCount++
+		entry.DelItems = params.DelFolders
+		entry.MissingItems = params.MissingFolders
+		entry.UpdatedAt = time.Now()
+		received := entry.ReceivedCount
+		total := entry.TotalBatches
+		entry.mu.Unlock()
+
+		if received < total {
+			c.ToResponse(code.Success.WithData(map[string]interface{}{
+				"context":    params.Context,
+				"batchIndex": params.BatchIndex,
+			}).WithVault(params.Vault), FolderSyncBatchAck)
+			return
+		}
+
+		syncBatchDelete(params.Context, "folder")
+		allFolders := make([]dto.FolderSyncCheckRequest, 0, len(entry.Items))
+		for _, item := range entry.Items {
+			allFolders = append(allFolders, item.(dto.FolderSyncCheckRequest))
+		}
+		params.Folders = allFolders
+		params.DelFolders, _ = entry.DelItems.([]dto.FolderSyncDelFolder)
+		params.MissingFolders, _ = entry.MissingItems.([]dto.FolderSyncDelFolder)
+	}
+
+	h.doFolderSync(c, params)
+}
+
+// doFolderSync 执行文件夹差量同步核心逻辑（原 FolderSync 函数体）
+// doFolderSync runs the core folder differential sync logic
+func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.FolderSyncRequest) {
 	ctx := c.Context()
 	uid := c.User.UID
 
@@ -230,18 +273,75 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// 发送 FolderSyncEnd 消息
 	c.ToResponse(code.Success.WithData(&dto.FolderSyncEndMessage{
 		// Use syncStartTime (recorded before query) to prevent writes during query processing from being missed.
-		// 使用查询前记录的 syncStartTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
+		// 使用查询前记录 of syncStartTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
 		LastTime:        syncStartTime,
 		NeedModifyCount: needModifyCount,
 		NeedDeleteCount: needDeleteCount,
 	}).WithVault(params.Vault).WithContext(params.Context), FolderSyncEnd)
 
-	// Send queued messages individually
-	// 逐条发送队列中的消息
-	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	// 在 End 消息后，启动受控分页发送流程
+	if len(messageQueue) > 0 {
+		pageSize := h.App.Config().App.SyncDownloadChunkNum
+		if pageSize <= 0 {
+			pageSize = 50 // 默认值防呆
+		}
+		entry := &syncDownloadEntry{
+			Context:      params.Context,
+			TypeName:     "folder",
+			Vault:        params.Vault,
+			MessageQueue: messageQueue,
+			PageSize:     pageSize,
+			CurrentPage:  0,
+		}
+		syncDownloadStore(params.Context, "folder", entry)
+		sendSyncPage(c, entry)
 	}
 }
+
+// FolderSyncPageAck handles WebSocket messages for client page ACK
+// FolderSyncPageAck 处理客户端发来的分页下载 ACK 消息
+func (h *FolderWSHandler) FolderSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.SyncPageAckRequest{}
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.folder.FolderSyncPageAck.BindAndValid")
+		return
+	}
+
+	entry, ok := syncDownloadGet(params.Context, "folder")
+	if !ok {
+		h.App.Logger().Warn("FolderSyncPageAck: sync download entry not found",
+			zap.String(logpkg.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if params.PageIndex != entry.CurrentPage {
+		h.App.Logger().Warn("FolderSyncPageAck: page index mismatch",
+			zap.String(logpkg.FieldTraceID, c.TraceID),
+			zap.Int("expected", entry.CurrentPage),
+			zap.Int("got", params.PageIndex))
+		return
+	}
+
+	start := entry.CurrentPage * entry.PageSize
+	end := start + entry.PageSize
+	if end >= len(entry.MessageQueue) {
+		syncDownloadDelete(params.Context, "folder")
+		h.App.Logger().Info("FolderSyncPageAck: sync finished, cache cleared",
+			zap.String(logpkg.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.CurrentPage++
+	entry.UpdatedAt = time.Now()
+	sendSyncPage(c, entry)
+}
+
 
 // FolderModify handles folder modification/creation
 func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {

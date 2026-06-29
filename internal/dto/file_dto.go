@@ -87,6 +87,8 @@ type FileSyncRequest struct {
 	Context      string                 `json:"context" form:"context" binding:"required" example:"task123"` // Context // 上下文
 	Vault        string                 `json:"vault" form:"vault" binding:"required" example:"MyVault"`     // Vault name // 保险库名称
 	LastTime     int64                  `json:"lastTime" form:"lastTime" example:"1700000000"`               // Last sync time // 最后同步时间
+	BatchIndex   int                    `json:"batchIndex" form:"batchIndex" example:"0"`                    // Current batch index (0-based) // 当前批次索引（0 起）
+	TotalBatches int                    `json:"totalBatches" form:"totalBatches" example:"1"`                // Total batch count // 总批次数
 	Files        []FileSyncCheckRequest `json:"files" form:"files"`                                          // Files to check // 待检查文件列表
 	DelFiles     []FileSyncDelFile      `json:"delFiles" form:"delFiles"`                                    // Files to delete // 待删除文件列表
 	MissingFiles []FileSyncDelFile      `json:"missingFiles" form:"missingFiles"`                            // Missing files // 缺失文件列表

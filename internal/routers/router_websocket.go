@@ -30,12 +30,14 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.Use(websocket_router.NoteReceiveRePush, noteWSHandler.NoteRePush)
 	wss.Use(websocket_router.NoteReceiveCheck, noteWSHandler.NoteModifyCheck)
 	wss.Use(websocket_router.NoteReceiveSync, noteWSHandler.NoteSync)
+	wss.Use(websocket_router.NoteSyncPageAck, noteWSHandler.NoteSyncPageAck)
 
 	// Folder
 	wss.Use(websocket_router.FolderReceiveSync, folderWSHandler.FolderSync)
 	wss.Use(websocket_router.FolderReceiveModify, folderWSHandler.FolderModify)
 	wss.Use(websocket_router.FolderReceiveDelete, folderWSHandler.FolderDelete)
 	wss.Use(websocket_router.FolderReceiveRename, folderWSHandler.FolderRename)
+	wss.Use(websocket_router.FolderSyncPageAck, folderWSHandler.FolderSyncPageAck)
 
 	// Setting
 	wss.Use(websocket_router.SettingReceiveModify, settingWSHandler.SettingModify)
@@ -44,6 +46,7 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.Use(websocket_router.SettingReceiveSync, settingWSHandler.SettingSync)
 	wss.Use(websocket_router.SettingReceiveClear, settingWSHandler.SettingClear)
 	wss.Use(websocket_router.SettingReceiveRePush, settingWSHandler.SettingRePush)
+	wss.Use(websocket_router.SettingSyncPageAck, settingWSHandler.SettingSyncPageAck)
 
 	// Attachment
 	wss.Use(websocket_router.FileReceiveSync, fileWSHandler.FileSync)
@@ -52,6 +55,7 @@ func initWebSocketRoutes(wss *pkgapp.WebsocketServer, appContainer *app.App) {
 	wss.Use(websocket_router.FileReceiveDelete, fileWSHandler.FileDelete)
 	wss.Use(websocket_router.FileReceiveChunkDownload, fileWSHandler.FileChunkDownload)
 	wss.Use(websocket_router.FileReceiveRePush, fileWSHandler.FileRePush)
+	wss.Use(websocket_router.FileSyncPageAck, fileWSHandler.FileSyncPageAck)
 
 	// Attachment chunk upload
 	wss.UseBinary(websocket_router.VaultFileMsgType, fileWSHandler.FileUploadChunkBinary)

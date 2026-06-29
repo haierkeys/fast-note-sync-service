@@ -1,6 +1,8 @@
 package websocket_router
 
 import (
+	"time"
+
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -194,6 +196,51 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		return
 	}
 
+	// 分批协议快速路径：totalBatches <= 1 时直接执行，无需缓存归集
+	// Fast path: totalBatches <= 1 means single batch, skip cache accumulation
+	if params.TotalBatches > 1 {
+		entry := syncBatchGetOrCreate(params.Context, "setting", params.TotalBatches)
+
+		entry.mu.Lock()
+		for _, s := range params.Settings {
+			entry.Items = append(entry.Items, s)
+		}
+		entry.ReceivedCount++
+		// 元数据每批次覆盖写（最后一批的值覆盖前批），保证重传时的幂等性
+		// Overwrite meta every batch; last batch's value wins for idempotence on retransmit
+		entry.DelItems = params.DelSettings
+		entry.MissingItems = params.MissingSettings
+		entry.UpdatedAt = time.Now()
+		received := entry.ReceivedCount
+		total := entry.TotalBatches
+		entry.mu.Unlock()
+
+		if received < total {
+			// 未集齐：回送 BatchAck，通知客户端可以发送下一批
+			// Not all batches received: send BatchAck to signal client to send next batch
+			c.ToResponse(code.Success.WithData(map[string]interface{}{
+				"context":    params.Context,
+				"batchIndex": params.BatchIndex,
+			}).WithVault(params.Vault), SettingSyncBatchAck)
+			return
+		}
+
+		// 全部批次到达：从缓存中提取数据，清理缓存，执行差量比对
+		// All batches received: extract from cache, delete cache, run differential sync
+		syncBatchDelete(params.Context, "setting")
+		allSettings := make([]dto.SettingSyncCheckRequest, 0, len(entry.Items))
+		for _, item := range entry.Items {
+			allSettings = append(allSettings, item.(dto.SettingSyncCheckRequest))
+		}
+		params.Settings = allSettings
+		params.DelSettings, _ = entry.DelItems.([]dto.SettingSyncDelSetting)
+		params.MissingSettings, _ = entry.MissingItems.([]dto.SettingSyncDelSetting)
+	}
+
+	h.doSettingSync(c, params)
+}
+
+func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.SettingSyncRequest) {
 	ctx := c.Context()
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingSync", "", params.Vault)
@@ -494,12 +541,69 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 		},
 	).WithVault(params.Vault).WithContext(params.Context), SettingSyncEnd)
 
-	// Send queued messages individually
-	// 逐条发送队列中的消息
-	for _, item := range messageQueue {
-		c.ToResponse(code.Success.WithData(item.Data).WithVault(params.Vault).WithContext(params.Context), item.Action)
+	// 在 End 消息后，启动受控分页发送流程
+	if len(messageQueue) > 0 {
+		pageSize := h.App.Config().App.SyncDownloadChunkNum
+		if pageSize <= 0 {
+			pageSize = 50 // 默认值防呆
+		}
+		entry := &syncDownloadEntry{
+			Context:      params.Context,
+			TypeName:     "setting",
+			Vault:        params.Vault,
+			MessageQueue: messageQueue,
+			PageSize:     pageSize,
+			CurrentPage:  0,
+		}
+		syncDownloadStore(params.Context, "setting", entry)
+		sendSyncPage(c, entry)
 	}
 }
+
+// SettingSyncPageAck handles WebSocket messages for client page ACK
+// SettingSyncPageAck 处理客户端发来的分页下载 ACK 消息
+func (h *SettingWSHandler) SettingSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage) {
+	params := &dto.SyncPageAckRequest{}
+	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
+	if !valid {
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSyncPageAck.BindAndValid")
+		return
+	}
+
+	entry, ok := syncDownloadGet(params.Context, "setting")
+	if !ok {
+		h.App.Logger().Warn("SettingSyncPageAck: sync download entry not found",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if params.PageIndex != entry.CurrentPage {
+		h.App.Logger().Warn("SettingSyncPageAck: page index mismatch",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.Int("expected", entry.CurrentPage),
+			zap.Int("got", params.PageIndex))
+		return
+	}
+
+	start := entry.CurrentPage * entry.PageSize
+	end := start + entry.PageSize
+	if end >= len(entry.MessageQueue) {
+		syncDownloadDelete(params.Context, "setting")
+		h.App.Logger().Info("SettingSyncPageAck: sync finished, cache cleared",
+			zap.String(logger.FieldTraceID, c.TraceID),
+			zap.String("context", params.Context))
+		return
+	}
+
+	entry.CurrentPage++
+	entry.UpdatedAt = time.Now()
+	sendSyncPage(c, entry)
+}
+
 
 // SettingClear handles clear all settings messages
 // SettingClear 处理清理所有配置消息
