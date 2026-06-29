@@ -116,6 +116,7 @@ step() { echo -e "${_STEP}${_BLUE}$1${_RESET}"; }
 # --- Language Support ---
 LANG_CONF="$HOME/.fast-note-sync.lang"
 VERSION_CONF="$INSTALL_DIR/.version"
+VERSION_CONF_GO="$INSTALL_DIR/config/lastVersion"
 CURRENT_LANG="en" # Default to English
 INSTALLED_VER=""
 
@@ -340,10 +341,22 @@ parse_mirror_from_args "$@"
 
 # --- Version Tracking // 版本追踪 ---
 load_version() {
+    INSTALLED_VER=""
+    local go_ver="" shell_ver=""
+    if [ -f "$VERSION_CONF_GO" ]; then
+        go_ver=$(cat "$VERSION_CONF_GO" 2>/dev/null | tr -d '[:space:]' || echo "")
+    fi
     if [ -f "$VERSION_CONF" ]; then
-        INSTALLED_VER=$(cat "$VERSION_CONF" 2>/dev/null | tr -d '[:space:]' || echo "")
-    else
-        INSTALLED_VER=""
+        shell_ver=$(cat "$VERSION_CONF" 2>/dev/null | tr -d '[:space:]' || echo "")
+    fi
+    if [ -n "$go_ver" ]; then
+        INSTALLED_VER="$go_ver"
+        # Sync .version to match config/lastVersion when they differ
+        if [ "$go_ver" != "$shell_ver" ] && [ -d "$INSTALL_DIR" ]; then
+            echo "$go_ver" | tee "$VERSION_CONF" >/dev/null 2>&1 || true
+        fi
+    elif [ -n "$shell_ver" ]; then
+        INSTALLED_VER="$shell_ver"
     fi
 }
 
