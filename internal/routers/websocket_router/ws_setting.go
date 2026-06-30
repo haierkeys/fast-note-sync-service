@@ -564,7 +564,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 			CurrentPage:  0,
 		}
 		syncDownloadStore(params.Context, "setting", entry)
-		sendSyncPage(c, entry)
+		// 默认不自动发送，等待客户端拉取
 	}
 }
 
@@ -588,6 +588,11 @@ func (h *SettingWSHandler) SettingSyncPageAck(c *pkgapp.WebsocketClient, msg *pk
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
+
+	if params.PageIndex == -1 {
+		sendSyncPage(c, entry)
+		return
+	}
 
 	if params.PageIndex != entry.CurrentPage {
 		h.App.Logger().Warn("SettingSyncPageAck: page index mismatch",

@@ -1073,7 +1073,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			CurrentPage:  0,
 		}
 		syncDownloadStore(params.Context, "note", entry)
-		sendSyncPage(c, entry)
+		// 默认不自动发送，等待客户端拉取
 	}
 }
 
@@ -1097,6 +1097,11 @@ func (h *NoteWSHandler) NoteSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
+
+	if params.PageIndex == -1 {
+		sendSyncPage(c, entry)
+		return
+	}
 
 	if params.PageIndex != entry.CurrentPage {
 		h.App.Logger().Warn("NoteSyncPageAck: page index mismatch",

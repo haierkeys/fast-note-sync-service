@@ -1013,7 +1013,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 			CurrentPage:  0,
 		}
 		syncDownloadStore(params.Context, "file", entry)
-		sendSyncPage(c, entry)
+		// 默认不自动发送，等待客户端拉取
 	}
 }
 
@@ -1037,6 +1037,11 @@ func (h *FileWSHandler) FileSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
+
+	if params.PageIndex == -1 {
+		sendSyncPage(c, entry)
+		return
+	}
 
 	if params.PageIndex != entry.CurrentPage {
 		h.App.Logger().Warn("FileSyncPageAck: page index mismatch",

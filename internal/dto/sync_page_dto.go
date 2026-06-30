@@ -24,5 +24,5 @@ type SyncPageMessage struct {
 type SyncPageAckRequest struct {
 	Context   string `json:"context" form:"context" binding:"required"`     // Sync context // 同步上下文
 	Vault     string `json:"vault" form:"vault" binding:"required"`         // Vault name // 笔记库名称
-	PageIndex int    `json:"pageIndex" form:"pageIndex" binding:"min=0"` // Acked page index // 已确认接收完成的页码 (0-indexed)
+	PageIndex int    `json:"pageIndex" form:"pageIndex" binding:"min=-1"` // Acked page index // 已确认接收完成的页码 (0-indexed)
 }

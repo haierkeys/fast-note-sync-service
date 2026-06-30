@@ -297,7 +297,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 			CurrentPage:  0,
 		}
 		syncDownloadStore(params.Context, "folder", entry)
-		sendSyncPage(c, entry)
+		// 默认不自动发送，等待客户端拉取
 	}
 }
 
@@ -321,6 +321,11 @@ func (h *FolderWSHandler) FolderSyncPageAck(c *pkgapp.WebsocketClient, msg *pkga
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
+
+	if params.PageIndex == -1 {
+		sendSyncPage(c, entry)
+		return
+	}
 
 	if params.PageIndex != entry.CurrentPage {
 		h.App.Logger().Warn("FolderSyncPageAck: page index mismatch",
