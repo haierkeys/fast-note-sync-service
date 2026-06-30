@@ -1122,10 +1122,26 @@ func (h *FileWSHandler) handleFileUploadSessionTimeout(c *pkgapp.WebsocketClient
 // handleFileUploadSession initializes a file upload session and returns upload message.
 // handleFileUploadSession 初始化一个文件上传会话并返回上传消息.
 func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient, vault, path, pathHash, contentHash string, size, ctime, mtime int64, context string) (*FileUploadBinaryChunkSession, error) {
+	// Check if there is an active session for the same path hash, reuse it if attributes match
+	// 检查是否已存在相同路径哈希的活跃会话，如果属性一致则直接复用
+	if existingSession := c.Server.GetSessionByPathHash(c.User.ID, pathHash); existingSession != nil {
+		if session, ok := existingSession.(*FileUploadBinaryChunkSession); ok {
+			if session.ContentHash == contentHash && session.Vault == vault && session.Size == size {
+				h.App.Logger().Info("FileUploadSessionCreate: reusing existing active session for path hash",
+					zap.String("traceId", c.TraceID),
+					zap.Int64("uid", c.User.UID),
+					zap.String("sessionID", session.ID),
+					zap.String("path", path),
+				)
+				return session, nil
+			}
+		}
+	}
+
 	// Clean up any existing stale sessions for the same file path hash to prevent resource leak and duplication
 	h.App.Logger().Info("FileUploadSessionCreate: cleaning existing stale sessions for path hash",
-		zap.String(logger.FieldTraceID, c.TraceID),
-		zap.Int64(logger.FieldUID, c.User.UID),
+		zap.String("traceId", c.TraceID),
+		zap.Int64("uid", c.User.UID),
 		zap.String("pathHash", pathHash),
 		zap.String("path", path),
 	)

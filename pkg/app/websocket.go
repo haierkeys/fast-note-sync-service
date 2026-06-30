@@ -1333,6 +1333,24 @@ func (w *WebsocketServer) GetSession(uid string, sessionID string) any {
 	return nil
 }
 
+// GetSessionByPathHash gets global binary upload session by path hash
+// GetSessionByPathHash 通过路径哈希获取全局二进制上传会话
+//go:noinline
+func (w *WebsocketServer) GetSessionByPathHash(uid string, pathHash string) any {
+	w.sessionsMu.RLock()
+	defer w.sessionsMu.RUnlock()
+	if userSessions, ok := w.binaryChunkSessions[uid]; ok {
+		for _, session := range userSessions {
+			if getter, ok := session.(PathHashGetter); ok {
+				if getter.GetPathHash() == pathHash {
+					return session
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // RemoveSession removes global binary upload session
 // RemoveSession 移除全局二进制上传会话
 func (w *WebsocketServer) RemoveSession(uid string, sessionID string) {
