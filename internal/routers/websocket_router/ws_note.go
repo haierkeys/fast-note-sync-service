@@ -57,7 +57,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModify.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModify.BindAndValid", msg)
 		return
 	}
 	if params.PathHash == "" {
@@ -122,7 +122,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					LastTime: nodeCheck.UpdatedTimestamp,
 					Path:     params.Path,
 					PathHash: params.PathHash,
-				}).WithVault(params.Vault), string(NoteModifyAck))
+				}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
 				return
 			}
 
@@ -363,7 +363,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			LastTime: note.UpdatedTimestamp,
 			Path:     note.Path,
 			PathHash: note.PathHash,
-		}).WithVault(params.Vault), string(NoteModifyAck))
+		}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.NoteSyncModifyMessage{
 				Path:             note.Path,
@@ -397,9 +397,9 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				LastTime: nodeCheck.UpdatedTimestamp,
 				Path:     params.Path,
 				PathHash: params.PathHash,
-			}).WithVault(params.Vault), string(NoteModifyAck))
+			}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
 		} else {
-			c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
+			c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault).WithContext(params.Context))
 		}
 		return
 	}
@@ -431,7 +431,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModifyCheck.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteModifyCheck.BindAndValid", msg)
 		return
 	}
 
@@ -506,7 +506,7 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteDelete.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteDelete.BindAndValid", msg)
 		return
 	}
 
@@ -531,7 +531,7 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		LastTime: note.UpdatedTimestamp,
 		Path:     note.Path,
 		PathHash: note.PathHash,
-	}).WithVault(params.Vault), string(NoteDeleteAck))
+	}).WithVault(params.Vault).WithContext(params.Context), string(NoteDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncDeleteMessage{
 			Path:             note.Path,
@@ -568,7 +568,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	params := &dto.NoteRenameRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteRename.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteRename.BindAndValid", msg)
 		return
 	}
 
@@ -587,7 +587,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 		LastTime: newNote.UpdatedTimestamp,
 		Path:     newNote.Path,
 		PathHash: newNote.PathHash,
-	}).WithVault(params.Vault), string(NoteRenameAck))
+	}).WithVault(params.Vault).WithContext(params.Context), string(NoteRenameAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.NoteSyncRenameMessage{
 			Path:             newNote.Path,
@@ -607,7 +607,7 @@ func (h *NoteWSHandler) NoteRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	params := &dto.NoteGetRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteReceiveMissing.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteReceiveMissing.BindAndValid", msg)
 		return
 	}
 
@@ -651,7 +651,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteSync.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteSync.BindAndValid", msg)
 		return
 	}
 
@@ -680,7 +680,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			c.ToResponse(code.Success.WithData(map[string]interface{}{
 				"context":    params.Context,
 				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault), NoteSyncBatchAck)
+			}).WithVault(params.Vault).WithContext(params.Context), NoteSyncBatchAck)
 			return
 		}
 
@@ -737,7 +737,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 
 	// Create message queue for collecting all messages to be sent
 	// 创建消息队列，用于收集所有待发送的消息
-	var messageQueue []WSQueuedMessage
+	var messageQueue []dto.WSQueuedMessage
 
 	var lastTime int64
 	var needUploadCount int64
@@ -852,7 +852,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 				continue
 			}
 			if note != nil && note.Action != "delete" {
-				messageQueue = append(messageQueue, WSQueuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 					Action: NoteSyncModify,
 					Data: dto.NoteSyncModifyMessage{
 						Path:             note.Path,
@@ -886,7 +887,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 				delete(cNotesKeys, note.PathHash)
 			}
 			// 将消息添加到队列
-			messageQueue = append(messageQueue, WSQueuedMessage{
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 				Action: NoteSyncDelete,
 				Data: dto.NoteSyncDeleteMessage{
 					Path:             note.Path,
@@ -925,7 +927,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 
 							// Add message to queue instead of sending immediately
 							// 将消息添加到队列而非立即发送
-							messageQueue = append(messageQueue, WSQueuedMessage{
+							messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 								Action: NoteSyncNeedPush,
 								Data: dto.NoteSyncNeedPushMessage{
 									Path:     note.Path,
@@ -939,7 +942,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 						// 不设置 默认也一样覆盖
 						case "newTimeMerge", "":
 							// 将消息添加到队列而非立即发送
-							messageQueue = append(messageQueue, WSQueuedMessage{
+							messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 								Action: NoteSyncModify,
 								Data: dto.NoteSyncModifyMessage{
 									Path:             note.Path,
@@ -968,7 +972,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 
 						// Add message to queue instead of sending immediately
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, WSQueuedMessage{
+						messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 							Action: NoteSyncNeedPush,
 							Data: dto.NoteSyncNeedPushMessage{
 								Path:     note.Path,
@@ -982,7 +987,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 					// 内容一致, 但修改时间不一致, 通知客户端更新笔记修改时间
 					// Add message to queue instead of sending immediately
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, WSQueuedMessage{
+					messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 						Action: NoteSyncMtime,
 						Data: dto.NoteSyncMtimeMessage{
 							Path:             note.Path,
@@ -997,7 +1003,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 				// File client doesn't have, notify client to create file
 				// 客户端没有的文件, 通知客户端创建文件
 				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, WSQueuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 					Action: NoteSyncModify,
 					Data: dto.NoteSyncModifyMessage{
 						Path:             note.Path,
@@ -1024,7 +1031,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 
 			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送
-			messageQueue = append(messageQueue, WSQueuedMessage{
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 				Action: NoteSyncNeedPush,
 				Data: dto.NoteSyncNeedPushMessage{
 					Path:     note.Path,
@@ -1052,7 +1060,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 
 	// 在 End 消息后，启动受控分页发送流程
 	if len(messageQueue) > 0 {
-		pageSize := h.App.Config().App.SyncDownloadChunkNum
+		pageSize := h.App.Config().App.SyncDownChunkNum
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
@@ -1075,7 +1083,7 @@ func (h *NoteWSHandler) NoteSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	params := &dto.SyncPageAckRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteSyncPageAck.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.note.NoteSyncPageAck.BindAndValid", msg)
 		return
 	}
 

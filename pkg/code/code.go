@@ -22,6 +22,39 @@ type Code struct {
 	haveDetails bool     // Whether it contains details // 是否含有详情
 	context     string
 	haveContext bool // Whether it contains Context // 是否含有Context
+	path        string
+	havePath    bool // Whether it contains Path // 是否含有Path
+}
+
+func (e *Code) Path() string {
+	return e.path
+}
+
+func (e *Code) HavePath() bool {
+	return e.havePath
+}
+
+// WithPath returns a new Code instance containing specified path
+// WithPath 返回一个包含指定路径的新 Code 实例
+// Original object will not be modified (immutable design)
+// 原对象不会被修改（不可变设计）
+func (e *Code) WithPath(path string) *Code {
+	return &Code{
+		code:        e.code,
+		status:      e.status,
+		Lang:        e.Lang,
+		msg:         e.msg,
+		data:        e.data,
+		haveData:    e.haveData,
+		vault:       e.vault,
+		haveVault:   e.haveVault,
+		details:     e.details,
+		haveDetails: e.haveDetails,
+		context:     e.context,
+		haveContext: e.haveContext,
+		path:        path,
+		havePath:    true,
+	}
 }
 
 var codes = map[int]string{}
@@ -160,6 +193,8 @@ func (e *Code) WithData(data interface{}) *Code {
 		haveDetails: e.haveDetails,
 		context:     e.context,
 		haveContext: e.haveContext,
+		path:        e.path,
+		havePath:    e.havePath,
 	}
 }
 
@@ -181,6 +216,8 @@ func (e *Code) WithVault(vault string) *Code {
 		haveDetails: e.haveDetails,
 		context:     e.context,
 		haveContext: e.haveContext,
+		path:        e.path,
+		havePath:    e.havePath,
 	}
 }
 
@@ -207,6 +244,8 @@ func (e *Code) WithDetails(details ...string) *Code {
 		haveDetails: true,
 		context:     e.context,
 		haveContext: e.haveContext,
+		path:        e.path,
+		havePath:    e.havePath,
 	}
 }
 
@@ -228,6 +267,8 @@ func (e *Code) WithContext(context string) *Code {
 		haveDetails: e.haveDetails,
 		context:     context,
 		haveContext: true,
+		path:        e.path,
+		havePath:    e.havePath,
 	}
 }
 

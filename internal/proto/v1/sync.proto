@@ -58,6 +58,8 @@ message CheckVersionInfo {
     string pluginVersionNewChangelog = 11;
     string pluginVersionNewChangelogContent = 12;
     repeated HistoricalVersion pluginVersionHistory = 13;
+    int32 syncUpChunkNum = 14;
+    int32 syncDownChunkNum = 15;
 }
 
 // ------------------------------------
@@ -99,6 +101,7 @@ message NoteModifyOrCreateRequest {
     int64 ctime = 8;
     int64 mtime = 9;
     bool createOnly = 10;
+    string context = 11;
 }
 
 message NoteUpdateCheckRequest {
@@ -114,6 +117,7 @@ message NoteDeleteRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    string context = 4;
 }
 
 message NoteRenameRequest {
@@ -122,6 +126,7 @@ message NoteRenameRequest {
     string pathHash = 3;
     string oldPath = 4;
     string oldPathHash = 5;
+    string context = 6;
 }
 
 message NoteGetRequest {
@@ -239,12 +244,14 @@ message FileUploadCheckRequest {
     int64 size = 5;
     int64 ctime = 6;
     int64 mtime = 7;
+    string context = 8;
 }
 
 message FileDeleteRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    string context = 4;
 }
 
 message FileRenameRequest {
@@ -253,6 +260,7 @@ message FileRenameRequest {
     string pathHash = 3;
     string oldPath = 4;
     string oldPathHash = 5;
+    string context = 6;
 }
 
 message FileChunkDownloadRequest {
@@ -389,6 +397,7 @@ message SettingModifyOrCreateRequest {
     string contentHash = 5;
     int64 ctime = 6;
     int64 mtime = 7;
+    string context = 8;
 }
 
 message SettingUpdateCheckRequest {
@@ -404,6 +413,7 @@ message SettingDeleteRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    string context = 4;
 }
 
 message SettingGetRequest {
@@ -498,12 +508,14 @@ message FolderCreateRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    string context = 4;
 }
 
 message FolderDeleteRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    string context = 4;
 }
 
 message FolderRenameRequest {
@@ -512,6 +524,7 @@ message FolderRenameRequest {
     string pathHash = 3;
     string oldPath = 4;
     string oldPathHash = 5;
+    string context = 6;
 }
 
 // --- Folder Responses ---
@@ -571,7 +584,6 @@ message FolderDeleteAckMessage {
 // ------------------------------------
 
 message NoteSyncPageMessage {
-    string context = 1;
     int32 pageIndex = 2;
     int32 pageSize = 3;
     int32 totalCount = 4;
@@ -585,7 +597,6 @@ message NoteSyncPageAckRequest {
 }
 
 message FileSyncPageMessage {
-    string context = 1;
     int32 pageIndex = 2;
     int32 pageSize = 3;
     int32 totalCount = 4;
@@ -599,7 +610,6 @@ message FileSyncPageAckRequest {
 }
 
 message SettingSyncPageMessage {
-    string context = 1;
     int32 pageIndex = 2;
     int32 pageSize = 3;
     int32 totalCount = 4;
@@ -613,7 +623,6 @@ message SettingSyncPageAckRequest {
 }
 
 message FolderSyncPageMessage {
-    string context = 1;
     int32 pageIndex = 2;
     int32 pageSize = 3;
     int32 totalCount = 4;
@@ -625,4 +634,5 @@ message FolderSyncPageAckRequest {
     string vault = 2;
     int32 pageIndex = 3;
 }
+
 

@@ -4,6 +4,7 @@ package websocket_router
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -86,13 +87,61 @@ func (h *WSHandler) logWarn(c *pkgapp.WebsocketClient, method string, fields ...
 	h.App.Logger().Warn(method, allFields...)
 }
 
+// extractMsgMeta extracts context/vault/path from raw WebSocket JSON payload for error tracing.
+// extractMsgMeta 从原始 WebSocket JSON 载荷中提取 context/vault/path，用于错误定位。
+func extractMsgMeta(data []byte) (msgCtx, vault, path string) {
+	if len(data) == 0 {
+		return
+	}
+	var meta struct {
+		Context string `json:"context"`
+		Vault   string `json:"vault"`
+		Path    string `json:"path"`
+	}
+	_ = json.Unmarshal(data, &meta) // Ignore error; unrecognized fields are simply empty // 忽略错误，未识别字段为空即可
+	return meta.Context, meta.Vault, meta.Path
+}
+
 // respondError unified error response method
 // Records error log and sends error response with Details to client
 // respondError 统一错误响应方法
 // 记录错误日志并发送包含 Details 的错误响应给客户端
-func (h *WSHandler) respondError(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, method string) {
+func (h *WSHandler) respondError(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, method string, msg ...*pkgapp.WebSocketMessage) {
 	h.logError(c, method, err)
-	// If err is already a *code.Code, it might have more details than codeErr
+
+	// 若传入了 msg，则自动提取请求元数据并附加到错误响应中。
+	if len(msg) > 0 && msg[0] != nil {
+		m := msg[0]
+		msgCtx, vault, path := extractMsgMeta(m.Data)
+		if cErr, ok := err.(*code.Code); ok {
+			enriched := cErr
+			if msgCtx != "" {
+				enriched = enriched.WithContext(msgCtx)
+			}
+			if vault != "" {
+				enriched = enriched.WithVault(vault)
+			}
+			if path != "" {
+				enriched = enriched.WithPath(path)
+			}
+			c.ToResponse(enriched, m.Type)
+			return
+		}
+		enriched := codeErr.WithDetails(err.Error())
+		if msgCtx != "" {
+			enriched = enriched.WithContext(msgCtx)
+		}
+		if vault != "" {
+			enriched = enriched.WithVault(vault)
+		}
+		if path != "" {
+			enriched = enriched.WithPath(path)
+		}
+		c.ToResponse(enriched, m.Type)
+		return
+	}
+
+	// Original logic (backward compatible) // 原有逻辑（向后兼容）
 	if cErr, ok := err.(*code.Code); ok {
 		c.ToResponse(cErr)
 		return
@@ -104,8 +153,28 @@ func (h *WSHandler) respondError(c *pkgapp.WebsocketClient, codeErr *code.Code, 
 // Records error log and sends error response with Details and Data to client
 // respondErrorWithData 带数据的统一错误响应方法
 // 记录错误日志并发送包含 Details 和 Data 的错误响应给客户端
-func (h *WSHandler) respondErrorWithData(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, data interface{}, method string) {
+func (h *WSHandler) respondErrorWithData(c *pkgapp.WebsocketClient, codeErr *code.Code, err error, data interface{}, method string, msg ...*pkgapp.WebSocketMessage) {
 	h.logError(c, method, err)
+
+	// 若传入了 msg，则自动提取请求元数据并附加到错误响应中。
+	if len(msg) > 0 && msg[0] != nil {
+		m := msg[0]
+		msgCtx, vault, path := extractMsgMeta(m.Data)
+		enriched := codeErr.WithData(data)
+		if msgCtx != "" {
+			enriched = enriched.WithContext(msgCtx)
+		}
+		if vault != "" {
+			enriched = enriched.WithVault(vault)
+		}
+		if path != "" {
+			enriched = enriched.WithPath(path)
+		}
+		c.ToResponse(enriched, m.Type)
+		return
+	}
+
+	// Original logic (backward compatible) // 原有逻辑（向后兼容）
 	c.ToResponse(codeErr.WithDetails(err.Error()).WithData(data))
 }
 

@@ -223,6 +223,8 @@ func (a *App) CheckVersion(pluginVersion string) pkgapp.CheckVersionInfo {
 	// 返回给客户端的版本号不带 v 前缀
 	cv.VersionNewName = strings.TrimPrefix(cv.VersionNewName, "v")
 	cv.PluginVersionNewName = strings.TrimPrefix(cv.PluginVersionNewName, "v")
+	cv.SyncUpChunkNum = a.config.App.SyncUpChunkNum
+	cv.SyncDownChunkNum = a.config.App.SyncDownChunkNum
 	// Returns the link information as-is from setting (already set by task)
 	// 直接返回设置中的链接信息（已由任务设置）
 	return cv

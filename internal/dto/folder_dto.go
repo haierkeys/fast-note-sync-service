@@ -24,6 +24,7 @@ type FolderCreateRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" binding:"required" example:"NewFolder"` // Folder path // 文件夹路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"fhash456"`             // Path hash // 路径哈希
+	Context  string `json:"context" form:"context" example:"ctx123"`                 // Context // 同步上下文
 }
 
 // FolderDeleteRequest Request parameters for deleting a folder
@@ -32,6 +33,7 @@ type FolderDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" binding:"required" example:"OldFolder"` // Folder path // 文件夹路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"fhash789"`             // Path hash // 路径哈希
+	Context  string `json:"context" form:"context" example:"ctx123"`                 // Context // 同步上下文
 }
 
 // FolderSyncCheckRequest Parameters for single record check during synchronization
@@ -70,6 +72,7 @@ type FolderRenameRequest struct {
 	PathHash    string `json:"pathHash" form:"pathHash" binding:"required" example:"nfhash123"`       // Current path hash // 当前路径哈希
 	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldFolder"`         // Old path // 旧路径
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash" binding:"required" example:"ofhash456"` // Old path hash // 旧路径哈希
+	Context     string `json:"context" form:"context" example:"ctx123"`                               // Context // 同步上下文
 }
 
 // FolderContentRequest Request parameters for retrieving folder contents

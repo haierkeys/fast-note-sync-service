@@ -12,14 +12,14 @@ import (
 // syncDownloadEntry 单个类型的分页下载缓存条目
 // key 格式："{context}_{type}"，例如 "uuid-xxx_note"、"uuid-xxx_file"
 type syncDownloadEntry struct {
-	mu           sync.Mutex        // 互斥锁保护并发读取与翻页
-	Context      string            // 同步上下文
-	TypeName     string            // 同步类型 "note" | "file" | "setting" | "folder"
-	Vault        string            // 仓库名称
-	MessageQueue []WSQueuedMessage // 待发送的全部明细队列
-	PageSize     int               // 每页大小
-	CurrentPage  int               // 当前已发送的页码 (0-indexed)
-	UpdatedAt    time.Time         // 更新时间
+	mu           sync.Mutex            // 互斥锁保护并发读取与翻页
+	Context      string                // 同步上下文
+	TypeName     string                // 同步类型 "note" | "file" | "setting" | "folder"
+	Vault        string                // 仓库名称
+	MessageQueue []dto.WSQueuedMessage // 待发送的全部明细队列
+	PageSize     int                   // 每页大小
+	CurrentPage  int                   // 当前已发送的页码 (0-indexed)
+	UpdatedAt    time.Time             // 更新时间
 }
 
 var syncDownloadCacheMap sync.Map
@@ -86,17 +86,16 @@ func sendSyncPage(c *pkgapp.WebsocketClient, entry *syncDownloadEntry) {
 		return
 	}
 
-	// 1. 发送 Page 页面控制指示元数据
+	// 1. 发送 Page 页面控制指示元数据 (不含消息体，仅作元数据声明)
 	c.ToResponse(code.Success.WithData(dto.SyncPageMessage{
-		Context:    entry.Context,
 		PageIndex:  entry.CurrentPage,
 		PageSize:   entry.PageSize,
 		TotalCount: len(chunk),
 		IsLast:     isLast,
-	}).WithVault(entry.Vault).WithContext(entry.Context), pageAction)
+	}).WithVault(entry.Vault).WithContext(entry.Context), string(pageAction))
 
-	// 2. 发送本页的所有明细消息
-	for _, item := range chunk {
-		c.ToResponse(code.Success.WithData(item.Data).WithVault(entry.Vault).WithContext(entry.Context), item.Action)
+	// 2. 紧接着逐个发送本页的所有明细消息
+	for _, msg := range chunk {
+		c.ToResponse(code.Success.WithData(msg.Data).WithVault(entry.Vault).WithContext(msg.Context), msg.Action)
 	}
 }

@@ -561,9 +561,12 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if code.HaveContext() {
 		content.Context = code.Context()
 	}
+	if code.HavePath() {
+		content.Path = code.Path()
+	}
 
 	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
-		if c.UseProtobuf && c.Server.ProtobufEncoder != nil && actionType != "" {
+		if c.UseProtobuf && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {
 			pbBytes, err := c.Server.ProtobufEncoder(actionType, &content)
 			if err == nil {
 				c.conn.WriteMessage(gws.OpcodeBinary, pbBytes)

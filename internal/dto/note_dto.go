@@ -31,6 +31,7 @@ type NoteModifyOrCreateRequest struct {
 	Ctime           int64  `json:"ctime" form:"ctime" example:"1700000000"`                      // Creation timestamp // 创建时间戳
 	Mtime           int64  `json:"mtime" form:"mtime" example:"1700000000"`                      // Modification timestamp // 修改时间戳
 	CreateOnly      bool   `json:"createOnly" form:"createOnly" example:"false"`                 // If true, fail if note already exists // 如果为 true，笔记已存在则失败
+	Context         string `json:"context" form:"context" example:"ctx123"`                      // Context // 同步上下文
 }
 
 // ContentModifyRequest Request parameters for modifying content only
@@ -51,6 +52,7 @@ type NoteDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
+	Context  string `json:"context" form:"context" example:"ctx123"`                 // Context // 同步上下文
 }
 
 // NoteRestoreRequest parameters for restoring a note
@@ -182,6 +184,7 @@ type NoteRenameRequest struct {
 	PathHash    string `json:"pathHash" form:"pathHash" example:"nhash123"`                    // New path hash // 新路径哈希
 	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldName.md"` // Old path // 旧路径
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ohash456"`              // Old path hash // 旧路径哈希
+	Context     string `json:"context" form:"context" example:"ctx123"`                        // Context // 同步上下文
 }
 
 // NoteListRequest Pagination parameters for retrieving the note list

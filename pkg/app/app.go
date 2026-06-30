@@ -38,6 +38,8 @@ type CheckVersionInfo struct {
 	PluginVersionNewChangelog        string              `json:"pluginVersionNewChangelog"`
 	PluginVersionNewChangelogContent string              `json:"pluginVersionNewChangelogContent"`
 	PluginVersionHistory             []HistoricalVersion `json:"pluginVersionHistory"`             // Plugin version history between current and latest // 插件在当前版本和最新版本之间的历史版本
+	SyncUpChunkNum                   int                 `json:"syncUpChunkNum"`
+	SyncDownChunkNum                 int                 `json:"syncDownChunkNum"`
 }
 
 type SupportRecord struct {
@@ -82,6 +84,7 @@ type Res struct {
 	Details interface{} `json:"details,omitempty"`
 	Vault   interface{} `json:"vault,omitempty"`
 	Context interface{} `json:"context,omitempty"`
+	Path    interface{} `json:"path,omitempty"`
 }
 
 func NewResponse(ctx *gin.Context) *Response {

@@ -35,7 +35,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 	params := &dto.SettingModifyOrCreateRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModify.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModify.BindAndValid", msg)
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: setting.UpdatedTimestamp,
 			Path:     setting.Path,
 			PathHash: setting.PathHash,
-		}).WithVault(params.Vault), string(SettingModifyAck))
+		}).WithVault(params.Vault).WithContext(params.Context), string(SettingModifyAck))
 		c.BroadcastResponse(code.Success.WithData(
 			dto.SettingSyncModifyMessage{
 				Vault:            params.Vault,
@@ -86,14 +86,14 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 			LastTime: settingCheck.UpdatedTimestamp,
 			Path:     settingCheck.Path,
 			PathHash: settingCheck.PathHash,
-		}).WithVault(params.Vault), string(SettingModifyAck))
+		}).WithVault(params.Vault).WithContext(params.Context), string(SettingModifyAck))
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithData(dto.SettingModifyAckMessage{
 			LastTime: params.Mtime,
 			Path:     params.Path,
 			PathHash: params.PathHash,
-		}).WithVault(params.Vault), string(SettingModifyAck))
+		}).WithVault(params.Vault).WithContext(params.Context), string(SettingModifyAck))
 		return
 	}
 }
@@ -104,7 +104,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 	params := &dto.SettingUpdateCheckRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModifyCheck.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingModifyCheck.BindAndValid", msg)
 		return
 	}
 
@@ -152,7 +152,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 	params := &dto.SettingDeleteRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingDelete.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingDelete.BindAndValid", msg)
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 		LastTime: setting.UpdatedTimestamp,
 		Path:     setting.Path,
 		PathHash: setting.PathHash,
-	}).WithVault(params.Vault), string(SettingDeleteAck))
+	}).WithVault(params.Vault).WithContext(params.Context), string(SettingDeleteAck))
 	c.BroadcastResponse(code.Success.WithData(
 		dto.SettingSyncDeleteMessage{
 			Path:             setting.Path,
@@ -192,7 +192,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	params := &dto.SettingSyncRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSync.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSync.BindAndValid", msg)
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			c.ToResponse(code.Success.WithData(map[string]interface{}{
 				"context":    params.Context,
 				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault), SettingSyncBatchAck)
+			}).WithVault(params.Vault).WithContext(params.Context), SettingSyncBatchAck)
 			return
 		}
 
@@ -270,7 +270,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 	// 创建消息队列，用于收集所有待发送的消息
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
-	var messageQueue []WSQueuedMessage
+	var messageQueue []dto.WSQueuedMessage
 
 	var lastTime int64
 	var needUploadCount int64
@@ -367,7 +367,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 
 			if setting != nil && setting.Action != "delete" {
 
-				messageQueue = append(messageQueue, WSQueuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 					Action: SettingSyncModify,
 					Data: dto.SettingSyncModifyMessage{
 						Vault:            params.Vault,
@@ -400,7 +401,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 				delete(cSettingsKeys, s.PathHash)
 			}
 			// 将消息添加到队列
-			messageQueue = append(messageQueue, WSQueuedMessage{
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 				Action: SettingSyncDelete,
 				Data: dto.SettingSyncDeleteMessage{
 					Path:             s.Path,
@@ -420,7 +422,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 				// 强制覆盖连接端
 				if params.Cover {
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, WSQueuedMessage{
+					messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 						Action: SettingSyncModify,
 						Data: dto.SettingSyncModifyMessage{
 							Vault:            params.Vault,
@@ -443,7 +446,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 大于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, WSQueuedMessage{
+						messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 							Action: SettingSyncModify,
 							Data: dto.SettingSyncModifyMessage{
 								Vault:            params.Vault,
@@ -462,7 +466,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 						// 将消息添加到队列而非立即发送
 						// 服务端文件 mtime 小于链接端文件 mtime，则通知连接端更新
 						// 将消息添加到队列而非立即发送
-						messageQueue = append(messageQueue, WSQueuedMessage{
+						messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 							Action: SettingSyncNeedUpload,
 							Data: dto.SettingSyncNeedUploadMessage{
 								Path: s.Path,
@@ -475,7 +480,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 					// 将消息添加到队列而非立即发送
 					// 链接端和服务端， 文件内容相同，文件 mtime 时间不同
 					// 将消息添加到队列而非立即发送
-					messageQueue = append(messageQueue, WSQueuedMessage{
+					messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 						Action: SettingSyncMtime,
 						Data: dto.SettingSyncMtimeMessage{
 							Path:             s.Path,
@@ -488,7 +494,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 				}
 			} else {
 				// 将消息添加到队列而非立即发送
-				messageQueue = append(messageQueue, WSQueuedMessage{
+				messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 					Action: SettingSyncModify,
 					Data: dto.SettingSyncModifyMessage{
 						Vault:            params.Vault,
@@ -516,7 +523,8 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 		// Add message to queue instead of sending immediately
 		// 将消息添加到队列而非立即发送
 		if hasWritePermission {
-			messageQueue = append(messageQueue, WSQueuedMessage{
+			messageQueue = append(messageQueue, dto.WSQueuedMessage{
+						Context: params.Context,
 				Action: SettingSyncNeedUpload,
 				Data:   dto.SettingSyncNeedUploadMessage{Path: s.Path},
 			})
@@ -543,7 +551,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 
 	// 在 End 消息后，启动受控分页发送流程
 	if len(messageQueue) > 0 {
-		pageSize := h.App.Config().App.SyncDownloadChunkNum
+		pageSize := h.App.Config().App.SyncDownChunkNum
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
@@ -566,7 +574,7 @@ func (h *SettingWSHandler) SettingSyncPageAck(c *pkgapp.WebsocketClient, msg *pk
 	params := &dto.SyncPageAckRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSyncPageAck.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingSyncPageAck.BindAndValid", msg)
 		return
 	}
 
@@ -611,7 +619,7 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	params := &dto.SettingClearRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingClear.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingClear.BindAndValid", msg)
 		return
 	}
 
@@ -636,7 +644,7 @@ func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.
 	params := &dto.SettingGetRequest{}
 	valid, errs := c.BindAndValidWithAction(msg.Type, msg.Data, params)
 	if !valid {
-		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingRePush.BindAndValid")
+		h.respondErrorWithData(c, code.ErrorInvalidParams.WithDetails(errs.ErrorsToString()), errs, errs.MapsToString(), "websocket_router.setting.SettingRePush.BindAndValid", msg)
 		return
 	}
 

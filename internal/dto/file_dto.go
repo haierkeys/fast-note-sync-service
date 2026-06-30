@@ -14,6 +14,7 @@ type FileUpdateCheckRequest struct {
 	Size        int64  `json:"size" form:"size" binding:"" example:"1024"`                     // File size // 文件大小
 	Ctime       int64  `json:"ctime" form:"ctime" binding:"required" example:"1700000000"`     // Creation timestamp // 创建时间戳
 	Mtime       int64  `json:"mtime" form:"mtime" binding:"required" example:"1700000000"`     // Modification timestamp // 修改时间戳
+	Context     string `json:"context" form:"context" example:"ctx123"`                        // Context // 同步上下文
 }
 
 // FileUploadRequest Request parameters for direct file upload (Internal/Public isolation)
@@ -45,6 +46,7 @@ type FileDeleteRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"`        // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" binding:"required" example:"Image.png"`        // File path // 文件路径
 	PathHash string `json:"pathHash" form:"pathHash" binding:"required" example:"fhash123"` // Path hash // 路径哈希
+	Context  string `json:"context" form:"context" example:"ctx123"`                        // Context // 同步上下文
 }
 
 // FileRestoreRequest parameters for restoring a file
@@ -127,6 +129,7 @@ type FileRenameRequest struct {
 	PathHash    string `json:"pathHash" form:"pathHash" example:"nfhash123"`                     // New path hash // 新路径哈希
 	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldImage.png"` // Old path // 旧路径
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ofhash456"`               // Old path hash // 旧路径哈希
+	Context     string `json:"context" form:"context" example:"ctx123"`                          // Context // 同步上下文
 }
 
 // ---------------- DTO / Response ----------------
