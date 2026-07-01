@@ -98,4 +98,10 @@ func sendSyncPage(c *pkgapp.WebsocketClient, entry *syncDownloadEntry) {
 	for _, msg := range chunk {
 		c.ToResponse(code.Success.WithData(msg.Data).WithVault(entry.Vault).WithContext(msg.Context), msg.Action)
 	}
+
+	// 3. 如果是最后一页，主动销毁服务端下载缓存，客户端无需发送最终确认 PageAck
+	// 3. If it's the last page, actively delete download cache on server, client doesn't need to send final PageAck
+	if isLast {
+		syncDownloadDelete(entry.Context, entry.TypeName)
+	}
 }
