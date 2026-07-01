@@ -368,7 +368,12 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		_, fileSvc, err := fileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
-			h.respondError(c, code.ErrorFileModifyOrCreateFailed, err, "websocket_router.file.FileUploadChunkBinary.UploadComplete")
+			// 在 UploadComplete 失败时，返回携带 sessionID 和 path 的错误响应，以便客户端清理活跃状态并释放并发槽位
+			// When UploadComplete fails, return an error response containing sessionID and path, so the client can clean up and release slot
+			h.respondErrorWithData(c, code.ErrorFileModifyOrCreateFailed, err, map[string]string{
+				"sessionID": sessionID,
+				"path":      session.Path,
+			}, "websocket_router.file.FileUploadChunkBinary.UploadComplete")
 			return
 		}
 
