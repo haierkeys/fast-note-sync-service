@@ -95,7 +95,7 @@ type SettingSyncRequest struct {
 	TotalBatches    int                       `json:"totalBatches" form:"totalBatches" example:"1"`           // Total batch count // 总批次数
 	Settings        []SettingSyncCheckRequest `json:"settings" form:"settings"`                                // Settings to check // 待检查配置列表
 	DelSettings     []SettingSyncDelSetting   `json:"delSettings" form:"delSettings"`                          // Settings to delete // 待删除配置列表
-	MissingSettings []SettingSyncDelSetting   `json:"missingFiles" form:"missingFiles"`                        // Missing settings // 缺失配置列表
+	MissingSettings []SettingSyncDelSetting   `json:"missingSettings" form:"missingSettings"`                        // Missing settings // 缺失配置列表
 }
 
 // ---------------- DTO / Response ----------------
