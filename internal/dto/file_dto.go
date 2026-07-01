@@ -109,6 +109,7 @@ type FileGetRequest struct {
 	Path      string `json:"path" form:"path" binding:"required" example:"Image.png"` // File path // 文件路径
 	PathHash  string `json:"pathHash" form:"pathHash" example:"fhash123"`             // Path hash // 路径哈希
 	IsRecycle bool   `json:"isRecycle" form:"isRecycle" example:"false"`              // Is in recycle bin // 是否在回收站
+	Context   string `json:"context" form:"context" example:"ctx123"`                 // Context // 同步上下文
 }
 
 // FileListRequest Pagination parameters for retrieving the file list

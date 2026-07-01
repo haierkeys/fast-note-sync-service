@@ -269,12 +269,15 @@ message FileChunkDownloadRequest {
     string pathHash = 3;
     string sessionId = 4;
     int64 chunkIndex = 5;
+    string context = 6;
 }
 
 message FileGetRequest {
     string vault = 1;
     string path = 2;
     string pathHash = 3;
+    bool isRecycle = 4;
+    string context = 5;
 }
 
 // --- File Responses ---

@@ -2323,6 +2323,7 @@ type FileChunkDownloadRequest struct {
 	PathHash      string                 `protobuf:"bytes,3,opt,name=pathHash,proto3" json:"pathHash,omitempty"`
 	SessionId     string                 `protobuf:"bytes,4,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
 	ChunkIndex    int64                  `protobuf:"varint,5,opt,name=chunkIndex,proto3" json:"chunkIndex,omitempty"`
+	Context       string                 `protobuf:"bytes,6,opt,name=context,proto3" json:"context,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2392,11 +2393,20 @@ func (x *FileChunkDownloadRequest) GetChunkIndex() int64 {
 	return 0
 }
 
+func (x *FileChunkDownloadRequest) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
+}
+
 type FileGetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Vault         string                 `protobuf:"bytes,1,opt,name=vault,proto3" json:"vault,omitempty"`
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	PathHash      string                 `protobuf:"bytes,3,opt,name=pathHash,proto3" json:"pathHash,omitempty"`
+	IsRecycle     bool                   `protobuf:"varint,4,opt,name=isRecycle,proto3" json:"isRecycle,omitempty"`
+	Context       string                 `protobuf:"bytes,5,opt,name=context,proto3" json:"context,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2448,6 +2458,20 @@ func (x *FileGetRequest) GetPath() string {
 func (x *FileGetRequest) GetPathHash() string {
 	if x != nil {
 		return x.PathHash
+	}
+	return ""
+}
+
+func (x *FileGetRequest) GetIsRecycle() bool {
+	if x != nil {
+		return x.IsRecycle
+	}
+	return false
+}
+
+func (x *FileGetRequest) GetContext() string {
+	if x != nil {
+		return x.Context
 	}
 	return ""
 }
@@ -5926,7 +5950,7 @@ const file_internal_proto_v1_sync_proto_rawDesc = "" +
 	"\bpathHash\x18\x03 \x01(\tR\bpathHash\x12\x18\n" +
 	"\aoldPath\x18\x04 \x01(\tR\aoldPath\x12 \n" +
 	"\voldPathHash\x18\x05 \x01(\tR\voldPathHash\x12\x18\n" +
-	"\acontext\x18\x06 \x01(\tR\acontext\"\x9e\x01\n" +
+	"\acontext\x18\x06 \x01(\tR\acontext\"\xb8\x01\n" +
 	"\x18FileChunkDownloadRequest\x12\x14\n" +
 	"\x05vault\x18\x01 \x01(\tR\x05vault\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x1a\n" +
@@ -5934,11 +5958,14 @@ const file_internal_proto_v1_sync_proto_rawDesc = "" +
 	"\tsessionId\x18\x04 \x01(\tR\tsessionId\x12\x1e\n" +
 	"\n" +
 	"chunkIndex\x18\x05 \x01(\x03R\n" +
-	"chunkIndex\"V\n" +
+	"chunkIndex\x12\x18\n" +
+	"\acontext\x18\x06 \x01(\tR\acontext\"\x8e\x01\n" +
 	"\x0eFileGetRequest\x12\x14\n" +
 	"\x05vault\x18\x01 \x01(\tR\x05vault\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x1a\n" +
-	"\bpathHash\x18\x03 \x01(\tR\bpathHash\"\xc5\x01\n" +
+	"\bpathHash\x18\x03 \x01(\tR\bpathHash\x12\x1c\n" +
+	"\tisRecycle\x18\x04 \x01(\bR\tisRecycle\x12\x18\n" +
+	"\acontext\x18\x05 \x01(\tR\acontext\"\xc5\x01\n" +
 	"\x15FileSyncModifyMessage\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1a\n" +
 	"\bpathHash\x18\x02 \x01(\tR\bpathHash\x12 \n" +

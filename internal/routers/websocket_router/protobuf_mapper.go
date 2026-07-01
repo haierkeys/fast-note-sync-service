@@ -265,6 +265,7 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Vault = pbMsg.Vault
 			dest.Path = pbMsg.Path
 			dest.PathHash = pbMsg.PathHash
+			dest.Context = pbMsg.Context
 			return true, nil
 		}
 	// "FileRePush"
@@ -277,6 +278,7 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Vault = pbMsg.Vault
 			dest.Path = pbMsg.Path
 			dest.PathHash = pbMsg.PathHash
+			dest.Context = pbMsg.Context
 			return true, nil
 		}
 

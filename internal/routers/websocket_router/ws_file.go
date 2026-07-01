@@ -581,7 +581,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 			TotalChunks: session.TotalChunks,
 			Size:        session.Size,
 		},
-	).WithVault(params.Vault), FileSyncChunkDownload)
+	).WithVault(params.Vault).WithContext(params.Context), FileSyncChunkDownload)
 
 	// Start chunk sending, pass timeout and logger
 	// 启动分片发送,传入超时时间和 logger
