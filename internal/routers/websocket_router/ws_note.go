@@ -665,10 +665,12 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			entry.Items = append(entry.Items, n)
 		}
 		entry.ReceivedCount++
-		// 元数据每批次覆盖写（最后一批的值覆盖前批），保证重传时的幂等性
-		// Overwrite meta every batch; last batch's value wins for idempotence on retransmit
-		entry.DelItems = params.DelNotes
-		entry.MissingItems = params.MissingNotes
+		for _, dn := range params.DelNotes {
+			entry.DelItems = append(entry.DelItems, dn)
+		}
+		for _, mn := range params.MissingNotes {
+			entry.MissingItems = append(entry.MissingItems, mn)
+		}
 		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
@@ -692,8 +694,18 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			allNotes = append(allNotes, item.(dto.NoteSyncCheckRequest))
 		}
 		params.Notes = allNotes
-		params.DelNotes, _ = entry.DelItems.([]dto.NoteSyncDelNote)
-		params.MissingNotes, _ = entry.MissingItems.([]dto.NoteSyncDelNote)
+
+		allDelNotes := make([]dto.NoteSyncDelNote, 0, len(entry.DelItems))
+		for _, item := range entry.DelItems {
+			allDelNotes = append(allDelNotes, item.(dto.NoteSyncDelNote))
+		}
+		params.DelNotes = allDelNotes
+
+		allMissingNotes := make([]dto.NoteSyncDelNote, 0, len(entry.MissingItems))
+		for _, item := range entry.MissingItems {
+			allMissingNotes = append(allMissingNotes, item.(dto.NoteSyncDelNote))
+		}
+		params.MissingNotes = allMissingNotes
 	}
 
 	// 执行原有的差量同步核心逻辑（单批次直接进入，多批次集齐后也进入）

@@ -611,10 +611,12 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			entry.Items = append(entry.Items, f)
 		}
 		entry.ReceivedCount++
-		// 元数据每批次覆盖写（最后一批的值覆盖前批），保证重传时的幂等性
-		// Overwrite meta every batch; last batch's value wins for idempotence on retransmit
-		entry.DelItems = params.DelFiles
-		entry.MissingItems = params.MissingFiles
+		for _, df := range params.DelFiles {
+			entry.DelItems = append(entry.DelItems, df)
+		}
+		for _, mf := range params.MissingFiles {
+			entry.MissingItems = append(entry.MissingItems, mf)
+		}
 		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
@@ -638,8 +640,18 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 			allFiles = append(allFiles, item.(dto.FileSyncCheckRequest))
 		}
 		params.Files = allFiles
-		params.DelFiles, _ = entry.DelItems.([]dto.FileSyncDelFile)
-		params.MissingFiles, _ = entry.MissingItems.([]dto.FileSyncDelFile)
+
+		allDelFiles := make([]dto.FileSyncDelFile, 0, len(entry.DelItems))
+		for _, item := range entry.DelItems {
+			allDelFiles = append(allDelFiles, item.(dto.FileSyncDelFile))
+		}
+		params.DelFiles = allDelFiles
+
+		allMissingFiles := make([]dto.FileSyncDelFile, 0, len(entry.MissingItems))
+		for _, item := range entry.MissingItems {
+			allMissingFiles = append(allMissingFiles, item.(dto.FileSyncDelFile))
+		}
+		params.MissingFiles = allMissingFiles
 	}
 
 	h.doFileSync(c, params)

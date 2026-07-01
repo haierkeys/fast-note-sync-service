@@ -206,10 +206,12 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			entry.Items = append(entry.Items, s)
 		}
 		entry.ReceivedCount++
-		// 元数据每批次覆盖写（最后一批的值覆盖前批），保证重传时的幂等性
-		// Overwrite meta every batch; last batch's value wins for idempotence on retransmit
-		entry.DelItems = params.DelSettings
-		entry.MissingItems = params.MissingSettings
+		for _, ds := range params.DelSettings {
+			entry.DelItems = append(entry.DelItems, ds)
+		}
+		for _, ms := range params.MissingSettings {
+			entry.MissingItems = append(entry.MissingItems, ms)
+		}
 		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
@@ -233,8 +235,18 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 			allSettings = append(allSettings, item.(dto.SettingSyncCheckRequest))
 		}
 		params.Settings = allSettings
-		params.DelSettings, _ = entry.DelItems.([]dto.SettingSyncDelSetting)
-		params.MissingSettings, _ = entry.MissingItems.([]dto.SettingSyncDelSetting)
+
+		allDelSettings := make([]dto.SettingSyncDelSetting, 0, len(entry.DelItems))
+		for _, item := range entry.DelItems {
+			allDelSettings = append(allDelSettings, item.(dto.SettingSyncDelSetting))
+		}
+		params.DelSettings = allDelSettings
+
+		allMissingSettings := make([]dto.SettingSyncDelSetting, 0, len(entry.MissingItems))
+		for _, item := range entry.MissingItems {
+			allMissingSettings = append(allMissingSettings, item.(dto.SettingSyncDelSetting))
+		}
+		params.MissingSettings = allMissingSettings
 	}
 
 	h.doSettingSync(c, params)

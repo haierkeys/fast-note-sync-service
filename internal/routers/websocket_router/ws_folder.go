@@ -39,8 +39,12 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			entry.Items = append(entry.Items, f)
 		}
 		entry.ReceivedCount++
-		entry.DelItems = params.DelFolders
-		entry.MissingItems = params.MissingFolders
+		for _, df := range params.DelFolders {
+			entry.DelItems = append(entry.DelItems, df)
+		}
+		for _, mf := range params.MissingFolders {
+			entry.MissingItems = append(entry.MissingItems, mf)
+		}
 		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
@@ -60,8 +64,18 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 			allFolders = append(allFolders, item.(dto.FolderSyncCheckRequest))
 		}
 		params.Folders = allFolders
-		params.DelFolders, _ = entry.DelItems.([]dto.FolderSyncDelFolder)
-		params.MissingFolders, _ = entry.MissingItems.([]dto.FolderSyncDelFolder)
+
+		allDelFolders := make([]dto.FolderSyncDelFolder, 0, len(entry.DelItems))
+		for _, item := range entry.DelItems {
+			allDelFolders = append(allDelFolders, item.(dto.FolderSyncDelFolder))
+		}
+		params.DelFolders = allDelFolders
+
+		allMissingFolders := make([]dto.FolderSyncDelFolder, 0, len(entry.MissingItems))
+		for _, item := range entry.MissingItems {
+			allMissingFolders = append(allMissingFolders, item.(dto.FolderSyncDelFolder))
+		}
+		params.MissingFolders = allMissingFolders
 	}
 
 	h.doFolderSync(c, params)

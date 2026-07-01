@@ -15,10 +15,8 @@ type syncBatchEntry struct {
 	ReceivedCount int           // 已收到批次数（Received batch count）
 	TotalBatches  int           // 期望总批次数（Expected total batches）
 
-	// 元数据列表：每批次覆盖写，取最后一批的值，保证最终一致性
-	// Meta lists: overwritten each batch; final batch's value wins for idempotence
-	DelItems     interface{} // 删除列表（Delete list，last batch wins）
-	MissingItems interface{} // 缺失列表（Missing list，last batch wins）
+	DelItems     []interface{} // 删除列表（Delete list）
+	MissingItems []interface{} // 缺失列表（Missing list）
 
 	UpdatedAt time.Time // 最近一次更新时间，用于 TTL 清理（Last update time for TTL cleanup）
 }
@@ -56,6 +54,8 @@ func syncBatchGetOrCreate(context, typeName string, totalBatches int) *syncBatch
 	key := syncBatchKey(context, typeName)
 	val, _ := syncBatchCacheMap.LoadOrStore(key, &syncBatchEntry{
 		Items:        make([]interface{}, 0),
+		DelItems:     make([]interface{}, 0),
+		MissingItems: make([]interface{}, 0),
 		TotalBatches: totalBatches,
 		UpdatedAt:    time.Now(),
 	})
