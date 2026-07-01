@@ -1150,6 +1150,7 @@ func (h *FileWSHandler) handleFileUploadSessionCreate(c *pkgapp.WebsocketClient,
 					zap.String("sessionID", session.ID),
 					zap.String("path", path),
 				)
+				session.Context = context
 				return session, nil
 			}
 		}
