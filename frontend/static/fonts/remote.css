@@ -5,9 +5,238 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Seal Sans';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/seal-sans@main/url/SealSans-Regular.woff2') format('woff2');
+  unicode-range:
+    U+3D000-3FC3F;/*Seal Block*/
+}
+@font-face {
+  font-family: 'Old Hangul Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/Hamchorom_LVT/HANBatang-LVT.woff2') format('woff2');
+  unicode-range:
+    U+1100-11FF,/*韓㐎字母 Hangul Jamo*/
+    /*U+1113-115F,/*古韓㐎初聲 Hangul Jamo*/
+    /*U+1160,U+1176-11A7,/*古韓㐎中聲 Hangul Jamo*/
+    /*U+11C3-11FF,/*古韓㐎終聲 Hangul Jamo*/
+    U+302E-302F,/*古韓㐎單𩀱點聲識 Combining Tone Marks*/
+    U+A960-A97F,/*古韓㐎初聲 Hangul Jamo Extended-A*/
+    U+D7B0-D7CA,/*古韓㐎中聲 Hangul Jamo Extended-B*/
+    U+D7CB-D7FF;/*古韓㐎終聲 Hangul Jamo Extended-B*/
+}
+@font-face {
+  font-family: 'Siddham Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansSiddham/unhinted/slim-otf/NotoSansSiddham-Regular.otf') format('opentype'),
+    url('https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansSiddham/unhinted/otf/NotoSansSiddham-Regular.otf') format('opentype'),
+    url('https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansSiddham/unhinted/ttf/NotoSansSiddham-Regular.ttf') format('truetype');
+  unicode-range: 
+    U+11580-115FF;/*Siddham*/
+}
+@font-face {
+  font-family: 'Hentaigana Sans';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSerifHentaigana/unhinted/otf/NotoSerifHentaigana-Regular.otf') format('opentype'),
+    url('https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSerifHentaigana/unhinted/ttf/NotoSerifHentaigana-Regular.ttf') format('truetype');
+  unicode-range:
+    U+3099-309A,/*Hiragana{3040–309F}/Voicing marks: COMBINING KATAKANA-HIRAGANA [VOICED|SEMI-VOICED] SOUND MARK*/
+    U+1B000-1B0FF,/*Kana Supplement*/
+    U+1B100-1B12F;/*Kana Extended-A*/
+}
+/* --------- 保底大字庫（始） --------- */
+@font-face {/*CJK Unified Ideographs Extension B-0*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB20-Regular.woff2') format('woff2');
+  unicode-range:
+    U+20000-20FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-1*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB21-Regular.woff2') format('woff2');
+  unicode-range:
+    U+21000-21FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-2*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB22-Regular.woff2') format('woff2');
+  unicode-range:
+    U+22000-22FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-3*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB23-Regular.woff2') format('woff2');
+  unicode-range:
+    U+23000-23FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-4*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB24-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2normal0-24FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-5*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB25-Regular.woff2') format('woff2');
+  unicode-range:
+    U+25000-25FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-6*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB26-Regular.woff2') format('woff2');
+  unicode-range:
+    U+26000-26FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-7*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB27-Regular.woff2') format('woff2');
+  unicode-range:
+    U+27000-27FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-8*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB28-Regular.woff2') format('woff2');
+  unicode-range:
+    U+28000-28FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-9*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB29-Regular.woff2') format('woff2');
+  unicode-range:
+    U+29000-29FFF;
+}
+@font-face {/*CJK Unified Ideographs Extension B-A*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtB2A-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2A000-2A6DF;
+}
+@font-face {/*CJK Unified Ideographs Extension C*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtC4160-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2A700-2B73F;/*CJK Unified Ideographs Extension C*/
+}
+@font-face {/*CJK Unified Ideographs Extension D*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtD223w1-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2B740-2B81F;/*CJK Unified Ideographs Extension D*/
+}
+@font-face {/*CJK Unified Ideographs Extension E*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtE5774w2-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2B820-2CEAF;/*CJK Unified Ideographs Extension E*/
+}
+@font-face {/*CJK Unified Ideographs Extension F*/
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/op/FSungSerifUIExtF7473wF-Regular.woff2') format('woff2');
+  unicode-range:
+    U+2CEB0-2EBEF;/*CJK Unified Ideographs Extension F*/
+}
+@font-face {
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/全宋體/FSung-1.ttf') format('truetype');
+  unicode-range:
+    U+10000-1FFFF;
+}
+@font-face {
+  font-family: 'FSung Serif';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src:
+    url('https://cdn.jsdelivr.net/gh/Ghimist/.attest@test/.tmp/全宋體/FSung-3.ttf') format('truetype');
+  unicode-range:
+    U+30000-3FFFF;
+}
+/* --------- 保底大字庫（終） --------- */
 
 :root {
-  --font-sans: "CustomFont", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    "Old Hangul Serif", "Siddham Serif", "Hentaigana Sans",
+    "CustomFont"/*預設*/,
+    "Seal Sans",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif,
+    "FSung Serif"/*U+0-3FFFF 保底大字庫*/;
 }
 
 body {
