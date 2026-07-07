@@ -14,24 +14,26 @@ const TableNameBackupConfig = "backup_config"
 
 // BackupConfig mapped from table <backup_config>
 type BackupConfig struct {
-	ID               int64      `gorm:"column:id;primaryKey" json:"id" form:"id"`
-	UID              int64      `gorm:"column:uid;not null;index:idx_backup_config_uid,priority:1;default:0" json:"uid" form:"uid"`
-	VaultID          int64      `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
-	Type             string     `gorm:"column:type;default:''" json:"type" form:"type"`
-	StorageIds       string     `gorm:"column:storage_ids;type:TEXT;default:''" json:"storageIds" form:"storageIds"`
-	IsEnabled        int64      `gorm:"column:is_enabled;default:0" json:"isEnabled" form:"isEnabled"`
-	CronStrategy     string     `gorm:"column:cron_strategy;default:''" json:"cronStrategy" form:"cronStrategy"`
-	CronExpression   string     `gorm:"column:cron_expression;type:TEXT;default:''" json:"cronExpression" form:"cronExpression"`
-	IncludeVaultName int64      `gorm:"column:include_vault_name;default:0" json:"includeVaultName" form:"includeVaultName"`
-	RetentionDays    int64      `gorm:"column:retention_days;default:0" json:"retentionDays" form:"retentionDays"`
-	LastRunTime      time.Time  `gorm:"column:last_run_time" json:"lastRunTime" form:"lastRunTime"`
-	NextRunTime      time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
-	LastStatus       int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
-	LastMessage      string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
-	PasswordMode     int64      `gorm:"column:password_mode;default:0" json:"passwordMode" form:"passwordMode"`
-	PasswordValue    string     `gorm:"column:password_value;type:TEXT;default:''" json:"passwordValue" form:"passwordValue"`
-	CreatedAt        timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
-	UpdatedAt        timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
+	ID               int64  `gorm:"column:id;primaryKey" json:"id" form:"id"`
+	UID              int64  `gorm:"column:uid;not null;index:idx_backup_config_uid,priority:1;default:0" json:"uid" form:"uid"`
+	VaultID          int64  `gorm:"column:vault_id;not null;default:0" json:"vaultId" form:"vaultId"`
+	Type             string `gorm:"column:type;default:''" json:"type" form:"type"`
+	StorageIds       string `gorm:"column:storage_ids;type:TEXT;default:''" json:"storageIds" form:"storageIds"`
+	IsEnabled        int64  `gorm:"column:is_enabled;default:0" json:"isEnabled" form:"isEnabled"`
+	CronStrategy     string `gorm:"column:cron_strategy;default:''" json:"cronStrategy" form:"cronStrategy"`
+	CronExpression   string `gorm:"column:cron_expression;type:TEXT;default:''" json:"cronExpression" form:"cronExpression"`
+	IncludeVaultName int64  `gorm:"column:include_vault_name;default:0" json:"includeVaultName" form:"includeVaultName"`
+	// RetentionDays default must stay in sync with the gorm-gen source / scripts/db.sql, which specify 10.
+	// RetentionDays 的默认值需与 gorm-gen 源定义及 scripts/db.sql 保持一致，两者均为 10。
+	RetentionDays int64      `gorm:"column:retention_days;default:10" json:"retentionDays" form:"retentionDays"`
+	LastRunTime   time.Time  `gorm:"column:last_run_time" json:"lastRunTime" form:"lastRunTime"`
+	NextRunTime   time.Time  `gorm:"column:next_run_time;index:idx_backup_config_next_run_time,priority:1" json:"nextRunTime" form:"nextRunTime"`
+	LastStatus    int64      `gorm:"column:last_status;default:0" json:"lastStatus" form:"lastStatus"`
+	LastMessage   string     `gorm:"column:last_message;type:TEXT;default:''" json:"lastMessage" form:"lastMessage"`
+	PasswordMode  int64      `gorm:"column:password_mode;default:0" json:"passwordMode" form:"passwordMode"`
+	PasswordValue string     `gorm:"column:password_value;type:TEXT;default:''" json:"passwordValue" form:"passwordValue"`
+	CreatedAt     timex.Time `gorm:"column:created_at;default:NULL;autoCreateTime:false" json:"createdAt" form:"createdAt"`
+	UpdatedAt     timex.Time `gorm:"column:updated_at;default:NULL;autoUpdateTime:false" json:"updatedAt" form:"updatedAt"`
 }
 
 // TableName BackupConfig's table name

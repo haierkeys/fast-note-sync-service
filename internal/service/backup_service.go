@@ -27,6 +27,13 @@ import (
 
 var errNoUpdates = errors.New("no updates found")
 
+// DefaultRetentionDays is the fallback retention period (in days) applied when a
+// config's RetentionDays is left at 0. Must match the design intent in scripts/db.sql
+// and the gorm default on model.BackupConfig.RetentionDays.
+// DefaultRetentionDays 是当配置的 RetentionDays 为 0 时应用的默认保留天数，
+// 需与 scripts/db.sql 的设计意图及 model.BackupConfig.RetentionDays 的 gorm 默认值保持一致。
+const DefaultRetentionDays = 10
+
 // BackupService defines the business service interface for Backup
 // 定义备份业务服务接口
 type BackupService interface {
@@ -48,6 +55,7 @@ type backupService struct {
 	vaultRepo      domain.VaultRepository
 	storageService StorageService
 	storageConfig  *config.StorageConfig
+	tempPath       string
 	logger         *zap.Logger
 	syncTimers     map[int64]*time.Timer
 	timerMu        sync.Mutex
@@ -69,10 +77,14 @@ func NewBackupService(
 	vaultRepo domain.VaultRepository,
 	storageService StorageService,
 	storageConfig *config.StorageConfig,
+	tempPath string,
 	logger *zap.Logger,
 ) BackupService {
+	if tempPath == "" {
+		tempPath = "storage/temp"
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &backupService{
+	s := &backupService{
 		backupRepo:     backupRepo,
 		noteRepo:       noteRepo,
 		folderRepo:     folderRepo,
@@ -80,12 +92,38 @@ func NewBackupService(
 		vaultRepo:      vaultRepo,
 		storageService: storageService,
 		storageConfig:  storageConfig,
+		tempPath:       tempPath,
 		logger:         logger,
 		syncTimers:     make(map[int64]*time.Timer),
 		runningTasks:   make(map[int64]context.CancelFunc),
 		ctx:            ctx,
 		cancel:         cancel,
 	}
+
+	// Startup sweep: reclaim orphaned backup staging files left behind by a
+	// previously killed/OOM'd process (per-run defers don't run in that case).
+	// No backup can be in-flight at service construction time, so a full wipe is safe.
+	// 启动清理：回收上次进程被杀/OOM 后残留的备份暂存文件（该场景下 per-run defer 不会执行）。
+	// 服务构造时不可能有正在进行的备份，因此可以安全地整体清空。
+	stagingDir := s.backupStagingDir()
+	if err := os.RemoveAll(stagingDir); err != nil && logger != nil {
+		logger.Warn("Failed to sweep stale backup staging dir", zap.String("dir", stagingDir), zap.Error(err))
+	}
+	if err := os.MkdirAll(stagingDir, 0o755); err != nil && logger != nil {
+		logger.Warn("Failed to recreate backup staging dir", zap.String("dir", stagingDir), zap.Error(err))
+	}
+
+	return s
+}
+
+// backupStagingDir returns the directory used to stage in-progress backup
+// working dirs and zip files. Under the app's configured temp path (not the
+// container's /tmp) so it can be swept on startup and doesn't leak into the
+// persistent docker overlay layer.
+// backupStagingDir 返回用于暂存备份工作目录和 zip 文件的目录。位于应用配置的临时路径下
+// （而非容器的 /tmp），可在启动时清理，不会泄漏进 docker 持久化的 overlay 层。
+func (s *backupService) backupStagingDir() string {
+	return filepath.Join(s.tempPath, "backup")
 }
 
 // GetConfigs Get user's backup configurations
@@ -128,6 +166,14 @@ func (s *backupService) UpdateConfig(ctx context.Context, uid int64, req *dto.Ba
 		}
 	}
 
+	// A RetentionDays of 0 means "no explicit value provided"; fall back to the
+	// design-intended default rather than silently keeping backups forever.
+	// RetentionDays 为 0 表示"未显式设置"，回退到设计预期的默认值，而不是静默地永久保留备份。
+	retentionDays := req.RetentionDays
+	if retentionDays == 0 {
+		retentionDays = DefaultRetentionDays
+	}
+
 	config := &domain.BackupConfig{
 		ID:               req.ID,
 		UID:              uid,
@@ -138,7 +184,7 @@ func (s *backupService) UpdateConfig(ctx context.Context, uid int64, req *dto.Ba
 		CronStrategy:     req.CronStrategy,
 		CronExpression:   req.CronExpression,
 		IncludeVaultName: req.IncludeVaultName,
-		RetentionDays:    req.RetentionDays,
+		RetentionDays:    retentionDays,
 		PasswordMode:     req.PasswordMode,
 		PasswordValue:    req.PasswordValue,
 	}
@@ -454,7 +500,10 @@ func (s *backupService) handleBackupSync(ctx context.Context, config *domain.Bac
 
 	// 3. Prepare temporary working directory
 	// 3. 准备临时工作目录
-	tempDir, err := os.MkdirTemp("", fmt.Sprintf("backup_%d_", uid))
+	if err := os.MkdirAll(s.backupStagingDir(), 0o755); err != nil {
+		return s.finishTask(taskCtx, config, err, 0, 0, startTime)
+	}
+	tempDir, err := os.MkdirTemp(s.backupStagingDir(), fmt.Sprintf("backup_%d_", uid))
 	if err != nil {
 		return s.finishTask(taskCtx, config, err, 0, 0, startTime)
 	}
@@ -502,7 +551,10 @@ func (s *backupService) runArchive(ctx context.Context, config *domain.BackupCon
 	uid := config.UID
 	vaultName := s.getVaultName(ctx, config.VaultID, uid)
 	zipName := fmt.Sprintf("backup_%s_%d_%s_%s.zip", config.Type, uid, vaultName, startTime.Format("20060102_150405"))
-	zipPath := filepath.Join(os.TempDir(), zipName)
+	if err := os.MkdirAll(s.backupStagingDir(), 0o755); err != nil {
+		return 0, 0, err
+	}
+	zipPath := filepath.Join(s.backupStagingDir(), zipName)
 
 	defer os.Remove(zipPath)
 
