@@ -1,0 +1,5 @@
+#!/bin/bash
+# Runs before an upgrade replaces package files. No pre-upgrade tasks needed;
+# service data lives in TRIM_PKGVAR and is not touched.
+set -u
+exit 0

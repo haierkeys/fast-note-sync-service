@@ -1,0 +1,16 @@
+appname="fastnotesync"
+version="3.5.1"
+display_name="Fast Note Sync"
+desc="高性能笔记同步服务（Obsidian Fast Note Sync）。提供多设备实时同步、Web 管理面板、REST API 与原生 MCP 支持。"
+maintainer="haierkeys"
+maintainer_url="https://github.com/haierkeys/fast-note-sync-service"
+source="thirdparty"
+platform="x86"
+ctl_stop=true
+service_port="9000"
+checkport=true
+disable_authorization_path=true
+os_min_version="1.1.3100"
+desktop_uidir="ui"
+desktop_applaunchname="fastnotesync.main"
+changelog="提供飞牛 fnOS 原生应用打包支持。单二进制 + 内嵌前端，端口 9000。"

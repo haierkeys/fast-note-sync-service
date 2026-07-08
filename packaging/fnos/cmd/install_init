@@ -1,0 +1,4 @@
+#!/bin/bash
+# Runs before package files are installed. No pre-install tasks needed.
+set -u
+exit 0

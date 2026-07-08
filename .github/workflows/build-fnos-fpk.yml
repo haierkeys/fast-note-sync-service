@@ -1,0 +1,103 @@
+name: build-fnos-fpk
+
+# Build the fnOS (飞牛 fnOS) .fpk packages for x86 and arm.
+#
+# Builds the Go binary from source (frontend embedded via //go:embed),
+# packages it with the official fnpack tool, and attaches the .fpk files
+# plus a SHA256SUMS audit log to the published release.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FNPACK_VERSION: '1.2.3'
+  FNPACK_SHA256: '54b97fa7b70968c4d05c79840f5daeff508957d0bb2062fdb0376d00d9615c93'
+  FNS_BIN_NAME: fast-note-sync-service
+
+jobs:
+  build:
+    name: Build .fpk (${{ matrix.suffix }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goarch: amd64, platform: x86, suffix: x86 }
+          - { goarch: arm64, platform: arm, suffix: arm }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -eu
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            VER="${{ github.event.release.tag_name }}"
+          else
+            VER=$(grep -E 'Version\s+string' internal/app/version.go | awk -F '"' '{print $2}')
+          fi
+          VER="${VER#v}"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "version=${VER}"
+
+      - name: Build binary from source
+        run: |
+          set -eu
+          mkdir -p packaging/fnos/app
+          CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.goarch }} go build -trimpath \
+            -o "packaging/fnos/app/${FNS_BIN_NAME}" .
+
+      - name: Stamp manifest
+        run: |
+          set -eu
+          VER="${{ steps.ver.outputs.version }}"
+          sed -i "s|^version=.*|version=\"${VER}\"|" packaging/fnos/manifest
+          sed -i "s|^platform=.*|platform=\"${{ matrix.platform }}\"|" packaging/fnos/manifest
+          cat packaging/fnos/manifest
+
+      - name: Download fnpack (pinned SHA256)
+        run: |
+          set -eu
+          curl -fL --retry 3 -o packaging/fnos/fnpack \
+            "https://static2.fnnas.com/fnpack/fnpack-${FNPACK_VERSION}-linux-amd64"
+          echo "${FNPACK_SHA256}  packaging/fnos/fnpack" | sha256sum -c -
+          chmod +x packaging/fnos/fnpack
+
+      - name: Build .fpk
+        run: |
+          cd packaging/fnos
+          ./fnpack build --directory .
+
+      - name: Rename & checksum
+        run: |
+          set -eu
+          VER="${{ steps.ver.outputs.version }}"
+          cd packaging/fnos
+          mv fastnotesync.fpk "fastnotesync-${VER}-${{ matrix.suffix }}.fpk"
+          sha256sum "fastnotesync-${VER}-${{ matrix.suffix }}.fpk" \
+            > "fastnotesync-${VER}-${{ matrix.suffix }}.fpk.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fpk-${{ matrix.suffix }}
+          path: |
+            packaging/fnos/*.fpk
+            packaging/fnos/*.fpk.sha256
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd packaging/fnos
+          gh release upload "${{ github.event.release.tag_name }}" *.fpk *.fpk.sha256 --clobber

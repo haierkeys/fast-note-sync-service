@@ -1,0 +1,4 @@
+#!/bin/bash
+# Runs after uninstall cleanup. Nothing to do beyond what uninstall_init did.
+set -u
+exit 0

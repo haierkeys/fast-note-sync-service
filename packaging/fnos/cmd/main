@@ -1,0 +1,134 @@
+#!/bin/bash
+#
+# fastnotesync lifecycle controller.
+# Manages the fast-note-sync-service binary (start/stop/status).
+#
+# The binary is a self-contained Go service (frontend embedded) that
+# auto-generates config/config.yaml with a random auth token on first run.
+# Working directory is set to TRIM_PKGVAR so config, database and uploads
+# persist across restarts and survive upgrades.
+
+set -u
+
+APPNAME="fastnotesync"
+BIN_NAME="fast-note-sync-service"
+BIN_PATH="${TRIM_APPDEST}/${BIN_NAME}"
+
+LOG_FILE="${TRIM_PKGVAR}/app.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+
+# Persistent working directory for the service (config + storage live here).
+WORK_DIR="${TRIM_PKGVAR}"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+is_running() {
+  local pid="$1"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+status_app() {
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" 2>/dev/null | tr -d '[:space:]')"
+    if is_running "$pid"; then
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+start_app() {
+  if status_app; then
+    log_msg "Already running (pid $(head -n 1 "$PID_FILE" 2>/dev/null))."
+    return 0
+  fi
+
+  if [ ! -x "$BIN_PATH" ]; then
+    echo "Binary not found or not executable: $BIN_PATH" > "$TRIM_TEMP_LOGFILE"
+    log_msg "ERROR: binary missing: $BIN_PATH"
+    return 1
+  fi
+
+  mkdir -p "$WORK_DIR"
+
+  log_msg "Starting $APPNAME (work_dir=$WORK_DIR)..."
+  # -d sets the working directory; the service auto-creates config/config.yaml
+  # there (with a random auth-token-key) on first run.
+  cd "$WORK_DIR" || { echo "Cannot enter $WORK_DIR" > "$TRIM_TEMP_LOGFILE"; return 1; }
+  "$BIN_PATH" run -d "$WORK_DIR" >> "$LOG_FILE" 2>&1 &
+  local pid=$!
+  echo "$pid" > "$PID_FILE"
+  log_msg "Started, pid=$pid."
+
+  # Give it a moment to bind the port; fail fast if it died immediately.
+  sleep 1
+  if ! is_running "$pid"; then
+    echo "Service exited immediately. See $LOG_FILE." > "$TRIM_TEMP_LOGFILE"
+    log_msg "ERROR: process $pid exited immediately."
+    rm -f "$PID_FILE"
+    return 1
+  fi
+  return 0
+}
+
+stop_app() {
+  log_msg "Stopping $APPNAME..."
+
+  if [ ! -f "$PID_FILE" ]; then
+    log_msg "No PID file, nothing to stop."
+    return 0
+  fi
+
+  local pid
+  pid="$(head -n 1 "$PID_FILE" 2>/dev/null | tr -d '[:space:]')"
+
+  if [ -z "$pid" ] || ! is_running "$pid"; then
+    rm -f "$PID_FILE"
+    log_msg "Process not running, cleaned PID file."
+    return 0
+  fi
+
+  kill -TERM "$pid" 2>>"$LOG_FILE" || true
+
+  local count=0
+  while is_running "$pid" && [ "$count" -lt 15 ]; do
+    sleep 1
+    count=$((count + 1))
+  done
+
+  if is_running "$pid"; then
+    log_msg "Process did not exit on TERM, sending KILL."
+    kill -KILL "$pid" 2>>"$LOG_FILE" || true
+  fi
+
+  rm -f "$PID_FILE"
+  log_msg "Stopped."
+  return 0
+}
+
+case "$1" in
+  start)
+    start_app
+    ;;
+  stop)
+    stop_app
+    ;;
+  status)
+    if status_app; then
+      exit 0
+    fi
+    exit 3
+    ;;
+  restart)
+    stop_app
+    start_app
+    ;;
+  *)
+    echo "Unknown command: $1 (expected start|stop|status|restart)" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+    ;;
+esac

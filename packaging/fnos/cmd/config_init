@@ -1,0 +1,5 @@
+#!/bin/bash
+# Runs before a config change is applied. fast-note-sync-service watches its
+# config file and hot-reloads, so no script-side action is required.
+set -u
+exit 0

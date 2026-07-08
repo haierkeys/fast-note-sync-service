@@ -1,0 +1,7 @@
+#!/bin/bash
+# Runs after the package files are installed.
+# Pre-create the persistent working directory so the service can write
+# config/config.yaml and storage/ on first start.
+set -u
+mkdir -p "${TRIM_PKGVAR}" 2>/dev/null || true
+exit 0
