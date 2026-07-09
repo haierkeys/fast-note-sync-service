@@ -32,7 +32,19 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// 分批协议：totalBatches > 1 时归集到缓存，集齐后统一执行差量同步
 	// Batch protocol: accumulate into cache when totalBatches > 1, then run diff sync when all collected
 	if params.TotalBatches > 1 {
-		entry := syncBatchGetOrCreate(params.Context, "folder", params.TotalBatches)
+		entry, created := syncBatchGetOrCreate(params.Context, "folder", params.TotalBatches)
+		if created {
+			// 观测用：若此 context+type 早已集齐并被清理，这里会是迟到重传重建的孤儿 entry
+			// （见同步流水线设计 §3.3 第 2 点），5min TTL 会自动回收，不做额外防护
+			// Observability: if this context+type had already been collected and cleaned up,
+			// this is a late-retransmit rebuild of an orphan entry (design §3.3 point 2);
+			// the 5-minute TTL reclaims it automatically, no extra protection needed
+			h.App.Logger().Debug("websocket_router.folder.FolderSync: created new batch cache entry",
+				zap.String(logpkg.FieldTraceID, c.TraceID),
+				zap.String("context", params.Context),
+				zap.Int("batchIndex", params.BatchIndex),
+				zap.Int("totalBatches", params.TotalBatches))
+		}
 
 		entry.mu.Lock()
 		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
@@ -54,11 +66,19 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 		total := entry.TotalBatches
 		entry.mu.Unlock()
 
+		// 无条件先回 BatchAck（含集齐的最后一批）：旧客户端把多出的最后一批 ack 静默丢弃
+		// （无监听者的 emit，见设计 §2.1 事实4），新客户端窗口协议靠它滑动
+		// Unconditionally send BatchAck first (including the batch that completes collection):
+		// old clients silently drop the extra ack for the last batch (emit with no listener,
+		// design §2.1 fact 4); new clients rely on it to slide the window
+		c.ToResponse(code.Success.WithData(map[string]interface{}{
+			"context":    params.Context,
+			"batchIndex": params.BatchIndex,
+		}).WithVault(params.Vault).WithContext(params.Context), FolderSyncBatchAck)
+
 		if received < total {
-			c.ToResponse(code.Success.WithData(map[string]interface{}{
-				"context":    params.Context,
-				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault).WithContext(params.Context), FolderSyncBatchAck)
+			// 未集齐：等待其余批次
+			// Not all batches received yet: wait for the rest
 			return
 		}
 

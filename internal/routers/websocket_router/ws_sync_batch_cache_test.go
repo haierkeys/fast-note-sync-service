@@ -61,7 +61,10 @@ func TestSyncBatchGetOrCreate_InitializesReceivedIndexes(t *testing.T) {
 	ctx := "test-ctx-" + t.Name()
 	defer syncBatchDelete(ctx, "note")
 
-	entry := syncBatchGetOrCreate(ctx, "note", 3)
+	entry, created := syncBatchGetOrCreate(ctx, "note", 3)
+	if !created {
+		t.Fatal("expected created=true for a brand new context+type entry")
+	}
 	if entry.ReceivedIndexes == nil {
 		t.Fatal("expected ReceivedIndexes to be initialized")
 	}
@@ -70,5 +73,33 @@ func TestSyncBatchGetOrCreate_InitializesReceivedIndexes(t *testing.T) {
 	}
 	if !entry.markBatchReceived(0) {
 		t.Fatal("second receipt should be a duplicate")
+	}
+}
+
+// TestSyncBatchGetOrCreate_CreatedFlag_S3Regression covers the observability signal added in
+// S3 (design §3.3 point 2): a second call for the same context+type must report created=false
+// (existing entry reused), and after the entry is deleted (mimicking doSync's syncBatchDelete
+// once a batch round completes), a later call for the same context+type must report
+// created=true again — this is exactly the "late retransmit rebuilds an orphan entry" case the
+// Debug log at the S3 call sites is meant to surface.
+func TestSyncBatchGetOrCreate_CreatedFlag_S3Regression(t *testing.T) {
+	ctx := "test-ctx-" + t.Name()
+	defer syncBatchDelete(ctx, "note")
+
+	_, created := syncBatchGetOrCreate(ctx, "note", 3)
+	if !created {
+		t.Fatal("first call: expected created=true")
+	}
+
+	_, created = syncBatchGetOrCreate(ctx, "note", 3)
+	if created {
+		t.Fatal("second call for the same context+type: expected created=false (entry reused)")
+	}
+
+	syncBatchDelete(ctx, "note")
+
+	_, created = syncBatchGetOrCreate(ctx, "note", 3)
+	if !created {
+		t.Fatal("call after delete (simulating a late retransmit after doSync collected): expected created=true (orphan rebuild)")
 	}
 }

@@ -67,11 +67,18 @@ func syncBatchKey(context, typeName string) string {
 	return context + "_" + typeName
 }
 
-// syncBatchGetOrCreate 获取或创建指定 context+type 的缓存条目
-// Get or create a batch cache entry for the given context + type
-func syncBatchGetOrCreate(context, typeName string, totalBatches int) *syncBatchEntry {
+// syncBatchGetOrCreate 获取或创建指定 context+type 的缓存条目，created 表示本次调用是否新建了条目
+// （用于观测：若某个 context+type 早已 doSync 完成并被 syncBatchDelete 清理，随后又出现一次
+// created==true 的调用，说明这是客户端的迟到批次重传，重建出的 entry 将成为等待 5 分钟 TTL
+// 回收的孤儿，见同步流水线设计 §3.3 第 2 点）。
+// Get or create a batch cache entry for the given context + type; created reports whether this
+// call created a new entry (observability: if a context+type has already completed doSync and
+// been syncBatchDelete'd, and a later call here again returns created==true, that's a late batch
+// retransmit from the client rebuilding an orphan entry that will sit until the 5-minute TTL
+// reclaims it — see sync pipeline design §3.3 point 2).
+func syncBatchGetOrCreate(context, typeName string, totalBatches int) (entry *syncBatchEntry, created bool) {
 	key := syncBatchKey(context, typeName)
-	val, _ := syncBatchCacheMap.LoadOrStore(key, &syncBatchEntry{
+	val, loaded := syncBatchCacheMap.LoadOrStore(key, &syncBatchEntry{
 		Items:           make([]interface{}, 0),
 		DelItems:        make([]interface{}, 0),
 		MissingItems:    make([]interface{}, 0),
@@ -79,7 +86,7 @@ func syncBatchGetOrCreate(context, typeName string, totalBatches int) *syncBatch
 		ReceivedIndexes: make(map[int]struct{}),
 		UpdatedAt:       time.Now(),
 	})
-	return val.(*syncBatchEntry)
+	return val.(*syncBatchEntry), !loaded
 }
 
 // syncBatchDelete 清理指定 context+type 的缓存条目
