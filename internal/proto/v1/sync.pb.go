@@ -86,7 +86,7 @@ type WSResponse struct {
 	Details       string                 `protobuf:"bytes,5,opt,name=details,proto3" json:"details,omitempty"`      // Error details // 错误细节
 	Vault         string                 `protobuf:"bytes,6,opt,name=vault,proto3" json:"vault,omitempty"`          // Vault name // 笔记库名称
 	Context       string                 `protobuf:"bytes,7,opt,name=context,proto3" json:"context,omitempty"`      // Context // 上下文
-	PageIndex     int32                  `protobuf:"varint,8,opt,name=pageIndex,proto3" json:"pageIndex,omitempty"` // Page index this detail/page message belongs to (download window page attribution and idempotency key, see sync pipeline design §4); non-paginated messages are 0. Sender: only filled for pv>=2 connections // 该明细/页消息所属下载页码（下行窗口的页归属与幂等去重依据，见同步流水线设计 §4）；非分页消息为 0。发送端：仅 pv>=2 连接填写
+	PageIndex     int32                  `protobuf:"varint,8,opt,name=pageIndex,proto3" json:"pageIndex,omitempty"` // 1-BASED wire value (download window page attribution and idempotency key, see sync pipeline design §4): 0 (or absent) = non-paginated message; n>0 = download page n-1 (0-based internal page number). 1-based because proto3 doesn't encode zero values: a 0-based page 0 would decode as 0, indistinguishable from non-paginated messages. Sender: only filled for pv>=2 connections. The client-to-server PageAck.pageIndex request field stays 0-based and is NOT affected. // 线上值为 1-BASED（下行窗口的页归属与幂等去重依据，见同步流水线设计 §4）：0（或缺省）= 非分页消息；n>0 = 下载页 n-1（内部 0-based 页码）。采用 1-based 是因为 proto3 不编码零值：0-based 的第 0 页解码后为 0，与非分页消息无法区分。发送端：仅 pv>=2 连接填写。客户端→服务端的 PageAck.pageIndex 请求字段保持 0-based，不受影响
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

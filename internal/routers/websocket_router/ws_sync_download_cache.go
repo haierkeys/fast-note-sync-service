@@ -137,6 +137,24 @@ func pump(c *pkgapp.WebsocketClient, entry *syncDownloadEntry) {
 // 参见 pkg/app/websocket_client_test.go）。生产代码从不重新赋值它。
 var sendSyncPageFunc = sendSyncPage
 
+// envelopePageIndex 把内部 0-based 页码映射为信封线上值：线上值 = 内部页码 + 1（1-based）。
+// 原因：WSResponse.pageIndex 是 proto3 非 optional int32，第 0 页若按 0-based 上线，pb 编码下
+// 零值不落线，客户端解码得 0——与非分页消息（同样解码得 0）无法区分，C3 的
+// 「pageIndex === undefined → 退回旧路径」选路会把第 0 页误判为非分页消息。改为 1-based 后：
+// 线上值 0/缺省 = 非分页消息，线上值 n>0 = 内部第 n-1 页。仅信封线上值做此偏移，服务端内部
+// SentPage/AckedPage 以及客户端→服务端的 PageAck.pageIndex 请求字段全部保持 0-based 不变。
+// envelopePageIndex maps the internal 0-based page number to the envelope wire value:
+// wire = internal + 1 (1-based). Rationale: WSResponse.pageIndex is a non-optional proto3
+// int32, so a 0-based page 0 would not be encoded on the wire under pb and would decode as 0 —
+// indistinguishable from non-paginated messages (which also decode as 0), causing C3's
+// "pageIndex === undefined → legacy path" routing to misclassify page 0. With 1-based wire
+// semantics: wire 0/absent = non-paginated message, wire n>0 = internal page n-1. Only the
+// envelope wire value is offset; the server-internal SentPage/AckedPage and the client→server
+// PageAck.pageIndex request field all stay 0-based.
+func envelopePageIndex(c2 *code.Code, page int) *code.Code {
+	return c2.WithPageIndex(page + 1)
+}
+
 // sendSyncPage 发送 entry.SentPage 指向的页（页元数据 + 该页全部明细），返回该页是否为最后一页。
 // 不负责推进 SentPage、不负责判断是否销毁 entry —— 这两件事由调用方 pump 统一处理，
 // 使"发送"与"窗口推进"职责分离。调用前必须持有 entry.mu（由 pump 的调用者持有）。
@@ -203,7 +221,7 @@ func sendSyncPage(c *pkgapp.WebsocketClient, entry *syncDownloadEntry) (isLast b
 	// Detail envelope pageIndex (§2.4): only filled for pv>=2 connections, old connections keep the zero value/omitted
 	withPageIndex := func(c2 *code.Code) *code.Code {
 		if c.ProtoVersion >= 2 {
-			return c2.WithPageIndex(page)
+			return envelopePageIndex(c2, page)
 		}
 		return c2
 	}
