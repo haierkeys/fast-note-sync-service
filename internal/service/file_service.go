@@ -18,6 +18,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -111,20 +112,21 @@ type FileService interface {
 // fileService implementation of FileService interface
 // fileService 实现 FileService 接口
 type fileService struct {
-	userRepo       domain.UserRepository // User repository // 用户仓库
-	fileRepo       domain.FileRepository // File repository // 文件仓库
-	noteRepo       domain.NoteRepository // Note repository // 笔记仓库
-	vaultService   VaultService          // Vault service // 仓库服务
-	folderService  FolderService         // Folder service // 文件夹服务
-	syncLogService SyncLogService        // Sync log service // 同步日志服务
-	sf             *singleflight.Group   // Singleflight group // 并发请求合并组
-	clientType     string                // Client type // 客户端类型
-	clientName     string                // Client name // 客户端名称
-	clientVer      string                // Client version // 客户端版本
-	config         *ServiceConfig        // Service configuration // 服务配置
-	backupService  BackupService         // Backup service // 备份服务
-	gitSyncService GitSyncService        // Git sync service // Git 同步服务
-	countTimers    *sync.Map             // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	userRepo       domain.UserRepository  // User repository // 用户仓库
+	fileRepo       domain.FileRepository  // File repository // 文件仓库
+	noteRepo       domain.NoteRepository  // Note repository // 笔记仓库
+	vaultService   VaultService           // Vault service // 仓库服务
+	folderService  FolderService          // Folder service // 文件夹服务
+	syncLogService SyncLogService         // Sync log service // 同步日志服务
+	sf             *singleflight.Group    // Singleflight group // 并发请求合并组
+	kmu            *keyedmutex.KeyedMutex // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
+	clientType     string                 // Client type // 客户端类型
+	clientName     string                 // Client name // 客户端名称
+	clientVer      string                 // Client version // 客户端版本
+	config         *ServiceConfig         // Service configuration // 服务配置
+	backupService  BackupService          // Backup service // 备份服务
+	gitSyncService GitSyncService         // Git sync service // Git 同步服务
+	countTimers    *sync.Map              // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewFileService creates FileService instance
@@ -140,6 +142,7 @@ func NewFileService(userRepo domain.UserRepository, fileRepo domain.FileReposito
 		gitSyncService: gitSyncSvc,
 		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
+		kmu:            keyedmutex.New(),
 		config:         config,
 		countTimers:    &sync.Map{},
 	}
@@ -248,7 +251,17 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		dto   *dto.FileDTO
 	}
 
-	val, err, _ := s.sf.Do(key, func() (any, error) {
+	// Per-key mutex instead of singleflight.Do: singleflight would let a losing
+	// concurrent caller silently skip its own write and reuse another caller's
+	// result, dropping data. A keyed mutex serializes same-key calls while still
+	// running every caller's closure exactly once.
+	// 用按 key 的互斥锁替代 singleflight.Do：singleflight 会让并发中落败的调用方
+	// 静默跳过自己的写入、直接复用另一个调用方的结果，导致数据丢失。按 key 的互斥锁
+	// 让同一 key 的调用互相串行，但每个调用方的闭包都会真正执行一次。
+	unlock := s.kmu.Lock(key)
+	defer unlock()
+
+	updateOrCreate := func() (any, error) {
 		var isNew bool
 		file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 
@@ -359,8 +372,9 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			go s.gitSyncService.NotifyUpdated(uid, vaultID)
 		}
 		return &result{isNew: isNew, dto: s.domainToDTO(created)}, nil
-	})
+	}
 
+	val, err := updateOrCreate()
 	if err != nil {
 		return false, nil, err
 	}
@@ -924,6 +938,7 @@ func (s *fileService) WithClient(clientType, name, version string) FileService {
 		folderService:  s.folderService,
 		syncLogService: s.syncLogService,
 		sf:             s.sf,
+		kmu:            s.kmu,
 		clientType:     clientType,
 		clientName:     name,
 		clientVer:      version,

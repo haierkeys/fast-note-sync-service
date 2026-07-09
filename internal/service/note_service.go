@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -145,6 +146,7 @@ type noteService struct {
 	folderService  FolderService              // Folder service // 文件夹服务
 	syncLogService SyncLogService             // Sync log service // 同步日志服务
 	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
+	kmu            *keyedmutex.KeyedMutex     // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
 	clientType     string                     // Client type // 客户端类型
 	clientName     string                     // Client name // 客户端名称
 	clientVer      string                     // Client version // 客户端版本
@@ -169,6 +171,7 @@ func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteReposito
 		gitSyncService: gitSyncSvc,
 		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
+		kmu:            keyedmutex.New(),
 		config:         config,
 		countTimers:    &sync.Map{},
 	}
@@ -186,6 +189,7 @@ func (s *noteService) WithClient(clientType, name, version string) NoteService {
 		folderService:  s.folderService,
 		syncLogService: s.syncLogService,
 		sf:             s.sf,
+		kmu:            s.kmu,
 		clientType:     clientType,
 		clientName:     name,
 		clientVer:      version,
@@ -357,7 +361,24 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		dto   *dto.NoteDTO
 	}
 
-	val, err, _ := s.sf.Do(key, func() (any, error) {
+	// Per-key mutex instead of singleflight.Do: singleflight would let a losing
+	// concurrent caller silently skip its own write and reuse another caller's
+	// result, dropping data. A keyed mutex serializes same-key calls while still
+	// running every caller's closure exactly once.
+	// 用按 key 的互斥锁替代 singleflight.Do：singleflight 会让并发中落败的调用方
+	// 静默跳过自己的写入、直接复用另一个调用方的结果，导致数据丢失。按 key 的互斥锁
+	// 让同一 key 的调用互相串行，但每个调用方的闭包都会真正执行一次。
+	unlock, uncontended := s.kmu.TryLock(key)
+	if !uncontended {
+		// Key is currently held/awaited by another caller, so any note snapshot
+		// pre-fetched before this call may already be stale; force a fresh lookup.
+		// key 当前正被其他调用方持有或等待，调用前预取的 note 快照可能已过期，强制重新查询。
+		preFetchedNote = nil
+		unlock = s.kmu.Lock(key)
+	}
+	defer unlock()
+
+	modifyOrCreate := func() (any, error) {
 		var isNew bool
 		note := preFetchedNote
 		if note == nil {
@@ -480,8 +501,9 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		}
 
 		return &result{isNew: isNew, dto: s.domainToDTO(created)}, nil
-	})
+	}
 
+	val, err := modifyOrCreate()
 	if err != nil {
 		return false, nil, err
 	}
