@@ -661,6 +661,17 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	// 0.5 Shutdown SyncLogService (flush buffered sync log batch before write queue closes)
+	// 0.5 关闭 SyncLogService（在写队列关闭前 flush 缓冲的同步日志批次）
+	if a.SyncLogService != nil {
+		a.logger.Info("Shutting down sync log service...")
+		if err := a.SyncLogService.Shutdown(ctx); err != nil {
+			a.logger.Warn("Sync log service shutdown error", zap.Error(err))
+		} else {
+			a.logger.Info("Sync log service shutdown completed")
+		}
+	}
+
 	// 1. Shutdown Worker Pool (stop accepting new tasks, wait for existing tasks to complete)
 	// 1. 关闭 Worker Pool（停止接受新任务，等待现有任务完成）
 	if a.workerPool != nil {

@@ -85,6 +85,10 @@ type SyncLogRepository interface {
 	// Create 存储一条新的同步日志
 	Create(ctx context.Context, log *SyncLog, uid int64) error
 
+	// CreateBatch stores multiple sync log entries for a single user in one write.
+	// CreateBatch 为单个用户在一次写入中批量存储多条同步日志。
+	CreateBatch(ctx context.Context, logs []*SyncLog, uid int64) error
+
 	// List retrieves sync logs for a user with filtering and pagination
 	// List 按条件分页查询用户的同步日志
 	List(ctx context.Context, uid int64, logType, action string, page, pageSize int) ([]*SyncLog, int64, error)

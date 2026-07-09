@@ -17,6 +17,11 @@ func (m *MockSyncLogRepository) Create(ctx context.Context, log *domain.SyncLog,
 	return args.Error(0)
 }
 
+func (m *MockSyncLogRepository) CreateBatch(ctx context.Context, logs []*domain.SyncLog, uid int64) error {
+	args := m.Called(ctx, logs, uid)
+	return args.Error(0)
+}
+
 func (m *MockSyncLogRepository) List(ctx context.Context, uid int64, logType, action string, page, pageSize int) ([]*domain.SyncLog, int64, error) {
 	args := m.Called(ctx, uid, logType, action, page, pageSize)
 	if args.Get(0) == nil {
