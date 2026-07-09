@@ -1066,10 +1066,24 @@ func (h *FileWSHandler) FileSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	}
 
 	if params.PageIndex != entry.CurrentPage {
-		h.App.Logger().Warn("FileSyncPageAck: page index mismatch",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.Int("expected", entry.CurrentPage),
-			zap.Int("got", params.PageIndex))
+		if params.PageIndex == entry.CurrentPage-1 {
+			// 客户端重发了上一页的 ack，说明它没收到我们已经发出的当前页，幂等重发当前页兜底
+			// Client retransmitted the ack for the previous page, meaning it never received
+			// the current page we already sent; idempotently resend the current page.
+			h.App.Logger().Warn("FileSyncPageAck: received retransmitted ack for previous page, resending current page",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.Int("expected", entry.CurrentPage),
+				zap.Int("got", params.PageIndex))
+		} else {
+			h.App.Logger().Warn("FileSyncPageAck: page index mismatch, resending current page as a fallback",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.Int("expected", entry.CurrentPage),
+				zap.Int("got", params.PageIndex))
+		}
+		// 无论何种 mismatch，都兜底重发当前页，避免客户端卡死等待 10min TTL
+		// Regardless of the mismatch reason, resend the current page as a fallback to avoid
+		// the client stalling until the 10-minute TTL.
+		sendSyncPage(c, entry)
 		return
 	}
 
