@@ -78,6 +78,10 @@ type NoteRepository interface {
 	// ListByPathHash 根据路径哈希获取笔记列表（处理重复记录）
 	ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*Note, error)
 
+	// ListByPathHashesMeta 单次查询批量获取一组路径哈希对应的笔记元数据（不读正文，含所有状态）
+	// 用于批量存在性预检查，避免逐条查询的 N+1
+	ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*Note, error)
+
 	// GetByPath 根据路径获取笔记
 	GetByPath(ctx context.Context, path string, vaultID, uid int64) (*Note, error)
 

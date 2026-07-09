@@ -73,6 +73,13 @@ type NoteService interface {
 	// GetByID 根据 ID 获取单条笔记（含正文）
 	GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error)
 
+	// ExistsBatch checks, in a single batch query, whether each of the given pathHashes
+	// currently exists and is not soft-deleted. Used to avoid per-item existence checks
+	// (N+1) before batch-processing client-reported deletions.
+	// ExistsBatch 单次批量查询一组 pathHash 是否存在且未被软删除。
+	// 用于批量处理客户端上报删除前，避免逐条存在性检查造成的 N+1。
+	ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error)
+
 	// Sync syncs notes (alias for ListByLastTime, used for WebSocket sync)
 	// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
 	Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
@@ -560,13 +567,11 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientType, s.clientName, s.clientVer, note.Size)
 	}
 
-	// Re-fetch the updated note // 重新获取更新后的笔记
-	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
-	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	NoteHistoryDelayPush(updated.ID, uid)
+	// note 已经是 UpdateDelete 写入后的准确状态（UpdateDelete 会把实际写入的
+	// UpdatedTimestamp 回写到 note 上），无需重新查库
+	// note already reflects the post-write state (UpdateDelete writes the persisted
+	// UpdatedTimestamp back onto it), no re-query needed
+	NoteHistoryDelayPush(note.ID, uid)
 	if s.backupService != nil {
 		go s.backupService.NotifyUpdated(uid)
 	}
@@ -574,7 +579,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
-	return s.domainToDTO(updated), nil
+	return s.domainToDTO(note), nil
 }
 
 // Restore restores a note (from recycle bin)
@@ -864,6 +869,31 @@ func (s *noteService) GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO,
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 	return s.domainToDTO(note), nil
+}
+
+// ExistsBatch checks existence (and non-deleted status) for a batch of pathHashes in one query.
+// ExistsBatch 单次批量查询一组 pathHash 是否存在且未被软删除。
+func (s *noteService) ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error) {
+	result := make(map[string]bool, len(pathHashes))
+	if len(pathHashes) == 0 {
+		return result, nil
+	}
+
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, vault)
+	if err != nil {
+		return nil, err
+	}
+
+	metaMap, err := s.noteRepo.ListByPathHashesMeta(ctx, pathHashes, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	for _, ph := range pathHashes {
+		n, ok := metaMap[ph]
+		result[ph] = ok && n.Action != domain.NoteActionDelete
+	}
+	return result, nil
 }
 
 // CountSizeSum counts total number and total size of notes in a vault

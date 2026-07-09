@@ -769,18 +769,27 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 	if len(params.DelNotes) > 0 {
 		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "note_w")
 
+		// 批量预查一次性取回全部 pathHash 的存在性，避免逐条 noteSvc.Get 造成的
+		// N+1 查询（且每条 Get 还会带上完全用不到的正文文件读取）
+		// Batch pre-check existence for all pathHashes in one query, avoiding the N+1
+		// per-item noteSvc.Get calls (each of which also loads content that's never used here)
+		delPathHashes := make([]string, 0, len(params.DelNotes))
 		for _, delNote := range params.DelNotes {
-			// Check if note exists before deleting
-			// 删除前检查笔记是否存在
-			getCheckParams := &dto.NoteGetRequest{
-				Vault:    params.Vault,
-				PathHash: delNote.PathHash,
-			}
-			checkNote, err := noteSvc.Get(ctx, c.User.UID, getCheckParams)
+			delPathHashes = append(delPathHashes, delNote.PathHash)
+		}
+		existsMap, batchErr := noteSvc.ExistsBatch(ctx, c.User.UID, params.Vault, delPathHashes)
+		if batchErr != nil {
+			h.App.Logger().Warn("websocket_router.note.NoteSync.noteSvc.ExistsBatch",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.Int64(logger.FieldUID, c.User.UID),
+				zap.Error(batchErr))
+			existsMap = map[string]bool{}
+		}
 
+		for _, delNote := range params.DelNotes {
 			// If note exists, execute delete
 			// 如果笔记存在，执行删除
-			if err == nil && checkNote != nil && checkNote.Action != "delete" {
+			if existsMap[delNote.PathHash] {
 				if !hasWritePermission {
 					h.App.Logger().Warn("websocket_router.note.NoteSync: permission denied for deletion",
 						zap.String(logger.FieldTraceID, c.TraceID),

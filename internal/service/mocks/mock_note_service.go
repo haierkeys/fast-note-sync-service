@@ -111,6 +111,14 @@ func (m *MockNoteService) GetByID(ctx context.Context, uid, id int64) (*dto.Note
 	return nil, args.Error(1)
 }
 
+func (m *MockNoteService) ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error) {
+	args := m.Called(ctx, uid, vault, pathHashes)
+	if v := args.Get(0); v != nil {
+		return v.(map[string]bool), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockNoteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	args := m.Called(ctx, uid, params)
 	if v := args.Get(0); v != nil {

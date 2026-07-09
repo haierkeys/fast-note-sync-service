@@ -482,7 +482,7 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			UpdatedTimestamp: timex.Now().UnixMilli(),
 		}
 
-		return u.WithContext(ctx).Where(
+		err := u.WithContext(ctx).Where(
 			u.ID.Eq(m.ID),
 		).Select(
 			u.ID,
@@ -494,6 +494,14 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			u.Mtime,
 			u.UpdatedTimestamp,
 		).Save(m)
+		if err == nil {
+			// 把实际写入的 UpdatedTimestamp 回写到调用方的 note 上，
+			// 使调用方无需重新查库即可拿到写入后的准确值
+			// Write the actually-persisted UpdatedTimestamp back onto the caller's note,
+			// so the caller doesn't need a re-query to get the post-write value
+			note.UpdatedTimestamp = m.UpdatedTimestamp
+		}
+		return err
 	})
 }
 
@@ -842,6 +850,38 @@ func (r *noteRepository) ListByUpdatedTimestampPage(ctx context.Context, timesta
 
 	}
 	return list, nil
+}
+
+// ListByPathHashesMeta retrieves note metadata (no content) for a batch of path hashes in a
+// single query, including all statuses (e.g. soft-deleted). Used for batch existence
+// pre-checks (e.g. before deleting a batch of client-reported notes) to avoid N+1
+// per-item lookups.
+// ListByPathHashesMeta 单次查询批量获取一组路径哈希对应的笔记元数据（不读正文），包含所有状态
+// （含已软删除）。用于批量存在性预检查（例如批量处理客户端删除上报前），避免逐条查询的 N+1。
+func (r *noteRepository) ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*domain.Note, error) {
+	result := make(map[string]*domain.Note, len(pathHashes))
+	if len(pathHashes) == 0 {
+		return result, nil
+	}
+
+	u := r.note(uid).Note
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.In(pathHashes...),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, m := range ms {
+		n := r.toDomainMeta(m)
+		// 同一 pathHash 可能存在历史遗留的重复记录，保留 UpdatedTimestamp 最新的一条
+		// A pathHash may have legacy duplicate rows; keep the one with the latest UpdatedTimestamp
+		if existing, ok := result[n.PathHash]; !ok || n.UpdatedTimestamp > existing.UpdatedTimestamp {
+			result[n.PathHash] = n
+		}
+	}
+	return result, nil
 }
 
 // ListByUpdatedTimestampMeta retrieves note metadata list by updated timestamp, skipping the

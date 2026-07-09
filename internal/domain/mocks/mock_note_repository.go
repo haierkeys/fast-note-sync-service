@@ -56,6 +56,14 @@ func (m *MockNoteRepository) ListByPathHash(ctx context.Context, pathHash string
 	return args.Get(0).([]*domain.Note), args.Error(1)
 }
 
+func (m *MockNoteRepository) ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*domain.Note, error) {
+	args := m.Called(ctx, pathHashes, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]*domain.Note), args.Error(1)
+}
+
 func (m *MockNoteRepository) GetByPath(ctx context.Context, path string, vaultID, uid int64) (*domain.Note, error) {
 	args := m.Called(ctx, path, vaultID, uid)
 	if args.Get(0) == nil {
