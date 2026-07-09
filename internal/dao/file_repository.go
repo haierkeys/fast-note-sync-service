@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/query"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
+	"go.uber.org/zap"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
@@ -235,7 +236,22 @@ func (r *fileRepository) Create(ctx context.Context, file *domain.File, uid int6
 			finalPath := filepath.Join(folderPath, "file.dat")
 
 			if err := os.Rename(tempSavePath, finalPath); err != nil {
-				_ = os.Rename(tempSavePath, finalPath)
+				r.dao.Logger().Error("failed to move uploaded file into place after Create, deleting orphaned row",
+					zap.Int64("uid", uid),
+					zap.Int64("fileId", m.ID),
+					zap.String("tempSavePath", tempSavePath),
+					zap.String("finalPath", finalPath),
+					zap.Error(err),
+				)
+				// Best-effort cleanup so the DB does not silently claim the file exists // 尽力清理，避免数据库静默声称文件已存在
+				if _, delErr := u.WithContext(ctx).Where(u.ID.Eq(m.ID)).Delete(); delErr != nil {
+					r.dao.Logger().Error("failed to delete orphaned file row after rename failure",
+						zap.Int64("uid", uid),
+						zap.Int64("fileId", m.ID),
+						zap.Error(delErr),
+					)
+				}
+				return err
 			}
 		}
 
@@ -271,7 +287,18 @@ func (r *fileRepository) Update(ctx context.Context, file *domain.File, uid int6
 			folderPath := r.dao.GetFileFolderPath(uid, m.ID)
 			_ = os.MkdirAll(folderPath, 0755)
 			finalPath := filepath.Join(folderPath, "file.dat")
-			_ = os.Rename(tempSavePath, finalPath)
+			if err := os.Rename(tempSavePath, finalPath); err != nil {
+				r.dao.Logger().Error("failed to move uploaded file into place during Update, aborting before DB write",
+					zap.Int64("uid", uid),
+					zap.Int64("fileId", m.ID),
+					zap.String("tempSavePath", tempSavePath),
+					zap.String("finalPath", finalPath),
+					zap.Error(err),
+				)
+				// Abort before updating the DB row so it keeps pointing at the previous, // 在更新数据库行之前中止，
+				// still-valid file.dat instead of silently claiming the new content landed // 使其仍指向此前有效的 file.dat，而不是静默声称新内容已落地
+				return err
+			}
 		}
 
 		updateErr = u.WithContext(ctx).Where(
