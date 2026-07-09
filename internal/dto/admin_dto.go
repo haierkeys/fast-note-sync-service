@@ -59,6 +59,8 @@ type AdminConfig struct {
 	WebSocketCompressionThreshold *int               `json:"wsCompressionThreshold,omitempty" form:"wsCompressionThreshold"`               // Ws compression threshold // WebSocket 压缩阈值
 	FtsBleveEnabled               *bool              `json:"ftsBleveEnabled,omitempty" form:"ftsBleveEnabled"`                             // Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
 	FtsBleveStoreRaw              *bool              `json:"ftsBleveStoreRaw,omitempty" form:"ftsBleveStoreRaw"`                           // Whether Bleve stores raw content // Bleve 全文搜索是否存储原始文本
+	PipelineWindowUp              *int               `json:"pipelineWindowUp,omitempty" form:"pipelineWindowUp"`                           // Upload pipeline window size for pv>=2 connections; 0 = stop-and-wait // pv>=2 连接的上行流水线窗口大小；0 = stop-and-wait
+	PipelineWindowDown            *int               `json:"pipelineWindowDown,omitempty" form:"pipelineWindowDown"`                       // Download pipeline window size for pv>=2 connections; 0 = stop-and-wait // pv>=2 连接的下行流水线窗口大小；0 = stop-and-wait
 	GitName                       *string            `json:"gitName,omitempty" form:"gitName"`                                             // Git author name // Git 提交的作者名称
 	GitEmail                      *string            `json:"gitEmail,omitempty" form:"gitEmail"`                                           // Git author email // Git 提交的作者邮箱
 }

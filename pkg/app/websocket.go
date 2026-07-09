@@ -288,6 +288,8 @@ type WebsocketClient struct {
 	Vaults              string                    // Restrict Vaults // 限制笔记库
 	Lang                string                    // Language preference // 语言偏好
 	Protocol            string                    // Protocol "protobuf" or other // 协议 "protobuf" 或其他
+	ProtoVersion        int                       // Client-declared handshake protocol version, from URL query "pv"; >=2 means the client supports v2 negotiation (negotiation block in auth response, window pipelining, early pb upgrade) // 客户端声明的握手协议版本，来自 URL query "pv"；>=2 表示客户端支持 v2 协商（auth 响应携带协商块、窗口流水线、pb 提前升级）
+	PbEnabled           bool                      // Client's local protobufEnabled setting, from URL query "pb" (1/0); only meaningful when ProtoVersion>=2 // 客户端本地 protobufEnabled 设置，来自 URL query "pb"（1/0）；仅在 ProtoVersion>=2 时有意义
 	currentAction       string                    // Current action type being processed // Current action type being processed // 当前正在处理的动作类型
 }
 
@@ -358,6 +360,19 @@ func (c *WebsocketClient) setClientInfo(name, clientType, version string, platfo
 	c.clientVersion = version
 	c.clientPlatform = platform
 	c.offlineSyncStrategy = offlineSyncStrategy
+	c.useProtobuf = useProtobuf
+}
+
+// setUseProtobuf sets only the useProtobuf field, guarded by the same infoMu as setClientInfo.
+// Used for the v2 handshake merge's early pb upgrade (§5.1): the connection may switch to
+// protobuf right after the auth response, before ClientInfo arrives. ClientInfo's later call
+// to setClientInfo() re-sets useProtobuf to the same value, so this is idempotent with it.
+// setUseProtobuf 仅设置 useProtobuf 字段，与 setClientInfo 共用同一把 infoMu。
+// 用于 v2 握手合并的 pb 提前升级（§5.1）：连接可能在 auth 响应后、ClientInfo 到达前就切换到 protobuf。
+// ClientInfo 随后调用 setClientInfo() 会把 useProtobuf 重新设置为相同的值，因此与之幂等。
+func (c *WebsocketClient) setUseProtobuf(useProtobuf bool) {
+	c.infoMu.Lock()
+	defer c.infoMu.Unlock()
 	c.useProtobuf = useProtobuf
 }
 
@@ -844,6 +859,16 @@ type AppContainer interface {
 	// GetTokenService gets token service for RBAC
 	// GetTokenService 获取 Token 服务
 	GetTokenService() any // Use any to avoid circular dependency, then type assert in use
+	// SyncChunkNums returns the configured upload/download sync batch sizes (SyncUpChunkNum,
+	// SyncDownChunkNum), used for v2 handshake negotiation (§2.3).
+	// SyncChunkNums 返回配置的上传/下载同步分批大小（SyncUpChunkNum、SyncDownChunkNum），
+	// 用于 v2 握手协商（§2.3）。
+	SyncChunkNums() (up int, down int)
+	// PipelineWindows returns the clamped upload/download pipeline window sizes for v2 handshake
+	// negotiation (§2.3); 0 means the window is disabled (stop-and-wait) for that direction.
+	// PipelineWindows 返回用于 v2 握手协商（§2.3）的、经过钳制的上下行流水线窗口大小；
+	// 0 表示该方向禁用窗口（stop-and-wait）。
+	PipelineWindows() (up int, down int)
 }
 
 // ValidatorInterface validator interface
@@ -1029,6 +1054,17 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		client.clientVersion = c.Query("clientVersion")
 		client.Protocol = c.Query("protocol")
 
+		// v2 handshake capability declaration (§2.2): pv = protocol version the client
+		// supports, pb = client's local protobufEnabled setting. Missing/invalid values
+		// leave ProtoVersion at its zero value, which downstream negotiation logic treats
+		// the same as an old (v1) client.
+		// v2 握手能力声明（§2.2）：pv = 客户端支持的协议版本，pb = 客户端本地 protobufEnabled 设置。
+		// 缺失或非法值使 ProtoVersion 保持零值，下游协商逻辑会将其视为旧（v1）客户端。
+		if pv, err := strconv.Atoi(c.Query("pv")); err == nil {
+			client.ProtoVersion = pv
+		}
+		client.PbEnabled = c.Query("pb") == "1"
+
 		// Extract language preference
 		// 提取语言偏好
 		lang := c.Query("lang")
@@ -1165,12 +1201,43 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		versionInfo := w.app.Version()
 
-		c.ToResponse(code.Success.WithData(map[string]string{
+		// Handshake merge (§2.3/§5.1): auth response is always JSON text (useProtobuf is only
+		// ever set by ClientInfo/pv2-early-upgrade, never before this point), so adding keys
+		// here is a plain JSON-object addition — old clients (no pv or pv<2) JSON.parse and
+		// ignore the unknown keys, producing byte-identical output to pre-3.6.0 since the base
+		// four keys never change. Only pv>=2 connections get the negotiation block.
+		// 握手合并（§2.3/§5.1）：auth 响应恒为 JSON 文本（useProtobuf 只会被 ClientInfo/pv2 提前升级设置，
+		// 在此之前绝不会被设置），因此这里加 key 只是普通的 JSON object 加字段——旧客户端（无 pv 或
+		// pv<2）JSON.parse 后忽略未知 key，因为基础四个 key 从不变化，输出与 3.6.0 前逐字节相同。
+		// 只有 pv>=2 的连接才会拿到协商块。
+		authData := map[string]interface{}{
 			"version":   versionInfo.Version,
 			"gitTag":    versionInfo.GitTag,
 			"buildTime": versionInfo.BuildTime,
 			"changelog": versionInfo.Changelog,
-		}), "Authorization")
+		}
+
+		protobufAck := c.Protocol == "protobuf" && c.PbEnabled
+
+		if c.ProtoVersion >= 2 {
+			syncUpChunkNum, syncDownChunkNum := w.app.SyncChunkNums()
+			pipelineWindowUp, pipelineWindowDown := w.app.PipelineWindows()
+			authData["syncUpChunkNum"] = syncUpChunkNum
+			authData["syncDownChunkNum"] = syncDownChunkNum
+			authData["pipelineWindowUp"] = pipelineWindowUp
+			authData["pipelineWindowDown"] = pipelineWindowDown
+			authData["protobufAck"] = protobufAck
+		}
+
+		c.ToResponse(code.Success.WithData(authData), "Authorization")
+
+		// pb 提前升级：必须在 auth 响应发出之后才切换，确保该响应本身仍以 JSON 文本帧发送
+		// (early pb upgrade must happen strictly after the auth response is sent, so that
+		// response itself is always transmitted as a JSON text frame).
+		if c.ProtoVersion >= 2 {
+			c.setUseProtobuf(protobufAck)
+		}
+
 		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(c.UserClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}

@@ -77,5 +77,39 @@ type AppSettings struct {
 	FtsBleveStoreRaw *bool `yaml:"fts-bleve-store-raw" default:"false"` // Bleve FTS store raw content flag // Bleve 全文搜索是否存储原始文本（默认启用为方案 B，若设为 false 则为仅索引不存储的方案 A）
 	SyncDownChunkNum int `yaml:"sync-down-chunk-num" default:"200"` // Serial download sync page chunk size // 串行下载同步的分块数量
 	SyncUpChunkNum   int `yaml:"sync-up-chunk-num" default:"100"`  // Serial upload sync batch size // 串行上传同步的分包大小
+
+	// PipelineWindowUp negotiated upload sliding-window size for pv>=2 connections; 0 disables
+	// the window (stop-and-wait, same as pre-3.6.0 behavior). Read sites clamp to [0,32].
+	// PipelineWindowUp pv>=2 连接协商的上行滑动窗口大小；0 表示禁用窗口（stop-and-wait，与 3.6.0 前行为一致）。读取处钳制到 [0,32]。
+	PipelineWindowUp int `yaml:"pipeline-window-up" default:"8"`
+	// PipelineWindowDown negotiated download sliding-window size for pv>=2 connections; 0 disables
+	// the window (stop-and-wait, same as pre-3.6.0 behavior). Read sites clamp to [0,16].
+	// PipelineWindowDown pv>=2 连接协商的下行滑动窗口大小；0 表示禁用窗口（stop-and-wait，与 3.6.0 前行为一致）。读取处钳制到 [0,16]。
+	PipelineWindowDown int `yaml:"pipeline-window-down" default:"4"`
+}
+
+// clampWindow clamps a pipeline window size to [0, max]; negative values are treated as 0
+// (disabled / stop-and-wait).
+// clampWindow 将流水线窗口大小钳制到 [0, max]；负值视为 0（禁用 / stop-and-wait）。
+func clampWindow(v, max int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+
+// PipelineWindowUpClamped returns PipelineWindowUp clamped to [0,32].
+// PipelineWindowUpClamped 返回钳制到 [0,32] 的 PipelineWindowUp。
+func (a AppSettings) PipelineWindowUpClamped() int {
+	return clampWindow(a.PipelineWindowUp, 32)
+}
+
+// PipelineWindowDownClamped returns PipelineWindowDown clamped to [0,16].
+// PipelineWindowDownClamped 返回钳制到 [0,16] 的 PipelineWindowDown。
+func (a AppSettings) PipelineWindowDownClamped() int {
+	return clampWindow(a.PipelineWindowDown, 16)
 }
 
