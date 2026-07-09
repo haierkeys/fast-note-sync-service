@@ -45,7 +45,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	checkParams := convert.StructAssign(params, &dto.SettingUpdateCheckRequest{}).(*dto.SettingUpdateCheckRequest)
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, checkParams)
@@ -114,7 +114,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, params)
 	if err != nil {
@@ -162,7 +162,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	setting, err := settingSvc.Delete(ctx, c.User.UID, params)
 	if err != nil {
@@ -263,7 +263,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Record sync start time before querying to avoid missing writes that occur during query processing.
 	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
@@ -299,7 +299,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 	// Handle settings deleted by client
 	// 处理客户端删除的配置
 	if len(params.DelSettings) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "config_w")
 
 		for _, delSetting := range params.DelSettings {
 
@@ -533,7 +533,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 	// during query processing from being permanently missed on the next incremental sync.
 	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
 	lastTime = syncStartTime
-	hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
+	hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "config_w")
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
 		// Add message to queue instead of sending immediately
@@ -662,7 +662,7 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingClear", "", params.Vault)
 
-	err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).ClearByVault(ctx, c.User.UID, params.Vault)
+	err := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion()).ClearByVault(ctx, c.User.UID, params.Vault)
 	if err != nil {
 		h.respondError(c, code.ErrorSettingDeleteFailed, err, "websocket_router.setting.SettingClear.ClearByVault")
 		return
@@ -688,7 +688,7 @@ func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.
 	ctx := c.Context()
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	setting, err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	setting, err := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion()).Get(ctx, c.User.UID, params)
 	if err != nil {
 		h.App.Logger().Debug("websocket_router.setting.SettingRePush.Get: record not found or error, proceeding to send delete",
 			zap.String(logger.FieldTraceID, c.TraceID),

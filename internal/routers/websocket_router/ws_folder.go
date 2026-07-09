@@ -94,7 +94,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 	// Check and create vault
 	h.App.VaultService.GetOrCreate(ctx, uid, params.Vault)
 
-	folderSvc := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion)
+	folderSvc := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	var cFolders map[string]dto.FolderSyncCheckRequest = make(map[string]dto.FolderSyncCheckRequest)
 	var cFoldersKeys map[string]struct{} = make(map[string]struct{}, 0)
@@ -114,7 +114,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 
 	// Handle deleted folders from client
 	if len(params.DelFolders) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "note_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "note_w")
 
 		for _, delFolder := range params.DelFolders {
 
@@ -393,7 +393,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion).UpdateOrCreate(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion()).UpdateOrCreate(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderModifyOrCreateFailed, err, "websocket_router.folder.FolderModify.UpdateOrCreate")
 		return
@@ -426,7 +426,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion).Delete(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion()).Delete(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderDeleteFailed, err, "websocket_router.folder.FolderDelete.Delete")
 		return
@@ -459,7 +459,7 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folderSvc := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion)
+	folderSvc := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	oldFolder, newFolder, err := folderSvc.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderRenameFailed, err, "websocket_router.folder.FolderRename.Rename")

@@ -82,7 +82,7 @@ func checkRBAC(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocketMessage, logger i
 	if function == "" {
 		return true // 无需权限检查的消息类型，直接放行 / message type requires no RBAC check
 	}
-	if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, function) {
+	if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), function) {
 		return true
 	}
 	logger.Warn("WS OnMessage Permission Denied",

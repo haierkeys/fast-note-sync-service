@@ -165,7 +165,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
 	// 检查文件更新状态
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	updateMode, fileSvc, err := fileService.UploadCheck(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -224,7 +224,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 	// Verify permissions (file_w scope required for file chunk upload)
 	// 校验权限 (文件分块上传需要拥有 file_w 权限范围)
-	if !pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+	if !pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
 		h.logWarn(c, "FileUploadChunkBinary: permission denied for file_w")
 		c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: file_w"))
 		return
@@ -365,7 +365,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 		// Update or create file record (DAO layer will automatically move temp file from SavePath to f_{id} folder)
 		// 更新或创建 file 记录 (DAO 层会自动将 SavePath 里的临时文件移动到 f_{id} 文件夹)
-		fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+		fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 		_, fileSvc, err := fileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
@@ -442,7 +442,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	// Execute deletion logic
 	// 执行删除逻辑
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	fileSvc, err := fileService.Delete(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -481,7 +481,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	}
 
 	uid := c.User.UID
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	oldFile, newFile, err := fileService.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFileRenameFailed, err, "websocket_router.file.FileRename.Rename")
@@ -533,7 +533,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// Get file info
 	// 获取文件信息
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	fileSvc, err := fileService.Get(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -672,7 +672,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 	// Get list of changed files after last sync
 	// 获取最后一次同步后的变更文件列表
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Record sync start time before querying to avoid missing writes that occur during query processing.
 	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
@@ -712,7 +712,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 	// Handle files deleted by client
 	// 处理客户端删除的文件
 	if len(params.DelFiles) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w")
 
 		for _, delFile := range params.DelFiles {
 			// Check if file exists before deleting
@@ -905,7 +905,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+						if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
 							session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime, params.Context)
 							if ferr != nil {
 								h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
@@ -976,7 +976,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w")
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
 			// Create upload session and return FileUpload message
@@ -1392,7 +1392,7 @@ func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	fileSvc, err := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	fileSvc, err := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion()).Get(ctx, c.User.UID, params)
 	if err != nil {
 		h.App.Logger().Debug("websocket_router.file.FileRePush.Get: record not found or error, proceeding to send delete",
 			zap.String(logger.FieldTraceID, c.TraceID),

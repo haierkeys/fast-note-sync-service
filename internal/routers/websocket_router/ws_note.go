@@ -81,7 +81,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
@@ -137,7 +137,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 				// Skip merge and use client to override server directly if no offline sync strategy is set
 				// 没有设置离线同步策略时，跳过合并，直接使用客户端覆盖服务端
-				if c.OfflineSyncStrategy == "" {
+				if c.OfflineSyncStrategy() == "" {
 					h.App.Logger().Debug("no offline sync strategy, skipping merge, using client to override server",
 						zap.String(logger.FieldTraceID, c.TraceID),
 						zap.Int64(logger.FieldUID, c.User.UID),
@@ -181,7 +181,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 						zap.String("serverHash", serverHash),
 						zap.String("baseHash", baseHash),
 						zap.String("contentHash", contentHash),
-						zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
+						zap.String("offlineSyncStrategy", c.OfflineSyncStrategy()))
 
 					// If it's a diff merge, perform merge logic
 					// Note: Logic to skip merge based on contentHash matching historical snapshot has been removed
@@ -257,7 +257,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					// 当两边修改不同区域时，结果一致（patch 应用顺序不影响）
 					// 当两边修改同一区域时，hasConflict 会检测到冲突并创建冲突文件
 					var pc1First bool
-					if c.OfflineSyncStrategy == "ignoreTimeMerge" {
+					if c.OfflineSyncStrategy() == "ignoreTimeMerge" {
 						pc1First = true
 					} else {
 						// Other strategies: use time to determine priority
@@ -437,7 +437,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteModifyCheck", params.Path, params.Vault)
 
@@ -514,7 +514,7 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
@@ -575,7 +575,7 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRename", params.Path, params.Vault)
 
 	uid := c.User.UID
-	oldNote, newNote, err := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion).Rename(c.Context(), uid, params)
+	oldNote, newNote, err := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion()).Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorRenameNoteTargetExist, err, "websocket_router.note.NoteRename.Rename")
 		return
@@ -614,7 +614,7 @@ func (h *NoteWSHandler) NoteRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRePush", params.Path, params.Vault)
 
 	uid := c.User.UID
-	note, err := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion).Get(c.Context(), uid, params)
+	note, err := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion()).Get(c.Context(), uid, params)
 	if err != nil {
 		h.App.Logger().Debug("websocket_router.note.NoteRePush.Get: record not found or error, proceeding to send delete",
 			zap.String(logger.FieldTraceID, c.TraceID),
@@ -722,7 +722,7 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSyncRequest) {
 	ctx := c.Context()
 
-	noteSvc := h.App.GetNoteService(c.ClientType, c.ClientName, c.ClientVersion)
+	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteSync", "", params.Vault)
 
@@ -766,7 +766,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 	// Handle notes deleted by client
 	// 处理客户端删除的笔记
 	if len(params.DelNotes) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "note_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "note_w")
 
 		for _, delNote := range params.DelNotes {
 			// Check if note exists before deleting
@@ -932,7 +932,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 					// 内容不一致
 					if cNote.Mtime < note.Mtime {
 
-						switch c.OfflineSyncStrategy {
+						switch c.OfflineSyncStrategy() {
 						// When ignore time and merge, register those needing merge, notify client to upload note
 						//当忽略时间并合并时,登记需要合并的, 通知客户端上传笔记
 						case "ignoreTimeMerge":
@@ -980,7 +980,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 						// Client note is newer than server, notify client to upload note
 						// 客户端笔记 比服务端笔记新, 通知客户端上传笔记
 
-						if c.OfflineSyncStrategy == "ignoreTimeMerge" || c.OfflineSyncStrategy == "newTimeMerge" {
+						if c.OfflineSyncStrategy() == "ignoreTimeMerge" || c.OfflineSyncStrategy() == "newTimeMerge" {
 							c.DiffMergePathsMu.Lock()
 							c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
 							c.DiffMergePathsMu.Unlock()
