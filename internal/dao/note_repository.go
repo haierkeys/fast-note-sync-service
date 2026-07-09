@@ -221,6 +221,35 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) error {
 	return nil
 }
 
+// toDomainMeta converts DAO Note to domain model without loading content from disk
+// toDomainMeta 将 DAO Note 转换为领域模型，但不从磁盘加载正文/快照（仅用于哈希比对等元数据场景）
+func (r *noteRepository) toDomainMeta(m *model.Note) *domain.Note {
+	if m == nil {
+		return nil
+	}
+	return &domain.Note{
+		ID:                      m.ID,
+		VaultID:                 m.VaultID,
+		Action:                  domain.NoteAction(m.Action),
+		Rename:                  m.Rename,
+		FID:                     m.FID,
+		Path:                    m.Path,
+		PathHash:                m.PathHash,
+		ContentHash:             m.ContentHash,
+		ContentLastSnapshotHash: m.ContentLastSnapshotHash,
+		Version:                 m.Version,
+		ClientName:              m.ClientName,
+		ClientType:              m.ClientType,
+		ClientVersion:           m.ClientVersion,
+		Size:                    m.Size,
+		Ctime:                   m.Ctime,
+		Mtime:                   m.Mtime,
+		UpdatedTimestamp:        m.UpdatedTimestamp,
+		CreatedAt:               time.Time(m.CreatedAt),
+		UpdatedAt:               time.Time(m.UpdatedAt),
+	}
+}
+
 // GetByID retrieves note by ID
 // GetByID 根据ID获取笔记
 func (r *noteRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Note, error) {
@@ -811,6 +840,45 @@ func (r *noteRepository) ListByUpdatedTimestampPage(ctx context.Context, timesta
 		}
 		list = append(list, note)
 
+	}
+	return list, nil
+}
+
+// ListByUpdatedTimestampMeta retrieves note metadata list by updated timestamp, skipping the
+// content/snapshot file reads (content.txt/snapshot.txt). Used by the sync-download diff path,
+// which only needs ContentHash/Mtime for comparison and reads full content on demand for the
+// small subset of notes that actually need to be sent.
+// ListByUpdatedTimestampMeta 根据更新时间戳获取笔记元数据列表，跳过正文/快照文件读取
+// （content.txt/snapshot.txt）。用于同步下发的差量比对路径——该路径只需要 ContentHash/Mtime
+// 做比对，真正需要下发的少数笔记再按需读取正文。
+func (r *noteRepository) ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Note, error) {
+	return r.ListByUpdatedTimestampPageMeta(ctx, timestamp, vaultID, uid, 0, 0)
+}
+
+// ListByUpdatedTimestampPageMeta is the paged variant of ListByUpdatedTimestampMeta.
+// ListByUpdatedTimestampPageMeta 是 ListByUpdatedTimestampMeta 的分页变体。
+func (r *noteRepository) ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	query := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.UpdatedTimestamp.Gt(timestamp),
+	).Order(u.UpdatedTimestamp.Desc())
+
+	var mList []*model.Note
+	var err error
+	if limit > 0 {
+		mList, _, err = query.FindByPage(offset, limit)
+	} else {
+		mList, err = query.Find()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]*domain.Note, 0, len(mList))
+	for _, m := range mList {
+		list = append(list, r.toDomainMeta(m))
 	}
 	return list, nil
 }

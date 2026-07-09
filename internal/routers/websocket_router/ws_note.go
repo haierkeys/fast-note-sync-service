@@ -1,6 +1,7 @@
 package websocket_router
 
 import (
+	"context"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -957,14 +958,15 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 						// 当设置新笔记才进行合并, 因为本地笔记比较老, 服务器通知客户端使用云端笔记覆盖本地
 						// 不设置 默认也一样覆盖
 						case "newTimeMerge", "":
-							// 将消息添加到队列而非立即发送
+							// 将消息添加到队列而非立即发送；正文留空，交由 sendSyncPage 在实际发送该页时按需回填
+							// （note 来自哈希比对阶段的元数据查询，未加载正文）
 							messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Context: params.Context,
 								Action: NoteSyncModify,
+								NoteID: note.ID,
 								Data: dto.NoteSyncModifyMessage{
 									Path:             note.Path,
 									PathHash:         note.PathHash,
-									Content:          note.Content,
 									ContentHash:      note.ContentHash,
 									Ctime:            note.Ctime,
 									Mtime:            note.Mtime,
@@ -1018,14 +1020,14 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			} else {
 				// File client doesn't have, notify client to create file
 				// 客户端没有的文件, 通知客户端创建文件
-				// 将消息添加到队列而非立即发送
+				// 将消息添加到队列而非立即发送；正文留空，交由 sendSyncPage 按需回填
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Context: params.Context,
 					Action: NoteSyncModify,
+					NoteID: note.ID,
 					Data: dto.NoteSyncModifyMessage{
 						Path:             note.Path,
 						PathHash:         note.PathHash,
-						Content:          note.Content,
 						ContentHash:      note.ContentHash,
 						Ctime:            note.Ctime,
 						Mtime:            note.Mtime,
@@ -1080,6 +1082,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
+		uid := c.User.UID
 		entry := &syncDownloadEntry{
 			Context:      params.Context,
 			TypeName:     "note",
@@ -1087,6 +1090,13 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			MessageQueue: messageQueue,
 			PageSize:     pageSize,
 			CurrentPage:  0,
+			FillContent: func(ctx context.Context, noteID int64) (string, error) {
+				n, err := noteSvc.GetByID(ctx, uid, noteID)
+				if err != nil {
+					return "", err
+				}
+				return n.Content, nil
+			},
 		}
 		syncDownloadStore(params.Context, "note", entry)
 		// 默认不自动发送，等待客户端拉取

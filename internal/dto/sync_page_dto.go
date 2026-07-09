@@ -8,6 +8,13 @@ type WSQueuedMessage struct {
 	Action  string `json:"action"`  // Message action/type // 消息动作/类型
 	Data    any    `json:"data"`    // Message data payload // 消息数据负载
 	Context string `json:"context"` // Context // 上下文
+
+	// NoteID, when non-zero, marks this message as needing its note content lazily
+	// filled in by the sync-download page sender right before the page is sent
+	// (Data must be a NoteSyncModifyMessage with Content left empty). Not serialized.
+	// NoteID 非零时，表示该消息的笔记正文需要在同步分页发送前由发送方按需回填
+	// （此时 Data 须为 Content 留空的 NoteSyncModifyMessage）。不参与序列化。
+	NoteID int64 `json:"-"`
 }
 
 // SyncPageMessage 服务端分页下发控制消息

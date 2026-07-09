@@ -131,6 +131,13 @@ type NoteRepository interface {
 	// ListByUpdatedTimestampPage 根据更新时间戳分页获取笔记列表
 	ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*Note, error)
 
+	// ListByUpdatedTimestampMeta 根据更新时间戳获取笔记元数据列表（不读取正文/快照文件）
+	// 用于同步下发的差量比对路径，避免对未变更笔记做无谓的磁盘 IO
+	ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*Note, error)
+
+	// ListByUpdatedTimestampPageMeta 是 ListByUpdatedTimestampMeta 的分页变体
+	ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*Note, error)
+
 	// ListContentUnchanged 获取内容未变更的笔记列表
 	ListContentUnchanged(ctx context.Context, uid int64) ([]*Note, error)
 

@@ -149,6 +149,22 @@ func (m *MockNoteRepository) ListByUpdatedTimestampPage(ctx context.Context, tim
 	return args.Get(0).([]*domain.Note), args.Error(1)
 }
 
+func (m *MockNoteRepository) ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Note, error) {
+	args := m.Called(ctx, timestamp, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Note), args.Error(1)
+}
+
+func (m *MockNoteRepository) ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
+	args := m.Called(ctx, timestamp, vaultID, uid, offset, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Note), args.Error(1)
+}
+
 func (m *MockNoteRepository) ListContentUnchanged(ctx context.Context, uid int64) ([]*domain.Note, error) {
 	args := m.Called(ctx, uid)
 	if args.Get(0) == nil {

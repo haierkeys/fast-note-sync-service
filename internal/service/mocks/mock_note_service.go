@@ -103,6 +103,14 @@ func (m *MockNoteService) ListByLastTime(ctx context.Context, uid int64, params 
 	return nil, args.Error(1)
 }
 
+func (m *MockNoteService) GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error) {
+	args := m.Called(ctx, uid, id)
+	if v := args.Get(0); v != nil {
+		return v.(*dto.NoteDTO), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockNoteService) Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error) {
 	args := m.Called(ctx, uid, params)
 	if v := args.Get(0); v != nil {

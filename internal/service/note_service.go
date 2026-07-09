@@ -69,6 +69,10 @@ type NoteService interface {
 	// ListByLastTime 获取在 lastTime 之后更新的笔记
 	ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
 
+	// GetByID retrieves a single note by ID, including full content
+	// GetByID 根据 ID 获取单条笔记（含正文）
+	GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error)
+
 	// Sync syncs notes (alias for ListByLastTime, used for WebSocket sync)
 	// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
 	Sync(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
@@ -829,7 +833,9 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, params.LastTime, vaultID, uid)
+	// 差量比对阶段只需要 ContentHash/Mtime 等元数据，正文按需在 GetByID 中单条读取，
+	// 避免对未变更的笔记做无谓的 content.txt/snapshot.txt 磁盘 IO。
+	notes, err := s.noteRepo.ListByUpdatedTimestampMeta(ctx, params.LastTime, vaultID, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -845,6 +851,19 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 	}
 
 	return results, nil
+}
+
+// GetByID retrieves a single note by ID, including full content (single-row read).
+// Used to lazily resolve a note's content on demand — e.g. by the sync-download page
+// sender, which only fetches content for the notes it is about to send.
+// GetByID 根据 ID 获取单条笔记（含正文，单行读取）。
+// 用于按需回填单条笔记正文的场景——例如同步分页下发时，仅为即将发送的笔记读取正文。
+func (s *noteService) GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error) {
+	note, err := s.noteRepo.GetByID(ctx, id, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return s.domainToDTO(note), nil
 }
 
 // CountSizeSum counts total number and total size of notes in a vault
