@@ -13,6 +13,21 @@ type MergeResult struct {
 	ConflictInfo string // Conflict details // 冲突详情
 }
 
+// diffCheckLinesThreshold is the base-text length above which DiffMain is called with
+// checklines=true, enabling diff-match-patch's line-mode speedup for large texts.
+// Below the threshold, checklines stays false (pure char-level diff), preserving prior
+// behavior for the common small-note case exactly.
+// diffCheckLinesThreshold 是 base 文本长度阈值，超过该长度调用 DiffMain 时传
+// checklines=true，启用 diff-match-patch 针对大文本的行级预处理加速；阈值以下
+// 保持 checklines=false（纯字符级 diff），对常见的小笔记场景行为完全不变。
+const diffCheckLinesThreshold = 4096
+
+// shouldCheckLines decides the checklines argument for DiffMain based on base text size
+// shouldCheckLines 根据 base 文本大小决定 DiffMain 的 checklines 参数
+func shouldCheckLines(base string) bool {
+	return len(base) > diffCheckLinesThreshold
+}
+
 // textRange represents a region in text // textRange 表示文本中的一个区域
 type textRange struct {
 	Start int
@@ -58,12 +73,12 @@ func MergeTexts(base, pc1, pc2 string, pc1First bool) (MergeResult, error) {
 
 	// Calculate diff of PC1 relative to base (keep delete operations)
 	// 计算 PC1 相对于 base 的 diff（保留删除操作）
-	pc1Diffs := dmp.DiffMain(base, pc1, false)
+	pc1Diffs := dmp.DiffMain(base, pc1, shouldCheckLines(base))
 	pc1Patches := dmp.PatchMake(base, pc1Diffs)
 
 	// Calculate diff of PC2 relative to base (keep delete operations)
 	// 计算 PC2 相对于 base 的 diff（保留删除操作）
-	pc2Diffs := dmp.DiffMain(base, pc2, false)
+	pc2Diffs := dmp.DiffMain(base, pc2, shouldCheckLines(base))
 	pc2Patches := dmp.PatchMake(base, pc2Diffs)
 
 	// Detect conflicts
@@ -127,7 +142,7 @@ func MergeTextsIgnoreConflictIgnoreDelete(base, pc1, pc2 string, pc1First bool) 
 
 	// Calculate diff of PC1 relative to base and filter delete operations
 	// 计算 PC1 相对于 base 的 diff,并过滤删除操作
-	pc1Diffs := dmp.DiffMain(base, pc1, false)
+	pc1Diffs := dmp.DiffMain(base, pc1, shouldCheckLines(base))
 	pc1DiffsNoDelete := make([]diffmatchpatch.Diff, 0)
 	for _, diff := range pc1Diffs {
 		if diff.Type != diffmatchpatch.DiffDelete {
@@ -138,7 +153,7 @@ func MergeTextsIgnoreConflictIgnoreDelete(base, pc1, pc2 string, pc1First bool) 
 
 	// Calculate diff of PC2 relative to base and filter delete operations
 	// 计算 PC2 相对于 base 的 diff,并过滤删除操作
-	pc2Diffs := dmp.DiffMain(base, pc2, false)
+	pc2Diffs := dmp.DiffMain(base, pc2, shouldCheckLines(base))
 	pc2DiffsNoDelete := make([]diffmatchpatch.Diff, 0)
 	for _, diff := range pc2Diffs {
 		if diff.Type != diffmatchpatch.DiffDelete {
