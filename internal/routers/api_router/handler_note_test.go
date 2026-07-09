@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
+	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	svcmocks "github.com/haierkeys/fast-note-sync-service/internal/service/mocks"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -110,11 +111,11 @@ func TestNoteHandler_List_Success(t *testing.T) {
 func TestNoteHandler_CreateOrUpdate_Success(t *testing.T) {
 	mockNoteSvc := new(svcmocks.MockNoteService)
 
-	mockNoteSvc.On("UpdateCheck", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteUpdateCheckRequest")).
-		Return("", (*dto.NoteDTO)(nil), nil)
+	mockNoteSvc.On("UpdateCheckWithNote", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteUpdateCheckRequest")).
+		Return("", (*domain.Note)(nil), (*dto.NoteDTO)(nil), nil)
 
 	createdNote := &dto.NoteDTO{ID: 2, Path: "create.md"}
-	mockNoteSvc.On("ModifyOrCreate", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteModifyOrCreateRequest"), false).
+	mockNoteSvc.On("ModifyOrCreate", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteModifyOrCreateRequest"), false, mock.Anything).
 		Return(true, createdNote, nil)
 
 	handler := newTestNoteHandler(mockNoteSvc, nil)

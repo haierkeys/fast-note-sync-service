@@ -237,7 +237,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		Ctime:       params.Ctime,
 		Mtime:       params.Mtime,
 	}
-	_, noteSelect, err := noteSvc.UpdateCheck(ctx, uid, checkParams)
+	_, checkedNote, noteSelect, err := noteSvc.UpdateCheckWithNote(ctx, uid, checkParams)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.CreateOrUpdate.NoteUpdateCheck", err)
 		response.ToResponse(code.Failed.WithDetails(err.Error()))
@@ -252,7 +252,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 
 	var noteNew *dto.NoteDTO
 
-	_, noteNew, err = noteSvc.ModifyOrCreate(ctx, uid, params, false)
+	_, noteNew, err = noteSvc.ModifyOrCreate(ctx, uid, params, false, checkedNote)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.CreateOrUpdate.NoteModifyOrCreate", err)
 		apperrors.ErrorResponse(c, err)

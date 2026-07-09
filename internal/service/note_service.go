@@ -34,9 +34,19 @@ type NoteService interface {
 	// UpdateCheck 检查笔记是否需要更新
 	UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error)
 
-	// ModifyOrCreate creates or modifies a note
-	// ModifyOrCreate 创建或修改笔记
-	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error)
+	// UpdateCheckWithNote is like UpdateCheck but also returns the raw domain.Note fetched
+	// during the check, letting callers that immediately call ModifyOrCreate reuse it and
+	// avoid a duplicate lookup.
+	// UpdateCheckWithNote 与 UpdateCheck 相同，但额外返回检查过程中查到的 domain.Note，
+	// 便于紧接着调用 ModifyOrCreate 的调用方复用，避免重复查询。
+	UpdateCheckWithNote(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *domain.Note, *dto.NoteDTO, error)
+
+	// ModifyOrCreate creates or modifies a note. existingNote is optional: pass the note
+	// already fetched via UpdateCheckWithNote (for the same pathHash) to skip the internal
+	// lookup; omit it (or pass nil) to look it up as before.
+	// ModifyOrCreate 创建或修改笔记。existingNote 为可选参数：传入已通过 UpdateCheckWithNote
+	// 查到的 note（针对同一 pathHash）可跳过内部查询；不传（或传 nil）则按原逻辑查询。
+	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, existingNote ...*domain.Note) (bool, *dto.NoteDTO, error)
 
 	// Delete deletes a note
 	// Delete 删除笔记
@@ -268,7 +278,30 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 	}
 
 	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	return mode, noteDTO, err
+}
 
+// UpdateCheckWithNote 行为与 UpdateCheck 完全一致，额外返回底层查到的 domain.Note（含软删除记录），
+// 供紧随其后调用 ModifyOrCreate 的调用方复用，避免对同一行数据重复查询。
+// UpdateCheckWithNote behaves exactly like UpdateCheck, but additionally returns the underlying
+// domain.Note (including soft-deleted records) fetched during the check, so that callers which
+// immediately follow up with ModifyOrCreate can reuse it instead of issuing a duplicate lookup.
+func (s *noteService) UpdateCheckWithNote(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *domain.Note, *dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	return mode, note, noteDTO, err
+}
+
+// evalUpdateCheck 是 UpdateCheck / UpdateCheckWithNote 共用的判定逻辑，接受已查到的 note（可能为 nil）
+// evalUpdateCheck is the decision logic shared by UpdateCheck / UpdateCheckWithNote, taking an
+// already-fetched note (may be nil)
+func (s *noteService) evalUpdateCheck(ctx context.Context, uid int64, note *domain.Note, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error) {
 	if note != nil {
 		noteDTO := s.domainToDTO(note)
 		// Check if content is consistent
@@ -301,14 +334,21 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 	return "Create", nil, nil
 }
 
-// ModifyOrCreate creates or modifies a note
-// ModifyOrCreate 创建或修改笔记
-func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error) {
+// ModifyOrCreate creates or modifies a note. existingNote is an optional already-fetched
+// note (e.g. from UpdateCheckWithNote for the same pathHash) to reuse instead of querying again.
+// ModifyOrCreate 创建或修改笔记。existingNote 为可选的已查到的 note（例如来自同一 pathHash 的
+// UpdateCheckWithNote），复用以避免重复查询。
+func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, existingNote ...*domain.Note) (bool, *dto.NoteDTO, error) {
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return false, nil, err
+	}
+
+	var preFetchedNote *domain.Note
+	if len(existingNote) > 0 {
+		preFetchedNote = existingNote[0]
 	}
 
 	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
@@ -319,7 +359,10 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 	val, err, _ := s.sf.Do(key, func() (any, error) {
 		var isNew bool
-		note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		note := preFetchedNote
+		if note == nil {
+			note, _ = s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		}
 
 		if note != nil {
 			isNew = false
