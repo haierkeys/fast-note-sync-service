@@ -38,6 +38,24 @@ type dbEntry struct {
 	lastUsed time.Time
 }
 
+// defaultMaxCachedDBConns is the default cap on how many tenant *gorm.DB instances
+// GetOrCreateDB will keep cached simultaneously before evicting the least-recently-used one.
+// defaultMaxCachedDBConns 是 GetOrCreateDB 同时缓存的租户 *gorm.DB 实例数量上限，
+// 超出后淘汰最久未使用的一个。
+const defaultMaxCachedDBConns = 200
+
+// defaultDBConnMinIdleBeforeEvict is the minimum time a cached DB connection must have
+// been idle before it becomes eligible for LRU eviction when the cache is over capacity.
+// This guards against closing a connection that a long-running query is still using
+// (e.g. a slow full-vault export) just because it happens to be the least-recently-used
+// entry — lastUsed is stamped at checkout time and isn't refreshed while a query is still
+// running on it.
+// defaultDBConnMinIdleBeforeEvict 是缓存数据库连接在容量超限时可被 LRU 淘汰前，
+// 必须已空闲的最短时间。用于防止仅因为"最久未使用"就误关一个仍有慢查询
+// （例如大 vault 全量导出）在跑的连接——lastUsed 只在取出连接时打点，
+// 查询执行期间不会刷新。
+const defaultDBConnMinIdleBeforeEvict = 10 * time.Minute
+
 // Dao data access object, encapsulates database operations
 // Dao 数据访问对象，封装数据库操作
 type Dao struct {
@@ -48,6 +66,9 @@ type Dao struct {
 	mu       sync.RWMutex // protects concurrent access to KeyDb // 保护 KeyDb 的并发访问
 
 	poolSemaphores sync.Map // map[string]*semaphore.Weighted 针对不同配置的并发控制
+
+	maxCachedDBConns         int           // KeyDb 缓存的租户 DB 实例数量上限，0 表示使用默认值
+	dbConnMinIdleBeforeEvict time.Duration // 缓存 DB 连接被 LRU 淘汰前必须已空闲的最短时间，0 表示使用默认值
 
 	// 注入的依赖
 	config        *config.DatabaseConfig
@@ -99,6 +120,42 @@ func WithBleveManager(mgr *BleveManager) DaoOption {
 	return func(d *Dao) {
 		d.BleveMgr = mgr
 	}
+}
+
+// WithMaxCachedDBConns overrides the cap on cached tenant DB instances (default 200)
+// WithMaxCachedDBConns 覆盖缓存的租户 DB 实例数量上限（默认 200）
+func WithMaxCachedDBConns(n int) DaoOption {
+	return func(d *Dao) {
+		d.maxCachedDBConns = n
+	}
+}
+
+// WithDBConnMinIdleBeforeEvict overrides the minimum idle time before a cached DB
+// connection becomes eligible for LRU eviction (default 10 minutes)
+// WithDBConnMinIdleBeforeEvict 覆盖缓存 DB 连接被 LRU 淘汰前必须已空闲的最短时间（默认 10 分钟）
+func WithDBConnMinIdleBeforeEvict(d time.Duration) DaoOption {
+	return func(dao *Dao) {
+		dao.dbConnMinIdleBeforeEvict = d
+	}
+}
+
+// maxCachedDBConnsOrDefault returns the configured cap, falling back to the default
+// maxCachedDBConnsOrDefault 返回配置的上限，未配置时回退到默认值
+func (d *Dao) maxCachedDBConnsOrDefault() int {
+	if d.maxCachedDBConns > 0 {
+		return d.maxCachedDBConns
+	}
+	return defaultMaxCachedDBConns
+}
+
+// dbConnMinIdleBeforeEvictOrDefault returns the configured min-idle threshold, falling
+// back to the default
+// dbConnMinIdleBeforeEvictOrDefault 返回配置的最短空闲阈值，未配置时回退到默认值
+func (d *Dao) dbConnMinIdleBeforeEvictOrDefault() time.Duration {
+	if d.dbConnMinIdleBeforeEvict > 0 {
+		return d.dbConnMinIdleBeforeEvict
+	}
+	return defaultDBConnMinIdleBeforeEvict
 }
 
 type daoDBCustomKey interface {
@@ -323,12 +380,30 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 		return existingEntry.db
 	}
 
-	// Check cache quantity limit; if more than 100 connections, clean up the least recently used one
-	// 检查缓存数量限制，如果超过 100 个连接，清理最久未使用的
-	if len(d.KeyDb) >= 100 {
+	// Check cache quantity limit; if over the cap, clean up the least recently used
+	// connection — but only among connections that have been idle for at least
+	// dbConnMinIdleBeforeEvict. lastUsed is stamped at checkout time and never refreshed
+	// while a query is still running on the connection, so a naive "always evict the
+	// oldest lastUsed" policy can close a connection out from under an in-flight
+	// long-running query (e.g. a slow full-vault export) just because it happens to be
+	// the least-recently-checked-out one. If nothing qualifies as idle-long-enough, we
+	// skip eviction this round and let the cache temporarily exceed the cap rather than
+	// risk closing a connection that's still in use.
+	// 检查缓存数量限制，超过上限时清理最久未使用的连接——但只在"已空闲超过
+	// dbConnMinIdleBeforeEvict"的连接里挑选。lastUsed 只在取出连接时打点，
+	// 查询执行期间不会刷新，简单地"总是淘汰 lastUsed 最早的一个"可能会在慢查询
+	// （例如大 vault 全量导出）仍在使用某连接时，仅因为它是"最久未取出"的
+	// 就把它关掉。如果没有任何连接满足"空闲够久"，本轮跳过淘汰，宁可让缓存
+	// 暂时超过上限，也不冒险关掉可能仍在使用中的连接。
+	if maxConns := d.maxCachedDBConnsOrDefault(); len(d.KeyDb) >= maxConns {
+		minIdle := d.dbConnMinIdleBeforeEvictOrDefault()
+		now := time.Now()
 		var oldestKey string
 		var oldestTime time.Time
 		for k, v := range d.KeyDb {
+			if now.Sub(v.lastUsed) < minIdle {
+				continue
+			}
 			if oldestKey == "" || v.lastUsed.Before(oldestTime) {
 				oldestKey = k
 				oldestTime = v.lastUsed
@@ -341,6 +416,11 @@ func (d *Dao) GetOrCreateDB(key string) *gorm.DB {
 				sqlDB.Close()
 			}
 			d.Logger().Info("evicted oldest DB connection", zap.String("key", oldestKey))
+		} else {
+			d.Logger().Warn("DB connection cache over capacity but no entry idle long enough to evict, temporarily exceeding cap",
+				zap.Int("cap", maxConns),
+				zap.Int("current", len(d.KeyDb)),
+				zap.Duration("minIdleBeforeEvict", minIdle))
 		}
 	}
 
