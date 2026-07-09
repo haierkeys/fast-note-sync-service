@@ -350,7 +350,7 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 		}
 
 		// 更新 FTS 索引
-		r.upsertFTS(db, m.ID, m.Path, content, uid)
+		r.upsertFTS(m, content, uid)
 
 		noteRes, err := r.toDomain(m, uid)
 		if err != nil {
@@ -419,7 +419,7 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 		}
 
 		// 更新 FTS 索引
-		r.upsertFTS(db, m.ID, m.Path, content, uid)
+		r.upsertFTS(m, content, uid)
 
 		noteRes, err := r.toDomain(m, uid)
 		if err != nil {
@@ -992,28 +992,24 @@ var _ domain.NoteRepository = (*noteRepository)(nil)
 
 // upsertFTS updates the Bleve FTS index
 // upsertFTS 更新 Bleve FTS 索引
-func (r *noteRepository) upsertFTS(db *gorm.DB, noteID int64, path, content string, uid int64) {
-	var note model.Note
-	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
-		r.dao.Logger().Error("failed to get note for FTS indexing", zap.Int64("noteID", noteID), zap.Error(err))
-		return
-	}
-
-	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
+// m 为调用方刚写入/更新的笔记记录，所需字段均已具备，无需重新查库
+// m is the note record just written/updated by the caller; all needed fields are already present, no need to re-query
+func (r *noteRepository) upsertFTS(m *model.Note, content string, uid int64) {
+	index, err := r.dao.BleveMgr.GetIndex(uid, m.VaultID)
 	if err != nil {
-		r.dao.Logger().Error("failed to get Bleve index for FTS", zap.Int64("vaultID", note.VaultID), zap.Error(err))
+		r.dao.Logger().Error("failed to get Bleve index for FTS", zap.Int64("vaultID", m.VaultID), zap.Error(err))
 		return
 	}
 
 	doc := BleveNoteDoc{
-		ID:      strconv.FormatInt(noteID, 10),
-		Path:    path,
-		PathRaw: path,
+		ID:      strconv.FormatInt(m.ID, 10),
+		Path:    m.Path,
+		PathRaw: m.Path,
 		Content: content,
-		Action:  note.Action,
-		Rename:  float64(note.Rename),
-		Ctime:   float64(note.Ctime),
-		Mtime:   float64(note.Mtime),
+		Action:  m.Action,
+		Rename:  float64(m.Rename),
+		Ctime:   float64(m.Ctime),
+		Mtime:   float64(m.Mtime),
 	}
 
 	if err := index.Index(doc.ID, doc); err != nil {
