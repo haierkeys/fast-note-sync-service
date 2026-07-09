@@ -14,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"golang.org/x/sync/singleflight"
 
@@ -715,8 +716,27 @@ func (c *WebsocketClient) sendMessage(payload []byte) {
 }
 
 func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExcludeSelf bool) {
+	// 持锁期间只拷贝目标连接列表，随后立即释放锁——WriteMessage 本身可能阻塞（慢设备/网络抖动），
+	// 不应该在持有 c.Server.mu 期间发生，否则会拖慢该用户下所有其他并发操作。
+	// Only copy the target connection list while holding the lock, then release it right
+	// away — WriteMessage can block (slow device / network jitter) and must not happen
+	// while holding c.Server.mu, or it stalls every other concurrent operation for this user.
 	c.Server.mu.RLock()
-	defer c.Server.mu.RUnlock()
+	targets := make([]*WebsocketClient, 0, len(c.UserClients))
+	for _, uc := range c.UserClients {
+		if uc.conn == nil {
+			continue
+		}
+		if isExcludeSelf && uc.conn == c.conn {
+			continue
+		}
+		targets = append(targets, uc)
+	}
+	c.Server.mu.RUnlock()
+
+	if len(targets) == 0 {
+		return
+	}
 
 	var jsonBytes []byte
 	if actionType != "" {
@@ -726,33 +746,41 @@ func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExclu
 		jsonBytes, _ = json.Marshal(content)
 	}
 
-	for _, uc := range c.UserClients {
-		if uc.conn == nil {
-			continue
-		}
-		if isExcludeSelf && uc.conn == c.conn {
-			continue
-		}
+	// 逐连接并发扇出：gws Conn.WriteMessage 内部对同一连接的写入用 c.mu 做了互斥
+	// （已查证 github.com/lxzan/gws@v1.9.1 writer.go doWrite），不同连接之间互不影响，
+	// 因此可以安全地并发写入，避免一台慢设备拖慢同用户下其他设备的广播。
+	// Fan out concurrently per connection: gws Conn.WriteMessage internally serializes
+	// writes to the same connection via c.mu (verified in
+	// github.com/lxzan/gws@v1.9.1 writer.go doWrite); different connections don't share
+	// that lock, so concurrent writes across connections are safe and prevent one slow
+	// device from stalling the broadcast to the user's other devices.
+	var wg sync.WaitGroup
+	for _, uc := range targets {
+		wg.Add(1)
+		safego.Go(wsLogger, func() {
+			defer wg.Done()
 
-		var err error
-		if uc.UseProtobuf() && uc.Server.ProtobufEncoder != nil && actionType != "" {
-			var pbBytes []byte
-			pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
-			if err == nil {
-				err = uc.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+			var err error
+			if uc.UseProtobuf() && uc.Server.ProtobufEncoder != nil && actionType != "" {
+				var pbBytes []byte
+				pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
+				if err == nil {
+					err = uc.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+				}
+			} else {
+				err = uc.conn.WriteMessage(gws.OpcodeText, jsonBytes)
 			}
-		} else {
-			err = uc.conn.WriteMessage(gws.OpcodeText, jsonBytes)
-		}
 
-		if err != nil {
-			if uc.failCount.Add(1) == 4 {
-				uc.conn.WriteClose(1000, []byte("broadcast failed"))
+			if err != nil {
+				if uc.failCount.Add(1) == 4 {
+					uc.conn.WriteClose(1000, []byte("broadcast failed"))
+				}
+			} else {
+				uc.failCount.Store(0)
 			}
-		} else {
-			uc.failCount.Store(0)
-		}
+		})
 	}
+	wg.Wait()
 }
 
 // SendBinary sends binary messages
