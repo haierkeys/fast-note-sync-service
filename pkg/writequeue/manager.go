@@ -268,6 +268,17 @@ func (m *Manager) getOrCreateQueue(key string) *userWriteQueue {
 	return queue
 }
 
+// maxBatchDrain caps how many additional already-queued ops a worker will pull and
+// execute back-to-back after handling the op that woke it up, before returning to
+// select. This only saves the per-op channel-wakeup/scheduling overhead when a queue
+// has a backlog; it does not merge ops into a single DB transaction. Ops still execute
+// one at a time, in FIFO order, each with its own independent error/result.
+// maxBatchDrain 限制 worker 在处理完唤醒它的那个 op 后，一次性连续拉取并执行的
+// 已排队 op 上限，避免重新进入 select 的唤醒/调度开销（仅在队列有积压时生效）。
+// 不会把多个 op 合并进同一个数据库事务；每个 op 仍然按 FIFO 顺序逐个独立执行，
+// 各自拥有独立的 error/result。
+const maxBatchDrain = 50
+
 // worker worker goroutine handling single write queue
 // worker 处理单队列的 worker goroutine
 func (m *Manager) worker(queue *userWriteQueue) {
@@ -295,6 +306,27 @@ func (m *Manager) worker(queue *userWriteQueue) {
 				return
 			}
 			m.executeOp(queue, op)
+			// 非阻塞地把同一队列中已经排队等待的后续 op 一并执行掉（上限 maxBatchDrain-1），
+			// 减少每个 op 都要重新进入 select 的调度开销；FIFO 顺序与逐 op 独立 error 隔离不变
+			m.drainBatch(queue, maxBatchDrain-1)
+		}
+	}
+}
+
+// drainBatch non-blockingly pulls up to n already-queued ops and executes them one by
+// one, in FIFO order. Stops early once the channel has no more ready ops.
+// drainBatch 非阻塞地从队列中取出最多 n 个已排队的 op 并按 FIFO 顺序逐个执行。
+// 一旦 channel 中暂无就绪 op 立即停止。
+func (m *Manager) drainBatch(queue *userWriteQueue, n int) {
+	for i := 0; i < n; i++ {
+		select {
+		case op, ok := <-queue.ch:
+			if !ok {
+				return
+			}
+			m.executeOp(queue, op)
+		default:
+			return
 		}
 	}
 }
