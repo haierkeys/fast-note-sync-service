@@ -608,17 +608,21 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		entry := syncBatchGetOrCreate(params.Context, "file", params.TotalBatches)
 
 		entry.mu.Lock()
-		for _, f := range params.Files {
-			entry.Items = append(entry.Items, f)
+		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
+		// Duplicate BatchIndex (client retransmitted after missing the ack): skip append/count, just resend the ack
+		if !entry.markBatchReceived(params.BatchIndex) {
+			for _, f := range params.Files {
+				entry.Items = append(entry.Items, f)
+			}
+			entry.ReceivedCount++
+			for _, df := range params.DelFiles {
+				entry.DelItems = append(entry.DelItems, df)
+			}
+			for _, mf := range params.MissingFiles {
+				entry.MissingItems = append(entry.MissingItems, mf)
+			}
+			entry.UpdatedAt = time.Now()
 		}
-		entry.ReceivedCount++
-		for _, df := range params.DelFiles {
-			entry.DelItems = append(entry.DelItems, df)
-		}
-		for _, mf := range params.MissingFiles {
-			entry.MissingItems = append(entry.MissingItems, mf)
-		}
-		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
 		entry.mu.Unlock()

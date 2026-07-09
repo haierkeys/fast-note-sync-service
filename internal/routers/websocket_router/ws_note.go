@@ -661,17 +661,21 @@ func (h *NoteWSHandler) NoteSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 		entry := syncBatchGetOrCreate(params.Context, "note", params.TotalBatches)
 
 		entry.mu.Lock()
-		for _, n := range params.Notes {
-			entry.Items = append(entry.Items, n)
+		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
+		// Duplicate BatchIndex (client retransmitted after missing the ack): skip append/count, just resend the ack
+		if !entry.markBatchReceived(params.BatchIndex) {
+			for _, n := range params.Notes {
+				entry.Items = append(entry.Items, n)
+			}
+			entry.ReceivedCount++
+			for _, dn := range params.DelNotes {
+				entry.DelItems = append(entry.DelItems, dn)
+			}
+			for _, mn := range params.MissingNotes {
+				entry.MissingItems = append(entry.MissingItems, mn)
+			}
+			entry.UpdatedAt = time.Now()
 		}
-		entry.ReceivedCount++
-		for _, dn := range params.DelNotes {
-			entry.DelItems = append(entry.DelItems, dn)
-		}
-		for _, mn := range params.MissingNotes {
-			entry.MissingItems = append(entry.MissingItems, mn)
-		}
-		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
 		entry.mu.Unlock()
