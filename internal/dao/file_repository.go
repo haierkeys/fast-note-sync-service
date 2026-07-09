@@ -704,6 +704,38 @@ func (r *fileRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaul
 	return q.Count()
 }
 
+// CountByFIDs 按文件夹 ID 分组统计文件数量，一次查询取回所有传入 fid 的计数
+// （用于替代对每个文件夹单独调用 ListByFIDCount 造成的 N+1）
+// CountByFIDs groups by folder ID and returns file counts for all given fids in a single
+// query (replaces calling ListByFIDCount once per folder, which is N+1).
+func (r *fileRepository) CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error) {
+	result := make(map[int64]int64, len(fids))
+	if len(fids) == 0 {
+		return result, nil
+	}
+
+	u := r.file(uid).File
+	// 显式 column tag，原因同 noteRepository.CountByFIDs：GORM 默认命名转换会把 "FID"
+	// 猜成 "f_id" 而非实际列名 "fid"，导致 Scan 后 FID 读成 0。
+	var rows []struct {
+		FID   int64 `gorm:"column:fid"`
+		Count int64 `gorm:"column:count"`
+	}
+	err := u.WithContext(ctx).Select(u.FID, u.FID.Count().As("count")).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.In(fids...),
+		u.Action.Neq(string(domain.FileActionDelete)),
+	).Group(u.FID).Scan(&rows)
+
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.FID] = row.Count
+	}
+	return result, nil
+}
+
 // ListByIDs retrieves file list by ID list
 // ListByIDs 根据ID列表获取文件列表
 func (r *fileRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.File, error) {

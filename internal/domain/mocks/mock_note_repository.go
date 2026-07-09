@@ -215,6 +215,14 @@ func (m *MockNoteRepository) ListByFIDsCount(ctx context.Context, fids []int64, 
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (m *MockNoteRepository) CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error) {
+	args := m.Called(ctx, fids, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[int64]int64), args.Error(1)
+}
+
 func (m *MockNoteRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.Note, error) {
 	args := m.Called(ctx, ids, uid)
 	if args.Get(0) == nil {
