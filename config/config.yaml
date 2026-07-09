@@ -93,10 +93,16 @@ app:
   download-session-timeout: "1h"
   # 串行下载同步的分块数量
   # Serial download sync page chunk size
-  sync-down-chunk-num: 50
+  sync-down-chunk-num: 200
   # 串行上传同步的分包大小
   # Serial upload sync batch size
   sync-up-chunk-num: 100
+  # 上行同步流水线窗口大小（0 = 禁用窗口，退回逐批 stop-and-wait，作为运行时回滚开关）
+  # Upload sync pipeline window size (0 = disable window, fall back to per-batch stop-and-wait; runtime rollback switch)
+  pipeline-window-up: 8
+  # 下行同步流水线窗口大小（0 = 禁用窗口，退回逐页 stop-and-wait，作为运行时回滚开关）
+  # Download sync pipeline window size (0 = disable window, fall back to per-page stop-and-wait; runtime rollback switch)
+  pipeline-window-down: 4
   # Worker Pool 最大工作协程数
   # Worker Pool maximum number of worker goroutines
   worker-pool-max-workers: 100

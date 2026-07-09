@@ -170,8 +170,8 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		FtsBleveStoreRaw:              cfg.App.FtsBleveStoreRaw,
 		GitName:                       &cfg.Git.Name,
 		GitEmail:                      &cfg.Git.Email,
-		PipelineWindowUp:              &cfg.App.PipelineWindowUp,
-		PipelineWindowDown:            &cfg.App.PipelineWindowDown,
+		PipelineWindowUp:              cfg.App.PipelineWindowUp,
+		PipelineWindowDown:            cfg.App.PipelineWindowDown,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -428,10 +428,10 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 		// clamps to [0,32] wherever it's consumed (auth response / ClientInfo).
 		// 原样存储（可能超出读取时的钳制范围）；PipelineWindowUpClamped() 在消费处
 		// （auth 响应 / ClientInfo）统一钳制到 [0,32]。
-		cfg.App.PipelineWindowUp = *params.PipelineWindowUp
+		cfg.App.PipelineWindowUp = params.PipelineWindowUp
 	}
 	if params.PipelineWindowDown != nil {
-		cfg.App.PipelineWindowDown = *params.PipelineWindowDown
+		cfg.App.PipelineWindowDown = params.PipelineWindowDown
 	}
 
 	// Save configuration to file

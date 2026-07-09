@@ -79,13 +79,24 @@ type AppSettings struct {
 	SyncUpChunkNum   int `yaml:"sync-up-chunk-num" default:"100"`  // Serial upload sync batch size // 串行上传同步的分包大小
 
 	// PipelineWindowUp negotiated upload sliding-window size for pv>=2 connections; 0 disables
-	// the window (stop-and-wait, same as pre-3.6.0 behavior). Read sites clamp to [0,32].
-	// PipelineWindowUp pv>=2 连接协商的上行滑动窗口大小；0 表示禁用窗口（stop-and-wait，与 3.6.0 前行为一致）。读取处钳制到 [0,32]。
-	PipelineWindowUp int `yaml:"pipeline-window-up" default:"8"`
+	// the window (stop-and-wait, same as pre-3.6.0 behavior — this is the runtime rollback
+	// switch). Read sites clamp to [0,32]. MUST be *int, not int: LoadConfig runs defaults.Set
+	// again after yaml.Unmarshal to fill empty fields, and a plain int can't distinguish an
+	// explicit `pipeline-window-up: 0` from an unset field — the explicit 0 would be silently
+	// overwritten back to the default 8, half-disabling the rollback switch. With *int, an
+	// explicit yaml 0 becomes a non-nil pointer that defaults.Set leaves alone.
+	// PipelineWindowUp pv>=2 连接协商的上行滑动窗口大小；0 表示禁用窗口（stop-and-wait，与 3.6.0 前
+	// 行为一致——即运行时回滚开关）。读取处钳制到 [0,32]。必须用 *int 而非 int：LoadConfig 在
+	// yaml.Unmarshal 之后会再次 defaults.Set 填充空字段，普通 int 无法区分显式 `pipeline-window-up: 0`
+	// 与未写字段——显式 0 会被静默覆盖回默认 8，导致回滚开关半失效。改用 *int 后，yaml 显式 0
+	// 反序列化为非 nil 指针，defaults.Set 不会覆盖。
+	PipelineWindowUp *int `yaml:"pipeline-window-up" default:"8"`
 	// PipelineWindowDown negotiated download sliding-window size for pv>=2 connections; 0 disables
 	// the window (stop-and-wait, same as pre-3.6.0 behavior). Read sites clamp to [0,16].
+	// *int for the same explicit-0-vs-unset reason as PipelineWindowUp.
 	// PipelineWindowDown pv>=2 连接协商的下行滑动窗口大小；0 表示禁用窗口（stop-and-wait，与 3.6.0 前行为一致）。读取处钳制到 [0,16]。
-	PipelineWindowDown int `yaml:"pipeline-window-down" default:"4"`
+	// 与 PipelineWindowUp 相同的「显式 0 vs 未写」原因，使用 *int。
+	PipelineWindowDown *int `yaml:"pipeline-window-down" default:"4"`
 }
 
 // clampWindow clamps a pipeline window size to [0, max]; negative values are treated as 0
@@ -101,15 +112,24 @@ func clampWindow(v, max int) int {
 	return v
 }
 
-// PipelineWindowUpClamped returns PipelineWindowUp clamped to [0,32].
-// PipelineWindowUpClamped 返回钳制到 [0,32] 的 PipelineWindowUp。
+// PipelineWindowUpClamped returns PipelineWindowUp clamped to [0,32]. A nil pointer (config
+// built without going through LoadConfig/defaults.Set) falls back to the default 8 defensively.
+// PipelineWindowUpClamped 返回钳制到 [0,32] 的 PipelineWindowUp。nil 指针（未经
+// LoadConfig/defaults.Set 构造的配置）防御性回退到默认值 8。
 func (a AppSettings) PipelineWindowUpClamped() int {
-	return clampWindow(a.PipelineWindowUp, 32)
+	if a.PipelineWindowUp == nil {
+		return 8
+	}
+	return clampWindow(*a.PipelineWindowUp, 32)
 }
 
-// PipelineWindowDownClamped returns PipelineWindowDown clamped to [0,16].
-// PipelineWindowDownClamped 返回钳制到 [0,16] 的 PipelineWindowDown。
+// PipelineWindowDownClamped returns PipelineWindowDown clamped to [0,16]. A nil pointer falls
+// back to the default 4 defensively.
+// PipelineWindowDownClamped 返回钳制到 [0,16] 的 PipelineWindowDown。nil 指针防御性回退到默认值 4。
 func (a AppSettings) PipelineWindowDownClamped() int {
-	return clampWindow(a.PipelineWindowDown, 16)
+	if a.PipelineWindowDown == nil {
+		return 4
+	}
+	return clampWindow(*a.PipelineWindowDown, 16)
 }
 
