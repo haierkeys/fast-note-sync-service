@@ -19,6 +19,7 @@ message WSResponse {
     string details = 5;   // Error details // 错误细节
     string vault = 6;     // Vault name // 笔记库名称
     string context = 7;   // Context // 上下文
+    int32 pageIndex = 8;  // Page index this detail/page message belongs to (download window page attribution and idempotency key, see sync pipeline design §4); non-paginated messages are 0. Sender: only filled for pv>=2 connections // 该明细/页消息所属下载页码（下行窗口的页归属与幂等去重依据，见同步流水线设计 §4）；非分页消息为 0。发送端：仅 pv>=2 连接填写
 }
 
 // ------------------------------------
@@ -60,6 +61,8 @@ message CheckVersionInfo {
     repeated HistoricalVersion pluginVersionHistory = 13;
     int32 syncUpChunkNum = 14;
     int32 syncDownChunkNum = 15;
+    int32 pipelineWindowUp = 16;   // Negotiated upload pipeline window; 0 = stop-and-wait // 上行流水线窗口协商值；0 = stop-and-wait
+    int32 pipelineWindowDown = 17; // Negotiated download pipeline window; 0 = stop-and-wait // 下行流水线窗口协商值；0 = stop-and-wait
 }
 
 // ------------------------------------

@@ -525,14 +525,20 @@ func EnSendDTOToProtobuf(action WebSocketSendAction, res *pkgapp.Res) ([]byte, e
 		}
 	}
 
+	var pageIndex int32
+	if pi, ok := res.PageIndex.(int); ok {
+		pageIndex = int32(pi)
+	}
+
 	wsResp := &v1.WSResponse{
-		Code:    int32(res.Code),
-		Status:  res.Status,
-		Message: formatString(res.Message),
-		Data:    innerData,
-		Details: formatString(res.Details),
-		Vault:   formatString(res.Vault),
-		Context: formatString(res.Context),
+		Code:      int32(res.Code),
+		Status:    res.Status,
+		Message:   formatString(res.Message),
+		Data:      innerData,
+		Details:   formatString(res.Details),
+		Vault:     formatString(res.Vault),
+		Context:   formatString(res.Context),
+		PageIndex: pageIndex,
 	}
 
 	wsRespBytes, err := proto.Marshal(wsResp)
@@ -620,6 +626,8 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 				PluginVersionNewChangelogContent: src.PluginVersionNewChangelogContent,
 				SyncUpChunkNum:                   int32(src.SyncUpChunkNum),
 				SyncDownChunkNum:                 int32(src.SyncDownChunkNum),
+				PipelineWindowUp:                 int32(src.PipelineWindowUp),
+				PipelineWindowDown:               int32(src.PipelineWindowDown),
 			}
 			pbMsg.VersionHistory = make([]*v1.HistoricalVersion, len(src.VersionHistory))
 			for i, v := range src.VersionHistory {

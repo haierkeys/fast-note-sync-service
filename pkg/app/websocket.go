@@ -636,6 +636,9 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if code.HavePath() {
 		content.Path = code.Path()
 	}
+	if code.HavePageIndex() {
+		content.PageIndex = code.PageIndex()
+	}
 
 	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
 		if c.UseProtobuf() && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {

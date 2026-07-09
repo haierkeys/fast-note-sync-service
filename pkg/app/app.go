@@ -40,6 +40,8 @@ type CheckVersionInfo struct {
 	PluginVersionHistory             []HistoricalVersion `json:"pluginVersionHistory"`             // Plugin version history between current and latest // 插件在当前版本和最新版本之间的历史版本
 	SyncUpChunkNum                   int                 `json:"syncUpChunkNum"`
 	SyncDownChunkNum                 int                 `json:"syncDownChunkNum"`
+	PipelineWindowUp                 int                 `json:"pipelineWindowUp"`   // Negotiated upload pipeline window; 0 = stop-and-wait // 上行流水线窗口协商值；0 = stop-and-wait
+	PipelineWindowDown               int                 `json:"pipelineWindowDown"` // Negotiated download pipeline window; 0 = stop-and-wait // 下行流水线窗口协商值；0 = stop-and-wait
 }
 
 type SupportRecord struct {
@@ -77,14 +79,15 @@ type ListRes struct {
 // Res 是统一的响应结构：Code/Status/Msg/Data
 // 可选字段 Vault 与 Details 使用 omitempty（nil 则不会被序列化）
 type Res struct {
-	Code    int         `json:"code"`
-	Status  bool        `json:"status"`
-	Message interface{} `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Details interface{} `json:"details,omitempty"`
-	Vault   interface{} `json:"vault,omitempty"`
-	Context interface{} `json:"context,omitempty"`
-	Path    interface{} `json:"path,omitempty"`
+	Code      int         `json:"code"`
+	Status    bool        `json:"status"`
+	Message   interface{} `json:"message,omitempty"`
+	Data      interface{} `json:"data,omitempty"`
+	Details   interface{} `json:"details,omitempty"`
+	Vault     interface{} `json:"vault,omitempty"`
+	Context   interface{} `json:"context,omitempty"`
+	Path      interface{} `json:"path,omitempty"`
+	PageIndex interface{} `json:"pageIndex,omitempty"` // Download window page index this message belongs to; only set for paginated download messages // 该消息所属的下行窗口页码；仅分页下载明细消息会设置
 }
 
 func NewResponse(ctx *gin.Context) *Response {
