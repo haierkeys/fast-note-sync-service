@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
@@ -106,6 +107,15 @@ func (r *fileRepository) toModel(file *domain.File) *model.File {
 	}
 }
 
+// fileMigratedCache 记录已确认"无需再做旧路径迁移检查"的文件（key: "uid_fileID"），
+// 用于跳过 fillFilePath 热路径上重复的 os.Stat 调用。一个文件的迁移状态只会从
+// "待确认" 变为 "已确认"，不会反向变化，因此正向缓存是安全的；进程重启后重新探测。
+// fileMigratedCache records files (key: "uid_fileID") that have been confirmed to need
+// no further legacy-path migration check, to skip the repeated os.Stat calls on the
+// fillFilePath hot path. A file's migration status only ever moves from "unconfirmed"
+// to "confirmed", never back, so this positive-only cache is safe; it resets on restart.
+var fileMigratedCache sync.Map
+
 // fillFilePath fills file SavePath and handles old file migration
 // fillFilePath 填充文件的保存路径并处理旧文件迁移
 func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
@@ -123,14 +133,36 @@ func (r *fileRepository) fillFilePath(uid int64, f *domain.File) {
 	// 更新为标准路径
 	f.SavePath = standardPath
 
+	// 没有旧路径信息可迁移，天然无需 Stat
+	// No legacy path to migrate from, so no Stat is ever needed
+	if oldSavePath == "" || oldSavePath == standardPath {
+		return
+	}
+
+	cacheKey := strconv.FormatInt(uid, 10) + "_" + strconv.FormatInt(f.ID, 10)
+	if _, confirmed := fileMigratedCache.Load(cacheKey); confirmed {
+		return
+	}
+
 	// Migrate only if standard path doesn't exist, old path is provided, and old file exists on disk
 	// 仅在标准路径不存在，且明确给出了旧路径，且旧文件确实存在磁盘上时才执行迁移
-	if _, err := os.Stat(standardPath); os.IsNotExist(err) && oldSavePath != "" && oldSavePath != standardPath {
+	settled := true
+	if _, err := os.Stat(standardPath); os.IsNotExist(err) {
 		if _, errOld := os.Stat(oldSavePath); errOld == nil {
 			// 只有在确定要移动文件时才创建目录
 			_ = os.MkdirAll(folderPath, 0755)
 			_ = os.Rename(oldSavePath, standardPath)
+		} else {
+			// 新旧路径均不存在（孤立记录），状态尚未确定，不写入缓存，
+			// 保留后续重试自愈的可能（例如旧文件被人工恢复）
+			// Neither path has the file (orphaned record) — status isn't settled,
+			// don't cache, so a later retry can still self-heal (e.g. if the old
+			// file gets manually restored).
+			settled = false
 		}
+	}
+	if settled {
+		fileMigratedCache.Store(cacheKey, struct{}{})
 	}
 }
 
