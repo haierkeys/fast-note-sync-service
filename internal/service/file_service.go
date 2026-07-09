@@ -20,6 +20,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
@@ -286,7 +287,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "mtime", file.Path, file.PathHash, s.clientType, s.clientName, s.clientVer, file.Size)
 				}
 				if s.backupService != nil {
-					go s.backupService.NotifyUpdated(uid)
+					safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 				}
 				if s.gitSyncService != nil {
 					go s.gitSyncService.NotifyUpdated(uid, vaultID)
@@ -329,9 +330,11 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			}
 
 			go s.CountSizeSum(context.Background(), vaultID, uid)
-			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
+			safego.Go(zap.L(), func() {
+				s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{updated.ID})
+			})
 			if s.backupService != nil {
-				go s.backupService.NotifyUpdated(uid)
+				safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 			}
 			if s.gitSyncService != nil {
 				go s.gitSyncService.NotifyUpdated(uid, vaultID)
@@ -364,9 +367,11 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		}
 
 		go s.CountSizeSum(context.Background(), vaultID, uid)
-		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
+		safego.Go(zap.L(), func() {
+			s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{created.ID})
+		})
 		if s.backupService != nil {
-			go s.backupService.NotifyUpdated(uid)
+			safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 		}
 		if s.gitSyncService != nil {
 			go s.gitSyncService.NotifyUpdated(uid, vaultID)
@@ -413,7 +418,7 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
+		safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 	}
 	if s.gitSyncService != nil {
 		go s.gitSyncService.NotifyUpdated(uid, vaultID)
@@ -463,7 +468,7 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	if s.backupService != nil {
-		go s.backupService.NotifyUpdated(uid)
+		safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 	}
 	if s.gitSyncService != nil {
 		go s.gitSyncService.NotifyUpdated(uid, vaultID)
@@ -900,7 +905,9 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		}
 
 		// 修正目录FID
-		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
+		safego.Go(zap.L(), func() {
+			s.folderService.SyncResourceFID(context.Background(), uid, vaultID, nil, []int64{newFileCreated.ID})
+		})
 		if err := s.folderService.CleanupEmptyAncestors(ctx, uid, vaultID, oldPath); err != nil {
 			zap.L().Warn("fileService.Rename: cleanup empty ancestor folders failed",
 				zap.Int64("uid", uid),
@@ -911,7 +918,7 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 		}
 
 		if s.backupService != nil {
-			go s.backupService.NotifyUpdated(uid)
+			safego.Go(zap.L(), func() { s.backupService.NotifyUpdated(uid) })
 		}
 		if s.gitSyncService != nil {
 			go s.gitSyncService.NotifyUpdated(uid, vaultID)

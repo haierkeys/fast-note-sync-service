@@ -26,6 +26,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -400,7 +401,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 
 	s.wg.Add(1)
 	// Run in background
-	go func() {
+	safego.Go(s.logger, func() {
 		defer func() {
 			s.mu.Lock()
 			// Ensure only the current cancel function is cleaned up
@@ -417,7 +418,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 		// Use the newly created task context
 		// 使用新创建的任务 context
 		s.syncTask(taskCtx, conf)
-	}()
+	})
 
 	return nil
 }

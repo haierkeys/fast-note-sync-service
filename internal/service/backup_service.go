@@ -17,6 +17,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/storage"
 	pkgstorage "github.com/haierkeys/fast-note-sync-service/pkg/storage"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
@@ -323,12 +324,12 @@ func (s *backupService) ExecuteTaskBackups(ctx context.Context) error {
 				zap.Bool("isScheduled", isScheduled),
 				zap.Bool("isPending", pending),
 			)
-			go func(cfg *domain.BackupConfig, p bool) {
+			safego.Go(s.logger, func() {
 				// Use service context to support graceful shutdown
-				if err := s.handleBackupSync(s.ctx, cfg, p); err != nil {
-					s.logger.Error("Backup execution failed", zap.Int64("uid", cfg.UID), zap.Error(err))
+				if err := s.handleBackupSync(s.ctx, config, pending); err != nil {
+					s.logger.Error("Backup execution failed", zap.Int64("uid", config.UID), zap.Error(err))
 				}
-			}(config, pending)
+			})
 		}
 	}
 
