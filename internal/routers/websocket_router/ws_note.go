@@ -1109,6 +1109,13 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
+		// 窗口协商：仅 pv>=2 连接启用下行窗口，旧连接固定 0（stop-and-wait，见设计 §4.2/§4.4）
+		// Window negotiation: only pv>=2 connections get the download window enabled, old
+		// connections stay at 0 (stop-and-wait, see design §4.2/§4.4)
+		window := 0
+		if c.ProtoVersion >= 2 {
+			window = h.App.Config().App.PipelineWindowDownClamped()
+		}
 		uid := c.User.UID
 		entry := &syncDownloadEntry{
 			Context:      params.Context,
@@ -1116,7 +1123,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			Vault:        params.Vault,
 			MessageQueue: messageQueue,
 			PageSize:     pageSize,
-			CurrentPage:  0,
+			Window:       window,
 			FillContent: func(ctx context.Context, noteID int64) (string, error) {
 				n, err := noteSvc.GetByID(ctx, uid, noteID)
 				if err != nil {
@@ -1148,49 +1155,7 @@ func (h *NoteWSHandler) NoteSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		return
 	}
 
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-
-	if params.PageIndex == -1 {
-		sendSyncPage(c, entry)
-		return
-	}
-
-	if params.PageIndex != entry.CurrentPage {
-		if params.PageIndex == entry.CurrentPage-1 {
-			// 客户端重发了上一页的 ack，说明它没收到我们已经发出的当前页，幂等重发当前页兜底
-			// Client retransmitted the ack for the previous page, meaning it never received
-			// the current page we already sent; idempotently resend the current page.
-			h.App.Logger().Warn("NoteSyncPageAck: received retransmitted ack for previous page, resending current page",
-				zap.String(logger.FieldTraceID, c.TraceID),
-				zap.Int("expected", entry.CurrentPage),
-				zap.Int("got", params.PageIndex))
-		} else {
-			h.App.Logger().Warn("NoteSyncPageAck: page index mismatch, resending current page as a fallback",
-				zap.String(logger.FieldTraceID, c.TraceID),
-				zap.Int("expected", entry.CurrentPage),
-				zap.Int("got", params.PageIndex))
-		}
-		// 无论何种 mismatch，都兜底重发当前页，避免客户端卡死等待 10min TTL
-		// Regardless of the mismatch reason, resend the current page as a fallback to avoid
-		// the client stalling until the 10-minute TTL.
-		sendSyncPage(c, entry)
-		return
-	}
-
-	start := entry.CurrentPage * entry.PageSize
-	end := start + entry.PageSize
-	if end >= len(entry.MessageQueue) {
-		syncDownloadDelete(params.Context, "note")
-		h.App.Logger().Info("NoteSyncPageAck: sync finished, cache cleared",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.String("context", params.Context))
-		return
-	}
-
-	entry.CurrentPage++
-	entry.UpdatedAt = time.Now()
-	sendSyncPage(c, entry)
+	handlePageAck(c, entry, params.PageIndex, "note", h.App.Logger(), c.TraceID)
 }
 
 
