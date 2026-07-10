@@ -165,7 +165,10 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 	}
 
 	// 获取历史记录保留版本数，默认 10
-	historyKeepVersions := appContainer.Config().App.HistoryKeepVersions
+	historyKeepVersions := 10
+	if hv := appContainer.Config().App.HistoryKeepVersions; hv != nil {
+		historyKeepVersions = *hv
+	}
 	if historyKeepVersions <= 0 {
 		historyKeepVersions = 10
 	}

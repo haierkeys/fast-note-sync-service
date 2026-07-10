@@ -133,7 +133,7 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		FileChunkSize:           &cfg.App.FileChunkSize,
 		SoftDeleteRetentionTime: &cfg.App.SoftDeleteRetentionTime,
 		UploadSessionTimeout:    &cfg.App.UploadSessionTimeout,
-		HistoryKeepVersions:     &cfg.App.HistoryKeepVersions,
+		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 		HistorySaveDelay:        &cfg.App.HistorySaveDelay,
 		// DefaultAPIFolder:        &cfg.App.DefaultAPIFolder,
 		AdminUID:                      &cfg.User.AdminUID,
@@ -312,7 +312,7 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 		cfg.App.UploadSessionTimeout = *params.UploadSessionTimeout
 	}
 	if params.HistoryKeepVersions != nil {
-		cfg.App.HistoryKeepVersions = *params.HistoryKeepVersions
+		cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
 	}
 	if params.HistorySaveDelay != nil {
 		cfg.App.HistorySaveDelay = *params.HistorySaveDelay
@@ -474,6 +474,14 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 	}
 
 	dbCfg := cfg.UserDatabase
+	maxIdleConns := 0
+	if dbCfg.MaxIdleConns != nil {
+		maxIdleConns = *dbCfg.MaxIdleConns
+	}
+	maxOpenConns := 0
+	if dbCfg.MaxOpenConns != nil {
+		maxOpenConns = *dbCfg.MaxOpenConns
+	}
 	data := &dto.AdminUserDatabaseConfig{
 		Type:                dbCfg.Type,
 		Path:                dbCfg.Path,
@@ -484,8 +492,8 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 		Name:                dbCfg.Name,
 		SSLMode:             dbCfg.SSLMode,
 		Schema:              dbCfg.Schema,
-		MaxIdleConns:        dbCfg.MaxIdleConns,
-		MaxOpenConns:        dbCfg.MaxOpenConns,
+		MaxIdleConns:        maxIdleConns,
+		MaxOpenConns:        maxOpenConns,
 		ConnMaxLifetime:     dbCfg.ConnMaxLifetime,
 		ConnMaxIdleTime:     dbCfg.ConnMaxIdleTime,
 		MaxWriteConcurrency: dbCfg.MaxWriteConcurrency,
@@ -544,8 +552,8 @@ func (h *AdminControlHandler) UpdateUserDatabaseConfig(c *gin.Context) {
 	cfg.UserDatabase.Name = params.Name
 	cfg.UserDatabase.SSLMode = params.SSLMode
 	cfg.UserDatabase.Schema = params.Schema
-	cfg.UserDatabase.MaxIdleConns = params.MaxIdleConns
-	cfg.UserDatabase.MaxOpenConns = params.MaxOpenConns
+	cfg.UserDatabase.MaxIdleConns = &params.MaxIdleConns
+	cfg.UserDatabase.MaxOpenConns = &params.MaxOpenConns
 	cfg.UserDatabase.ConnMaxLifetime = params.ConnMaxLifetime
 	cfg.UserDatabase.ConnMaxIdleTime = params.ConnMaxIdleTime
 	cfg.UserDatabase.MaxWriteConcurrency = params.MaxWriteConcurrency
@@ -635,8 +643,8 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		SSLMode:             params.SSLMode,
 		Schema:              params.Schema,
 		AutoMigrate:         &autoMigrate,
-		MaxIdleConns:        params.MaxIdleConns,
-		MaxOpenConns:        params.MaxOpenConns,
+		MaxIdleConns:        &params.MaxIdleConns,
+		MaxOpenConns:        &params.MaxOpenConns,
 		ConnMaxLifetime:     params.ConnMaxLifetime,
 		ConnMaxIdleTime:     params.ConnMaxIdleTime,
 		EnableWriteQueue:    &enableQueue,

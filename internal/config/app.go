@@ -25,9 +25,9 @@ type AppSettings struct {
 	// SyncLogRetentionTime retention time for sync logs
 	// SyncLogRetentionTime 同步日志保留时间
 	SyncLogRetentionTime string `yaml:"sync-log-retention-time" default:"30d"`
-	// HistoryKeepVersions number of historical versions to keep, default 100
-	// HistoryKeepVersions 历史记录保留版本数，默认 100
-	HistoryKeepVersions int `yaml:"history-keep-versions" default:"100"`
+	// HistoryKeepVersions number of historical versions to keep, default 100; yaml 显式 0 = 无限保留不清理，nil 才用默认 100
+	// HistoryKeepVersions 历史记录保留版本数，默认 100；yaml 显式 0 = 无限保留不清理，nil 才用默认 100
+	HistoryKeepVersions *int `yaml:"history-keep-versions" default:"100"`
 	// HistorySaveDelay historical record save delay time, supports format: 10s (seconds), 1m (minutes), default 10s
 	// HistorySaveDelay历史记录保存延迟时间，支持格式：10s（秒）、1m（分钟），默认 10s
 	HistorySaveDelay string `yaml:"history-save-delay" default:"10s"`

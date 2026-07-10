@@ -479,17 +479,17 @@ func NewEngine(c config.DatabaseConfig, zapLogger *zap.Logger) (*gorm.DB, error)
 	}
 
 	// 设置连接池参数（带默认值）
-	// MaxIdleConns: 默认 10
-	maxIdleConns := c.MaxIdleConns
-	if maxIdleConns == 0 {
-		maxIdleConns = 10
+	// MaxIdleConns: nil（未配置）才用默认 10，yaml 显式 0 透传给 database/sql
+	maxIdleConns := 10
+	if c.MaxIdleConns != nil {
+		maxIdleConns = *c.MaxIdleConns
 	}
 	sqlDB.SetMaxIdleConns(maxIdleConns)
 
-	// MaxOpenConns: 默认 100
-	maxOpenConns := c.MaxOpenConns
-	if maxOpenConns == 0 {
-		maxOpenConns = 100
+	// MaxOpenConns: nil（未配置）才用默认 100，yaml 显式 0 透传给 database/sql
+	maxOpenConns := 100
+	if c.MaxOpenConns != nil {
+		maxOpenConns = *c.MaxOpenConns
 	}
 	sqlDB.SetMaxOpenConns(maxOpenConns)
 
