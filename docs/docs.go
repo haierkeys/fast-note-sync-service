@@ -4150,7 +4150,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Set or update password for a share record",
+                "description": "Set or update password and expiration time for a share record",
                 "consumes": [
                     "application/json"
                 ],
@@ -7411,6 +7411,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "expireAt": {
+                    "description": "Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效",
+                    "type": "integer",
+                    "example": 1700000000
+                },
                 "password": {
                     "description": "Share password // 分享密码",
                     "type": "string",
@@ -7549,6 +7554,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "expireAt": {
+                    "description": "Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效",
+                    "type": "integer",
+                    "example": 1700000000
+                },
                 "password": {
                     "description": "New password // 新密码",
                     "type": "string",

@@ -46,6 +46,7 @@ type UserShareRepository interface {
 	UpdateStatusByRes(ctx context.Context, uid int64, resType string, resID int64, status int64) error
 	UpdateViewStats(ctx context.Context, uid int64, id int64, viewCountIncr int64, lastViewedAt time.Time) error
 	UpdatePassword(ctx context.Context, uid int64, id int64, password string) error
+	UpdateExpiresAt(ctx context.Context, uid int64, id int64, expiresAt time.Time) error
 	UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error
 	ListByUID(ctx context.Context, uid int64, sortBy string, sortOrder string, offset, limit int) ([]*UserShare, error)
 	CountByUID(ctx context.Context, uid int64) (int64, error)

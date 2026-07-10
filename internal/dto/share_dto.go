@@ -13,6 +13,7 @@ type ShareCreateRequest struct {
 	Path     string `json:"path" binding:"required" example:"ReadMe.md"`     // Resource path // 资源路径
 	PathHash string `json:"pathHash" binding:"required" example:"hash123"`   // Resource path Hash // 资源路径哈希
 	Password string `json:"password" example:"123456"`                       // Share password // 分享密码
+	ExpireAt int64  `json:"expireAt" example:"1700000000"`                   // Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效
 }
 
 // ShareQueryRequest Request parameters for querying a share
@@ -46,6 +47,7 @@ type SharePasswordUpdateRequest struct {
 	Path     string `json:"path" binding:"required" example:"未命名.md"`         // Resource path // 资源路径
 	PathHash string `json:"pathHash" binding:"required" example:"-677306325"` // Resource path Hash // 资源路径哈希
 	Password string `json:"password" example:"123456"`                        // New password // 新密码
+	ExpireAt int64  `json:"expireAt" example:"1700000000"`                    // Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效
 }
 
 // ShareShortLinkCreateRequest Request parameters for creating a short link

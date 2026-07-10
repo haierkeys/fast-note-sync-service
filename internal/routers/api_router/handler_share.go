@@ -60,7 +60,7 @@ func (h *ShareHandler) Create(c *gin.Context) {
 
 	// Call service layer to generate Token (automatically identify type and resolve associated resources)
 	// 调用服务层生成 Token (自动识别类型及解析关联资源)
-	shareRes, err := h.App.ShareService.ShareGenerate(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password)
+	shareRes, err := h.App.ShareService.ShareGenerate(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password, params.ExpireAt)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
@@ -287,9 +287,9 @@ func (h *ShareHandler) Cancel(c *gin.Context) {
 	h.WSS.BroadcastToUser(uid, code.Success.WithVault(params.Vault), websocket_router.ShareSyncRefresh)
 }
 
-// UpdatePassword updates share password
+// UpdatePassword updates share password and expiration time
 // @Summary Update share password
-// @Description Set or update password for a share record
+// @Description Set or update password and expiration time for a share record
 // @Tags Share
 // @Security UserAuthToken
 // @Accept json
@@ -309,7 +309,7 @@ func (h *ShareHandler) UpdatePassword(c *gin.Context) {
 	uid := pkgapp.GetUID(c)
 	ctx := c.Request.Context()
 
-	err := h.App.ShareService.UpdateSharePassword(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password)
+	err := h.App.ShareService.UpdateSharePassword(ctx, uid, params.Vault, params.Path, params.PathHash, params.Password, params.ExpireAt)
 	if err != nil {
 		if cObj, ok := err.(*code.Code); ok {
 			response.ToResponse(cObj)
