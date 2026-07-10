@@ -129,4 +129,5 @@ var en_messages = map[int]string{
 	512: "Git validation failed",
 	520: "Cloudflared download failed",
 	521: "Cloudflared binary not found, please download the tunnel program first",
+	530: "Sync conflict detected, a conflict copy has been created",
 }

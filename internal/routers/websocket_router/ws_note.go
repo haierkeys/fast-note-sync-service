@@ -293,14 +293,6 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 					// 检查是否存在冲突， 执行进一步合并操作
 					if mergeResult.HasConflict || baseHashNotFound {
 
-						// Notify user of merge conflict, need to handle redundant note content
-						// 通知用户出现合并冲突, 需要处理笔记冗余内容
-						// todo 先暂时不通知用户出现冲突
-						// c.ToResponse(code.ErrorSyncConflict.WithData(dto.NoteSyncNeedPushMessage{
-						// 	Path:     params.Path,
-						// 	PathHash: params.PathHash,
-						// }), NoteSyncNeedPush)
-
 						// Force merge to keep all text from PC1 and PC2
 						// 强制合并 保留PC1 PC2全部文本
 						mergeResult.Content, err = diff.MergeTextsIgnoreConflictIgnoreDelete(baseContent, clientContent, serverContent, pc1First)
@@ -309,37 +301,42 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 							return
 						}
 
-						// // 创建冲突文件保存客户端内容
-						// conflictReq := &dto.ConflictFileRequest{
-						// 	Vault:             params.Vault,
-						// 	OriginalPath:      params.Path,
-						// 	ClientContent:     params.Content,
-						// 	ClientContentHash: params.ContentHash,
-						// 	Ctime:             params.Ctime,
-						// 	Mtime:             params.Mtime,
-						// }
+						// 创建冲突文件保存客户端内容
+						// Create conflict file to preserve the client-side content
+						conflictReq := &dto.ConflictFileRequest{
+							Vault:             params.Vault,
+							OriginalPath:      params.Path,
+							ClientContent:     params.Content,
+							ClientContentHash: params.ContentHash,
+							Ctime:             params.Ctime,
+							Mtime:             params.Mtime,
+						}
 
-						// conflictResp, err := h.App.ConflictService.CreateConflictFile(ctx, c.User.UID, conflictReq)
-						// if err != nil {
-						// 	h.App.Logger().Error("failed to create conflict file",
-						// 		zap.String(logger.FieldTraceID, c.TraceID),
-						// 		zap.Int64(logger.FieldUID, c.User.UID),
-						// 		zap.String(logger.FieldPath, params.Path),
-						// 		zap.Error(err))
-						// 	h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.CreateConflictFile")
-						// 	return
-						// }
+						conflictResp, err := h.App.ConflictService.CreateConflictFile(ctx, c.User.UID, conflictReq)
+						if err != nil {
+							h.App.Logger().Error("failed to create conflict file",
+								zap.String(logger.FieldTraceID, c.TraceID),
+								zap.Int64(logger.FieldUID, c.User.UID),
+								zap.String(logger.FieldPath, params.Path),
+								zap.Error(err))
+							h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.CreateConflictFile")
+							return
+						}
 
-						// h.App.Logger().Info("merge conflict detected, conflict file created",
-						// 	zap.String(logger.FieldTraceID, c.TraceID),
-						// 	zap.Int64(logger.FieldUID, c.User.UID),
-						// 	zap.String(logger.FieldPath, params.Path),
-						// 	zap.String("conflictPath", conflictResp.ConflictPath),
-						// 	zap.String("conflictInfo", mergeResult.ConflictInfo))
+						h.App.Logger().Info("merge conflict detected, conflict file created",
+							zap.String(logger.FieldTraceID, c.TraceID),
+							zap.Int64(logger.FieldUID, c.User.UID),
+							zap.String(logger.FieldPath, params.Path),
+							zap.String("conflictPath", conflictResp.ConflictPath),
+							zap.String("conflictInfo", mergeResult.ConflictInfo))
 
-						// // 返回冲突文件创建成功的响应
-						// c.ToResponse(code.ErrorConflictFileCreated.WithData(conflictResp))
-						// return
+						// Notify triggering client of the merge conflict; force-merge result still
+						// continues below and is written to the original path as usual
+						// 通知触发端出现合并冲突；强制合并结果仍按下方现有流程写回原路径
+						c.ToResponse(code.ErrorSyncConflict.WithData(dto.NoteSyncNeedPushMessage{
+							Path:     params.Path,
+							PathHash: params.PathHash,
+						}).WithVault(params.Vault).WithContext(params.Context), string(NoteSyncNeedPush))
 					}
 
 					params.Content = mergeResult.Content
