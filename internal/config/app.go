@@ -21,7 +21,7 @@ type AppSettings struct {
 	IsReturnSussess bool `yaml:"is-return-sussess" default:"false"`
 	// SoftDeleteRetentionTime retention time for soft deleted notes
 	// SoftDeleteRetentionTime 软删除笔记保留时间
-	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time" default:"7d"`
+	SoftDeleteRetentionTime string `yaml:"soft-delete-retention-time" default:"90d"`
 	// SyncLogRetentionTime retention time for sync logs
 	// SyncLogRetentionTime 同步日志保留时间
 	SyncLogRetentionTime string `yaml:"sync-log-retention-time" default:"30d"`
