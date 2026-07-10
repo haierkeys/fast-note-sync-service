@@ -87,6 +87,8 @@ type BleveManager struct {
 	ftsQueue    chan ftsOp     // Async FTS mutation queue consumed by ftsWorker // 由 ftsWorker 消费的异步 FTS 变更队列
 	ftsWorkerWG sync.WaitGroup // Tracks the background ftsWorker goroutine // 跟踪后台 ftsWorker goroutine
 	ftsStopOnce sync.Once      // Ensures the queue is closed at most once // 保证队列只被关闭一次
+	ftsMu       sync.RWMutex   // Guards ftsQueue against send-after-close races with Shutdown // 防止 ftsQueue 在 Shutdown 时与投递发生 send-after-close 竞争
+	ftsClosed   bool           // Set under ftsMu write lock right before closing ftsQueue // 在关闭 ftsQueue 前于写锁下置位
 }
 
 // NewBleveManager creates a new BleveManager instance
@@ -131,12 +133,22 @@ func (m *BleveManager) IsEnabled() bool {
 // EnqueueUpsert 异步投递一次笔记的 FTS 新增/更新。写路径调用方不等待索引写入完成，
 // 后台 ftsWorker 使用 Bleve 原生 Batch API 按仓库攒批写入。
 func (m *BleveManager) EnqueueUpsert(uid, vaultID int64, doc BleveNoteDoc) {
+	m.ftsMu.RLock()
+	defer m.ftsMu.RUnlock()
+	if m.ftsClosed {
+		return
+	}
 	m.ftsQueue <- ftsOp{uid: uid, vaultID: vaultID, docID: doc.ID, doc: &doc}
 }
 
 // EnqueueDelete asynchronously queues a note delete from the Bleve FTS index.
 // EnqueueDelete 异步投递一次笔记的 FTS 删除。
 func (m *BleveManager) EnqueueDelete(uid, vaultID int64, docID string) {
+	m.ftsMu.RLock()
+	defer m.ftsMu.RUnlock()
+	if m.ftsClosed {
+		return
+	}
 	m.ftsQueue <- ftsOp{uid: uid, vaultID: vaultID, docID: docID}
 }
 
@@ -158,7 +170,10 @@ func (m *BleveManager) FlushSync() {
 // 必须在 CloseAll 之前调用，避免批次写入与索引关闭发生竞争。
 func (m *BleveManager) Shutdown() {
 	m.ftsStopOnce.Do(func() {
+		m.ftsMu.Lock()
+		m.ftsClosed = true
 		close(m.ftsQueue)
+		m.ftsMu.Unlock()
 	})
 	m.ftsWorkerWG.Wait()
 }
