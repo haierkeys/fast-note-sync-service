@@ -142,6 +142,9 @@ app:
   # 触发 WebSocket 压缩的最小载荷大小(字节)
   # Minimum payload size (bytes) to trigger WebSocket compression
   ws-compression-threshold: 512
+  # WebSocket 应用层写超时(秒)，防止僵尸连接阻塞写入；显式设为 0 表示不设超时
+  # WebSocket application-layer write timeout (seconds); guards against zombie connections blocking writes. Explicit 0 disables the deadline
+  ws-write-timeout: 10
 
   # 数据拉取源设置: auto(自动检测) | github | cnb
   # Data pull source setting: auto(detect) | github | cnb

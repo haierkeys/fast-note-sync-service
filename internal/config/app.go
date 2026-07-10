@@ -62,6 +62,12 @@ type AppSettings struct {
 	WebSocketCompressionEnabled   *bool  `yaml:"ws-compression-enabled" default:"true"`
 	WebSocketCompressionLevel     int    `yaml:"ws-compression-level" default:"1"`
 	WebSocketCompressionThreshold int    `yaml:"ws-compression-threshold" default:"512"`
+	// WebSocketWriteTimeout application-layer write deadline (seconds) for outbound messages
+	// (ToResponse/BroadcastResponse/SendBinary etc.), guarding against zombie connections blocking
+	// WriteMessage indefinitely; yaml 显式 0 = 不设写超时（旧行为），nil 才用默认 10
+	// WebSocketWriteTimeout WebSocket 应用层出站消息（ToResponse/BroadcastResponse/SendBinary 等）
+	// 的写超时（秒），防止僵尸连接让 WriteMessage 无限阻塞；yaml 显式 0 = 不设写超时（旧行为），nil 才用默认 10
+	WebSocketWriteTimeout *int `yaml:"ws-write-timeout" default:"10"`
 	// PullSource data pull source: auto | github | cnb
 	// PullSource 数据拉取源：auto | github | cnb
 	PullSource string `yaml:"pull-source" default:"auto"`

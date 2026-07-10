@@ -78,6 +78,10 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 			WriteMaxPayloadSize: int(util.ParseSize(cfg.App.WebSocketWriteMaxPayloadSize, 1024*1024*64)), // Load from config, default 64MB
 			// 从配置读取，默认 64MB
 		},
+		// WriteTimeout application-layer write deadline for outbound messages, from config
+		// (already resolved: nil-vs-explicit-0 distinguished by defaults.Set on the *int field)
+		// WriteTimeout 应用层出站消息写超时，来自配置（已解析：*int 字段上 defaults.Set 已区分 nil 与显式 0）
+		WriteTimeout: time.Duration(*cfg.App.WebSocketWriteTimeout) * time.Second,
 	}, appContainer)
 	appContainer.SetWSS(wss)
 

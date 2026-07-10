@@ -227,6 +227,14 @@ type WSConfig struct {
 	GWSOption    gws.ServerOption
 	PingInterval time.Duration
 	PingWait     time.Duration
+	// WriteTimeout application-layer write deadline for outbound messages (ToResponse/
+	// BroadcastResponse/SendBinary etc.); already resolved by the caller (nil-vs-zero
+	// distinguished at the config layer), so 0 here means "no deadline" (old behavior)
+	// and is NOT replaced by an internal default.
+	// WriteTimeout 应用层出站消息（ToResponse/BroadcastResponse/SendBinary 等）的写超时；
+	// 调用方已在配置层解析好 nil 与显式 0 的区别，这里 0 就表示"不设超时"（旧行为），
+	// 不会再被内部默认值覆盖。
+	WriteTimeout time.Duration
 }
 
 // SessionCleaner interface, used to clean up session resources when the connection is disconnected
@@ -659,7 +667,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 		if c.UseProtobuf() && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {
 			pbBytes, err := c.Server.ProtobufEncoder(actionType, &content)
 			if err == nil {
-				c.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+				c.writeMessage(gws.OpcodeBinary, pbBytes)
 				return
 			}
 			log(LogError, "WS Protobuf encode failed, falling back to JSON", zap.Error(err), zap.String("uid", func() string {
@@ -730,7 +738,29 @@ func (c *WebsocketClient) send(responseBytes []byte, isBroadcast bool, isExclude
 }
 
 func (c *WebsocketClient) sendMessage(payload []byte) {
-	c.conn.WriteMessage(gws.OpcodeText, payload)
+	c.writeMessage(gws.OpcodeText, payload)
+}
+
+// writeMessage writes an application-layer message under the configured write deadline
+// (ws-write-timeout, default 10s), so a stalled/zombie connection cannot block WriteMessage
+// indefinitely and stall the write lock (see P9). The deadline is cleared after the write
+// completes, matching PingLoop's SetWriteDeadline/clear usage.
+// writeMessage 在配置的应用层写超时（ws-write-timeout，默认 10s）保护下写入消息，
+// 避免僵尸/卡顿连接让 WriteMessage 无限阻塞并拖住写锁（见 P9）。写完后清空 deadline，
+// 用法与 PingLoop 的 SetWriteDeadline/清空一致。
+func (c *WebsocketClient) writeMessage(opcode gws.Opcode, payload []byte) error {
+	if c.conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
+	timeout := c.Server.config.WriteTimeout
+	if timeout > 0 {
+		_ = c.conn.NetConn().SetWriteDeadline(time.Now().Add(timeout))
+	}
+	err := c.conn.WriteMessage(opcode, payload)
+	if timeout > 0 {
+		_ = c.conn.NetConn().SetWriteDeadline(time.Time{})
+	}
+	return err
 }
 
 func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExcludeSelf bool) {
@@ -783,10 +813,10 @@ func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExclu
 				var pbBytes []byte
 				pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
 				if err == nil {
-					err = uc.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+					err = uc.writeMessage(gws.OpcodeBinary, pbBytes)
 				}
 			} else {
-				err = uc.conn.WriteMessage(gws.OpcodeText, jsonBytes)
+				err = uc.writeMessage(gws.OpcodeText, jsonBytes)
 			}
 
 			if err != nil {
@@ -817,7 +847,7 @@ func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
 	data := make([]byte, 2+len(payload))
 	copy(data[0:2], prefix)
 	copy(data[2:], payload)
-	return c.conn.WriteMessage(gws.OpcodeBinary, data)
+	return c.writeMessage(gws.OpcodeBinary, data)
 }
 
 // ------------------------------------> WebsocketServer
