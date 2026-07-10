@@ -110,7 +110,7 @@ type NoteRepository interface {
 	UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error
 
 	// Delete 物理删除笔记
-	Delete(ctx context.Context, id, uid int64) error
+	Delete(ctx context.Context, id, vaultID, uid int64) error
 
 	// DeletePhysicalByTime 根据时间物理删除已标记删除的笔记
 	DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error

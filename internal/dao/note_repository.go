@@ -563,12 +563,12 @@ func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotH
 
 // Delete physically deletes a note
 // Delete 物理删除笔记
-func (r *noteRepository) Delete(ctx context.Context, id, uid int64) error {
+func (r *noteRepository) Delete(ctx context.Context, id, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.note(uid).Note
 
 		// 在物理删除之前清理全文检索索引
-		r.deleteFTS(db, id, uid)
+		r.deleteFTS(id, vaultID, uid)
 
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
 		if err != nil {
@@ -594,10 +594,10 @@ func (r *noteRepository) DeletePhysicalByTime(ctx context.Context, timestamp, ui
 		list, _ := u.WithContext(ctx).Where(
 			u.Action.Eq("delete"),
 			u.UpdatedTimestamp.Lt(timestamp),
-		).Select(u.ID).Find()
+		).Select(u.ID, u.VaultID).Find()
 
 		for _, m := range list {
-			r.deleteFTS(db, m.ID, uid)
+			r.deleteFTS(m.ID, m.VaultID, uid)
 		}
 
 		_, err := u.WithContext(ctx).Where(
@@ -1133,17 +1133,15 @@ func (r *noteRepository) UpdateFID(ctx context.Context, id, fid, uid int64) erro
 // 确保 noteRepository 实现了 domain.NoteRepository 接口
 var _ domain.NoteRepository = (*noteRepository)(nil)
 
-// upsertFTS updates the Bleve FTS index
-// upsertFTS 更新 Bleve FTS 索引
-// m 为调用方刚写入/更新的笔记记录，所需字段均已具备，无需重新查库
-// m is the note record just written/updated by the caller; all needed fields are already present, no need to re-query
+// upsertFTS asynchronously queues an update of the Bleve FTS index
+// upsertFTS 异步投递一次 Bleve FTS 索引更新
+// m 为调用方刚写入/更新的笔记记录，所需字段均已具备，无需重新查库；实际的索引写入由
+// BleveManager 后台 worker 攒批异步执行，本方法只投递不等待，不阻塞写队列关键路径
+// m is the note record just written/updated by the caller; all needed fields are already
+// present, no need to re-query. The actual index write is batched and executed
+// asynchronously by BleveManager's background worker; this method only enqueues and
+// does not block the write-queue's critical path.
 func (r *noteRepository) upsertFTS(m *model.Note, content string, uid int64) {
-	index, err := r.dao.BleveMgr.GetIndex(uid, m.VaultID)
-	if err != nil {
-		r.dao.Logger().Error("failed to get Bleve index for FTS", zap.Int64("vaultID", m.VaultID), zap.Error(err))
-		return
-	}
-
 	doc := BleveNoteDoc{
 		ID:      strconv.FormatInt(m.ID, 10),
 		Path:    m.Path,
@@ -1155,36 +1153,16 @@ func (r *noteRepository) upsertFTS(m *model.Note, content string, uid int64) {
 		Mtime:   float64(m.Mtime),
 	}
 
-	if err := index.Index(doc.ID, doc); err != nil {
-		r.dao.Logger().Error("failed to write Bleve index", zap.String("docID", doc.ID), zap.Error(err))
-	}
+	r.dao.BleveMgr.EnqueueUpsert(uid, m.VaultID, doc)
 }
 
-// deleteFTS deletes a note from Bleve FTS index
-// deleteFTS 从 Bleve FTS 索引中删除笔记
-func (r *noteRepository) deleteFTS(db *gorm.DB, noteID int64, uid int64) {
-	var note model.Note
-	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
-		// Fallback: if physically deleted, delete from all vaults of this user
-		// 容错：如果已被物理删除，从该用户的所有仓库索引中清理
-		var vaults []model.Vault
-		vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
-		if err := vaultDb.Table("vault").Find(&vaults).Error; err == nil {
-			for _, v := range vaults {
-				if index, err := r.dao.BleveMgr.GetIndex(uid, v.ID); err == nil {
-					_ = index.Delete(strconv.FormatInt(noteID, 10))
-				}
-			}
-		}
-		return
-	}
-
-	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
-	if err != nil {
-		return
-	}
-
-	_ = index.Delete(strconv.FormatInt(noteID, 10))
+// deleteFTS asynchronously queues a note delete from the Bleve FTS index
+// deleteFTS 异步投递一次笔记从 Bleve FTS 索引中删除
+// vaultID 由调用方直接传入（写路径在删除前已知该笔记所属仓库），无需为此再做一次冗余 SELECT
+// vaultID is passed in directly by the caller (the write path already knows the note's
+// vault before deleting it), avoiding a redundant SELECT just to look it up here.
+func (r *noteRepository) deleteFTS(noteID, vaultID, uid int64) {
+	r.dao.BleveMgr.EnqueueDelete(uid, vaultID, strconv.FormatInt(noteID, 10))
 }
 
 // searchFTS uses Bleve to search note IDs, returning matching ID slice

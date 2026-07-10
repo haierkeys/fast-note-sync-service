@@ -113,8 +113,8 @@ func (m *MockNoteRepository) UpdateSnapshot(ctx context.Context, snapshot, snaps
 	return args.Error(0)
 }
 
-func (m *MockNoteRepository) Delete(ctx context.Context, id, uid int64) error {
-	args := m.Called(ctx, id, uid)
+func (m *MockNoteRepository) Delete(ctx context.Context, id, vaultID, uid int64) error {
+	args := m.Called(ctx, id, vaultID, uid)
 	return args.Error(0)
 }
 

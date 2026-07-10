@@ -6,12 +6,54 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/blevesearch/bleve/v2"
 	_ "github.com/blevesearch/bleve/v2/analysis/lang/cjk"
 	"github.com/blevesearch/bleve/v2/mapping"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"go.uber.org/zap"
 )
+
+// ftsBatchMaxSize is the max number of pending ops per index before an immediate flush
+// ftsBatchMaxSize 是单个索引待处理操作数触发立即刷新的上限
+const ftsBatchMaxSize = 200
+
+// ftsBatchFlushInterval is the max time a pending batch may wait before being flushed
+// ftsBatchFlushInterval 是待处理批次刷新前可等待的最长时间
+const ftsBatchFlushInterval = 200 * time.Millisecond
+
+// ftsQueueSize is the buffer size of the async FTS op channel
+// ftsQueueSize 是异步 FTS 操作 channel 的缓冲区大小
+const ftsQueueSize = 4096
+
+// ftsOp represents a single queued asynchronous FTS index mutation.
+// A nil doc means the op is a delete; a non-nil barrier forces an immediate
+// flush of all pending batches and signals completion once done (used by
+// graceful shutdown and tests to make async writes observable).
+// ftsOp 表示一个排队等待的异步 FTS 索引变更。doc 为 nil 表示删除；
+// barrier 非 nil 时表示这是一个强制刷新屏障，刷新完成后关闭该 channel
+// （用于优雅关闭与测试场景下让异步写入变为可观察）。
+type ftsOp struct {
+	uid, vaultID int64
+	docID        string
+	doc          *BleveNoteDoc
+	barrier      chan struct{}
+}
+
+// ftsBatchKey identifies the per-vault pending batch a queued op belongs to
+// ftsBatchKey 标识一个排队操作所属的按仓库划分的待处理批次
+type ftsBatchKey struct {
+	uid, vaultID int64
+}
+
+// ftsPendingBatch accumulates Bleve batch operations for a single vault index
+// ftsPendingBatch 为单个仓库索引累积 Bleve 批次操作
+type ftsPendingBatch struct {
+	index bleve.Index
+	batch *bleve.Batch
+	count int
+}
 
 // BleveMeta metadata stored alongside the index to detect configuration changes
 // BleveMeta 存储在索引旁的元数据，用于检测配置变化
@@ -36,11 +78,15 @@ type BleveNoteDoc struct {
 // BleveManager manages the lifecycle of Bleve index instances per vault
 // BleveManager 管理每个仓库 of Bleve 索引实例的生命周期
 type BleveManager struct {
-	enabled  bool         // Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
-	storeRaw bool         // Whether to store raw content in search index // 是否在搜索索引中存储原始内容
-	logger   *zap.Logger  // Logger instance // 日志记录器实例
-	indexes  sync.Map     // Cached open bleve.Index instances, keyed by "uid_vaultID" // 已打开的 bleve.Index 实例缓存，键为 "uid_vaultID"
-	mu       sync.Mutex   // Mutex protecting open/create operations on index files // 保护索引文件打开/创建操作的互斥锁
+	enabled  bool        // Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索
+	storeRaw bool        // Whether to store raw content in search index // 是否在搜索索引中存储原始内容
+	logger   *zap.Logger // Logger instance // 日志记录器实例
+	indexes  sync.Map    // Cached open bleve.Index instances, keyed by "uid_vaultID" // 已打开的 bleve.Index 实例缓存，键为 "uid_vaultID"
+	mu       sync.Mutex  // Mutex protecting open/create operations on index files // 保护索引文件打开/创建操作的互斥锁
+
+	ftsQueue    chan ftsOp     // Async FTS mutation queue consumed by ftsWorker // 由 ftsWorker 消费的异步 FTS 变更队列
+	ftsWorkerWG sync.WaitGroup // Tracks the background ftsWorker goroutine // 跟踪后台 ftsWorker goroutine
+	ftsStopOnce sync.Once      // Ensures the queue is closed at most once // 保证队列只被关闭一次
 }
 
 // NewBleveManager creates a new BleveManager instance
@@ -57,17 +103,148 @@ func NewBleveManager(enabled *bool, storeRaw *bool, logger *zap.Logger) *BleveMa
 	if logger == nil {
 		logger = zap.NewNop()
 	}
-	return &BleveManager{
+	m := &BleveManager{
 		enabled:  en,
 		storeRaw: raw,
 		logger:   logger,
+		ftsQueue: make(chan ftsOp, ftsQueueSize),
 	}
+
+	m.ftsWorkerWG.Add(1)
+	safego.Go(logger, func() {
+		defer m.ftsWorkerWG.Done()
+		m.ftsWorker()
+	})
+
+	return m
 }
 
 // IsEnabled returns whether Bleve FTS is enabled
 // IsEnabled 返回是否启用 Bleve 全文搜索
 func (m *BleveManager) IsEnabled() bool {
 	return m.enabled
+}
+
+// EnqueueUpsert asynchronously queues a note upsert into the Bleve FTS index.
+// The write-path caller does not wait for the index write to complete; the
+// background ftsWorker batches ops per vault via Bleve's native Batch API.
+// EnqueueUpsert 异步投递一次笔记的 FTS 新增/更新。写路径调用方不等待索引写入完成，
+// 后台 ftsWorker 使用 Bleve 原生 Batch API 按仓库攒批写入。
+func (m *BleveManager) EnqueueUpsert(uid, vaultID int64, doc BleveNoteDoc) {
+	m.ftsQueue <- ftsOp{uid: uid, vaultID: vaultID, docID: doc.ID, doc: &doc}
+}
+
+// EnqueueDelete asynchronously queues a note delete from the Bleve FTS index.
+// EnqueueDelete 异步投递一次笔记的 FTS 删除。
+func (m *BleveManager) EnqueueDelete(uid, vaultID int64, docID string) {
+	m.ftsQueue <- ftsOp{uid: uid, vaultID: vaultID, docID: docID}
+}
+
+// FlushSync forces the background worker to immediately flush all pending
+// batches and blocks until the flush completes. Used by graceful shutdown
+// (before closing indexes) and by tests that need to observe async writes.
+// FlushSync 强制后台 worker 立即刷新所有待处理批次，并阻塞等待刷新完成。
+// 用于优雅关闭前的排空（关闭索引之前）以及需要观察异步写入结果的测试。
+func (m *BleveManager) FlushSync() {
+	done := make(chan struct{})
+	m.ftsQueue <- ftsOp{barrier: done}
+	<-done
+}
+
+// Shutdown stops accepting new async FTS ops, flushes all pending batches and
+// waits for the background worker to exit. It must be called before CloseAll
+// so no batch write races with an index being closed.
+// Shutdown 停止接收新的异步 FTS 操作，刷新所有待处理批次并等待后台 worker 退出。
+// 必须在 CloseAll 之前调用，避免批次写入与索引关闭发生竞争。
+func (m *BleveManager) Shutdown() {
+	m.ftsStopOnce.Do(func() {
+		close(m.ftsQueue)
+	})
+	m.ftsWorkerWG.Wait()
+}
+
+// ftsWorker consumes queued FTS ops, accumulating them into per-vault Bleve
+// batches that are flushed when a batch reaches ftsBatchMaxSize or
+// ftsBatchFlushInterval elapses, whichever comes first. Ops for the same
+// docID are appended to the batch in arrival order, so upsert/delete on the
+// same note stay ordered within a flush.
+// ftsWorker 消费排队的 FTS 操作，将其累积到按仓库划分的 Bleve 批次中，
+// 批次达到 ftsBatchMaxSize 或等待超过 ftsBatchFlushInterval（先到者为准）时刷新。
+// 同一 docID 的操作按到达顺序追加进批次，保证同一笔记的 upsert/delete 在一次刷新内保序。
+func (m *BleveManager) ftsWorker() {
+	pending := make(map[ftsBatchKey]*ftsPendingBatch)
+	ticker := time.NewTicker(ftsBatchFlushInterval)
+	defer ticker.Stop()
+
+	flush := func(key ftsBatchKey) {
+		pb, ok := pending[key]
+		if !ok {
+			return
+		}
+		delete(pending, key)
+		if pb.count == 0 {
+			return
+		}
+		if err := pb.index.Batch(pb.batch); err != nil {
+			m.logger.Error("failed to flush async Bleve FTS batch",
+				zap.Int64("uid", key.uid),
+				zap.Int64("vaultID", key.vaultID),
+				zap.Int("count", pb.count),
+				zap.Error(err))
+		}
+	}
+
+	flushAll := func() {
+		for key := range pending {
+			flush(key)
+		}
+	}
+
+	for {
+		select {
+		case op, ok := <-m.ftsQueue:
+			if !ok {
+				flushAll()
+				return
+			}
+			if op.barrier != nil {
+				flushAll()
+				close(op.barrier)
+				continue
+			}
+
+			key := ftsBatchKey{uid: op.uid, vaultID: op.vaultID}
+			pb, ok := pending[key]
+			if !ok {
+				index, err := m.GetIndex(op.uid, op.vaultID)
+				if err != nil {
+					m.logger.Error("failed to get Bleve index for async FTS op",
+						zap.Int64("uid", op.uid),
+						zap.Int64("vaultID", op.vaultID),
+						zap.Error(err))
+					continue
+				}
+				pb = &ftsPendingBatch{index: index, batch: index.NewBatch()}
+				pending[key] = pb
+			}
+
+			if op.doc != nil {
+				if err := pb.batch.Index(op.docID, op.doc); err != nil {
+					m.logger.Error("failed to stage Bleve FTS index op", zap.String("docID", op.docID), zap.Error(err))
+					continue
+				}
+			} else {
+				pb.batch.Delete(op.docID)
+			}
+			pb.count++
+
+			if pb.count >= ftsBatchMaxSize {
+				flush(key)
+			}
+		case <-ticker.C:
+			flushAll()
+		}
+	}
 }
 
 // GetIndexPath gets the path to the Bleve index folder for a specific vault
@@ -182,6 +359,11 @@ func (m *BleveManager) Close(uid, vaultID int64) error {
 // CloseAll closes all open index instances (used on graceful shutdown)
 // CloseAll 关闭所有已打开的索引实例（用于优雅关闭）
 func (m *BleveManager) CloseAll() error {
+	// Flush and stop the async FTS worker first so no pending batch write
+	// races with the index Close() calls below.
+	// 先刷新并停止异步 FTS worker，避免待处理的批次写入与下方的索引 Close() 竞争。
+	m.Shutdown()
+
 	var lastErr error
 	m.indexes.Range(func(key, value interface{}) bool {
 		index := value.(bleve.Index)

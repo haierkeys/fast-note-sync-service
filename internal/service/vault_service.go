@@ -422,7 +422,7 @@ func (s *vaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vault
 
 		// B. Perform physical delete
 		// B. 执行物理删除
-		if err := s.noteRepo.Delete(ctx, note.ID, uid); err != nil {
+		if err := s.noteRepo.Delete(ctx, note.ID, note.VaultID, uid); err != nil {
 			return err
 		}
 
