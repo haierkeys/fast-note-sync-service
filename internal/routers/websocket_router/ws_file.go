@@ -773,16 +773,23 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 				// Broadcast deletion to other clients
 				// 将删除消息广播给其他客户端
-				c.BroadcastResponse(code.Success.WithData(
-					dto.FileSyncDeleteMessage{
-						Path:             fileSvc.Path,
-						PathHash:         fileSvc.PathHash,
-						Ctime:            fileSvc.Ctime,
-						Mtime:            fileSvc.Mtime,
-						Size:             fileSvc.Size,
-						UpdatedTimestamp: fileSvc.UpdatedTimestamp,
-					},
-				).WithVault(params.Vault), true, FileSyncDelete)
+				// 异步 fire-and-forget：DB 删除已在上面同步完成，广播只用于通知其他设备，
+				// 不应让循环等待最慢设备的 wg.Wait()，否则 N 条删除会叠加 N 次广播等待
+				// Async fire-and-forget: the DB delete above already completed synchronously;
+				// broadcasting only notifies other devices and must not make the loop wait on
+				// the slowest device's wg.Wait(), or N deletes would stack N broadcast waits
+				safego.Go(h.App.Logger(), func() {
+					c.BroadcastResponse(code.Success.WithData(
+						dto.FileSyncDeleteMessage{
+							Path:             fileSvc.Path,
+							PathHash:         fileSvc.PathHash,
+							Ctime:            fileSvc.Ctime,
+							Mtime:            fileSvc.Mtime,
+							Size:             fileSvc.Size,
+							UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+						},
+					).WithVault(params.Vault), true, FileSyncDelete)
+				})
 
 			} else {
 				// File does not exist, but we still need to record exclusion and broadcast delete message to ensure data consistency
@@ -798,16 +805,20 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 				// Broadcast deletion with available info (Path/PathHash)
 				// 使用现有信息(Path/PathHash)广播删除
-				c.BroadcastResponse(code.Success.WithData(
-					dto.FileSyncDeleteMessage{
-						Path:             delFile.Path,
-						PathHash:         delFile.PathHash,
-						Ctime:            0,
-						Mtime:            0,
-						Size:             0,
-						UpdatedTimestamp: 0,
-					},
-				).WithVault(params.Vault), true, FileSyncDelete)
+				// 同上，异步 fire-and-forget，避免逐条等待广播
+				// Same as above, async fire-and-forget, avoids waiting on the broadcast per item
+				safego.Go(h.App.Logger(), func() {
+					c.BroadcastResponse(code.Success.WithData(
+						dto.FileSyncDeleteMessage{
+							Path:             delFile.Path,
+							PathHash:         delFile.PathHash,
+							Ctime:            0,
+							Mtime:            0,
+							Size:             0,
+							UpdatedTimestamp: 0,
+						},
+					).WithVault(params.Vault), true, FileSyncDelete)
+				})
 			}
 		}
 	}
