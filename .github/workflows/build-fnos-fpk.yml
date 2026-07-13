@@ -52,36 +52,36 @@ jobs:
       - name: Build binary from source
         run: |
           set -eu
-          mkdir -p packaging/fnos/app
+          mkdir -p scripts/fnos/app
           CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.goarch }} go build -trimpath \
-            -o "packaging/fnos/app/${FNS_BIN_NAME}" .
+            -o "scripts/fnos/app/${FNS_BIN_NAME}" .
 
       - name: Stamp manifest
         run: |
           set -eu
           VER="${{ steps.ver.outputs.version }}"
-          sed -i "s|^version=.*|version=\"${VER}\"|" packaging/fnos/manifest
-          sed -i "s|^platform=.*|platform=\"${{ matrix.platform }}\"|" packaging/fnos/manifest
+          sed -i "s|^version=.*|version=\"${VER}\"|" scripts/fnos/manifest
+          sed -i "s|^platform=.*|platform=\"${{ matrix.platform }}\"|" scripts/fnos/manifest
           cat packaging/fnos/manifest
 
       - name: Download fnpack (pinned SHA256)
         run: |
           set -eu
-          curl -fL --retry 3 -o packaging/fnos/fnpack \
+          curl -fL --retry 3 -o scripts/fnos/fnpack \
             "https://static2.fnnas.com/fnpack/fnpack-${FNPACK_VERSION}-linux-amd64"
-          echo "${FNPACK_SHA256}  packaging/fnos/fnpack" | sha256sum -c -
-          chmod +x packaging/fnos/fnpack
+          echo "${FNPACK_SHA256}  scripts/fnos/fnpack" | sha256sum -c -
+          chmod +x scripts/fnos/fnpack
 
       - name: Build .fpk
         run: |
-          cd packaging/fnos
+          cd scripts/fnos
           ./fnpack build --directory .
 
       - name: Rename & checksum
         run: |
           set -eu
           VER="${{ steps.ver.outputs.version }}"
-          cd packaging/fnos
+          cd scripts/fnos
           mv fastnotesync.fpk "fastnotesync-${VER}-${{ matrix.suffix }}.fpk"
           sha256sum "fastnotesync-${VER}-${{ matrix.suffix }}.fpk" \
             > "fastnotesync-${VER}-${{ matrix.suffix }}.fpk.sha256"
@@ -90,8 +90,8 @@ jobs:
         with:
           name: fpk-${{ matrix.suffix }}
           path: |
-            packaging/fnos/*.fpk
-            packaging/fnos/*.fpk.sha256
+            scripts/fnos/*.fpk
+            scripts/fnos/*.fpk.sha256
           if-no-files-found: error
 
       - name: Attach to release
@@ -99,5 +99,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd packaging/fnos
+          cd scripts/fnos
           gh release upload "${{ github.event.release.tag_name }}" *.fpk *.fpk.sha256 --clobber

@@ -6,7 +6,7 @@ application (`.fpk`), installable via the fnOS App Center.
 ## Layout
 
 ```
-packaging/fnos/
+scripts/fnos/
 ├── manifest              # fnOS app metadata (version/platform are stamped at build)
 ├── config/
 │   ├── privilege         # run as a dedicated package user (fastnotesync)
@@ -40,8 +40,8 @@ packaging/fnos/
 From the repository root:
 
 ```bash
-packaging/fnos/build.sh amd64    # -> fastnotesync-<ver>-x86.fpk
-packaging/fnos/build.sh arm64    # -> fastnotesync-<ver>-arm.fpk
+scripts/fnos/build.sh amd64    # -> fastnotesync-<ver>-x86.fpk
+scripts/fnos/build.sh arm64    # -> fastnotesync-<ver>-arm.fpk
 ```
 
 `build.sh` builds the Go binary from source (the frontend is embedded via

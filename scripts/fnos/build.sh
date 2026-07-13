@@ -5,7 +5,7 @@
 # stamps the manifest version from internal/app/version.go, downloads the
 # official fnpack tool, and produces a .fpk for the requested arch.
 #
-# Usage:  packaging/fnos/build.sh [amd64|arm64]   (default: amd64)
+# Usage:  scripts/fnos/build.sh [amd64|arm64]   (default: amd64)
 # Run from the repository root.
 set -eu
 
@@ -16,7 +16,7 @@ case "$ARCH" in
   *) echo "unknown arch: $ARCH (want amd64|arm64)" >&2; exit 1 ;;
 esac
 
-PKG_DIR="packaging/fnos"
+PKG_DIR="scripts/fnos"
 BIN_NAME="fast-note-sync-service"
 FNPACK_VERSION="1.2.3"
 FNPACK_SHA256="54b97fa7b70968c4d05c79840f5daeff508957d0bb2062fdb0376d00d9615c93"
