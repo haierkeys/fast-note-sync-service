@@ -22,8 +22,8 @@ import (
 func RequireWebGUI() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// Check disabled for all modes except ReleaseMode for Swagger/tool testing.
-		if gin.Mode() != gin.ReleaseMode {
+		// Check disabled for DebugMode to allow Swagger/tool testing and local debugging.
+		if gin.Mode() == gin.DebugMode {
 			c.Next()
 			return
 		}
