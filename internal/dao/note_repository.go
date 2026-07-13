@@ -221,6 +221,35 @@ func (r *noteRepository) fillNoteContent(uid int64, n *domain.Note) error {
 	return nil
 }
 
+// toDomainMeta converts DAO Note to domain model without loading content from disk
+// toDomainMeta 将 DAO Note 转换为领域模型，但不从磁盘加载正文/快照（仅用于哈希比对等元数据场景）
+func (r *noteRepository) toDomainMeta(m *model.Note) *domain.Note {
+	if m == nil {
+		return nil
+	}
+	return &domain.Note{
+		ID:                      m.ID,
+		VaultID:                 m.VaultID,
+		Action:                  domain.NoteAction(m.Action),
+		Rename:                  m.Rename,
+		FID:                     m.FID,
+		Path:                    m.Path,
+		PathHash:                m.PathHash,
+		ContentHash:             m.ContentHash,
+		ContentLastSnapshotHash: m.ContentLastSnapshotHash,
+		Version:                 m.Version,
+		ClientName:              m.ClientName,
+		ClientType:              m.ClientType,
+		ClientVersion:           m.ClientVersion,
+		Size:                    m.Size,
+		Ctime:                   m.Ctime,
+		Mtime:                   m.Mtime,
+		UpdatedTimestamp:        m.UpdatedTimestamp,
+		CreatedAt:               time.Time(m.CreatedAt),
+		UpdatedAt:               time.Time(m.UpdatedAt),
+	}
+}
+
 // GetByID retrieves note by ID
 // GetByID 根据ID获取笔记
 func (r *noteRepository) GetByID(ctx context.Context, id, uid int64) (*domain.Note, error) {
@@ -350,7 +379,7 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 		}
 
 		// 更新 FTS 索引
-		r.upsertFTS(db, m.ID, m.Path, content, uid)
+		r.upsertFTS(m, content, uid)
 
 		noteRes, err := r.toDomain(m, uid)
 		if err != nil {
@@ -419,7 +448,7 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 		}
 
 		// 更新 FTS 索引
-		r.upsertFTS(db, m.ID, m.Path, content, uid)
+		r.upsertFTS(m, content, uid)
 
 		noteRes, err := r.toDomain(m, uid)
 		if err != nil {
@@ -453,7 +482,7 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			UpdatedTimestamp: timex.Now().UnixMilli(),
 		}
 
-		return u.WithContext(ctx).Where(
+		err := u.WithContext(ctx).Where(
 			u.ID.Eq(m.ID),
 		).Select(
 			u.ID,
@@ -465,6 +494,14 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			u.Mtime,
 			u.UpdatedTimestamp,
 		).Save(m)
+		if err == nil {
+			// 把实际写入的 UpdatedTimestamp 回写到调用方的 note 上，
+			// 使调用方无需重新查库即可拿到写入后的准确值
+			// Write the actually-persisted UpdatedTimestamp back onto the caller's note,
+			// so the caller doesn't need a re-query to get the post-write value
+			note.UpdatedTimestamp = m.UpdatedTimestamp
+		}
+		return err
 	})
 }
 
@@ -526,12 +563,12 @@ func (r *noteRepository) UpdateSnapshot(ctx context.Context, snapshot, snapshotH
 
 // Delete physically deletes a note
 // Delete 物理删除笔记
-func (r *noteRepository) Delete(ctx context.Context, id, uid int64) error {
+func (r *noteRepository) Delete(ctx context.Context, id, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
 		u := r.note(uid).Note
 
 		// 在物理删除之前清理全文检索索引
-		r.deleteFTS(db, id, uid)
+		r.deleteFTS(id, vaultID, uid)
 
 		_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).Delete()
 		if err != nil {
@@ -557,10 +594,10 @@ func (r *noteRepository) DeletePhysicalByTime(ctx context.Context, timestamp, ui
 		list, _ := u.WithContext(ctx).Where(
 			u.Action.Eq("delete"),
 			u.UpdatedTimestamp.Lt(timestamp),
-		).Select(u.ID).Find()
+		).Select(u.ID, u.VaultID).Find()
 
 		for _, m := range list {
-			r.deleteFTS(db, m.ID, uid)
+			r.deleteFTS(m.ID, m.VaultID, uid)
 		}
 
 		_, err := u.WithContext(ctx).Where(
@@ -815,6 +852,77 @@ func (r *noteRepository) ListByUpdatedTimestampPage(ctx context.Context, timesta
 	return list, nil
 }
 
+// ListByPathHashesMeta retrieves note metadata (no content) for a batch of path hashes in a
+// single query, including all statuses (e.g. soft-deleted). Used for batch existence
+// pre-checks (e.g. before deleting a batch of client-reported notes) to avoid N+1
+// per-item lookups.
+// ListByPathHashesMeta 单次查询批量获取一组路径哈希对应的笔记元数据（不读正文），包含所有状态
+// （含已软删除）。用于批量存在性预检查（例如批量处理客户端删除上报前），避免逐条查询的 N+1。
+func (r *noteRepository) ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*domain.Note, error) {
+	result := make(map[string]*domain.Note, len(pathHashes))
+	if len(pathHashes) == 0 {
+		return result, nil
+	}
+
+	u := r.note(uid).Note
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.PathHash.In(pathHashes...),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, m := range ms {
+		n := r.toDomainMeta(m)
+		// 同一 pathHash 可能存在历史遗留的重复记录，保留 UpdatedTimestamp 最新的一条
+		// A pathHash may have legacy duplicate rows; keep the one with the latest UpdatedTimestamp
+		if existing, ok := result[n.PathHash]; !ok || n.UpdatedTimestamp > existing.UpdatedTimestamp {
+			result[n.PathHash] = n
+		}
+	}
+	return result, nil
+}
+
+// ListByUpdatedTimestampMeta retrieves note metadata list by updated timestamp, skipping the
+// content/snapshot file reads (content.txt/snapshot.txt). Used by the sync-download diff path,
+// which only needs ContentHash/Mtime for comparison and reads full content on demand for the
+// small subset of notes that actually need to be sent.
+// ListByUpdatedTimestampMeta 根据更新时间戳获取笔记元数据列表，跳过正文/快照文件读取
+// （content.txt/snapshot.txt）。用于同步下发的差量比对路径——该路径只需要 ContentHash/Mtime
+// 做比对，真正需要下发的少数笔记再按需读取正文。
+func (r *noteRepository) ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Note, error) {
+	return r.ListByUpdatedTimestampPageMeta(ctx, timestamp, vaultID, uid, 0, 0)
+}
+
+// ListByUpdatedTimestampPageMeta is the paged variant of ListByUpdatedTimestampMeta.
+// ListByUpdatedTimestampPageMeta 是 ListByUpdatedTimestampMeta 的分页变体。
+func (r *noteRepository) ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	query := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.UpdatedTimestamp.Gt(timestamp),
+	).Order(u.UpdatedTimestamp.Desc())
+
+	var mList []*model.Note
+	var err error
+	if limit > 0 {
+		mList, _, err = query.FindByPage(offset, limit)
+	} else {
+		mList, err = query.Find()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]*domain.Note, 0, len(mList))
+	for _, m := range mList {
+		list = append(list, r.toDomainMeta(m))
+	}
+	return list, nil
+}
+
 // ListContentUnchanged retrieves note list with unchanged content
 // ListContentUnchanged 获取内容未变更的笔记列表
 func (r *noteRepository) ListContentUnchanged(ctx context.Context, uid int64) ([]*domain.Note, error) {
@@ -958,6 +1066,41 @@ func (r *noteRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaul
 	return q.Count()
 }
 
+// CountByFIDs 按文件夹 ID 分组统计笔记数量，一次查询取回所有传入 fid 的计数
+// （用于替代对每个文件夹单独调用 ListByFIDCount 造成的 N+1）
+// CountByFIDs groups by folder ID and returns note counts for all given fids in a single
+// query (replaces calling ListByFIDCount once per folder, which is N+1).
+func (r *noteRepository) CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error) {
+	result := make(map[int64]int64, len(fids))
+	if len(fids) == 0 {
+		return result, nil
+	}
+
+	u := r.note(uid).Note
+	// 显式 column tag：GORM 的默认命名转换会把 "FID" 猜成 "f_id" 而不是实际列名 "fid"，
+	// 不加 tag 会导致 Scan 后 FID 全部读成 0（已由单测捕获）。
+	// Explicit column tags: GORM's default naming convention guesses "FID" as "f_id"
+	// instead of the actual "fid" column, silently scanning FID back as 0 without the
+	// tag (caught by a unit test).
+	var rows []struct {
+		FID   int64 `gorm:"column:fid"`
+		Count int64 `gorm:"column:count"`
+	}
+	err := u.WithContext(ctx).Select(u.FID, u.FID.Count().As("count")).Where(
+		u.VaultID.Eq(vaultID),
+		u.FID.In(fids...),
+		u.Action.Neq("delete"),
+	).Group(u.FID).Scan(&rows)
+
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.FID] = row.Count
+	}
+	return result, nil
+}
+
 // RecycleClear 清理回收站
 func (r *noteRepository) RecycleClear(ctx context.Context, path, pathHash string, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
@@ -990,62 +1133,36 @@ func (r *noteRepository) UpdateFID(ctx context.Context, id, fid, uid int64) erro
 // 确保 noteRepository 实现了 domain.NoteRepository 接口
 var _ domain.NoteRepository = (*noteRepository)(nil)
 
-// upsertFTS updates the Bleve FTS index
-// upsertFTS 更新 Bleve FTS 索引
-func (r *noteRepository) upsertFTS(db *gorm.DB, noteID int64, path, content string, uid int64) {
-	var note model.Note
-	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
-		r.dao.Logger().Error("failed to get note for FTS indexing", zap.Int64("noteID", noteID), zap.Error(err))
-		return
-	}
-
-	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
-	if err != nil {
-		r.dao.Logger().Error("failed to get Bleve index for FTS", zap.Int64("vaultID", note.VaultID), zap.Error(err))
-		return
-	}
-
+// upsertFTS asynchronously queues an update of the Bleve FTS index
+// upsertFTS 异步投递一次 Bleve FTS 索引更新
+// m 为调用方刚写入/更新的笔记记录，所需字段均已具备，无需重新查库；实际的索引写入由
+// BleveManager 后台 worker 攒批异步执行，本方法只投递不等待，不阻塞写队列关键路径
+// m is the note record just written/updated by the caller; all needed fields are already
+// present, no need to re-query. The actual index write is batched and executed
+// asynchronously by BleveManager's background worker; this method only enqueues and
+// does not block the write-queue's critical path.
+func (r *noteRepository) upsertFTS(m *model.Note, content string, uid int64) {
 	doc := BleveNoteDoc{
-		ID:      strconv.FormatInt(noteID, 10),
-		Path:    path,
-		PathRaw: path,
+		ID:      strconv.FormatInt(m.ID, 10),
+		Path:    m.Path,
+		PathRaw: m.Path,
 		Content: content,
-		Action:  note.Action,
-		Rename:  float64(note.Rename),
-		Ctime:   float64(note.Ctime),
-		Mtime:   float64(note.Mtime),
+		Action:  m.Action,
+		Rename:  float64(m.Rename),
+		Ctime:   float64(m.Ctime),
+		Mtime:   float64(m.Mtime),
 	}
 
-	if err := index.Index(doc.ID, doc); err != nil {
-		r.dao.Logger().Error("failed to write Bleve index", zap.String("docID", doc.ID), zap.Error(err))
-	}
+	r.dao.BleveMgr.EnqueueUpsert(uid, m.VaultID, doc)
 }
 
-// deleteFTS deletes a note from Bleve FTS index
-// deleteFTS 从 Bleve FTS 索引中删除笔记
-func (r *noteRepository) deleteFTS(db *gorm.DB, noteID int64, uid int64) {
-	var note model.Note
-	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
-		// Fallback: if physically deleted, delete from all vaults of this user
-		// 容错：如果已被物理删除，从该用户的所有仓库索引中清理
-		var vaults []model.Vault
-		vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
-		if err := vaultDb.Table("vault").Find(&vaults).Error; err == nil {
-			for _, v := range vaults {
-				if index, err := r.dao.BleveMgr.GetIndex(uid, v.ID); err == nil {
-					_ = index.Delete(strconv.FormatInt(noteID, 10))
-				}
-			}
-		}
-		return
-	}
-
-	index, err := r.dao.BleveMgr.GetIndex(uid, note.VaultID)
-	if err != nil {
-		return
-	}
-
-	_ = index.Delete(strconv.FormatInt(noteID, 10))
+// deleteFTS asynchronously queues a note delete from the Bleve FTS index
+// deleteFTS 异步投递一次笔记从 Bleve FTS 索引中删除
+// vaultID 由调用方直接传入（写路径在删除前已知该笔记所属仓库），无需为此再做一次冗余 SELECT
+// vaultID is passed in directly by the caller (the write path already knows the note's
+// vault before deleting it), avoiding a redundant SELECT just to look it up here.
+func (r *noteRepository) deleteFTS(noteID, vaultID, uid int64) {
+	r.dao.BleveMgr.EnqueueDelete(uid, vaultID, strconv.FormatInt(noteID, 10))
 }
 
 // searchFTS uses Bleve to search note IDs, returning matching ID slice

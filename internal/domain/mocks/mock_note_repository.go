@@ -56,6 +56,14 @@ func (m *MockNoteRepository) ListByPathHash(ctx context.Context, pathHash string
 	return args.Get(0).([]*domain.Note), args.Error(1)
 }
 
+func (m *MockNoteRepository) ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*domain.Note, error) {
+	args := m.Called(ctx, pathHashes, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]*domain.Note), args.Error(1)
+}
+
 func (m *MockNoteRepository) GetByPath(ctx context.Context, path string, vaultID, uid int64) (*domain.Note, error) {
 	args := m.Called(ctx, path, vaultID, uid)
 	if args.Get(0) == nil {
@@ -105,8 +113,8 @@ func (m *MockNoteRepository) UpdateSnapshot(ctx context.Context, snapshot, snaps
 	return args.Error(0)
 }
 
-func (m *MockNoteRepository) Delete(ctx context.Context, id, uid int64) error {
-	args := m.Called(ctx, id, uid)
+func (m *MockNoteRepository) Delete(ctx context.Context, id, vaultID, uid int64) error {
+	args := m.Called(ctx, id, vaultID, uid)
 	return args.Error(0)
 }
 
@@ -142,6 +150,22 @@ func (m *MockNoteRepository) ListByUpdatedTimestamp(ctx context.Context, timesta
 }
 
 func (m *MockNoteRepository) ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
+	args := m.Called(ctx, timestamp, vaultID, uid, offset, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Note), args.Error(1)
+}
+
+func (m *MockNoteRepository) ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*domain.Note, error) {
+	args := m.Called(ctx, timestamp, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Note), args.Error(1)
+}
+
+func (m *MockNoteRepository) ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*domain.Note, error) {
 	args := m.Called(ctx, timestamp, vaultID, uid, offset, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -189,6 +213,14 @@ func (m *MockNoteRepository) ListByFIDs(ctx context.Context, fids []int64, vault
 func (m *MockNoteRepository) ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error) {
 	args := m.Called(ctx, fids, vaultID, uid)
 	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockNoteRepository) CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error) {
+	args := m.Called(ctx, fids, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[int64]int64), args.Error(1)
 }
 
 func (m *MockNoteRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*domain.Note, error) {

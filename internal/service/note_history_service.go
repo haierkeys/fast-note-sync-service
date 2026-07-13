@@ -73,7 +73,8 @@ type noteHistoryService struct {
 // NewNoteHistoryService 创建 NoteHistoryService 实例
 func NewNoteHistoryService(historyRepo domain.NoteHistoryRepository, noteRepo domain.NoteRepository, userRepo domain.UserRepository, vaultSvc VaultService, folderSvc FolderService, noteSvc NoteService, backupSvc BackupService, gitSyncSvc GitSyncService, logger *zap.Logger, config *AppServiceConfig) NoteHistoryService {
 	if config == nil {
-		config = &AppServiceConfig{HistoryKeepVersions: 100}
+		defaultHistoryKeepVersions := 100
+		config = &AppServiceConfig{HistoryKeepVersions: &defaultHistoryKeepVersions}
 	}
 	return &noteHistoryService{
 		historyRepo:    historyRepo,
@@ -483,8 +484,15 @@ func (s *noteHistoryService) cleanupExcessVersions(ctx context.Context, noteID i
 	// Get version retention count from configuration
 	// 获取配置中的版本保留数
 	keepVersions := 100 // Default value // 默认值
-	if s.config != nil && s.config.HistoryKeepVersions > 0 {
-		keepVersions = s.config.HistoryKeepVersions
+	if s.config != nil && s.config.HistoryKeepVersions != nil {
+		if *s.config.HistoryKeepVersions == 0 {
+			// Explicit 0 means keep unlimited versions, skip cleanup entirely
+			// 显式 0 表示无限保留版本，不做清理
+			return nil
+		}
+		if *s.config.HistoryKeepVersions > 0 {
+			keepVersions = *s.config.HistoryKeepVersions
+		}
 	}
 
 	// Get all history versions for this note

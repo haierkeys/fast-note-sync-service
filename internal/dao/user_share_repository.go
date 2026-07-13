@@ -238,6 +238,14 @@ func (r *userShareRepository) UpdatePassword(ctx context.Context, uid int64, id 
 	})
 }
 
+func (r *userShareRepository) UpdateExpiresAt(ctx context.Context, uid int64, id int64, expiresAt time.Time) error {
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		us := r.userShare(uid).UserShare
+		_, err := us.WithContext(ctx).Where(us.ID.Eq(id)).Update(us.ExpiresAt, expiresAt)
+		return err
+	})
+}
+
 func (r *userShareRepository) CountByUID(ctx context.Context, uid int64) (int64, error) {
 	us := r.userShare(uid).UserShare
 	return us.WithContext(ctx).Where(us.UID.Eq(uid), us.Status.Eq(domain.UserShareStatusActive)).Count()

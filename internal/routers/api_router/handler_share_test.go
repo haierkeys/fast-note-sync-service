@@ -81,7 +81,7 @@ func TestShareHandler_Create_Success(t *testing.T) {
 		Token: "share_token",
 	}
 
-	mockSvc.On("ShareGenerate", mock.Anything, int64(1), "main", "test.md", "hash_123", "").
+	mockSvc.On("ShareGenerate", mock.Anything, int64(1), "main", "test.md", "hash_123", "", int64(0)).
 		Return(mockData, nil)
 
 	handler := newTestShareHandler(mockSvc, nil)
@@ -164,7 +164,7 @@ func TestShareHandler_Cancel_Success(t *testing.T) {
 func TestShareHandler_UpdatePassword_Success(t *testing.T) {
 	mockSvc := new(svcmocks.MockShareService)
 
-	mockSvc.On("UpdateSharePassword", mock.Anything, int64(1), "main", "test.md", "hash_123", "new_pwd").Return(nil)
+	mockSvc.On("UpdateSharePassword", mock.Anything, int64(1), "main", "test.md", "hash_123", "new_pwd", int64(0)).Return(nil)
 
 	handler := newTestShareHandler(mockSvc, nil)
 	body := `{"vault":"main", "path":"test.md", "pathHash":"hash_123", "password":"new_pwd"}`

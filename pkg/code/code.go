@@ -10,20 +10,22 @@ import (
 // All With* methods return new instances, original object is not modified
 // 所有 With* 方法都返回新实例，不修改原对象
 type Code struct {
-	code        int         // Status code // 状态码
-	status      bool        // Status // 状态
-	Lang        lang        // Error message // 错误消息
-	msg         string      // Error message // 错误消息
-	data        interface{} // Data // 数据
-	vault       string
-	haveVault   bool     // Whether it contains Vault // 是否含有Vault
-	haveData    bool     // Whether it contains Data // 是否含有Data
-	details     []string // Error detail information // 错误详细信息
-	haveDetails bool     // Whether it contains details // 是否含有详情
-	context     string
-	haveContext bool // Whether it contains Context // 是否含有Context
-	path        string
-	havePath    bool // Whether it contains Path // 是否含有Path
+	code          int         // Status code // 状态码
+	status        bool        // Status // 状态
+	Lang          lang        // Error message // 错误消息
+	msg           string      // Error message // 错误消息
+	data          interface{} // Data // 数据
+	vault         string
+	haveVault     bool     // Whether it contains Vault // 是否含有Vault
+	haveData      bool     // Whether it contains Data // 是否含有Data
+	details       []string // Error detail information // 错误详细信息
+	haveDetails   bool     // Whether it contains details // 是否含有详情
+	context       string
+	haveContext   bool // Whether it contains Context // 是否含有Context
+	path          string
+	havePath      bool // Whether it contains Path // 是否含有Path
+	pageIndex     int
+	havePageIndex bool // Whether it contains PageIndex // 是否含有PageIndex
 }
 
 func (e *Code) Path() string {
@@ -40,20 +42,22 @@ func (e *Code) HavePath() bool {
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithPath(path string) *Code {
 	return &Code{
-		code:        e.code,
-		status:      e.status,
-		Lang:        e.Lang,
-		msg:         e.msg,
-		data:        e.data,
-		haveData:    e.haveData,
-		vault:       e.vault,
-		haveVault:   e.haveVault,
-		details:     e.details,
-		haveDetails: e.haveDetails,
-		context:     e.context,
-		haveContext: e.haveContext,
-		path:        path,
-		havePath:    true,
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          e.data,
+		haveData:      e.haveData,
+		vault:         e.vault,
+		haveVault:     e.haveVault,
+		details:       e.details,
+		haveDetails:   e.haveDetails,
+		context:       e.context,
+		haveContext:   e.haveContext,
+		path:          path,
+		havePath:      true,
+		pageIndex:     e.pageIndex,
+		havePageIndex: e.havePageIndex,
 	}
 }
 
@@ -175,26 +179,36 @@ func (e *Code) HaveContext() bool {
 	return e.haveContext
 }
 
+func (e *Code) PageIndex() int {
+	return e.pageIndex
+}
+
+func (e *Code) HavePageIndex() bool {
+	return e.havePageIndex
+}
+
 // WithData returns a new Code instance containing specified data
 // WithData 返回一个包含指定数据的新 Code 实例
 // Original object will not be modified (immutable design)
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithData(data interface{}) *Code {
 	return &Code{
-		code:        e.code,
-		status:      e.status,
-		Lang:        e.Lang,
-		msg:         e.msg,
-		data:        data,
-		haveData:    true,
-		vault:       e.vault,
-		haveVault:   e.haveVault,
-		details:     e.details,
-		haveDetails: e.haveDetails,
-		context:     e.context,
-		haveContext: e.haveContext,
-		path:        e.path,
-		havePath:    e.havePath,
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          data,
+		haveData:      true,
+		vault:         e.vault,
+		haveVault:     e.haveVault,
+		details:       e.details,
+		haveDetails:   e.haveDetails,
+		context:       e.context,
+		haveContext:   e.haveContext,
+		path:          e.path,
+		havePath:      e.havePath,
+		pageIndex:     e.pageIndex,
+		havePageIndex: e.havePageIndex,
 	}
 }
 
@@ -204,20 +218,22 @@ func (e *Code) WithData(data interface{}) *Code {
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithVault(vault string) *Code {
 	return &Code{
-		code:        e.code,
-		status:      e.status,
-		Lang:        e.Lang,
-		msg:         e.msg,
-		data:        e.data,
-		haveData:    e.haveData,
-		vault:       vault,
-		haveVault:   true,
-		details:     e.details,
-		haveDetails: e.haveDetails,
-		context:     e.context,
-		haveContext: e.haveContext,
-		path:        e.path,
-		havePath:    e.havePath,
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          e.data,
+		haveData:      e.haveData,
+		vault:         vault,
+		haveVault:     true,
+		details:       e.details,
+		haveDetails:   e.haveDetails,
+		context:       e.context,
+		haveContext:   e.haveContext,
+		path:          e.path,
+		havePath:      e.havePath,
+		pageIndex:     e.pageIndex,
+		havePageIndex: e.havePageIndex,
 	}
 }
 
@@ -232,20 +248,22 @@ func (e *Code) WithDetails(details ...string) *Code {
 	copy(newDetails, details)
 
 	return &Code{
-		code:        e.code,
-		status:      e.status,
-		Lang:        e.Lang,
-		msg:         e.msg,
-		data:        e.data,
-		haveData:    e.haveData,
-		vault:       e.vault,
-		haveVault:   e.haveVault,
-		details:     newDetails,
-		haveDetails: true,
-		context:     e.context,
-		haveContext: e.haveContext,
-		path:        e.path,
-		havePath:    e.havePath,
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          e.data,
+		haveData:      e.haveData,
+		vault:         e.vault,
+		haveVault:     e.haveVault,
+		details:       newDetails,
+		haveDetails:   true,
+		context:       e.context,
+		haveContext:   e.haveContext,
+		path:          e.path,
+		havePath:      e.havePath,
+		pageIndex:     e.pageIndex,
+		havePageIndex: e.havePageIndex,
 	}
 }
 
@@ -255,20 +273,50 @@ func (e *Code) WithDetails(details ...string) *Code {
 // 原对象不会被修改（不可变设计）
 func (e *Code) WithContext(context string) *Code {
 	return &Code{
-		code:        e.code,
-		status:      e.status,
-		Lang:        e.Lang,
-		msg:         e.msg,
-		data:        e.data,
-		haveData:    e.haveData,
-		vault:       e.vault,
-		haveVault:   e.haveVault,
-		details:     e.details,
-		haveDetails: e.haveDetails,
-		context:     context,
-		haveContext: true,
-		path:        e.path,
-		havePath:    e.havePath,
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          e.data,
+		haveData:      e.haveData,
+		vault:         e.vault,
+		haveVault:     e.haveVault,
+		details:       e.details,
+		haveDetails:   e.haveDetails,
+		context:       context,
+		haveContext:   true,
+		path:          e.path,
+		havePath:      e.havePath,
+		pageIndex:     e.pageIndex,
+		havePageIndex: e.havePageIndex,
+	}
+}
+
+// WithPageIndex returns a new Code instance containing the specified download page index.
+// Used to tag a WSResponse envelope with the download-window page it belongs to (see sync
+// pipeline design §2.4/§4); non-paginated responses leave this unset.
+// WithPageIndex 返回一个包含指定下载页码的新 Code 实例。
+// 用于给 WSResponse 信封标注其所属的下行窗口页码（见同步流水线设计 §2.4/§4）；非分页响应不设置该值。
+// Original object will not be modified (immutable design)
+// 原对象不会被修改（不可变设计）
+func (e *Code) WithPageIndex(pageIndex int) *Code {
+	return &Code{
+		code:          e.code,
+		status:        e.status,
+		Lang:          e.Lang,
+		msg:           e.msg,
+		data:          e.data,
+		haveData:      e.haveData,
+		vault:         e.vault,
+		haveVault:     e.haveVault,
+		details:       e.details,
+		haveDetails:   e.haveDetails,
+		context:       e.context,
+		haveContext:   e.haveContext,
+		path:          e.path,
+		havePath:      e.havePath,
+		pageIndex:     pageIndex,
+		havePageIndex: true,
 	}
 }
 
@@ -287,4 +335,3 @@ func (e *Code) Is(target error) bool {
 	}
 	return e.code == t.code
 }
-

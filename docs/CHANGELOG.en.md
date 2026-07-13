@@ -6,6 +6,40 @@ The project adheres to [Keep a Changelog](https://keepachangelog.com/en/0.3.0/) 
 
 ---
 
+## v3.6.0
+> *2026/07/09*
+
+### ✨ Added
+
+- **Sync**: Added a sliding-window pipeline mode for the sync protocol. Upload batches and download pages, previously confirmed one at a time (stop-and-wait), can now have multiple batches/pages in flight concurrently, greatly cutting full-sync time for large vaults (measured 6.64x faster upload, 3.19x faster download). The whole mechanism is capability-negotiated and bidirectionally backward-compatible: any combination of old/new client and old/new server automatically falls back to the previous one-at-a-time mode — no forced upgrade required.
+- **Config**: Added `pipeline-window-up` (default `8`) and `pipeline-window-down` (default `4`), controlling how many upload batches / download pages may be in flight at once. Setting either explicitly to `0` instantly rolls the connection back to stop-and-wait mode, serving as a runtime safety switch for the pipeline feature (also readable/writable from the admin panel).
+
+### 🚀 Optimized
+
+- **Sync**: Raised the default download sync chunk size `sync-down-chunk-num` from `50` to `200`, reducing the number of page round-trips in stop-and-wait scenarios.
+- **Sync**: Full/incremental sync now reads note content on demand and backfills it only when a page is actually sent, avoiding serial blind reads and full in-memory materialization for large vaults.
+- **Database**: Added a `(vault_id, path_hash)` composite index to the `note` table, eliminating point-query full table scans during full uploads.
+- **Database**: Removed several redundant duplicate queries across the FTS-write, update-check, and batch-delete paths (`upsertFTS` reuses the record the caller just wrote; `NoteModify` merges its duplicate queries; batch note deletion drops the per-item existence check).
+- **Sync**: The write-queue worker now drains already-queued operations in non-blocking batches, reducing per-operation scheduling overhead.
+- **Sync**: `sync_log` writes moved from one bare goroutine per record to a bounded channel with a single batching worker, avoiding a burst of goroutines during large uploads.
+- **Sync**: Broadcast fan-out now sends concurrently outside the lock, so a slow device no longer delays message delivery to the same user's other online devices.
+- **Performance**: Note diffing now enables line-level preprocessing dynamically based on base text length, speeding up merges of large notes.
+- **Performance**: Folder counts are now computed with a single `GROUP BY` aggregate query instead of 2 `COUNT` queries per folder (N+1); file path migration checks and the `git-sync` enablement lookup now use in-process caches on these hot paths, cutting repeated I/O and DB queries.
+
+### 🛠️ Fixed
+
+- **Sync**: Fixed a data-loss bug where concurrent writes to the same note/file could misuse `singleflight`, silently dropping the later write while still returning a success acknowledgment.
+- **Sync**: Fixed `os.Rename` failures during note/attachment rename being silently swallowed, which left the database and disk state inconsistent.
+- **Stability**: Added panic recovery to background bare goroutines (backup, git sync, etc.) so a single task panic no longer crashes the whole server process.
+- **Sync**: The upload batch protocol now deduplicates by batch index, preventing client retransmissions from causing duplicate writes and miscounts on the server.
+- **Sync**: When a download-page `PageAck` doesn't match the expected page, the server now resends the current page as a fallback, preventing the client from stalling until the 10-minute session TTL.
+- **Concurrency**: Fixed unlocked reads/writes of WebSocket client info fields, which could race under parallel processing.
+- **Stability**: Added a minimum-idle-time guard to the DB connection pool's LRU eviction, preventing still-in-use connections from being closed by mistake.
+- **Config**: Fixed a half-broken rollback safety switch — explicitly setting `pipeline-window-up`/`pipeline-window-down` to `0` used to be silently overwritten back to its default by the config's second defaults-fill pass; an explicit `0` is now correctly recognized and preserved.
+- **Sync**: Fixed a zero-value ambiguity where page 0 of the paginated envelope field `pageIndex` was indistinguishable from a non-paginated broadcast message in Protobuf mode.
+
+---
+
 ## v3.1.1
 > *2026/05/25*
 

@@ -16,8 +16,8 @@ type DatabaseConfig struct {
 	AutoMigrate         *bool  `yaml:"auto-migrate" default:"true"`                // whether to enable automatic migration // 是否启用自动迁移
 	Charset             string `yaml:"charset"`                                    // database charset // 数据库字符集
 	ParseTime           bool   `yaml:"parse-time"`                                 // whether to parse time // 是否解析时间
-	MaxIdleConns        int    `yaml:"max-idle-conns" default:"10"`                // maximum number of idle connections // 最大闲置连接数，默认 10
-	MaxOpenConns        int    `yaml:"max-open-conns" default:"100"`               // maximum number of open connections // 最大打开连接数，默认 100
+	MaxIdleConns        *int   `yaml:"max-idle-conns" default:"10"`                // maximum number of idle connections; yaml 显式 0 = SetMaxIdleConns 不留空闲，nil 才用默认 10 // 最大闲置连接数，默认 10
+	MaxOpenConns        *int   `yaml:"max-open-conns" default:"100"`               // maximum number of open connections; yaml 显式 0 = SetMaxOpenConns 不限，nil 才用默认 100 // 最大打开连接数，默认 100
 	ConnMaxLifetime     string `yaml:"conn-max-lifetime" default:"30m"`            // maximum connection lifetime // 连接最大生命周期
 	ConnMaxIdleTime     string `yaml:"conn-max-idle-time" default:"10m"`           // maximum idle connection lifetime // 空闲连接最大生命周期
 	EnableWriteQueue    *bool  `yaml:"enable-write-queue" default:"true"`          // whether to enable write queue // 是否启用写队列，默认值为真

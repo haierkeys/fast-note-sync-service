@@ -14,6 +14,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"golang.org/x/sync/singleflight"
 
@@ -226,6 +227,14 @@ type WSConfig struct {
 	GWSOption    gws.ServerOption
 	PingInterval time.Duration
 	PingWait     time.Duration
+	// WriteTimeout application-layer write deadline for outbound messages (ToResponse/
+	// BroadcastResponse/SendBinary etc.); already resolved by the caller (nil-vs-zero
+	// distinguished at the config layer), so 0 here means "no deadline" (old behavior)
+	// and is NOT replaced by an internal default.
+	// WriteTimeout 应用层出站消息（ToResponse/BroadcastResponse/SendBinary 等）的写超时；
+	// 调用方已在配置层解析好 nil 与显式 0 的区别，这里 0 就表示"不设超时"（旧行为），
+	// 不会再被内部默认值覆盖。
+	WriteTimeout time.Duration
 }
 
 // SessionCleaner interface, used to clean up session resources when the connection is disconnected
@@ -269,15 +278,17 @@ type WebsocketClient struct {
 	UserClients         ConnStorage               // User connection pool // 用户连接池，支持多设备在线时广播或单点通信
 	SF                  *singleflight.Group       // Concurrency control // 并发控制：相同 key 的请求只执行一次，其余等待结果
 	BinaryMu            sync.Mutex                // Synchronization lock when reading and writing data // 用于读写数据时的同步锁 (不再保护 map 存储)
-	ClientName          string                    // Client name (e.g., "Mac", "Windows", "iPhone") // 客户端名称 (例如 "Mac", "Windows", "iPhone")
-	ClientType          string                    // Client type "web" | "desktop" | "mobile" | "obsidianPlugin" // 客户端类型 "web" | "desktop" | "mobile" | "obsidianPlugin"
-	ClientPlatform      map[string]bool           // Client platform details // 客户端平台详情
-	ClientVersion       string                    // Client version number (e.g., "1.2.4") // 客户端版本号 (例如 "1.2.4")
+	infoMu              sync.RWMutex              // Guards the client-reported connection metadata below (written once by ClientInfo, read concurrently under gws ParallelEnabled) // 保护下方客户端上报的连接元数据（由 ClientInfo 写入一次，gws ParallelEnabled 下会被并发读取）
+	clientName          string                    // Client name (e.g., "Mac", "Windows", "iPhone"); access via ClientName() // 客户端名称 (例如 "Mac", "Windows", "iPhone")；请通过 ClientName() 访问
+	clientType          string                    // Client type "web" | "desktop" | "mobile" | "obsidianPlugin"; access via ClientType() // 客户端类型；请通过 ClientType() 访问
+	clientPlatform      map[string]bool           // Client platform details; access via ClientPlatform() // 客户端平台详情；请通过 ClientPlatform() 访问
+	clientVersion       string                    // Client version number (e.g., "1.2.4"); access via ClientVersion() // 客户端版本号；请通过 ClientVersion() 访问
+	offlineSyncStrategy string                    // Offline device sync strategy "newTimeMerge" | "ignoreTimeMerge"; access via OfflineSyncStrategy() // 离线设备同步策略；请通过 OfflineSyncStrategy() 访问
+	useProtobuf         bool                      // Whether to use protobuf protocol; access via UseProtobuf() // 是否使用 protobuf 协议；请通过 UseProtobuf() 访问
 	StartTime           timex.Time                // Connection start time // 连接开始时间
 	IsFirstSync         bool                      // Whether it's the first sync // 是否是第一次同步过
 	DiffMergePaths      map[string]DiffMergeEntry // File paths needing merging // 需要合并的文件路径，包含创建时间用于超时清理
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
-	OfflineSyncStrategy string                    // Offline device sync strategy // 离线设备同步策略 "newTimeMerge" | "ignoreTimeMerge"
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
 	lastPongAt          atomic.Int64                    // Unix timestamp of last received pong; used to detect zombie connections // 最后一次收到 pong 的 Unix 时间戳，用于检测僵尸连接
 	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
@@ -285,8 +296,92 @@ type WebsocketClient struct {
 	Vaults              string                    // Restrict Vaults // 限制笔记库
 	Lang                string                    // Language preference // 语言偏好
 	Protocol            string                    // Protocol "protobuf" or other // 协议 "protobuf" 或其他
-	UseProtobuf         bool                      // Whether to use protobuf protocol // 是否使用 protobuf 协议
+	ProtoVersion        int                       // Client-declared handshake protocol version, from URL query "pv"; >=2 means the client supports v2 negotiation (negotiation block in auth response, window pipelining, early pb upgrade) // 客户端声明的握手协议版本，来自 URL query "pv"；>=2 表示客户端支持 v2 协商（auth 响应携带协商块、窗口流水线、pb 提前升级）
+	PbEnabled           bool                      // Client's local protobufEnabled setting, from URL query "pb" (1/0); only meaningful when ProtoVersion>=2 // 客户端本地 protobufEnabled 设置，来自 URL query "pb"（1/0）；仅在 ProtoVersion>=2 时有意义
 	currentAction       string                    // Current action type being processed // Current action type being processed // 当前正在处理的动作类型
+}
+
+// ClientName returns the client-reported name (e.g. "Mac", "Windows", "iPhone").
+// Safe for concurrent use; guarded against the concurrent write in ClientInfo().
+// ClientName 返回客户端上报的名称（例如 "Mac"、"Windows"、"iPhone"）。
+// 并发安全，防止与 ClientInfo() 中的并发写发生竞争。
+func (c *WebsocketClient) ClientName() string {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.clientName
+}
+
+// ClientType returns the client-reported type ("web" | "desktop" | "mobile" | "obsidianPlugin").
+// ClientType 返回客户端上报的类型（"web" | "desktop" | "mobile" | "obsidianPlugin"）。
+func (c *WebsocketClient) ClientType() string {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.clientType
+}
+
+// ClientVersion returns the client-reported version (e.g. "1.2.4").
+// ClientVersion 返回客户端上报的版本号（例如 "1.2.4"）。
+func (c *WebsocketClient) ClientVersion() string {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.clientVersion
+}
+
+// ClientPlatform returns the client-reported platform flags. The returned map is only ever
+// replaced wholesale (never mutated in place) by ClientInfo(), so it is safe to read after
+// this call returns even though the map itself isn't copied.
+// ClientPlatform 返回客户端上报的平台标记。ClientInfo() 只会整体替换该 map（不会原地修改），
+// 因此即便没有拷贝该 map，本调用返回后继续读取也是安全的。
+func (c *WebsocketClient) ClientPlatform() map[string]bool {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.clientPlatform
+}
+
+// OfflineSyncStrategy returns the client-reported offline sync strategy.
+// OfflineSyncStrategy 返回客户端上报的离线同步策略。
+func (c *WebsocketClient) OfflineSyncStrategy() string {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.offlineSyncStrategy
+}
+
+// UseProtobuf reports whether this connection negotiated the protobuf protocol.
+// UseProtobuf 返回该连接是否已协商使用 protobuf 协议。
+func (c *WebsocketClient) UseProtobuf() bool {
+	c.infoMu.RLock()
+	defer c.infoMu.RUnlock()
+	return c.useProtobuf
+}
+
+// setClientInfo atomically updates all client-reported connection metadata under infoMu,
+// so concurrent readers (e.g. other goroutines processing messages on the same connection
+// under gws ParallelEnabled) never observe a partially-updated state.
+// setClientInfo 在 infoMu 保护下原子更新全部客户端上报的连接元数据，
+// 使并发读方（例如 gws ParallelEnabled 下处理同一连接其他消息的 goroutine）
+// 不会看到只更新了一部分字段的中间状态。
+func (c *WebsocketClient) setClientInfo(name, clientType, version string, platform map[string]bool, offlineSyncStrategy string, useProtobuf bool) {
+	c.infoMu.Lock()
+	defer c.infoMu.Unlock()
+	c.clientName = name
+	c.clientType = clientType
+	c.clientVersion = version
+	c.clientPlatform = platform
+	c.offlineSyncStrategy = offlineSyncStrategy
+	c.useProtobuf = useProtobuf
+}
+
+// setUseProtobuf sets only the useProtobuf field, guarded by the same infoMu as setClientInfo.
+// Used for the v2 handshake merge's early pb upgrade (§5.1): the connection may switch to
+// protobuf right after the auth response, before ClientInfo arrives. ClientInfo's later call
+// to setClientInfo() re-sets useProtobuf to the same value, so this is idempotent with it.
+// setUseProtobuf 仅设置 useProtobuf 字段，与 setClientInfo 共用同一把 infoMu。
+// 用于 v2 握手合并的 pb 提前升级（§5.1）：连接可能在 auth 响应后、ClientInfo 到达前就切换到 protobuf。
+// ClientInfo 随后调用 setClientInfo() 会把 useProtobuf 重新设置为相同的值，因此与之幂等。
+func (c *WebsocketClient) setUseProtobuf(useProtobuf bool) {
+	c.infoMu.Lock()
+	defer c.infoMu.Unlock()
+	c.useProtobuf = useProtobuf
 }
 
 // initContext initializes the context for the WebSocket connection
@@ -380,7 +475,7 @@ func (c *WebsocketClient) BindAndValid(data []byte, obj any) (bool, ValidErrors)
 func (c *WebsocketClient) BindAndValidWithAction(action string, data []byte, obj any) (bool, ValidErrors) {
 	var errs ValidErrors
 
-	if c.UseProtobuf && c.Server.ProtobufDecoder != nil {
+	if c.UseProtobuf() && c.Server.ProtobufDecoder != nil {
 		decoded, err := c.Server.ProtobufDecoder(action, data, obj)
 		if err != nil {
 			errs = append(errs, &ValidError{
@@ -564,12 +659,15 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	if code.HavePath() {
 		content.Path = code.Path()
 	}
+	if code.HavePageIndex() {
+		content.PageIndex = code.PageIndex()
+	}
 
 	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
-		if c.UseProtobuf && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {
+		if c.UseProtobuf() && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {
 			pbBytes, err := c.Server.ProtobufEncoder(actionType, &content)
 			if err == nil {
-				c.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+				c.writeMessage(gws.OpcodeBinary, pbBytes)
 				return
 			}
 			log(LogError, "WS Protobuf encode failed, falling back to JSON", zap.Error(err), zap.String("uid", func() string {
@@ -640,12 +738,53 @@ func (c *WebsocketClient) send(responseBytes []byte, isBroadcast bool, isExclude
 }
 
 func (c *WebsocketClient) sendMessage(payload []byte) {
-	c.conn.WriteMessage(gws.OpcodeText, payload)
+	c.writeMessage(gws.OpcodeText, payload)
+}
+
+// writeMessage writes an application-layer message under the configured write deadline
+// (ws-write-timeout, default 10s), so a stalled/zombie connection cannot block WriteMessage
+// indefinitely and stall the write lock (see P9). The deadline is cleared after the write
+// completes, matching PingLoop's SetWriteDeadline/clear usage.
+// writeMessage 在配置的应用层写超时（ws-write-timeout，默认 10s）保护下写入消息，
+// 避免僵尸/卡顿连接让 WriteMessage 无限阻塞并拖住写锁（见 P9）。写完后清空 deadline，
+// 用法与 PingLoop 的 SetWriteDeadline/清空一致。
+func (c *WebsocketClient) writeMessage(opcode gws.Opcode, payload []byte) error {
+	if c.conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
+	timeout := c.Server.config.WriteTimeout
+	if timeout > 0 {
+		_ = c.conn.NetConn().SetWriteDeadline(time.Now().Add(timeout))
+	}
+	err := c.conn.WriteMessage(opcode, payload)
+	if timeout > 0 {
+		_ = c.conn.NetConn().SetWriteDeadline(time.Time{})
+	}
+	return err
 }
 
 func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExcludeSelf bool) {
+	// 持锁期间只拷贝目标连接列表，随后立即释放锁——WriteMessage 本身可能阻塞（慢设备/网络抖动），
+	// 不应该在持有 c.Server.mu 期间发生，否则会拖慢该用户下所有其他并发操作。
+	// Only copy the target connection list while holding the lock, then release it right
+	// away — WriteMessage can block (slow device / network jitter) and must not happen
+	// while holding c.Server.mu, or it stalls every other concurrent operation for this user.
 	c.Server.mu.RLock()
-	defer c.Server.mu.RUnlock()
+	targets := make([]*WebsocketClient, 0, len(c.UserClients))
+	for _, uc := range c.UserClients {
+		if uc.conn == nil {
+			continue
+		}
+		if isExcludeSelf && uc.conn == c.conn {
+			continue
+		}
+		targets = append(targets, uc)
+	}
+	c.Server.mu.RUnlock()
+
+	if len(targets) == 0 {
+		return
+	}
 
 	var jsonBytes []byte
 	if actionType != "" {
@@ -655,33 +794,41 @@ func (c *WebsocketClient) sendBroadcast(content *Res, actionType string, isExclu
 		jsonBytes, _ = json.Marshal(content)
 	}
 
-	for _, uc := range c.UserClients {
-		if uc.conn == nil {
-			continue
-		}
-		if isExcludeSelf && uc.conn == c.conn {
-			continue
-		}
+	// 逐连接并发扇出：gws Conn.WriteMessage 内部对同一连接的写入用 c.mu 做了互斥
+	// （已查证 github.com/lxzan/gws@v1.9.1 writer.go doWrite），不同连接之间互不影响，
+	// 因此可以安全地并发写入，避免一台慢设备拖慢同用户下其他设备的广播。
+	// Fan out concurrently per connection: gws Conn.WriteMessage internally serializes
+	// writes to the same connection via c.mu (verified in
+	// github.com/lxzan/gws@v1.9.1 writer.go doWrite); different connections don't share
+	// that lock, so concurrent writes across connections are safe and prevent one slow
+	// device from stalling the broadcast to the user's other devices.
+	var wg sync.WaitGroup
+	for _, uc := range targets {
+		wg.Add(1)
+		safego.Go(wsLogger, func() {
+			defer wg.Done()
 
-		var err error
-		if uc.UseProtobuf && uc.Server.ProtobufEncoder != nil && actionType != "" {
-			var pbBytes []byte
-			pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
-			if err == nil {
-				err = uc.conn.WriteMessage(gws.OpcodeBinary, pbBytes)
+			var err error
+			if uc.UseProtobuf() && uc.Server.ProtobufEncoder != nil && actionType != "" {
+				var pbBytes []byte
+				pbBytes, err = uc.Server.ProtobufEncoder(actionType, content)
+				if err == nil {
+					err = uc.writeMessage(gws.OpcodeBinary, pbBytes)
+				}
+			} else {
+				err = uc.writeMessage(gws.OpcodeText, jsonBytes)
 			}
-		} else {
-			err = uc.conn.WriteMessage(gws.OpcodeText, jsonBytes)
-		}
 
-		if err != nil {
-			if uc.failCount.Add(1) == 4 {
-				uc.conn.WriteClose(1000, []byte("broadcast failed"))
+			if err != nil {
+				if uc.failCount.Add(1) == 4 {
+					uc.conn.WriteClose(1000, []byte("broadcast failed"))
+				}
+			} else {
+				uc.failCount.Store(0)
 			}
-		} else {
-			uc.failCount.Store(0)
-		}
+		})
 	}
+	wg.Wait()
 }
 
 // SendBinary sends binary messages
@@ -700,7 +847,7 @@ func (c *WebsocketClient) SendBinary(prefix string, payload []byte) error {
 	data := make([]byte, 2+len(payload))
 	copy(data[0:2], prefix)
 	copy(data[2:], payload)
-	return c.conn.WriteMessage(gws.OpcodeBinary, data)
+	return c.writeMessage(gws.OpcodeBinary, data)
 }
 
 // ------------------------------------> WebsocketServer
@@ -742,6 +889,16 @@ type AppContainer interface {
 	// GetTokenService gets token service for RBAC
 	// GetTokenService 获取 Token 服务
 	GetTokenService() any // Use any to avoid circular dependency, then type assert in use
+	// SyncChunkNums returns the configured upload/download sync batch sizes (SyncUpChunkNum,
+	// SyncDownChunkNum), used for v2 handshake negotiation (§2.3).
+	// SyncChunkNums 返回配置的上传/下载同步分批大小（SyncUpChunkNum、SyncDownChunkNum），
+	// 用于 v2 握手协商（§2.3）。
+	SyncChunkNums() (up int, down int)
+	// PipelineWindows returns the clamped upload/download pipeline window sizes for v2 handshake
+	// negotiation (§2.3); 0 means the window is disabled (stop-and-wait) for that direction.
+	// PipelineWindows 返回用于 v2 握手协商（§2.3）的、经过钳制的上下行流水线窗口大小；
+	// 0 表示该方向禁用窗口（stop-and-wait）。
+	PipelineWindows() (up int, down int)
 }
 
 // ValidatorInterface validator interface
@@ -796,10 +953,10 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 	clients := make([]WSClientInfo, 0, len(w.clients))
 	for _, c := range w.clients {
 		info := WSClientInfo{
-			ClientName:    c.ClientName,
-			ClientType:    c.ClientType,
-			ClientVersion: c.ClientVersion,
-			PlatformInfo:  c.ClientPlatform,
+			ClientName:    c.ClientName(),
+			ClientType:    c.ClientType(),
+			ClientVersion: c.ClientVersion(),
+			PlatformInfo:  c.ClientPlatform(),
 			RemoteAddr:    c.conn.RemoteAddr().String(),
 			StartTime:     c.StartTime,
 			TraceID:       c.TraceID,
@@ -920,10 +1077,23 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 
 		// Extract client info from query parameters
 		// 从查询参数中提取客户端信息
-		client.ClientType = c.Query("client")
-		client.ClientName = c.Query("clientName")
-		client.ClientVersion = c.Query("clientVersion")
+		// 连接刚创建，尚未发布给其他 goroutine，此处直接写入无需加锁
+		// Connection was just created and not yet published to other goroutines, so a direct write here needs no locking
+		client.clientType = c.Query("client")
+		client.clientName = c.Query("clientName")
+		client.clientVersion = c.Query("clientVersion")
 		client.Protocol = c.Query("protocol")
+
+		// v2 handshake capability declaration (§2.2): pv = protocol version the client
+		// supports, pb = client's local protobufEnabled setting. Missing/invalid values
+		// leave ProtoVersion at its zero value, which downstream negotiation logic treats
+		// the same as an old (v1) client.
+		// v2 握手能力声明（§2.2）：pv = 客户端支持的协议版本，pb = 客户端本地 protobufEnabled 设置。
+		// 缺失或非法值使 ProtoVersion 保持零值，下游协商逻辑会将其视为旧（v1）客户端。
+		if pv, err := strconv.Atoi(c.Query("pv")); err == nil {
+			client.ProtoVersion = pv
+		}
+		client.PbEnabled = c.Query("pb") == "1"
 
 		// Extract language preference
 		// 提取语言偏好
@@ -942,9 +1112,9 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		log(LogInfo, "WS Start",
 			zap.String("type", "ReadLoop"),
 			zap.String("traceID", traceID),
-			zap.String("client", client.ClientType),
-			zap.String("clientName", client.ClientName),
-			zap.String("clientVersion", client.ClientVersion),
+			zap.String("client", client.ClientType()),
+			zap.String("clientName", client.ClientName()),
+			zap.String("clientVersion", client.ClientVersion()),
 		)
 		go socket.ReadLoop()
 	}
@@ -1021,7 +1191,7 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 			reqUserAgent := c.Ctx.GetHeader("User-Agent")
 			reqIP := c.Ctx.ClientIP()
 
-			scope, vaults, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName, c.ClientVersion, reqUserAgent, reqIP)
+			scope, vaults, err := w.tokenVerifyHandler(c.Context(), uid, user.TokenID, user.Nonce, reqClientType, c.ClientName(), c.ClientVersion(), reqUserAgent, reqIP)
 			if err != nil {
 				log(LogError, "WS Authorization FAILD: Token verify failed", zap.Error(err))
 				if appErr, ok := err.(*code.Code); ok {
@@ -1061,12 +1231,43 @@ func (w *WebsocketServer) Authorization(c *WebsocketClient, msg *WebSocketMessag
 
 		versionInfo := w.app.Version()
 
-		c.ToResponse(code.Success.WithData(map[string]string{
+		// Handshake merge (§2.3/§5.1): auth response is always JSON text (useProtobuf is only
+		// ever set by ClientInfo/pv2-early-upgrade, never before this point), so adding keys
+		// here is a plain JSON-object addition — old clients (no pv or pv<2) JSON.parse and
+		// ignore the unknown keys, producing byte-identical output to pre-3.6.0 since the base
+		// four keys never change. Only pv>=2 connections get the negotiation block.
+		// 握手合并（§2.3/§5.1）：auth 响应恒为 JSON 文本（useProtobuf 只会被 ClientInfo/pv2 提前升级设置，
+		// 在此之前绝不会被设置），因此这里加 key 只是普通的 JSON object 加字段——旧客户端（无 pv 或
+		// pv<2）JSON.parse 后忽略未知 key，因为基础四个 key 从不变化，输出与 3.6.0 前逐字节相同。
+		// 只有 pv>=2 的连接才会拿到协商块。
+		authData := map[string]interface{}{
 			"version":   versionInfo.Version,
 			"gitTag":    versionInfo.GitTag,
 			"buildTime": versionInfo.BuildTime,
 			"changelog": versionInfo.Changelog,
-		}), "Authorization")
+		}
+
+		protobufAck := c.Protocol == "protobuf" && c.PbEnabled
+
+		if c.ProtoVersion >= 2 {
+			syncUpChunkNum, syncDownChunkNum := w.app.SyncChunkNums()
+			pipelineWindowUp, pipelineWindowDown := w.app.PipelineWindows()
+			authData["syncUpChunkNum"] = syncUpChunkNum
+			authData["syncDownChunkNum"] = syncDownChunkNum
+			authData["pipelineWindowUp"] = pipelineWindowUp
+			authData["pipelineWindowDown"] = pipelineWindowDown
+			authData["protobufAck"] = protobufAck
+		}
+
+		c.ToResponse(code.Success.WithData(authData), "Authorization")
+
+		// pb 提前升级：必须在 auth 响应发出之后才切换，确保该响应本身仍以 JSON 文本帧发送
+		// (early pb upgrade must happen strictly after the auth response is sent, so that
+		// response itself is always transmitted as a JSON text frame).
+		if c.ProtoVersion >= 2 {
+			c.setUseProtobuf(protobufAck)
+		}
+
 		log(LogInfo, "WS User Enter", zap.String("uid", c.User.ID), zap.String("Nickname", c.User.Nickname), zap.Int("Count", len(c.UserClients)))
 		go c.PingLoop(w.config.PingInterval)
 	}
@@ -1080,10 +1281,7 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 		return
 	}
 
-	c.ClientName = info.Name
-	c.ClientType = info.Type
-	c.ClientVersion = info.Version
-	c.ClientPlatform = map[string]bool{
+	platform := map[string]bool{
 		"isDesktop": info.IsDesktop,
 		"isMobile":  info.IsMobile,
 		"isPhone":   info.IsPhone,
@@ -1092,12 +1290,15 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 		"isWin":     info.IsWin,
 		"isLinux":   info.IsLinux,
 	}
-	c.OfflineSyncStrategy = info.OfflineSyncStrategy
+	// Enable Protobuf if query param protocol=protobuf and ClientInfo protobuf=true
+	useProtobuf := c.Protocol == "protobuf" && info.Protobuf
+
+	// 原子更新全部连接元数据，避免并发读方看到只更新了一部分字段的中间状态
+	// Atomically update all connection metadata, avoiding concurrent readers observing a partially-updated state
+	c.setClientInfo(info.Name, info.Type, info.Version, platform, info.OfflineSyncStrategy, useProtobuf)
 	c.DiffMergePaths = make(map[string]DiffMergeEntry)
 
-	// Enable Protobuf if query param protocol=protobuf and ClientInfo protobuf=true
-	if c.Protocol == "protobuf" && info.Protobuf {
-		c.UseProtobuf = true
+	if useProtobuf {
 		log(LogInfo, "WS Client upgraded to Protobuf successfully", zap.String("uid", func() string {
 			if c.User != nil {
 				return c.User.ID
@@ -1105,7 +1306,6 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 			return "Guest"
 		}()))
 	} else {
-		c.UseProtobuf = false
 		log(LogInfo, "WS Client downgraded/disabled Protobuf successfully", zap.String("uid", func() string {
 			if c.User != nil {
 				return c.User.ID
@@ -1119,9 +1319,9 @@ func (w *WebsocketServer) ClientInfo(c *WebsocketClient, msg *WebSocketMessage) 
 			return c.User.ID
 		}
 		return "Guest"
-	}()), zap.String("name", c.ClientName), zap.String("version", c.ClientVersion), zap.String("offlineSyncStrategy", c.OfflineSyncStrategy))
+	}()), zap.String("name", c.ClientName()), zap.String("version", c.ClientVersion()), zap.String("offlineSyncStrategy", c.OfflineSyncStrategy()))
 
-	checkVersionInfo := w.app.CheckVersion(c.ClientVersion)
+	checkVersionInfo := w.app.CheckVersion(c.ClientVersion())
 
 	c.ToResponse(code.Success.WithData(checkVersionInfo), "ClientInfo")
 }
@@ -1140,7 +1340,7 @@ func (w *WebsocketServer) BroadcastClientInfo() {
 		if c.User == nil {
 			continue
 		}
-		checkVersionInfo := w.app.CheckVersion(c.ClientVersion)
+		checkVersionInfo := w.app.CheckVersion(c.ClientVersion())
 		// Only push if there's a new version (server or plugin)
 		// 只有当有新版本（服务端或插件）时才推送
 		if checkVersionInfo.VersionIsNew || checkVersionInfo.PluginVersionIsNew {
@@ -1211,15 +1411,16 @@ func (w *WebsocketServer) GetActiveTokenClients(uid int64) map[int64][]string {
 					activeClients[client.TokenID] = []string{}
 				}
 				names := activeClients[client.TokenID]
+				clientName := client.ClientName()
 				nameExists := false
 				for _, name := range names {
-					if name == client.ClientName {
+					if name == clientName {
 						nameExists = true
 						break
 					}
 				}
-				if !nameExists && client.ClientName != "" {
-					activeClients[client.TokenID] = append(names, client.ClientName)
+				if !nameExists && clientName != "" {
+					activeClients[client.TokenID] = append(names, clientName)
 				}
 			}
 		}
@@ -1539,7 +1740,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 				default:
 				}
 				// Verify binary message permission (currently only "00" for file chunk upload)
-				if !VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+				if !VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
 					log(LogWarn, "WS OnMessage Binary Permission Denied", zap.String("prefix", prefix), zap.String("uid", c.User.ID))
 					c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: binary " + prefix))
 					return nil
@@ -1558,7 +1759,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 				return
 			}
 		} else if prefix == "pb" {
-			if !c.UseProtobuf {
+			if !c.UseProtobuf() {
 				log(LogWarn, "WS OnMessage received Protobuf but UseProtobuf is false", zap.String("uid", c.User.ID))
 				return
 			}

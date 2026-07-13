@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"go.uber.org/zap"
 )
 
@@ -72,12 +73,12 @@ func (s *cloudflareService) Start(ctx context.Context, token string, logEnabled 
 	}
 
 	s.wg.Add(1)
-	go func() {
+	safego.Go(&s.logger, func() {
 		defer s.wg.Done()
 		if err := s.runTunnelProcess(s.ctx, binPath, token); err != nil {
 			s.logger.Error("Cloudflare Tunnel process failed", zap.Error(err))
 		}
-	}()
+	})
 
 	return nil
 }
@@ -244,10 +245,10 @@ func (s *cloudflareService) Stop(ctx context.Context) error {
 	}
 
 	done := make(chan struct{})
-	go func() {
+	safego.Go(&s.logger, func() {
 		s.wg.Wait()
 		close(done)
-	}()
+	})
 
 	select {
 	case <-done:

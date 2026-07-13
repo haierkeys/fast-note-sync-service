@@ -164,9 +164,12 @@ func NewDbCleanTask(appContainer *app.App) (Task, error) {
 		syncLogDuration = 30 * 24 * time.Hour // Fallback
 	}
 
-	// 获取历史记录保留版本数，默认 10
-	historyKeepVersions := appContainer.Config().App.HistoryKeepVersions
-	if historyKeepVersions <= 0 {
+	// 获取历史记录保留版本数，未配置时默认 10；显式配置 0 表示不做版本数下限保护
+	historyKeepVersions := 10
+	if hv := appContainer.Config().App.HistoryKeepVersions; hv != nil {
+		historyKeepVersions = *hv
+	}
+	if historyKeepVersions < 0 {
 		historyKeepVersions = 10
 	}
 

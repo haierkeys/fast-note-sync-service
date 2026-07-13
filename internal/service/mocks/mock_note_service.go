@@ -5,6 +5,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -37,8 +38,21 @@ func (m *MockNoteService) UpdateCheck(ctx context.Context, uid int64, params *dt
 	return args.String(0), nil, args.Error(2)
 }
 
-func (m *MockNoteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error) {
-	args := m.Called(ctx, uid, params, mtimeCheck)
+func (m *MockNoteService) UpdateCheckWithNote(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *domain.Note, *dto.NoteDTO, error) {
+	args := m.Called(ctx, uid, params)
+	var note *domain.Note
+	if v := args.Get(1); v != nil {
+		note = v.(*domain.Note)
+	}
+	var noteDTO *dto.NoteDTO
+	if v := args.Get(2); v != nil {
+		noteDTO = v.(*dto.NoteDTO)
+	}
+	return args.String(0), note, noteDTO, args.Error(3)
+}
+
+func (m *MockNoteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, existingNote ...*domain.Note) (bool, *dto.NoteDTO, error) {
+	args := m.Called(ctx, uid, params, mtimeCheck, existingNote)
 	if v := args.Get(1); v != nil {
 		return args.Bool(0), v.(*dto.NoteDTO), args.Error(2)
 	}
@@ -85,6 +99,22 @@ func (m *MockNoteService) ListByLastTime(ctx context.Context, uid int64, params 
 	args := m.Called(ctx, uid, params)
 	if v := args.Get(0); v != nil {
 		return v.([]*dto.NoteDTO), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *MockNoteService) GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error) {
+	args := m.Called(ctx, uid, id)
+	if v := args.Get(0); v != nil {
+		return v.(*dto.NoteDTO), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *MockNoteService) ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error) {
+	args := m.Called(ctx, uid, vault, pathHashes)
+	if v := args.Get(0); v != nil {
+		return v.(map[string]bool), args.Error(1)
 	}
 	return nil, args.Error(1)
 }

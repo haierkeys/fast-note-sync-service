@@ -122,6 +122,9 @@ type FileRepository interface {
 	// ListByFIDsCount 根据多个文件夹ID获取文件数量
 	ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error)
 
+	// CountByFIDs 按文件夹 ID 分组统计文件数量，一次查询取回所有传入 fid 的计数
+	CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error)
+
 	// ListByIDs 根据ID列表获取文件列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*File, error)
 

@@ -40,6 +40,8 @@ type CheckVersionInfo struct {
 	PluginVersionHistory             []HistoricalVersion `json:"pluginVersionHistory"`             // Plugin version history between current and latest // 插件在当前版本和最新版本之间的历史版本
 	SyncUpChunkNum                   int                 `json:"syncUpChunkNum"`
 	SyncDownChunkNum                 int                 `json:"syncDownChunkNum"`
+	PipelineWindowUp                 int                 `json:"pipelineWindowUp"`   // Negotiated upload pipeline window; 0 = stop-and-wait // 上行流水线窗口协商值；0 = stop-and-wait
+	PipelineWindowDown               int                 `json:"pipelineWindowDown"` // Negotiated download pipeline window; 0 = stop-and-wait // 下行流水线窗口协商值；0 = stop-and-wait
 }
 
 type SupportRecord struct {
@@ -77,14 +79,15 @@ type ListRes struct {
 // Res 是统一的响应结构：Code/Status/Msg/Data
 // 可选字段 Vault 与 Details 使用 omitempty（nil 则不会被序列化）
 type Res struct {
-	Code    int         `json:"code"`
-	Status  bool        `json:"status"`
-	Message interface{} `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Details interface{} `json:"details,omitempty"`
-	Vault   interface{} `json:"vault,omitempty"`
-	Context interface{} `json:"context,omitempty"`
-	Path    interface{} `json:"path,omitempty"`
+	Code      int         `json:"code"`
+	Status    bool        `json:"status"`
+	Message   interface{} `json:"message,omitempty"`
+	Data      interface{} `json:"data,omitempty"`
+	Details   interface{} `json:"details,omitempty"`
+	Vault     interface{} `json:"vault,omitempty"`
+	Context   interface{} `json:"context,omitempty"`
+	Path      interface{} `json:"path,omitempty"`
+	PageIndex interface{} `json:"pageIndex,omitempty"` // 1-BASED wire value: 0/absent = non-paginated message, n>0 = download page n-1 (internal 0-based). 1-based so page 0 stays distinguishable from non-paginated messages under proto3 zero-value elision; only set for paginated download messages on pv>=2 connections. Client-to-server PageAck.pageIndex stays 0-based. // 线上值为 1-BASED：0/缺省 = 非分页消息，n>0 = 下载页 n-1（内部 0-based）。采用 1-based 是为了让第 0 页在 proto3 零值不编码规则下仍可与非分页消息区分；仅 pv>=2 连接的分页下载消息会设置。客户端→服务端的 PageAck.pageIndex 保持 0-based
 }
 
 func NewResponse(ctx *gin.Context) *Response {

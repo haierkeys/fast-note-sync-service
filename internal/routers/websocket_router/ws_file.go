@@ -16,6 +16,7 @@ import (
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 
@@ -164,7 +165,7 @@ func (h *FileWSHandler) FileUploadCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
 	// 检查文件更新状态
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	updateMode, fileSvc, err := fileService.UploadCheck(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -223,7 +224,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 	// Verify permissions (file_w scope required for file chunk upload)
 	// 校验权限 (文件分块上传需要拥有 file_w 权限范围)
-	if !pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+	if !pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
 		h.logWarn(c, "FileUploadChunkBinary: permission denied for file_w")
 		c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: file_w"))
 		return
@@ -364,7 +365,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 
 		// Update or create file record (DAO layer will automatically move temp file from SavePath to f_{id} folder)
 		// 更新或创建 file 记录 (DAO 层会自动将 SavePath 里的临时文件移动到 f_{id} 文件夹)
-		fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+		fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 		_, fileSvc, err := fileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
@@ -441,7 +442,7 @@ func (h *FileWSHandler) FileDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	// Execute deletion logic
 	// 执行删除逻辑
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	fileSvc, err := fileService.Delete(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -480,7 +481,7 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	}
 
 	uid := c.User.UID
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	oldFile, newFile, err := fileService.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFileRenameFailed, err, "websocket_router.file.FileRename.Rename")
@@ -532,7 +533,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// Get file info
 	// 获取文件信息
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	fileSvc, err := fileService.Get(ctx, c.User.UID, params)
 
 	if err != nil {
@@ -585,7 +586,7 @@ func (h *FileWSHandler) FileChunkDownload(c *pkgapp.WebsocketClient, msg *pkgapp
 
 	// Start chunk sending, pass timeout and logger
 	// 启动分片发送,传入超时时间和 logger
-	go h.handleFileChunkDownloadSendChunks(c, session)
+	safego.Go(h.App.Logger(), func() { h.handleFileChunkDownloadSendChunks(c, session) })
 }
 
 // FileSync batch checks if user files need update.
@@ -604,31 +605,53 @@ func (h *FileWSHandler) FileSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebSocke
 	// 分批协议快速路径：totalBatches <= 1 时直接执行，无需缓存归集
 	// Fast path: totalBatches <= 1 means single batch, skip cache accumulation
 	if params.TotalBatches > 1 {
-		entry := syncBatchGetOrCreate(params.Context, "file", params.TotalBatches)
+		entry, created := syncBatchGetOrCreate(params.Context, "file", params.TotalBatches)
+		if created {
+			// 观测用：若此 context+type 早已集齐并被清理，这里会是迟到重传重建的孤儿 entry
+			// （见同步流水线设计 §3.3 第 2 点），5min TTL 会自动回收，不做额外防护
+			// Observability: if this context+type had already been collected and cleaned up,
+			// this is a late-retransmit rebuild of an orphan entry (design §3.3 point 2);
+			// the 5-minute TTL reclaims it automatically, no extra protection needed
+			h.App.Logger().Debug("websocket_router.file.FileSync: created new batch cache entry",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.String("context", params.Context),
+				zap.Int("batchIndex", params.BatchIndex),
+				zap.Int("totalBatches", params.TotalBatches))
+		}
 
 		entry.mu.Lock()
-		for _, f := range params.Files {
-			entry.Items = append(entry.Items, f)
+		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
+		// Duplicate BatchIndex (client retransmitted after missing the ack): skip append/count, just resend the ack
+		if !entry.markBatchReceived(params.BatchIndex) {
+			for _, f := range params.Files {
+				entry.Items = append(entry.Items, f)
+			}
+			entry.ReceivedCount++
+			for _, df := range params.DelFiles {
+				entry.DelItems = append(entry.DelItems, df)
+			}
+			for _, mf := range params.MissingFiles {
+				entry.MissingItems = append(entry.MissingItems, mf)
+			}
+			entry.UpdatedAt = time.Now()
 		}
-		entry.ReceivedCount++
-		for _, df := range params.DelFiles {
-			entry.DelItems = append(entry.DelItems, df)
-		}
-		for _, mf := range params.MissingFiles {
-			entry.MissingItems = append(entry.MissingItems, mf)
-		}
-		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
 		entry.mu.Unlock()
 
+		// 无条件先回 BatchAck（含集齐的最后一批）：旧客户端把多出的最后一批 ack 静默丢弃
+		// （无监听者的 emit，见设计 §2.1 事实4），新客户端窗口协议靠它滑动
+		// Unconditionally send BatchAck first (including the batch that completes collection):
+		// old clients silently drop the extra ack for the last batch (emit with no listener,
+		// design §2.1 fact 4); new clients rely on it to slide the window
+		c.ToResponse(code.Success.WithData(map[string]interface{}{
+			"context":    params.Context,
+			"batchIndex": params.BatchIndex,
+		}).WithVault(params.Vault).WithContext(params.Context), FileSyncBatchAck)
+
 		if received < total {
-			// 未集齐：回送 BatchAck，通知客户端可以发送下一批
-			// Not all batches received: send BatchAck to signal client to send next batch
-			c.ToResponse(code.Success.WithData(map[string]interface{}{
-				"context":    params.Context,
-				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault).WithContext(params.Context), FileSyncBatchAck)
+			// 未集齐：等待其余批次
+			// Not all batches received yet: wait for the rest
 			return
 		}
 
@@ -667,7 +690,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 	// Get list of changed files after last sync
 	// 获取最后一次同步后的变更文件列表
-	fileService := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion)
+	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Record sync start time before querying to avoid missing writes that occur during query processing.
 	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
@@ -707,7 +730,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 	// Handle files deleted by client
 	// 处理客户端删除的文件
 	if len(params.DelFiles) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w")
 
 		for _, delFile := range params.DelFiles {
 			// Check if file exists before deleting
@@ -750,16 +773,23 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 				// Broadcast deletion to other clients
 				// 将删除消息广播给其他客户端
-				c.BroadcastResponse(code.Success.WithData(
-					dto.FileSyncDeleteMessage{
-						Path:             fileSvc.Path,
-						PathHash:         fileSvc.PathHash,
-						Ctime:            fileSvc.Ctime,
-						Mtime:            fileSvc.Mtime,
-						Size:             fileSvc.Size,
-						UpdatedTimestamp: fileSvc.UpdatedTimestamp,
-					},
-				).WithVault(params.Vault), true, FileSyncDelete)
+				// 异步 fire-and-forget：DB 删除已在上面同步完成，广播只用于通知其他设备，
+				// 不应让循环等待最慢设备的 wg.Wait()，否则 N 条删除会叠加 N 次广播等待
+				// Async fire-and-forget: the DB delete above already completed synchronously;
+				// broadcasting only notifies other devices and must not make the loop wait on
+				// the slowest device's wg.Wait(), or N deletes would stack N broadcast waits
+				safego.Go(h.App.Logger(), func() {
+					c.BroadcastResponse(code.Success.WithData(
+						dto.FileSyncDeleteMessage{
+							Path:             fileSvc.Path,
+							PathHash:         fileSvc.PathHash,
+							Ctime:            fileSvc.Ctime,
+							Mtime:            fileSvc.Mtime,
+							Size:             fileSvc.Size,
+							UpdatedTimestamp: fileSvc.UpdatedTimestamp,
+						},
+					).WithVault(params.Vault), true, FileSyncDelete)
+				})
 
 			} else {
 				// File does not exist, but we still need to record exclusion and broadcast delete message to ensure data consistency
@@ -775,16 +805,20 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 
 				// Broadcast deletion with available info (Path/PathHash)
 				// 使用现有信息(Path/PathHash)广播删除
-				c.BroadcastResponse(code.Success.WithData(
-					dto.FileSyncDeleteMessage{
-						Path:             delFile.Path,
-						PathHash:         delFile.PathHash,
-						Ctime:            0,
-						Mtime:            0,
-						Size:             0,
-						UpdatedTimestamp: 0,
-					},
-				).WithVault(params.Vault), true, FileSyncDelete)
+				// 同上，异步 fire-and-forget，避免逐条等待广播
+				// Same as above, async fire-and-forget, avoids waiting on the broadcast per item
+				safego.Go(h.App.Logger(), func() {
+					c.BroadcastResponse(code.Success.WithData(
+						dto.FileSyncDeleteMessage{
+							Path:             delFile.Path,
+							PathHash:         delFile.PathHash,
+							Ctime:            0,
+							Mtime:            0,
+							Size:             0,
+							UpdatedTimestamp: 0,
+						},
+					).WithVault(params.Vault), true, FileSyncDelete)
+				})
 			}
 		}
 	}
@@ -900,7 +934,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 						needModifyCount++
 					} else {
 						// 服务端修改时间比客户端旧, 通知客户端上传文件
-						if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w") {
+						if pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
 							session, ferr := h.handleFileUploadSessionCreate(c, params.Vault, cFile.Path, cFile.PathHash, cFile.ContentHash, cFile.Size, file.Ctime, cFile.Mtime, params.Context)
 							if ferr != nil {
 								h.logError(c, "websocket_router.file.FileSync handleFileUploadSession err", ferr)
@@ -971,7 +1005,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 	// Handle files that exist on client but not synced on server (request client upload)
 	// 处理客户端存在但服务端未同步的文件（请求客户端上传）
 	if len(cFilesKeys) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "file_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w")
 		for pathHash := range cFilesKeys {
 			file := cFiles[pathHash]
 			// Create upload session and return FileUpload message
@@ -1021,13 +1055,20 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
+		// 窗口协商：仅 pv>=2 连接启用下行窗口，旧连接固定 0（stop-and-wait，见设计 §4.2/§4.4）
+		// Window negotiation: only pv>=2 connections get the download window enabled, old
+		// connections stay at 0 (stop-and-wait, see design §4.2/§4.4)
+		window := 0
+		if c.ProtoVersion >= 2 {
+			window = h.App.Config().App.PipelineWindowDownClamped()
+		}
 		entry := &syncDownloadEntry{
 			Context:      params.Context,
 			TypeName:     "file",
 			Vault:        params.Vault,
 			MessageQueue: messageQueue,
 			PageSize:     pageSize,
-			CurrentPage:  0,
+			Window:       window,
 		}
 		syncDownloadStore(params.Context, "file", entry)
 		// 默认不自动发送，等待客户端拉取
@@ -1052,35 +1093,7 @@ func (h *FileWSHandler) FileSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		return
 	}
 
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-
-	if params.PageIndex == -1 {
-		sendSyncPage(c, entry)
-		return
-	}
-
-	if params.PageIndex != entry.CurrentPage {
-		h.App.Logger().Warn("FileSyncPageAck: page index mismatch",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.Int("expected", entry.CurrentPage),
-			zap.Int("got", params.PageIndex))
-		return
-	}
-
-	start := entry.CurrentPage * entry.PageSize
-	end := start + entry.PageSize
-	if end >= len(entry.MessageQueue) {
-		syncDownloadDelete(params.Context, "file")
-		h.App.Logger().Info("FileSyncPageAck: sync finished, cache cleared",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.String("context", params.Context))
-		return
-	}
-
-	entry.CurrentPage++
-	entry.UpdatedAt = time.Now()
-	sendSyncPage(c, entry)
+	handlePageAck(c, entry, params.PageIndex, "file", h.App.Logger(), c.TraceID)
 }
 
 
@@ -1373,7 +1386,7 @@ func (h *FileWSHandler) FileRePush(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// 获取或创建仓库
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	fileSvc, err := h.App.GetFileService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	fileSvc, err := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion()).Get(ctx, c.User.UID, params)
 	if err != nil {
 		h.App.Logger().Debug("websocket_router.file.FileRePush.Get: record not found or error, proceeding to send delete",
 			zap.String(logger.FieldTraceID, c.TraceID),

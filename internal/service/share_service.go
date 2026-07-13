@@ -73,7 +73,7 @@ var htmlMediaRegexes = []*regexp.Regexp{
 type ShareService interface {
 	// ShareGenerate generates and stores share token
 	// ShareGenerate 生成并存储分享 Token
-	ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) (*dto.ShareCreateResponse, error)
+	ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) (*dto.ShareCreateResponse, error)
 
 	// VerifyShare verifies share token and its status
 	// VerifyShare 验证分享 Token 及其状态
@@ -101,7 +101,7 @@ type ShareService interface {
 
 	// UpdateSharePassword updates password for a share based on resource info
 	// UpdateSharePassword 根据资源信息更新分享密码
-	UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) error
+	UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) error
 
 	// CreateShortLink generates a short link for a share
 	// CreateShortLink 为分享生成短链
@@ -180,7 +180,7 @@ func NewShareService(repo domain.UserShareRepository, tokenManager pkgapp.TokenM
 
 // ShareGenerate generates and stores share token
 // ShareGenerate 生成并存储分享 Token
-func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) (*dto.ShareCreateResponse, error) {
+func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) (*dto.ShareCreateResponse, error) {
 	// 1. Get VaultID
 	// 1. 获取 VaultID
 	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
@@ -236,17 +236,14 @@ func (s *shareService) ShareGenerate(ctx context.Context, uid int64, vaultName s
 		}
 	}
 
-	// 3. Determine expiration time
-	// 3. 确定过期时间
-	expiry := 30 * 24 * time.Hour // Default 30 days // 默认 30 天
-	if s.config != nil && s.config.App.ShareTokenExpiry != "" {
-		if d, err := util.ParseDuration(s.config.App.ShareTokenExpiry); err == nil {
-			expiry = d
-		}
+	// 3. Determine expiration time from client-supplied expireAt
+	// 3. 根据客户端传入的 expireAt 确定过期时间
+	// expiresAt zero value means the share never expires (expireAt <= 0)
+	// expiresAt 零值表示分享永久有效（expireAt <= 0）
+	var expiresAt time.Time
+	if expireAt > 0 {
+		expiresAt = time.Unix(expireAt, 0)
 	}
-	// expiresAt expiration time
-	// expiresAt 过期时间
-	expiresAt := time.Now().Add(expiry)
 
 	// pwdHash password bcrypt hash
 	// pwdHash 密码 bcrypt 哈希值
@@ -315,6 +312,12 @@ func (s *shareService) VerifyShare(ctx context.Context, token string, rid string
 
 	if share.Status != 1 {
 		return nil, domain.ErrShareCancelled
+	}
+
+	// Zero ExpiresAt means the share never expires; otherwise reject once past the deadline
+	// ExpiresAt 为零值表示分享永久有效；否则超过截止时间即拒绝访问
+	if !share.ExpiresAt.IsZero() && time.Now().After(share.ExpiresAt) {
+		return nil, domain.ErrShareExpired
 	}
 
 	// 添加限速延迟防止暴力枚举攻击
@@ -438,9 +441,9 @@ func (s *shareService) StopShare(ctx context.Context, uid int64, id int64) error
 	return s.repo.UpdateStatus(ctx, uid, id, domain.UserShareStatusRevoked)
 }
 
-// UpdateSharePassword updates password for a share
-// UpdateSharePassword 更新分享密码
-func (s *shareService) UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) error {
+// UpdateSharePassword updates password and expiration time for a share
+// UpdateSharePassword 更新分享的密码与过期时间
+func (s *shareService) UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) error {
 	// 1. Get VaultID
 	vault, err := s.vaultRepo.GetByName(ctx, vaultName, uid)
 	if err != nil {
@@ -467,7 +470,17 @@ func (s *shareService) UpdateSharePassword(ctx context.Context, uid int64, vault
 		}
 		pwdHash = string(hash)
 	}
-	return s.repo.UpdatePassword(ctx, uid, share.ID, pwdHash)
+	if err := s.repo.UpdatePassword(ctx, uid, share.ID, pwdHash); err != nil {
+		return err
+	}
+
+	// expiresAt zero value means the share never expires (expireAt <= 0)
+	// expiresAt 零值表示分享永久有效（expireAt <= 0）
+	var expiresAt time.Time
+	if expireAt > 0 {
+		expiresAt = time.Unix(expireAt, 0)
+	}
+	return s.repo.UpdateExpiresAt(ctx, uid, share.ID, expiresAt)
 }
 
 // ListShares lists all shares of a user with sorting, pagination and fills in resource titles

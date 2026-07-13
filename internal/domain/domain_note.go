@@ -78,6 +78,10 @@ type NoteRepository interface {
 	// ListByPathHash 根据路径哈希获取笔记列表（处理重复记录）
 	ListByPathHash(ctx context.Context, pathHash string, vaultID, uid int64) ([]*Note, error)
 
+	// ListByPathHashesMeta 单次查询批量获取一组路径哈希对应的笔记元数据（不读正文，含所有状态）
+	// 用于批量存在性预检查，避免逐条查询的 N+1
+	ListByPathHashesMeta(ctx context.Context, pathHashes []string, vaultID, uid int64) (map[string]*Note, error)
+
 	// GetByPath 根据路径获取笔记
 	GetByPath(ctx context.Context, path string, vaultID, uid int64) (*Note, error)
 
@@ -106,7 +110,7 @@ type NoteRepository interface {
 	UpdateSnapshot(ctx context.Context, snapshot, snapshotHash string, version, id, uid int64) error
 
 	// Delete 物理删除笔记
-	Delete(ctx context.Context, id, uid int64) error
+	Delete(ctx context.Context, id, vaultID, uid int64) error
 
 	// DeletePhysicalByTime 根据时间物理删除已标记删除的笔记
 	DeletePhysicalByTime(ctx context.Context, timestamp, uid int64) error
@@ -131,6 +135,13 @@ type NoteRepository interface {
 	// ListByUpdatedTimestampPage 根据更新时间戳分页获取笔记列表
 	ListByUpdatedTimestampPage(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*Note, error)
 
+	// ListByUpdatedTimestampMeta 根据更新时间戳获取笔记元数据列表（不读取正文/快照文件）
+	// 用于同步下发的差量比对路径，避免对未变更笔记做无谓的磁盘 IO
+	ListByUpdatedTimestampMeta(ctx context.Context, timestamp, vaultID, uid int64) ([]*Note, error)
+
+	// ListByUpdatedTimestampPageMeta 是 ListByUpdatedTimestampMeta 的分页变体
+	ListByUpdatedTimestampPageMeta(ctx context.Context, timestamp, vaultID, uid int64, offset, limit int) ([]*Note, error)
+
 	// ListContentUnchanged 获取内容未变更的笔记列表
 	ListContentUnchanged(ctx context.Context, uid int64) ([]*Note, error)
 
@@ -148,6 +159,9 @@ type NoteRepository interface {
 
 	// ListByFIDsCount 根据多个文件夹ID获取笔记数量
 	ListByFIDsCount(ctx context.Context, fids []int64, vaultID, uid int64) (int64, error)
+
+	// CountByFIDs 按文件夹 ID 分组统计笔记数量，一次查询取回所有传入 fid 的计数
+	CountByFIDs(ctx context.Context, fids []int64, vaultID, uid int64) (map[int64]int64, error)
 
 	// ListByIDs 根据ID列表获取笔记列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)

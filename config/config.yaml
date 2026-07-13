@@ -72,7 +72,7 @@ app:
   is-return-sussess: false
   # 软删除笔记保留时长。例如: 7d, 24h。0 表示永久保留。
   # Retention duration for soft deleted notes. e.g., 7d, 24h. 0 means keep forever.
-  soft-delete-retention-time: "7d"
+  soft-delete-retention-time: "90d"
   # 同步日志保留时长。例如: 30d, 7d。
   # Retention duration for sync logs. e.g., 30d, 7d.
   sync-log-retention-time: "30d"
@@ -93,10 +93,16 @@ app:
   download-session-timeout: "1h"
   # 串行下载同步的分块数量
   # Serial download sync page chunk size
-  sync-down-chunk-num: 50
+  sync-down-chunk-num: 200
   # 串行上传同步的分包大小
   # Serial upload sync batch size
   sync-up-chunk-num: 100
+  # 上行同步流水线窗口大小（0 = 禁用窗口，退回逐批 stop-and-wait，作为运行时回滚开关）
+  # Upload sync pipeline window size (0 = disable window, fall back to per-batch stop-and-wait; runtime rollback switch)
+  pipeline-window-up: 8
+  # 下行同步流水线窗口大小（0 = 禁用窗口，退回逐页 stop-and-wait，作为运行时回滚开关）
+  # Download sync pipeline window size (0 = disable window, fall back to per-page stop-and-wait; runtime rollback switch)
+  pipeline-window-down: 4
   # Worker Pool 最大工作协程数
   # Worker Pool maximum number of worker goroutines
   worker-pool-max-workers: 100
@@ -136,6 +142,9 @@ app:
   # 触发 WebSocket 压缩的最小载荷大小(字节)
   # Minimum payload size (bytes) to trigger WebSocket compression
   ws-compression-threshold: 512
+  # WebSocket 应用层写超时(秒)，防止僵尸连接阻塞写入；显式设为 0 表示不设超时
+  # WebSocket application-layer write timeout (seconds); guards against zombie connections blocking writes. Explicit 0 disables the deadline
+  ws-write-timeout: 10
 
   # 数据拉取源设置: auto(自动检测) | github | cnb
   # Data pull source setting: auto(detect) | github | cnb

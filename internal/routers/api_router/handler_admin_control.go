@@ -133,7 +133,7 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		FileChunkSize:           &cfg.App.FileChunkSize,
 		SoftDeleteRetentionTime: &cfg.App.SoftDeleteRetentionTime,
 		UploadSessionTimeout:    &cfg.App.UploadSessionTimeout,
-		HistoryKeepVersions:     &cfg.App.HistoryKeepVersions,
+		HistoryKeepVersions:     cfg.App.HistoryKeepVersions,
 		HistorySaveDelay:        &cfg.App.HistorySaveDelay,
 		// DefaultAPIFolder:        &cfg.App.DefaultAPIFolder,
 		AdminUID:                      &cfg.User.AdminUID,
@@ -170,6 +170,8 @@ func (h *AdminControlHandler) GetConfig(c *gin.Context) {
 		FtsBleveStoreRaw:              cfg.App.FtsBleveStoreRaw,
 		GitName:                       &cfg.Git.Name,
 		GitEmail:                      &cfg.Git.Email,
+		PipelineWindowUp:              cfg.App.PipelineWindowUp,
+		PipelineWindowDown:            cfg.App.PipelineWindowDown,
 	}
 
 	response.ToResponse(code.Success.WithData(data))
@@ -310,7 +312,7 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 		cfg.App.UploadSessionTimeout = *params.UploadSessionTimeout
 	}
 	if params.HistoryKeepVersions != nil {
-		cfg.App.HistoryKeepVersions = *params.HistoryKeepVersions
+		cfg.App.HistoryKeepVersions = params.HistoryKeepVersions
 	}
 	if params.HistorySaveDelay != nil {
 		cfg.App.HistorySaveDelay = *params.HistorySaveDelay
@@ -421,6 +423,16 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 	if params.GitEmail != nil {
 		cfg.Git.Email = *params.GitEmail
 	}
+	if params.PipelineWindowUp != nil {
+		// Stored as-is (may exceed the read-time clamp); PipelineWindowUpClamped()
+		// clamps to [0,32] wherever it's consumed (auth response / ClientInfo).
+		// 原样存储（可能超出读取时的钳制范围）；PipelineWindowUpClamped() 在消费处
+		// （auth 响应 / ClientInfo）统一钳制到 [0,32]。
+		cfg.App.PipelineWindowUp = params.PipelineWindowUp
+	}
+	if params.PipelineWindowDown != nil {
+		cfg.App.PipelineWindowDown = params.PipelineWindowDown
+	}
 
 	// Save configuration to file
 	// 保存配置到文件
@@ -462,6 +474,14 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 	}
 
 	dbCfg := cfg.UserDatabase
+	maxIdleConns := 0
+	if dbCfg.MaxIdleConns != nil {
+		maxIdleConns = *dbCfg.MaxIdleConns
+	}
+	maxOpenConns := 0
+	if dbCfg.MaxOpenConns != nil {
+		maxOpenConns = *dbCfg.MaxOpenConns
+	}
 	data := &dto.AdminUserDatabaseConfig{
 		Type:                dbCfg.Type,
 		Path:                dbCfg.Path,
@@ -472,8 +492,8 @@ func (h *AdminControlHandler) GetUserDatabaseConfig(c *gin.Context) {
 		Name:                dbCfg.Name,
 		SSLMode:             dbCfg.SSLMode,
 		Schema:              dbCfg.Schema,
-		MaxIdleConns:        dbCfg.MaxIdleConns,
-		MaxOpenConns:        dbCfg.MaxOpenConns,
+		MaxIdleConns:        maxIdleConns,
+		MaxOpenConns:        maxOpenConns,
 		ConnMaxLifetime:     dbCfg.ConnMaxLifetime,
 		ConnMaxIdleTime:     dbCfg.ConnMaxIdleTime,
 		MaxWriteConcurrency: dbCfg.MaxWriteConcurrency,
@@ -532,8 +552,8 @@ func (h *AdminControlHandler) UpdateUserDatabaseConfig(c *gin.Context) {
 	cfg.UserDatabase.Name = params.Name
 	cfg.UserDatabase.SSLMode = params.SSLMode
 	cfg.UserDatabase.Schema = params.Schema
-	cfg.UserDatabase.MaxIdleConns = params.MaxIdleConns
-	cfg.UserDatabase.MaxOpenConns = params.MaxOpenConns
+	cfg.UserDatabase.MaxIdleConns = &params.MaxIdleConns
+	cfg.UserDatabase.MaxOpenConns = &params.MaxOpenConns
 	cfg.UserDatabase.ConnMaxLifetime = params.ConnMaxLifetime
 	cfg.UserDatabase.ConnMaxIdleTime = params.ConnMaxIdleTime
 	cfg.UserDatabase.MaxWriteConcurrency = params.MaxWriteConcurrency
@@ -623,8 +643,8 @@ func (h *AdminControlHandler) ValidateUserDatabaseConfig(c *gin.Context) {
 		SSLMode:             params.SSLMode,
 		Schema:              params.Schema,
 		AutoMigrate:         &autoMigrate,
-		MaxIdleConns:        params.MaxIdleConns,
-		MaxOpenConns:        params.MaxOpenConns,
+		MaxIdleConns:        &params.MaxIdleConns,
+		MaxOpenConns:        &params.MaxOpenConns,
 		ConnMaxLifetime:     params.ConnMaxLifetime,
 		ConnMaxIdleTime:     params.ConnMaxIdleTime,
 		EnableWriteQueue:    &enableQueue,

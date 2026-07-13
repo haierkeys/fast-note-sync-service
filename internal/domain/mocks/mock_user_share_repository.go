@@ -70,6 +70,11 @@ func (m *MockUserShareRepository) UpdatePassword(ctx context.Context, uid int64,
 	return args.Error(0)
 }
 
+func (m *MockUserShareRepository) UpdateExpiresAt(ctx context.Context, uid int64, id int64, expiresAt time.Time) error {
+	args := m.Called(ctx, uid, id, expiresAt)
+	return args.Error(0)
+}
+
 func (m *MockUserShareRepository) UpdateShortLink(ctx context.Context, uid int64, id int64, shortLink string) error {
 	args := m.Called(ctx, uid, id, shortLink)
 	return args.Error(0)

@@ -865,19 +865,28 @@ func (s *folderService) GetTree(ctx context.Context, uid int64, params *dto.Fold
 		info.ids = append(info.ids, f.ID)
 	}
 
-	// Count notes and files per folder (sum across all duplicate IDs)
+	// Count notes and files per folder (sum across all duplicate IDs).
+	// 一次性按 fid 分组聚合查询取回全部计数，而非每个文件夹 ID 单独查询两次（N+1）。
+	allFIDs := make([]int64, 0, len(infoByPath))
+	for _, info := range infoByPath {
+		allFIDs = append(allFIDs, info.ids...)
+	}
+
+	noteCountByFID, err := s.noteRepo.CountByFIDs(ctx, allFIDs, vaultID, uid)
+	if err != nil {
+		noteCountByFID = map[int64]int64{}
+	}
+	fileCountByFID, err := s.fileRepo.CountByFIDs(ctx, allFIDs, vaultID, uid)
+	if err != nil {
+		fileCountByFID = map[int64]int64{}
+	}
+
 	noteCountByPath := make(map[string]int)
 	fileCountByPath := make(map[string]int)
 	for path, info := range infoByPath {
 		for _, id := range info.ids {
-			nc, err := s.noteRepo.ListByFIDCount(ctx, id, vaultID, uid)
-			if err == nil {
-				noteCountByPath[path] += int(nc)
-			}
-			fc, err := s.fileRepo.ListByFIDCount(ctx, id, vaultID, uid)
-			if err == nil {
-				fileCountByPath[path] += int(fc)
-			}
+			noteCountByPath[path] += int(noteCountByFID[id])
+			fileCountByPath[path] += int(fileCountByFID[id])
 		}
 	}
 

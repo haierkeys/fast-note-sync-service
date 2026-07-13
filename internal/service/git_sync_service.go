@@ -26,6 +26,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -52,6 +53,27 @@ type GitSyncService interface {
 	Shutdown(ctx context.Context) error
 }
 
+// gitSyncEnabledCacheTTL is the max time a "no enabled git sync config for this vault" cache
+// entry is trusted before being re-verified against the DB, as a safety net alongside
+// explicit invalidation on config write (UpdateConfig/DeleteConfig).
+// gitSyncEnabledCacheTTL 是"该 vault 当前没有启用的 git 同步配置"缓存条目在被重新校验前的
+// 最长信任时间，作为配置写入（UpdateConfig/DeleteConfig）时显式失效之外的兜底保险。
+const gitSyncEnabledCacheTTL = 60 * time.Second
+
+// gitSyncEnabledCacheKey identifies a (uid, vaultID) pair for the enabled-config cache.
+// gitSyncEnabledCacheKey 标识 enabled-config 缓存中的 (uid, vaultID) 组合。
+type gitSyncEnabledCacheKey struct {
+	uid     int64
+	vaultID int64
+}
+
+// gitSyncEnabledCacheEntry caches whether a vault currently has any enabled git sync config.
+// gitSyncEnabledCacheEntry 缓存某个 vault 当前是否存在启用中的 git 同步配置。
+type gitSyncEnabledCacheEntry struct {
+	enabled  bool
+	cachedAt time.Time
+}
+
 type gitSyncService struct {
 	repo        domain.GitSyncRepository
 	noteRepo    domain.NoteRepository
@@ -67,8 +89,14 @@ type gitSyncService struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	wg          sync.WaitGroup
-	gcTimer     *time.Timer // Timer for delayed GC // 延迟 GC 定时器
-	gcMu        sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
+	// enabledCache caches, per (uid, vaultID), whether NotifyUpdated found any enabled git
+	// sync config on its last DB lookup, so writes to vaults without git sync configured
+	// (the common case) skip the ListByVaultID query entirely.
+	// enabledCache 按 (uid, vaultID) 缓存 NotifyUpdated 上次查库时是否找到启用的 git 同步配置，
+	// 使未配置 git 同步的 vault（常见情况）的写入完全跳过 ListByVaultID 查询。
+	enabledCache sync.Map    // gitSyncEnabledCacheKey -> *gitSyncEnabledCacheEntry
+	gcTimer      *time.Timer // Timer for delayed GC // 延迟 GC 定时器
+	gcMu         sync.Mutex  // Mutex for gcTimer // 保护 gcTimer 的互斥锁
 }
 
 // NewGitSyncService creates a GitSyncService instance
@@ -174,6 +202,8 @@ func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dt
 		}
 	}
 
+	oldVaultID := conf.VaultID
+
 	if params.Vault != "" {
 		v, err := s.vaultRepo.GetByName(ctx, params.Vault, uid)
 		if err != nil {
@@ -203,6 +233,11 @@ func (s *gitSyncService) UpdateConfig(ctx context.Context, uid int64, params *dt
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
+	// 使 NotifyUpdated 的 enabled-config 缓存失效，让下一次调用立即感知最新的启用状态
+	// Invalidate NotifyUpdated's enabled-config cache so the next call sees the latest enabled state immediately
+	s.invalidateEnabledCache(uid, oldVaultID)
+	s.invalidateEnabledCache(uid, saved.VaultID)
+
 	return s.domainToDTO(saved), nil
 }
 
@@ -220,6 +255,10 @@ func (s *gitSyncService) DeleteConfig(ctx context.Context, uid int64, id int64) 
 	if err != nil {
 		return code.ErrorDBQuery.WithDetails(err.Error())
 	}
+
+	// 使 NotifyUpdated 的 enabled-config 缓存失效，让下一次调用立即感知配置已被删除
+	// Invalidate NotifyUpdated's enabled-config cache so the next call immediately sees the config is gone
+	s.invalidateEnabledCache(uid, conf.VaultID)
 
 	// Clean workspace as well? User request said "Cleanup API". Delete config doesn't necessarily mean delete workspace.
 	// But usually it's better to cleanup. However, I'll follow the plan and keep them separate as per the "Cleanup API" request.
@@ -400,7 +439,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 
 	s.wg.Add(1)
 	// Run in background
-	go func() {
+	safego.Go(s.logger, func() {
 		defer func() {
 			s.mu.Lock()
 			// Ensure only the current cancel function is cleaned up
@@ -417,7 +456,7 @@ func (s *gitSyncService) ExecuteSync(ctx context.Context, uid int64, id int64) e
 		// Use the newly created task context
 		// 使用新创建的任务 context
 		s.syncTask(taskCtx, conf)
-	}()
+	})
 
 	return nil
 }
@@ -1082,6 +1121,16 @@ func (s *gitSyncService) copyFileIfDifferent(src, dst string) (bool, error) {
 func (s *gitSyncService) NotifyUpdated(uid int64, vaultID int64) {
 	s.logger.Debug("NotifyUpdated called", zap.Int64("uid", uid), zap.Int64("vaultID", vaultID))
 
+	cacheKey := gitSyncEnabledCacheKey{uid: uid, vaultID: vaultID}
+	if v, ok := s.enabledCache.Load(cacheKey); ok {
+		entry := v.(*gitSyncEnabledCacheEntry)
+		if !entry.enabled && time.Since(entry.cachedAt) < gitSyncEnabledCacheTTL {
+			// 缓存命中：该 vault 近期没有启用的 git 同步配置，跳过查库
+			// Cache hit: this vault had no enabled git sync config recently, skip the DB query
+			return
+		}
+	}
+
 	configs, err := s.repo.ListByVaultID(context.Background(), vaultID, uid)
 	if err != nil {
 		s.logger.Error("NotifyUpdated: failed to list configs by vaultID", zap.Int64("uid", uid), zap.Int64("vaultID", vaultID), zap.Error(err))
@@ -1090,11 +1139,13 @@ func (s *gitSyncService) NotifyUpdated(uid int64, vaultID int64) {
 
 	s.logger.Debug("NotifyUpdated: found configs", zap.Int64("uid", uid), zap.Int64("vaultID", vaultID), zap.Int("count", len(configs)))
 
+	anyEnabled := false
 	for _, conf := range configs {
 		if !conf.IsEnabled || conf.Delay <= 0 {
 			s.logger.Debug("NotifyUpdated: skipping config", zap.Int64("configId", conf.ID), zap.Bool("isEnabled", conf.IsEnabled), zap.Int64("delay", conf.Delay))
 			continue
 		}
+		anyEnabled = true
 
 		s.mu.Lock()
 		if timer, ok := s.timers[conf.ID]; ok {
@@ -1115,4 +1166,17 @@ func (s *gitSyncService) NotifyUpdated(uid int64, vaultID int64) {
 		})
 		s.mu.Unlock()
 	}
+
+	s.enabledCache.Store(cacheKey, &gitSyncEnabledCacheEntry{enabled: anyEnabled, cachedAt: time.Now()})
+}
+
+// invalidateEnabledCache drops the cached enabled-config state for (uid, vaultID), forcing
+// the next NotifyUpdated call to re-query the DB instead of trusting a stale cached value.
+// invalidateEnabledCache 清除 (uid, vaultID) 缓存的 enabled-config 状态，
+// 使下一次 NotifyUpdated 调用重新查库，而不是信任过期的缓存值。
+func (s *gitSyncService) invalidateEnabledCache(uid, vaultID int64) {
+	if vaultID <= 0 {
+		return
+	}
+	s.enabledCache.Delete(gitSyncEnabledCacheKey{uid: uid, vaultID: vaultID})
 }

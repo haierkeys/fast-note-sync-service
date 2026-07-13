@@ -35,9 +35,11 @@
     "fontSet": "local",
     "registerIsEnable": true,
     "fileChunkSize": "512KB",
-    "softDeleteRetentionTime": "7d",
+    "softDeleteRetentionTime": "90d",
     "uploadSessionTimeout": "1d",
-    "adminUid": 0
+    "adminUid": 0,
+    "pipelineWindowUp": 8,
+    "pipelineWindowDown": 4
   }
 }
 ```
@@ -63,6 +65,8 @@
 | `softDeleteRetentionTime` | `string`  | `"30d"`   | 软删除笔记保留时长 |
 | `uploadSessionTimeout`    | `string`  | `"24h"`   | 上传会话过期时间   |
 | `adminUid`                | `integer` | `1`       | 管理员 UID         |
+| `pipelineWindowUp`        | `integer` | `8`       | 上行同步流水线窗口大小（在途批次数） |
+| `pipelineWindowDown`      | `integer` | `4`       | 下行同步流水线窗口大小（在途页数）   |
 
 ---
 
@@ -73,9 +77,11 @@
 | `fontSet`                 | `string`  | `"local"` | **字体设置**：<br>• 留空：不设置特定字体。<br>• `local`：使用系统本地字体。<br>• 字体链接：从网络加载特定字体。                                       |
 | `registerIsEnable`        | `boolean` | `true`    | **注册开关**：控制是否允许新用户注册。若关闭，注册 API 将返回错误。                                                                                |
 | `fileChunkSize`           | `string`  | `"512KB"` | **分块大小**：文件上传和下载时的分块大小。支持单位：`B`, `KB`, `MB`, `GB`（如 `1MB`, `1024`）。`0` 表示默认 512KB。                                   |
-| `softDeleteRetentionTime` | `string`  | `"7d"`    | **软删除保留时长**：笔记删除后进入回收站的保留时间（如 `30d`, `12h`）。超过此时间将被物理删除。建议设置足够长以确保离线设备同步。`0` 表示不自动清理。 |
+| `softDeleteRetentionTime` | `string`  | `"90d"`   | **软删除保留时长**：笔记删除后进入回收站的保留时间（如 `30d`, `12h`）。超过此时间将被物理删除。建议设置足够长以确保离线设备同步。`0` 表示不自动清理。 |
 | `uploadSessionTimeout`    | `string`  | `"1d"`    | **上传会话超时**：文件分块上传会话的有效期（如 `5m`, `1d`）。`0` 表示永不超时。                                                                     |
 | `adminUid`                | `integer` | `0`       | **管理员 UID**：指定特定的用户 UID 作为管理员。`0` 表示不启用特定的管理员权限校验逻辑（建议在初始化后设置为实际的管理员 UID）。                     |
+| `pipelineWindowUp`        | `integer` | `8`       | **上行同步流水线窗口大小**（3.6.0+）：pv≥2 连接上行分批同步允许同时在途未确认的批次数，读取处钳制到 `[0,32]`。`0` 表示禁用窗口、退回逐批 stop-and-wait（**运行时回滚开关**：出问题时改为 `0` 即可立即生效，无需重启或降级版本）。字段类型为可空整型，仅当请求体显式携带该字段时才会更新，可正确区分"未传"与"显式传 `0`"。 |
+| `pipelineWindowDown`      | `integer` | `4`       | **下行同步流水线窗口大小**（3.6.0+）：pv≥2 连接下行分页同步允许服务端同时预推的在途页数，读取处钳制到 `[0,16]`。`0` 表示禁用窗口、退回逐页 stop-and-wait，同为运行时回滚开关；字段语义与 `pipelineWindowUp` 一致。 |
 
 ---
 

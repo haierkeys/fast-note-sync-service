@@ -45,6 +45,28 @@ WebSocket 文本帧统一使用 `Action|JSON` 字符串格式。
   - `gitTag`: string (Git Tag 信息)
   - `buildTime`: string (编译时间)
 
+#### Token 权限范围 (Scope) 要求
+
+服务端 Token 采用 `p:<protocol> c:<clientType> f:<function>` 的三维权限格式（`p:` 维度即协议，取值如 `rest`、`ws`、`mcp`）。WS 握手鉴权会校验协议维度是否包含 `ws`——`/api/user/register`、`/api/user/login` 走 REST 登录流程签发的 Token **默认仅带 `p:rest` scope**，直接拿去做 WS 握手会被拒绝。
+
+若需要脱离 WebGUI 自行签发一个可用于 WS 连接的 Token（例如自研客户端联调、脚本化测试），可用手头已有的 Token 调用管理员令牌接口铸造一个新 Token：
+
+```
+POST /api/token
+Authorization: {现有 Token}
+Content-Type: application/json
+
+{
+  "clientType": "MyClient",
+  "protocol": "ws",
+  "expiredDays": 30
+}
+```
+
+响应 `data.tokenString` 即为带 `p:ws c:MyClient f:*` scope、可直接用于 `Authorization` 动作握手的新 Token（`protocol` 字段亦可传 `"rest,ws"` 等逗号分隔的多协议 legacy scope 字符串，视 `pkg/app/permission.go` 的 `VerifyPermissions` 通配规则而定）。
+
+> 注意：`POST /api/token` 与 REST 注册/登录接口一样，在服务端以 `GIN_MODE=release` 生产模式运行时受 `RequireWebGUI` 中间件限制——已认证路由下要求发起本次请求所用的 Token 本身是 WebGUI 登录 Token（`IssueType=1` 且 `ClientType` 匹配 `webgui`）。因此面向第三方的正式接入方式仍是：登录管理后台 → 「复制 API 配置」，直接拿到已正确授权 scope 的 Token；上述自助铸造方式主要适用于本地开发模式（非 release 模式）下的联调与自动化测试场景。
+
 ### 2.2 客户端信息声明 (ClientInfo)
 
 - **流向**: 客户端 -> 服务端

@@ -138,4 +138,5 @@ var zh_cn_messages = map[int]string{
 	512: "Git 验证失败",
 	520: "Cloudflared 下载失败",
 	521: "Cloudflared 隧道程序未找到，请先下载隧道程序",
+	530: "检测到同步冲突，已生成冲突副本",
 }

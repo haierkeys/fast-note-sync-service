@@ -10,6 +10,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
@@ -421,7 +422,7 @@ func (s *vaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vault
 
 		// B. Perform physical delete
 		// B. 执行物理删除
-		if err := s.noteRepo.Delete(ctx, note.ID, uid); err != nil {
+		if err := s.noteRepo.Delete(ctx, note.ID, note.VaultID, uid); err != nil {
 			return err
 		}
 
@@ -448,12 +449,12 @@ func (s *vaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vault
 
 		// D. Async update vault size stats
 		// D. 异步更新库大小统计
-		go func() {
+		safego.Go(s.logger, func() {
 			res, err := s.noteRepo.CountSizeSum(context.Background(), vaultID, uid)
 			if err == nil && res != nil {
 				_ = s.UpdateNoteStats(context.Background(), res.Size, res.Count, vaultID, uid)
 			}
-		}()
+		})
 
 	} else if itemType == "file" {
 		// A. Get file details by ID
@@ -494,12 +495,12 @@ func (s *vaultService) ForceDeleteDataItem(ctx context.Context, uid int64, vault
 
 		// D. Async update file stats
 		// D. 异步更新文件大小统计
-		go func() {
+		safego.Go(s.logger, func() {
 			res, err := s.fileRepo.CountSizeSum(context.Background(), vaultID, uid)
 			if err == nil && res != nil {
 				_ = s.UpdateFileStats(context.Background(), res.Size, res.Count, vaultID, uid)
 			}
-		}()
+		})
 	} else {
 		return errors.New("invalid item type")
 	}

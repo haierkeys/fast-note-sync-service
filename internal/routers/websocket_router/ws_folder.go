@@ -32,29 +32,53 @@ func (h *FolderWSHandler) FolderSync(c *pkgapp.WebsocketClient, msg *pkgapp.WebS
 	// 分批协议：totalBatches > 1 时归集到缓存，集齐后统一执行差量同步
 	// Batch protocol: accumulate into cache when totalBatches > 1, then run diff sync when all collected
 	if params.TotalBatches > 1 {
-		entry := syncBatchGetOrCreate(params.Context, "folder", params.TotalBatches)
+		entry, created := syncBatchGetOrCreate(params.Context, "folder", params.TotalBatches)
+		if created {
+			// 观测用：若此 context+type 早已集齐并被清理，这里会是迟到重传重建的孤儿 entry
+			// （见同步流水线设计 §3.3 第 2 点），5min TTL 会自动回收，不做额外防护
+			// Observability: if this context+type had already been collected and cleaned up,
+			// this is a late-retransmit rebuild of an orphan entry (design §3.3 point 2);
+			// the 5-minute TTL reclaims it automatically, no extra protection needed
+			h.App.Logger().Debug("websocket_router.folder.FolderSync: created new batch cache entry",
+				zap.String(logpkg.FieldTraceID, c.TraceID),
+				zap.String("context", params.Context),
+				zap.Int("batchIndex", params.BatchIndex),
+				zap.Int("totalBatches", params.TotalBatches))
+		}
 
 		entry.mu.Lock()
-		for _, f := range params.Folders {
-			entry.Items = append(entry.Items, f)
+		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
+		// Duplicate BatchIndex (client retransmitted after missing the ack): skip append/count, just resend the ack
+		if !entry.markBatchReceived(params.BatchIndex) {
+			for _, f := range params.Folders {
+				entry.Items = append(entry.Items, f)
+			}
+			entry.ReceivedCount++
+			for _, df := range params.DelFolders {
+				entry.DelItems = append(entry.DelItems, df)
+			}
+			for _, mf := range params.MissingFolders {
+				entry.MissingItems = append(entry.MissingItems, mf)
+			}
+			entry.UpdatedAt = time.Now()
 		}
-		entry.ReceivedCount++
-		for _, df := range params.DelFolders {
-			entry.DelItems = append(entry.DelItems, df)
-		}
-		for _, mf := range params.MissingFolders {
-			entry.MissingItems = append(entry.MissingItems, mf)
-		}
-		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
 		entry.mu.Unlock()
 
+		// 无条件先回 BatchAck（含集齐的最后一批）：旧客户端把多出的最后一批 ack 静默丢弃
+		// （无监听者的 emit，见设计 §2.1 事实4），新客户端窗口协议靠它滑动
+		// Unconditionally send BatchAck first (including the batch that completes collection):
+		// old clients silently drop the extra ack for the last batch (emit with no listener,
+		// design §2.1 fact 4); new clients rely on it to slide the window
+		c.ToResponse(code.Success.WithData(map[string]interface{}{
+			"context":    params.Context,
+			"batchIndex": params.BatchIndex,
+		}).WithVault(params.Vault).WithContext(params.Context), FolderSyncBatchAck)
+
 		if received < total {
-			c.ToResponse(code.Success.WithData(map[string]interface{}{
-				"context":    params.Context,
-				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault).WithContext(params.Context), FolderSyncBatchAck)
+			// 未集齐：等待其余批次
+			// Not all batches received yet: wait for the rest
 			return
 		}
 
@@ -90,7 +114,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 	// Check and create vault
 	h.App.VaultService.GetOrCreate(ctx, uid, params.Vault)
 
-	folderSvc := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion)
+	folderSvc := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	var cFolders map[string]dto.FolderSyncCheckRequest = make(map[string]dto.FolderSyncCheckRequest)
 	var cFoldersKeys map[string]struct{} = make(map[string]struct{}, 0)
@@ -110,7 +134,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 
 	// Handle deleted folders from client
 	if len(params.DelFolders) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "note_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "note_w")
 
 		for _, delFolder := range params.DelFolders {
 
@@ -302,13 +326,20 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
+		// 窗口协商：仅 pv>=2 连接启用下行窗口，旧连接固定 0（stop-and-wait，见设计 §4.2/§4.4）
+		// Window negotiation: only pv>=2 connections get the download window enabled, old
+		// connections stay at 0 (stop-and-wait, see design §4.2/§4.4)
+		window := 0
+		if c.ProtoVersion >= 2 {
+			window = h.App.Config().App.PipelineWindowDownClamped()
+		}
 		entry := &syncDownloadEntry{
 			Context:      params.Context,
 			TypeName:     "folder",
 			Vault:        params.Vault,
 			MessageQueue: messageQueue,
 			PageSize:     pageSize,
-			CurrentPage:  0,
+			Window:       window,
 		}
 		syncDownloadStore(params.Context, "folder", entry)
 		// 默认不自动发送，等待客户端拉取
@@ -333,35 +364,7 @@ func (h *FolderWSHandler) FolderSyncPageAck(c *pkgapp.WebsocketClient, msg *pkga
 		return
 	}
 
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-
-	if params.PageIndex == -1 {
-		sendSyncPage(c, entry)
-		return
-	}
-
-	if params.PageIndex != entry.CurrentPage {
-		h.App.Logger().Warn("FolderSyncPageAck: page index mismatch",
-			zap.String(logpkg.FieldTraceID, c.TraceID),
-			zap.Int("expected", entry.CurrentPage),
-			zap.Int("got", params.PageIndex))
-		return
-	}
-
-	start := entry.CurrentPage * entry.PageSize
-	end := start + entry.PageSize
-	if end >= len(entry.MessageQueue) {
-		syncDownloadDelete(params.Context, "folder")
-		h.App.Logger().Info("FolderSyncPageAck: sync finished, cache cleared",
-			zap.String(logpkg.FieldTraceID, c.TraceID),
-			zap.String("context", params.Context))
-		return
-	}
-
-	entry.CurrentPage++
-	entry.UpdatedAt = time.Now()
-	sendSyncPage(c, entry)
+	handlePageAck(c, entry, params.PageIndex, "folder", h.App.Logger(), c.TraceID)
 }
 
 
@@ -375,7 +378,7 @@ func (h *FolderWSHandler) FolderModify(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion).UpdateOrCreate(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion()).UpdateOrCreate(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderModifyOrCreateFailed, err, "websocket_router.folder.FolderModify.UpdateOrCreate")
 		return
@@ -408,7 +411,7 @@ func (h *FolderWSHandler) FolderDelete(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folder, err := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion).Delete(c.Context(), uid, params)
+	folder, err := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion()).Delete(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderDeleteFailed, err, "websocket_router.folder.FolderDelete.Delete")
 		return
@@ -441,7 +444,7 @@ func (h *FolderWSHandler) FolderRename(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	}
 
 	uid := c.User.UID
-	folderSvc := h.App.GetFolderService(c.ClientType, c.ClientName, c.ClientVersion)
+	folderSvc := h.App.GetFolderService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	oldFolder, newFolder, err := folderSvc.Rename(c.Context(), uid, params)
 	if err != nil {
 		h.respondError(c, code.ErrorFolderRenameFailed, err, "websocket_router.folder.FolderRename.Rename")

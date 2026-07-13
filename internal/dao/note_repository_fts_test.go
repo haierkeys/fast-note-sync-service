@@ -257,7 +257,10 @@ func TestBleveFTSAllInOne(t *testing.T) {
 	// 4. 测试删除和重建 FTS
 	t.Run("FTS deletion", func(t *testing.T) {
 		// Delete ID 1
-		noteRepo.(*noteRepository).deleteFTS(userDb, 1, uid)
+		noteRepo.(*noteRepository).deleteFTS(1, vaultID, uid)
+		// deleteFTS is now async; force a synchronous flush before asserting
+		// deleteFTS 现在是异步的，断言前强制同步刷新
+		daoInst.BleveMgr.FlushSync()
 
 		ids, err := noteRepo.(*noteRepository).searchFTS(uid, vaultID, "intro", false, "mtime", "desc", 10, 0)
 		require.NoError(t, err)

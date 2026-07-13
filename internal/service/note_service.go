@@ -15,6 +15,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -34,9 +35,19 @@ type NoteService interface {
 	// UpdateCheck 检查笔记是否需要更新
 	UpdateCheck(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error)
 
-	// ModifyOrCreate creates or modifies a note
-	// ModifyOrCreate 创建或修改笔记
-	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error)
+	// UpdateCheckWithNote is like UpdateCheck but also returns the raw domain.Note fetched
+	// during the check, letting callers that immediately call ModifyOrCreate reuse it and
+	// avoid a duplicate lookup.
+	// UpdateCheckWithNote 与 UpdateCheck 相同，但额外返回检查过程中查到的 domain.Note，
+	// 便于紧接着调用 ModifyOrCreate 的调用方复用，避免重复查询。
+	UpdateCheckWithNote(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *domain.Note, *dto.NoteDTO, error)
+
+	// ModifyOrCreate creates or modifies a note. existingNote is optional: pass the note
+	// already fetched via UpdateCheckWithNote (for the same pathHash) to skip the internal
+	// lookup; omit it (or pass nil) to look it up as before.
+	// ModifyOrCreate 创建或修改笔记。existingNote 为可选参数：传入已通过 UpdateCheckWithNote
+	// 查到的 note（针对同一 pathHash）可跳过内部查询；不传（或传 nil）则按原逻辑查询。
+	ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, existingNote ...*domain.Note) (bool, *dto.NoteDTO, error)
 
 	// Delete deletes a note
 	// Delete 删除笔记
@@ -57,6 +68,17 @@ type NoteService interface {
 	// ListByLastTime retrieves notes updated after lastTime
 	// ListByLastTime 获取在 lastTime 之后更新的笔记
 	ListByLastTime(ctx context.Context, uid int64, params *dto.NoteSyncRequest) ([]*dto.NoteDTO, error)
+
+	// GetByID retrieves a single note by ID, including full content
+	// GetByID 根据 ID 获取单条笔记（含正文）
+	GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error)
+
+	// ExistsBatch checks, in a single batch query, whether each of the given pathHashes
+	// currently exists and is not soft-deleted. Used to avoid per-item existence checks
+	// (N+1) before batch-processing client-reported deletions.
+	// ExistsBatch 单次批量查询一组 pathHash 是否存在且未被软删除。
+	// 用于批量处理客户端上报删除前，避免逐条存在性检查造成的 N+1。
+	ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error)
 
 	// Sync syncs notes (alias for ListByLastTime, used for WebSocket sync)
 	// Sync 同步笔记（ListByLastTime 的别名，用于 WebSocket 同步）
@@ -135,6 +157,7 @@ type noteService struct {
 	folderService  FolderService              // Folder service // 文件夹服务
 	syncLogService SyncLogService             // Sync log service // 同步日志服务
 	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
+	kmu            *keyedmutex.KeyedMutex     // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
 	clientType     string                     // Client type // 客户端类型
 	clientName     string                     // Client name // 客户端名称
 	clientVer      string                     // Client version // 客户端版本
@@ -159,6 +182,7 @@ func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteReposito
 		gitSyncService: gitSyncSvc,
 		syncLogService: syncLogSvc,
 		sf:             &singleflight.Group{},
+		kmu:            keyedmutex.New(),
 		config:         config,
 		countTimers:    &sync.Map{},
 	}
@@ -176,6 +200,7 @@ func (s *noteService) WithClient(clientType, name, version string) NoteService {
 		folderService:  s.folderService,
 		syncLogService: s.syncLogService,
 		sf:             s.sf,
+		kmu:            s.kmu,
 		clientType:     clientType,
 		clientName:     name,
 		clientVer:      version,
@@ -268,7 +293,30 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 	}
 
 	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	return mode, noteDTO, err
+}
 
+// UpdateCheckWithNote 行为与 UpdateCheck 完全一致，额外返回底层查到的 domain.Note（含软删除记录），
+// 供紧随其后调用 ModifyOrCreate 的调用方复用，避免对同一行数据重复查询。
+// UpdateCheckWithNote behaves exactly like UpdateCheck, but additionally returns the underlying
+// domain.Note (including soft-deleted records) fetched during the check, so that callers which
+// immediately follow up with ModifyOrCreate can reuse it instead of issuing a duplicate lookup.
+func (s *noteService) UpdateCheckWithNote(ctx context.Context, uid int64, params *dto.NoteUpdateCheckRequest) (string, *domain.Note, *dto.NoteDTO, error) {
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	return mode, note, noteDTO, err
+}
+
+// evalUpdateCheck 是 UpdateCheck / UpdateCheckWithNote 共用的判定逻辑，接受已查到的 note（可能为 nil）
+// evalUpdateCheck is the decision logic shared by UpdateCheck / UpdateCheckWithNote, taking an
+// already-fetched note (may be nil)
+func (s *noteService) evalUpdateCheck(ctx context.Context, uid int64, note *domain.Note, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error) {
 	if note != nil {
 		noteDTO := s.domainToDTO(note)
 		// Check if content is consistent
@@ -301,14 +349,21 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 	return "Create", nil, nil
 }
 
-// ModifyOrCreate creates or modifies a note
-// ModifyOrCreate 创建或修改笔记
-func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool) (bool, *dto.NoteDTO, error) {
+// ModifyOrCreate creates or modifies a note. existingNote is an optional already-fetched
+// note (e.g. from UpdateCheckWithNote for the same pathHash) to reuse instead of querying again.
+// ModifyOrCreate 创建或修改笔记。existingNote 为可选的已查到的 note（例如来自同一 pathHash 的
+// UpdateCheckWithNote），复用以避免重复查询。
+func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, existingNote ...*domain.Note) (bool, *dto.NoteDTO, error) {
 	// Use VaultService.MustGetID to retrieve VaultID
 	// 使用 VaultService.MustGetID 获取 VaultID
 	vaultID, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
 	if err != nil {
 		return false, nil, err
+	}
+
+	var preFetchedNote *domain.Note
+	if len(existingNote) > 0 {
+		preFetchedNote = existingNote[0]
 	}
 
 	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
@@ -317,9 +372,29 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		dto   *dto.NoteDTO
 	}
 
-	val, err, _ := s.sf.Do(key, func() (any, error) {
+	// Per-key mutex instead of singleflight.Do: singleflight would let a losing
+	// concurrent caller silently skip its own write and reuse another caller's
+	// result, dropping data. A keyed mutex serializes same-key calls while still
+	// running every caller's closure exactly once.
+	// 用按 key 的互斥锁替代 singleflight.Do：singleflight 会让并发中落败的调用方
+	// 静默跳过自己的写入、直接复用另一个调用方的结果，导致数据丢失。按 key 的互斥锁
+	// 让同一 key 的调用互相串行，但每个调用方的闭包都会真正执行一次。
+	unlock, uncontended := s.kmu.TryLock(key)
+	if !uncontended {
+		// Key is currently held/awaited by another caller, so any note snapshot
+		// pre-fetched before this call may already be stale; force a fresh lookup.
+		// key 当前正被其他调用方持有或等待，调用前预取的 note 快照可能已过期，强制重新查询。
+		preFetchedNote = nil
+		unlock = s.kmu.Lock(key)
+	}
+	defer unlock()
+
+	modifyOrCreate := func() (any, error) {
 		var isNew bool
-		note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		note := preFetchedNote
+		if note == nil {
+			note, _ = s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		}
 
 		if note != nil {
 			isNew = false
@@ -437,8 +512,9 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		}
 
 		return &result{isNew: isNew, dto: s.domainToDTO(created)}, nil
-	})
+	}
 
+	val, err := modifyOrCreate()
 	if err != nil {
 		return false, nil, err
 	}
@@ -491,13 +567,11 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeNote, domain.SyncLogActionSoftDelete, "", note.Path, note.PathHash, s.clientType, s.clientName, s.clientVer, note.Size)
 	}
 
-	// Re-fetch the updated note // 重新获取更新后的笔记
-	updated, err := s.noteRepo.GetByID(ctx, note.ID, uid)
-	if err != nil {
-		return nil, code.ErrorDBQuery.WithDetails(err.Error())
-	}
-
-	NoteHistoryDelayPush(updated.ID, uid)
+	// note 已经是 UpdateDelete 写入后的准确状态（UpdateDelete 会把实际写入的
+	// UpdatedTimestamp 回写到 note 上），无需重新查库
+	// note already reflects the post-write state (UpdateDelete writes the persisted
+	// UpdatedTimestamp back onto it), no re-query needed
+	NoteHistoryDelayPush(note.ID, uid)
 	if s.backupService != nil {
 		go s.backupService.NotifyUpdated(uid)
 	}
@@ -505,7 +579,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		go s.gitSyncService.NotifyUpdated(uid, vaultID)
 	}
 
-	return s.domainToDTO(updated), nil
+	return s.domainToDTO(note), nil
 }
 
 // Restore restores a note (from recycle bin)
@@ -764,7 +838,9 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, params.LastTime, vaultID, uid)
+	// 差量比对阶段只需要 ContentHash/Mtime 等元数据，正文按需在 GetByID 中单条读取，
+	// 避免对未变更的笔记做无谓的 content.txt/snapshot.txt 磁盘 IO。
+	notes, err := s.noteRepo.ListByUpdatedTimestampMeta(ctx, params.LastTime, vaultID, uid)
 	if err != nil {
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -780,6 +856,44 @@ func (s *noteService) ListByLastTime(ctx context.Context, uid int64, params *dto
 	}
 
 	return results, nil
+}
+
+// GetByID retrieves a single note by ID, including full content (single-row read).
+// Used to lazily resolve a note's content on demand — e.g. by the sync-download page
+// sender, which only fetches content for the notes it is about to send.
+// GetByID 根据 ID 获取单条笔记（含正文，单行读取）。
+// 用于按需回填单条笔记正文的场景——例如同步分页下发时，仅为即将发送的笔记读取正文。
+func (s *noteService) GetByID(ctx context.Context, uid, id int64) (*dto.NoteDTO, error) {
+	note, err := s.noteRepo.GetByID(ctx, id, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return s.domainToDTO(note), nil
+}
+
+// ExistsBatch checks existence (and non-deleted status) for a batch of pathHashes in one query.
+// ExistsBatch 单次批量查询一组 pathHash 是否存在且未被软删除。
+func (s *noteService) ExistsBatch(ctx context.Context, uid int64, vault string, pathHashes []string) (map[string]bool, error) {
+	result := make(map[string]bool, len(pathHashes))
+	if len(pathHashes) == 0 {
+		return result, nil
+	}
+
+	vaultID, err := s.vaultService.MustGetID(ctx, uid, vault)
+	if err != nil {
+		return nil, err
+	}
+
+	metaMap, err := s.noteRepo.ListByPathHashesMeta(ctx, pathHashes, vaultID, uid)
+	if err != nil {
+		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	for _, ph := range pathHashes {
+		n, ok := metaMap[ph]
+		result[ph] = ok && n.Action != domain.NoteActionDelete
+	}
+	return result, nil
 }
 
 // CountSizeSum counts total number and total size of notes in a vault
@@ -1311,7 +1425,7 @@ func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultI
 				s.sf.Forget(fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, n.PathHash))
 				s.sf.Forget(fmt.Sprintf("rename_%d_%d_%s", uid, vaultID, n.PathHash))
 
-				_ = s.noteRepo.Delete(ctx, n.ID, uid)
+				_ = s.noteRepo.Delete(ctx, n.ID, vaultID, uid)
 			}
 		}
 	}

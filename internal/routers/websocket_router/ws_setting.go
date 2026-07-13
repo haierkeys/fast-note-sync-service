@@ -45,7 +45,7 @@ func (h *SettingWSHandler) SettingModify(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	checkParams := convert.StructAssign(params, &dto.SettingUpdateCheckRequest{}).(*dto.SettingUpdateCheckRequest)
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, checkParams)
@@ -114,7 +114,7 @@ func (h *SettingWSHandler) SettingModifyCheck(c *pkgapp.WebsocketClient, msg *pk
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	updateMode, settingCheck, err := settingSvc.UpdateCheck(ctx, c.User.UID, params)
 	if err != nil {
@@ -162,7 +162,7 @@ func (h *SettingWSHandler) SettingDelete(c *pkgapp.WebsocketClient, msg *pkgapp.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	setting, err := settingSvc.Delete(ctx, c.User.UID, params)
 	if err != nil {
@@ -199,31 +199,53 @@ func (h *SettingWSHandler) SettingSync(c *pkgapp.WebsocketClient, msg *pkgapp.We
 	// 分批协议快速路径：totalBatches <= 1 时直接执行，无需缓存归集
 	// Fast path: totalBatches <= 1 means single batch, skip cache accumulation
 	if params.TotalBatches > 1 {
-		entry := syncBatchGetOrCreate(params.Context, "setting", params.TotalBatches)
+		entry, created := syncBatchGetOrCreate(params.Context, "setting", params.TotalBatches)
+		if created {
+			// 观测用：若此 context+type 早已集齐并被清理，这里会是迟到重传重建的孤儿 entry
+			// （见同步流水线设计 §3.3 第 2 点），5min TTL 会自动回收，不做额外防护
+			// Observability: if this context+type had already been collected and cleaned up,
+			// this is a late-retransmit rebuild of an orphan entry (design §3.3 point 2);
+			// the 5-minute TTL reclaims it automatically, no extra protection needed
+			h.App.Logger().Debug("websocket_router.setting.SettingSync: created new batch cache entry",
+				zap.String(logger.FieldTraceID, c.TraceID),
+				zap.String("context", params.Context),
+				zap.Int("batchIndex", params.BatchIndex),
+				zap.Int("totalBatches", params.TotalBatches))
+		}
 
 		entry.mu.Lock()
-		for _, s := range params.Settings {
-			entry.Items = append(entry.Items, s)
+		// 重复 BatchIndex（客户端因未收到 ack 而重传）时跳过 append/计数，只重发 ack
+		// Duplicate BatchIndex (client retransmitted after missing the ack): skip append/count, just resend the ack
+		if !entry.markBatchReceived(params.BatchIndex) {
+			for _, s := range params.Settings {
+				entry.Items = append(entry.Items, s)
+			}
+			entry.ReceivedCount++
+			for _, ds := range params.DelSettings {
+				entry.DelItems = append(entry.DelItems, ds)
+			}
+			for _, ms := range params.MissingSettings {
+				entry.MissingItems = append(entry.MissingItems, ms)
+			}
+			entry.UpdatedAt = time.Now()
 		}
-		entry.ReceivedCount++
-		for _, ds := range params.DelSettings {
-			entry.DelItems = append(entry.DelItems, ds)
-		}
-		for _, ms := range params.MissingSettings {
-			entry.MissingItems = append(entry.MissingItems, ms)
-		}
-		entry.UpdatedAt = time.Now()
 		received := entry.ReceivedCount
 		total := entry.TotalBatches
 		entry.mu.Unlock()
 
+		// 无条件先回 BatchAck（含集齐的最后一批）：旧客户端把多出的最后一批 ack 静默丢弃
+		// （无监听者的 emit，见设计 §2.1 事实4），新客户端窗口协议靠它滑动
+		// Unconditionally send BatchAck first (including the batch that completes collection):
+		// old clients silently drop the extra ack for the last batch (emit with no listener,
+		// design §2.1 fact 4); new clients rely on it to slide the window
+		c.ToResponse(code.Success.WithData(map[string]interface{}{
+			"context":    params.Context,
+			"batchIndex": params.BatchIndex,
+		}).WithVault(params.Vault).WithContext(params.Context), SettingSyncBatchAck)
+
 		if received < total {
-			// 未集齐：回送 BatchAck，通知客户端可以发送下一批
-			// Not all batches received: send BatchAck to signal client to send next batch
-			c.ToResponse(code.Success.WithData(map[string]interface{}{
-				"context":    params.Context,
-				"batchIndex": params.BatchIndex,
-			}).WithVault(params.Vault).WithContext(params.Context), SettingSyncBatchAck)
+			// 未集齐：等待其余批次
+			// Not all batches received yet: wait for the rest
 			return
 		}
 
@@ -259,7 +281,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	settingSvc := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion)
+	settingSvc := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion())
 
 	// Record sync start time before querying to avoid missing writes that occur during query processing.
 	// 查询前记录同步开始时间，防止查询处理期间的写入被遗漏（经典增量同步快照时间戳方案）。
@@ -295,7 +317,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 	// Handle settings deleted by client
 	// 处理客户端删除的配置
 	if len(params.DelSettings) > 0 {
-		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
+		hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "config_w")
 
 		for _, delSetting := range params.DelSettings {
 
@@ -529,7 +551,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 	// during query processing from being permanently missed on the next incremental sync.
 	// 使用查询前记录的 syncStartTime 作为 lastTime，防止查询处理期间的写入在下次增量同步时被永久遗漏。
 	lastTime = syncStartTime
-	hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType, "config_w")
+	hasWritePermission := pkgapp.VerifyPermissions(c.Scope, "ws", c.ClientType(), "config_w")
 	for pathHash := range cSettingsKeys {
 		s := cSettings[pathHash]
 		// Add message to queue instead of sending immediately
@@ -567,13 +589,20 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 		if pageSize <= 0 {
 			pageSize = 50 // 默认值防呆
 		}
+		// 窗口协商：仅 pv>=2 连接启用下行窗口，旧连接固定 0（stop-and-wait，见设计 §4.2/§4.4）
+		// Window negotiation: only pv>=2 connections get the download window enabled, old
+		// connections stay at 0 (stop-and-wait, see design §4.2/§4.4)
+		window := 0
+		if c.ProtoVersion >= 2 {
+			window = h.App.Config().App.PipelineWindowDownClamped()
+		}
 		entry := &syncDownloadEntry{
 			Context:      params.Context,
 			TypeName:     "setting",
 			Vault:        params.Vault,
 			MessageQueue: messageQueue,
 			PageSize:     pageSize,
-			CurrentPage:  0,
+			Window:       window,
 		}
 		syncDownloadStore(params.Context, "setting", entry)
 		// 默认不自动发送，等待客户端拉取
@@ -598,35 +627,7 @@ func (h *SettingWSHandler) SettingSyncPageAck(c *pkgapp.WebsocketClient, msg *pk
 		return
 	}
 
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-
-	if params.PageIndex == -1 {
-		sendSyncPage(c, entry)
-		return
-	}
-
-	if params.PageIndex != entry.CurrentPage {
-		h.App.Logger().Warn("SettingSyncPageAck: page index mismatch",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.Int("expected", entry.CurrentPage),
-			zap.Int("got", params.PageIndex))
-		return
-	}
-
-	start := entry.CurrentPage * entry.PageSize
-	end := start + entry.PageSize
-	if end >= len(entry.MessageQueue) {
-		syncDownloadDelete(params.Context, "setting")
-		h.App.Logger().Info("SettingSyncPageAck: sync finished, cache cleared",
-			zap.String(logger.FieldTraceID, c.TraceID),
-			zap.String("context", params.Context))
-		return
-	}
-
-	entry.CurrentPage++
-	entry.UpdatedAt = time.Now()
-	sendSyncPage(c, entry)
+	handlePageAck(c, entry, params.PageIndex, "setting", h.App.Logger(), c.TraceID)
 }
 
 
@@ -644,7 +645,7 @@ func (h *SettingWSHandler) SettingClear(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "SettingClear", "", params.Vault)
 
-	err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).ClearByVault(ctx, c.User.UID, params.Vault)
+	err := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion()).ClearByVault(ctx, c.User.UID, params.Vault)
 	if err != nil {
 		h.respondError(c, code.ErrorSettingDeleteFailed, err, "websocket_router.setting.SettingClear.ClearByVault")
 		return
@@ -670,7 +671,7 @@ func (h *SettingWSHandler) SettingRePush(c *pkgapp.WebsocketClient, msg *pkgapp.
 	ctx := c.Context()
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
 
-	setting, err := h.App.GetSettingService(c.ClientType, c.ClientName, c.ClientVersion).Get(ctx, c.User.UID, params)
+	setting, err := h.App.GetSettingService(c.ClientType(), c.ClientName(), c.ClientVersion()).Get(ctx, c.User.UID, params)
 	if err != nil {
 		h.App.Logger().Debug("websocket_router.setting.SettingRePush.Get: record not found or error, proceeding to send delete",
 			zap.String(logger.FieldTraceID, c.TraceID),

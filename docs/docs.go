@@ -1176,6 +1176,13 @@ const docTemplate = `{
                 "summary": "Get attachment content",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "ctx123",
+                        "description": "Context // 同步上下文",
+                        "name": "context",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "example": false,
                         "description": "Is in recycle bin // 是否在回收站",
@@ -1307,6 +1314,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "ctx123",
+                        "description": "Context // 同步上下文",
+                        "name": "context",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "example": "Image.png",
                         "description": "File path // 文件路径",
                         "name": "path",
@@ -1368,6 +1382,13 @@ const docTemplate = `{
                 ],
                 "summary": "Get attachment info",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "example": "ctx123",
+                        "description": "Context // 同步上下文",
+                        "name": "context",
+                        "in": "query"
+                    },
                     {
                         "type": "boolean",
                         "example": false,
@@ -2700,6 +2721,13 @@ const docTemplate = `{
                 ],
                 "summary": "Delete note",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "example": "ctx123",
+                        "description": "Context // 同步上下文",
+                        "name": "context",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "example": "ReadMe.md",
@@ -4122,7 +4150,7 @@ const docTemplate = `{
                         "UserAuthToken": []
                     }
                 ],
-                "description": "Set or update password for a share record",
+                "description": "Set or update password and expiration time for a share record",
                 "consumes": [
                     "application/json"
                 ],
@@ -5273,6 +5301,10 @@ const docTemplate = `{
                 "data": {},
                 "details": {},
                 "message": {},
+                "pageIndex": {
+                    "description": "1-BASED wire value: 0/absent = non-paginated message, n\u003e0 = download page n-1 (internal 0-based). 1-based so page 0 stays distinguishable from non-paginated messages under proto3 zero-value elision; only set for paginated download messages on pv\u003e=2 connections. Client-to-server PageAck.pageIndex stays 0-based. // 线上值为 1-BASED：0/缺省 = 非分页消息，n\u003e0 = 下载页 n-1（内部 0-based）。采用 1-based 是为了让第 0 页在 proto3 零值不编码规则下仍可与非分页消息区分；仅 pv\u003e=2 连接的分页下载消息会设置。客户端→服务端的 PageAck.pageIndex 保持 0-based"
+                },
+                "path": {},
                 "status": {
                     "type": "boolean"
                 },
@@ -5447,6 +5479,14 @@ const docTemplate = `{
                 },
                 "maxPageSize": {
                     "description": "Max page size // 最大每页显示限制",
+                    "type": "integer"
+                },
+                "pipelineWindowDown": {
+                    "description": "Download pipeline window size for pv\u003e=2 connections; 0 = stop-and-wait // pv\u003e=2 连接的下行流水线窗口大小；0 = stop-and-wait",
+                    "type": "integer"
+                },
+                "pipelineWindowUp": {
+                    "description": "Upload pipeline window size for pv\u003e=2 connections; 0 = stop-and-wait // pv\u003e=2 连接的上行流水线窗口大小；0 = stop-and-wait",
                     "type": "integer"
                 },
                 "pullReleaseChannel": {
@@ -6193,6 +6233,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "oldPath": {
                     "description": "Old path // 旧路径",
                     "type": "string",
@@ -6251,6 +6296,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "path": {
                     "description": "Folder path // 文件夹路径",
                     "type": "string",
@@ -6308,6 +6358,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "path": {
                     "description": "Folder path // 文件夹路径",
                     "type": "string",
@@ -6790,6 +6845,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "chash012"
                 },
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "createOnly": {
                     "description": "If true, fail if note already exists // 如果为 true，笔记已存在则失败",
                     "type": "boolean",
@@ -6984,6 +7044,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "oldPath": {
                     "description": "Old path // 旧路径",
                     "type": "string",
@@ -7204,6 +7269,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
+                },
                 "path": {
                     "description": "Setting path // 配置路径",
                     "type": "string",
@@ -7237,6 +7307,11 @@ const docTemplate = `{
                     "description": "Content hash // 内容哈希",
                     "type": "string",
                     "example": "chash456"
+                },
+                "context": {
+                    "description": "Context // 同步上下文",
+                    "type": "string",
+                    "example": "ctx123"
                 },
                 "ctime": {
                     "description": "Creation timestamp // 创建时间戳",
@@ -7336,6 +7411,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "expireAt": {
+                    "description": "Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效",
+                    "type": "integer",
+                    "example": 1700000000
+                },
                 "password": {
                     "description": "Share password // 分享密码",
                     "type": "string",
@@ -7474,6 +7554,11 @@ const docTemplate = `{
                 "vault"
             ],
             "properties": {
+                "expireAt": {
+                    "description": "Expiration timestamp (unix seconds); 0 or omitted means the share never expires // 过期时间戳（unix 秒）；0 或不传表示永久有效",
+                    "type": "integer",
+                    "example": 1700000000
+                },
                 "password": {
                     "description": "New password // 新密码",
                     "type": "string",

@@ -46,6 +46,23 @@ func TestCode_Immutability_And_Methods(t *testing.T) {
 	assert.False(t, c.HaveContext())
 	assert.True(t, cWithContext.HaveContext())
 	assert.Equal(t, "test-context", cWithContext.Context())
+
+	cWithPageIndex := c.WithPageIndex(3)
+	assert.NotEqual(t, fmt.Sprintf("%p", c), fmt.Sprintf("%p", cWithPageIndex))
+	assert.False(t, c.HavePageIndex())
+	assert.True(t, cWithPageIndex.HavePageIndex())
+	assert.Equal(t, 3, cWithPageIndex.PageIndex())
+
+	// WithPageIndex must not drop fields set by earlier With* calls in the chain (regression
+	// guard for the immutable-copy pattern used by every With* method)
+	// WithPageIndex 不应丢失链式调用中先前 With* 设置的字段（不可变拷贝模式的回归保护）
+	cChained := c.WithContext("test-context").WithVault("test-vault").WithPageIndex(5)
+	assert.True(t, cChained.HaveContext())
+	assert.Equal(t, "test-context", cChained.Context())
+	assert.True(t, cChained.HaveVault())
+	assert.Equal(t, "test-vault", cChained.Vault())
+	assert.True(t, cChained.HavePageIndex())
+	assert.Equal(t, 5, cChained.PageIndex())
 }
 
 func TestNewError_DuplicatePanic(t *testing.T) {

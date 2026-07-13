@@ -22,8 +22,8 @@ type MockShareService struct {
 // 编译期确保 MockShareService 实现了 service.ShareService 接口。
 var _ service.ShareService = (*MockShareService)(nil)
 
-func (m *MockShareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) (*dto.ShareCreateResponse, error) {
-	args := m.Called(ctx, uid, vaultName, path, pathHash, password)
+func (m *MockShareService) ShareGenerate(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) (*dto.ShareCreateResponse, error) {
+	args := m.Called(ctx, uid, vaultName, path, pathHash, password, expireAt)
 	if v := args.Get(0); v != nil {
 		return v.(*dto.ShareCreateResponse), args.Error(1)
 	}
@@ -69,8 +69,8 @@ func (m *MockShareService) StopShare(ctx context.Context, uid int64, id int64) e
 	return args.Error(0)
 }
 
-func (m *MockShareService) UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string) error {
-	args := m.Called(ctx, uid, vaultName, path, pathHash, password)
+func (m *MockShareService) UpdateSharePassword(ctx context.Context, uid int64, vaultName string, path string, pathHash string, password string, expireAt int64) error {
+	args := m.Called(ctx, uid, vaultName, path, pathHash, password, expireAt)
 	return args.Error(0)
 }
 

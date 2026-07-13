@@ -85,6 +85,40 @@ func (r *syncLogRepository) Create(ctx context.Context, log *domain.SyncLog, uid
 	})
 }
 
+// CreateBatch stores multiple sync log entries for a single user in one write
+// CreateBatch 为单个用户在一次写入中批量存储多条同步日志
+func (r *syncLogRepository) CreateBatch(ctx context.Context, logs []*domain.SyncLog, uid int64) error {
+	if len(logs) == 0 {
+		return nil
+	}
+	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
+		ms := make([]*model.SyncLog, 0, len(logs))
+		for _, log := range logs {
+			m := &model.SyncLog{
+				UID:           log.UID,
+				VaultID:       log.VaultID,
+				Type:          string(log.Type),
+				Action:        string(log.Action),
+				ChangedFields: log.ChangedFields,
+				Path:          log.Path,
+				PathHash:      log.PathHash,
+				Size:          log.Size,
+				ClientName:    log.ClientName,
+				ClientType:    log.ClientType,
+				ClientVersion: log.ClientVersion,
+				Status:        int64(log.Status),
+				Message:       log.Message,
+				CreatedAt:     log.CreatedAt,
+			}
+			if m.CreatedAt.IsZero() {
+				m.CreatedAt = timex.Now()
+			}
+			ms = append(ms, m)
+		}
+		return r.db(uid).WithContext(ctx).Create(&ms).Error
+	})
+}
+
 // List retrieves sync logs for a user with optional filters and pagination
 // List 按条件分页查询用户的同步日志
 func (r *syncLogRepository) List(ctx context.Context, uid int64, logType, action string, page, pageSize int) ([]*domain.SyncLog, int64, error) {
