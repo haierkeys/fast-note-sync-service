@@ -68,7 +68,7 @@ func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap
 		logger,
 	)
 	s.StorageService = service.NewStorageService(repos.StorageRepo, &cfg.Storage)
-	s.BackupService = service.NewBackupService(repos.BackupRepo, repos.NoteRepo, repos.FolderRepo, repos.FileRepo, repos.VaultRepo, s.StorageService, &cfg.Storage, logger)
+	s.BackupService = service.NewBackupService(repos.BackupRepo, repos.NoteRepo, repos.FolderRepo, repos.FileRepo, repos.VaultRepo, s.StorageService, &cfg.Storage, cfg.App.TempPath, logger)
 	s.GitSyncService = service.NewGitSyncService(repos.GitSyncRepo, repos.NoteRepo, repos.FolderRepo, repos.FileRepo, repos.VaultRepo, repos.SettingRepo, &cfg.Git, logger)
 
 	// Initialize SyncLogService first, as NoteService/FileService/SettingService depend on it
