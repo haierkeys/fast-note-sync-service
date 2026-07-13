@@ -1,0 +1,14 @@
+#!/bin/bash
+# Runs before uninstall. Stop the service; user data in TRIM_PKGVAR is
+# removed by the system during uninstall.
+set -u
+if [ -f "${TRIM_PKGVAR}/app.pid" ]; then
+  pid="$(head -n 1 "${TRIM_PKGVAR}/app.pid" 2>/dev/null | tr -d '[:space:]')"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 2
+    kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "${TRIM_PKGVAR}/app.pid"
+fi
+exit 0

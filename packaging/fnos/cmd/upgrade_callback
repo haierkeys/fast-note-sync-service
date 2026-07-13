@@ -1,0 +1,16 @@
+#!/bin/bash
+# Runs after an upgrade installs new package files.
+# The service data (config + storage) lives in TRIM_PKGVAR, which is not
+# touched by the package replacement, so no migration is required here.
+# Stop any stale process so cmd/main start launches the new binary.
+set -u
+if [ -f "${TRIM_PKGVAR}/app.pid" ]; then
+  pid="$(head -n 1 "${TRIM_PKGVAR}/app.pid" 2>/dev/null | tr -d '[:space:]')"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 2
+    kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "${TRIM_PKGVAR}/app.pid"
+fi
+exit 0

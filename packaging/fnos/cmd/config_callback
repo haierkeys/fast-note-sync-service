@@ -1,0 +1,5 @@
+#!/bin/bash
+# Runs after a config change is applied. The service hot-reloads config.yaml,
+# so no restart is orchestrated here.
+set -u
+exit 0
