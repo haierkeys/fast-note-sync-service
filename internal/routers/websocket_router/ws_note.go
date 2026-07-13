@@ -906,8 +906,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			}
 			if note != nil && note.Action != "delete" {
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-					Action: NoteSyncModify,
+					Context: params.Context,
+					Action:  NoteSyncModify,
 					Data: dto.NoteSyncModifyMessage{
 						Path:             note.Path,
 						PathHash:         note.PathHash,
@@ -941,8 +941,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			}
 			// 将消息添加到队列
 			messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-				Action: NoteSyncDelete,
+				Context: params.Context,
+				Action:  NoteSyncDelete,
 				Data: dto.NoteSyncDeleteMessage{
 					Path:             note.Path,
 					PathHash:         note.PathHash,
@@ -981,8 +981,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 							// Add message to queue instead of sending immediately
 							// 将消息添加到队列而非立即发送
 							messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-								Action: NoteSyncNeedPush,
+								Context: params.Context,
+								Action:  NoteSyncNeedPush,
 								Data: dto.NoteSyncNeedPushMessage{
 									Path:     note.Path,
 									PathHash: note.PathHash,
@@ -997,9 +997,9 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 							// 将消息添加到队列而非立即发送；正文留空，交由 sendSyncPage 在实际发送该页时按需回填
 							// （note 来自哈希比对阶段的元数据查询，未加载正文）
 							messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-								Action: NoteSyncModify,
-								NoteID: note.ID,
+								Context: params.Context,
+								Action:  NoteSyncModify,
+								NoteID:  note.ID,
 								Data: dto.NoteSyncModifyMessage{
 									Path:             note.Path,
 									PathHash:         note.PathHash,
@@ -1027,8 +1027,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 						// Add message to queue instead of sending immediately
 						// 将消息添加到队列而非立即发送
 						messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-							Action: NoteSyncNeedPush,
+							Context: params.Context,
+							Action:  NoteSyncNeedPush,
 							Data: dto.NoteSyncNeedPushMessage{
 								Path:     note.Path,
 								PathHash: note.PathHash,
@@ -1043,7 +1043,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 					// 将消息添加到队列而非立即发送
 					messageQueue = append(messageQueue, dto.WSQueuedMessage{
 						Context: params.Context,
-						Action: NoteSyncMtime,
+						Action:  NoteSyncMtime,
 						Data: dto.NoteSyncMtimeMessage{
 							Path:             note.Path,
 							Ctime:            note.Ctime,
@@ -1058,9 +1058,9 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 				// 客户端没有的文件, 通知客户端创建文件
 				// 将消息添加到队列而非立即发送；正文留空，交由 sendSyncPage 按需回填
 				messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-					Action: NoteSyncModify,
-					NoteID: note.ID,
+					Context: params.Context,
+					Action:  NoteSyncModify,
+					NoteID:  note.ID,
 					Data: dto.NoteSyncModifyMessage{
 						Path:             note.Path,
 						PathHash:         note.PathHash,
@@ -1086,8 +1086,8 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送
 			messageQueue = append(messageQueue, dto.WSQueuedMessage{
-						Context: params.Context,
-				Action: NoteSyncNeedPush,
+				Context: params.Context,
+				Action:  NoteSyncNeedPush,
 				Data: dto.NoteSyncNeedPushMessage{
 					Path:     note.Path,
 					PathHash: note.PathHash,
@@ -1166,7 +1166,6 @@ func (h *NoteWSHandler) NoteSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 
 	handlePageAck(c, entry, params.PageIndex, "note", h.App.Logger(), c.TraceID)
 }
-
 
 // UserInfo verifies and retrieves user info
 // 函数名: UserInfo
