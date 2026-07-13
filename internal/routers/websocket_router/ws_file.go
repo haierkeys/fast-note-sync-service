@@ -2,11 +2,13 @@ package websocket_router
 
 import (
 	"context"
+	"errors"
 	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -352,6 +354,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 		h.App.VaultService.GetOrCreate(ctx, c.User.UID, session.Vault)
 
+		session.mu.Lock()
 		svcParams := &dto.FileUpdateRequest{
 			Vault:       session.Vault,
 			Path:        session.Path,
@@ -362,6 +365,7 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 			Ctime:       session.Ctime,
 			Mtime:       session.Mtime,
 		}
+		session.mu.Unlock()
 
 		// Update or create file record (DAO layer will automatically move temp file from SavePath to f_{id} folder)
 		// 更新或创建 file 记录 (DAO 层会自动将 SavePath 里的临时文件移动到 f_{id} 文件夹)
@@ -481,9 +485,34 @@ func (h *FileWSHandler) FileRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	}
 
 	uid := c.User.UID
+	uidStr := strconv.FormatInt(uid, 10)
+
+	// Check if there is an active upload session for the old path hash
+	// 检查旧路径哈希是否存在活跃的上传会话
+	activeSession := c.Server.GetSessionByPathHash(uidStr, params.OldPathHash)
+	if activeSession != nil {
+		if sess, ok := activeSession.(*FileUploadBinaryChunkSession); ok {
+			sess.mu.Lock()
+			sess.Path = params.Path
+			sess.PathHash = params.PathHash
+			sess.mu.Unlock()
+		}
+	}
+
 	fileService := h.App.GetFileService(c.ClientType(), c.ClientName(), c.ClientVersion())
 	oldFile, newFile, err := fileService.Rename(c.Context(), uid, params)
 	if err != nil {
+		// If DB record not found but we have an active session redirecting the upload, bypass the DB error.
+		// 如果数据库找不到记录，但是我们在内存中重定向了活跃上传会话，则忽略数据库错误，伪造成功响应且不进行广播。
+		if errors.Is(err, code.ErrorFileNotFound) && activeSession != nil {
+			now := timex.Now().UnixMilli()
+			c.ToResponse(code.Success.WithData(dto.FileRenameAckMessage{
+				LastTime: now,
+				Path:     params.Path,
+				PathHash: params.PathHash,
+			}).WithVault(params.Vault).WithContext(params.Context), string(FileRenameAck))
+			return
+		}
 		h.respondError(c, code.ErrorFileRenameFailed, err, "websocket_router.file.FileRename.Rename")
 		return
 	}
