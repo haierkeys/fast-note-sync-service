@@ -109,14 +109,16 @@ func NewBleveManager(enabled *bool, storeRaw *bool, logger *zap.Logger) *BleveMa
 		enabled:  en,
 		storeRaw: raw,
 		logger:   logger,
-		ftsQueue: make(chan ftsOp, ftsQueueSize),
 	}
 
-	m.ftsWorkerWG.Add(1)
-	safego.Go(logger, func() {
-		defer m.ftsWorkerWG.Done()
-		m.ftsWorker()
-	})
+	if en {
+		m.ftsQueue = make(chan ftsOp, ftsQueueSize)
+		m.ftsWorkerWG.Add(1)
+		safego.Go(logger, func() {
+			defer m.ftsWorkerWG.Done()
+			m.ftsWorker()
+		})
+	}
 
 	return m
 }
@@ -133,6 +135,9 @@ func (m *BleveManager) IsEnabled() bool {
 // EnqueueUpsert 异步投递一次笔记的 FTS 新增/更新。写路径调用方不等待索引写入完成，
 // 后台 ftsWorker 使用 Bleve 原生 Batch API 按仓库攒批写入。
 func (m *BleveManager) EnqueueUpsert(uid, vaultID int64, doc BleveNoteDoc) {
+	if !m.enabled {
+		return // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	m.ftsMu.RLock()
 	defer m.ftsMu.RUnlock()
 	if m.ftsClosed {
@@ -144,6 +149,9 @@ func (m *BleveManager) EnqueueUpsert(uid, vaultID int64, doc BleveNoteDoc) {
 // EnqueueDelete asynchronously queues a note delete from the Bleve FTS index.
 // EnqueueDelete 异步投递一次笔记的 FTS 删除。
 func (m *BleveManager) EnqueueDelete(uid, vaultID int64, docID string) {
+	if !m.enabled {
+		return // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	m.ftsMu.RLock()
 	defer m.ftsMu.RUnlock()
 	if m.ftsClosed {
@@ -158,6 +166,9 @@ func (m *BleveManager) EnqueueDelete(uid, vaultID int64, docID string) {
 // FlushSync 强制后台 worker 立即刷新所有待处理批次，并阻塞等待刷新完成。
 // 用于优雅关闭前的排空（关闭索引之前）以及需要观察异步写入结果的测试。
 func (m *BleveManager) FlushSync() {
+	if !m.enabled {
+		return // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	done := make(chan struct{})
 	m.ftsQueue <- ftsOp{barrier: done}
 	<-done
@@ -169,6 +180,9 @@ func (m *BleveManager) FlushSync() {
 // Shutdown 停止接收新的异步 FTS 操作，刷新所有待处理批次并等待后台 worker 退出。
 // 必须在 CloseAll 之前调用，避免批次写入与索引关闭发生竞争。
 func (m *BleveManager) Shutdown() {
+	if !m.enabled {
+		return // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	m.ftsStopOnce.Do(func() {
 		m.ftsMu.Lock()
 		m.ftsClosed = true
@@ -271,6 +285,9 @@ func (m *BleveManager) GetIndexPath(uid, vaultID int64) string {
 // GetIndex gets or opens a Bleve index for a specific vault
 // GetIndex 获取或打开特定仓库的 Bleve 索引
 func (m *BleveManager) GetIndex(uid, vaultID int64) (bleve.Index, error) {
+	if !m.enabled {
+		return nil, fmt.Errorf("bleve FTS is disabled") // Return error if FTS is disabled // 若 FTS 未启用，则返回错误
+	}
 	key := fmt.Sprintf("%d_%d", uid, vaultID)
 	if val, ok := m.indexes.Load(key); ok {
 		return val.(bleve.Index), nil
@@ -362,6 +379,9 @@ func (m *BleveManager) GetIndex(uid, vaultID int64) (bleve.Index, error) {
 // Close closes a specific vault's index
 // Close 关闭特定仓库的索引
 func (m *BleveManager) Close(uid, vaultID int64) error {
+	if !m.enabled {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	key := fmt.Sprintf("%d_%d", uid, vaultID)
 	if val, ok := m.indexes.Load(key); ok {
 		index := val.(bleve.Index)
@@ -374,6 +394,9 @@ func (m *BleveManager) Close(uid, vaultID int64) error {
 // CloseAll closes all open index instances (used on graceful shutdown)
 // CloseAll 关闭所有已打开的索引实例（用于优雅关闭）
 func (m *BleveManager) CloseAll() error {
+	if !m.enabled {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	// Flush and stop the async FTS worker first so no pending batch write
 	// races with the index Close() calls below.
 	// 先刷新并停止异步 FTS worker，避免待处理的批次写入与下方的索引 Close() 竞争。
@@ -394,6 +417,9 @@ func (m *BleveManager) CloseAll() error {
 // DeleteIndex closes and physically removes index files for a specific vault
 // DeleteIndex 关闭并物理删除特定仓库的索引文件
 func (m *BleveManager) DeleteIndex(uid, vaultID int64) error {
+	if !m.enabled {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.closeAndClean(uid, vaultID)

@@ -5,11 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/config"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/model"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
+	"github.com/haierkeys/fast-note-sync-service/pkg/writequeue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -304,4 +306,109 @@ func TestBleveFTSAllInOne(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(metaData), `"fts-bleve-store-raw":false`)
 	})
+}
+
+// TestBleveFTSDisabled tests note operations when Bleve FTS is disabled
+// TestBleveFTSDisabled 测试当 Bleve 全文搜索禁用时的笔记操作
+func TestBleveFTSDisabled(t *testing.T) {
+	// Setup with enabled = false
+	// 初始化时禁用 FTS
+	origWd, err := os.Getwd()
+	require.NoError(t, err)
+
+	tempDir, err := os.MkdirTemp("", "fast-note-sync-service-test-disabled-*")
+	require.NoError(t, err)
+
+	err = os.Chdir(tempDir)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(filepath.Join("storage", "database"), 0755)
+	require.NoError(t, err)
+
+	logger := zap.NewNop()
+	bleveMgr := NewBleveManager(util.Ptr(false), util.Ptr(false), logger)
+
+	dbPath := filepath.Join("storage", "database", "db.sqlite3")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&model.Vault{})
+	require.NoError(t, err)
+
+	dbCfg := &config.DatabaseConfig{
+		Type: "sqlite",
+		Path: dbPath,
+	}
+	wqConfig := writequeue.DefaultConfig()
+	wqConfig.QueueCapacity = 100
+	wqConfig.WriteTimeout = time.Second * 5
+	wqConfig.IdleTimeout = time.Second * 5
+	wqm := writequeue.New(&wqConfig, logger)
+
+	daoInst := New(db, context.Background(),
+		WithConfig(dbCfg),
+		WithUserDatabaseConfig(dbCfg),
+		WithLogger(logger),
+		WithBleveManager(bleveMgr),
+		WithWriteQueueManager(wqm),
+	)
+
+	noteRepo := NewNoteRepository(daoInst)
+
+	defer func() {
+		_ = bleveMgr.CloseAll()
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+		_ = os.Chdir(origWd)
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	ctx := context.Background()
+	uid := int64(777)
+	vaultID := int64(888)
+
+	userDb := daoInst.ResolveDB("user_777")
+	_ = userDb.AutoMigrate(&model.Note{})
+
+	// 1. Verify BleveManager is disabled
+	// 1. 验证 BleveManager 已禁用
+	assert.False(t, bleveMgr.IsEnabled())
+
+	// 2. Perform Create and verify it works without throwing errors or creating FTS files
+	// 2. 执行创建，验证其工作正常且不抛出错误或创建 FTS 文件
+	note := &domain.Note{
+		VaultID:     vaultID,
+		Path:        "test.md",
+		PathHash:    util.EncodeHash32("test.md"),
+		Content:     "Hello disable FTS test",
+		Ctime:       123,
+		Mtime:       456,
+		ClientName:  "Test",
+		ClientType:  "Test",
+		Action:      "add",
+	}
+
+	created, err := noteRepo.Create(ctx, note, uid)
+	require.NoError(t, err)
+	assert.NotNil(t, created)
+
+	// Verify that vault_fts directory is NOT created
+	// 验证 vault_fts 目录没有被创建
+	ftsPath := filepath.Join("storage", "vault_fts")
+	if _, err := os.Stat(ftsPath); err == nil {
+		// Even if directory exists, check that the specific vault index directory does not exist
+		// 即使 storage/vault_fts 存在，也需验证具体的 vault index 目录不存在
+		specificPath := bleveMgr.GetIndexPath(uid, vaultID)
+		_, statErr := os.Stat(specificPath)
+		assert.True(t, os.IsNotExist(statErr), "Index directory should not be created when FTS is disabled")
+	}
+
+	// 3. Verify Search fallback behavior or error handling
+	// 3. 验证搜索 fallback 行为或错误处理
+	// When FTS is disabled, list fallbacks to standard DB path search (searchMode="content" is ignored or falls back)
+	// We search with searchMode="content", noteRepository should not trigger Bleve search
+	results, err := noteRepo.List(ctx, vaultID, 1, 10, uid, "disable", false, "content", true, "mtime", "desc", nil)
+	require.NoError(t, err)
+	assert.Empty(t, results) // Should fall back or return empty without panic
 }

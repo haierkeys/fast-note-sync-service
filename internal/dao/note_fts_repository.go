@@ -33,6 +33,9 @@ func (r *noteFTSRepository) GetKey(uid int64) string {
 // Upsert inserts or updates FTS index
 // Upsert 插入或更新 FTS 索引
 func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, content string, uid int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	db := r.dao.ResolveDB("user_" + strconv.FormatInt(uid, 10))
 	var note model.Note
 	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
@@ -61,6 +64,9 @@ func (r *noteFTSRepository) Upsert(ctx context.Context, noteID int64, path, cont
 // Delete deletes FTS index
 // Delete 删除 FTS 索引
 func (r *noteFTSRepository) Delete(ctx context.Context, noteID int64, uid int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	db := r.dao.ResolveDB("user_" + strconv.FormatInt(uid, 10))
 	var note model.Note
 	if err := db.Where("id = ?", noteID).First(&note).Error; err != nil {
@@ -90,6 +96,9 @@ func (r *noteFTSRepository) Delete(ctx context.Context, noteID int64, uid int64)
 // Search full-text search, returns list of matching note_id
 // Search 全文搜索，返回匹配的 note_id 列表
 func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID, uid int64, limit, offset int) ([]int64, error) {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil, nil // Return empty results if FTS is disabled // 若 FTS 未启用，则返回空结果
+	}
 	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
 	if err != nil {
 		return nil, err
@@ -145,6 +154,9 @@ func (r *noteFTSRepository) Search(ctx context.Context, keyword string, vaultID,
 // SearchCount full-text search count
 // SearchCount 全文搜索计数
 func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vaultID, uid int64) (int64, error) {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return 0, nil // Return 0 if FTS is disabled // 若 FTS 未启用，则返回 0
+	}
 	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
 	if err != nil {
 		return 0, err
@@ -181,6 +193,9 @@ func (r *noteFTSRepository) SearchCount(ctx context.Context, keyword string, vau
 // RebuildIndex rebuilds index
 // RebuildIndex 重建索引
 func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	var vaults []model.Vault
 	vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
 	if err := vaultDb.Table("vault").Where("is_deleted = 0").Find(&vaults).Error; err != nil {
@@ -197,6 +212,9 @@ func (r *noteFTSRepository) RebuildIndex(ctx context.Context, uid int64) error {
 // rebuildVault rebuilds index for a specific vault
 // rebuildVault 重建特定仓库的索引
 func (r *noteFTSRepository) rebuildVault(ctx context.Context, uid, vaultID int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	_ = r.dao.BleveMgr.DeleteIndex(uid, vaultID)
 
 	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
@@ -237,6 +255,9 @@ func (r *noteFTSRepository) rebuildVault(ctx context.Context, uid, vaultID int64
 // DeleteByVaultID deletes all FTS records for a vault
 // DeleteByVaultID 删除指定仓库的所有 FTS 记录
 func (r *noteFTSRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	return r.dao.BleveMgr.DeleteIndex(uid, vaultID)
 }
 

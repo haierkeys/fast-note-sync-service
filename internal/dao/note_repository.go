@@ -83,6 +83,9 @@ func (r *noteRepository) ListByIDs(ctx context.Context, ids []int64, uid int64) 
 // EnsureFTSIndex ensures FTS index exists (public method, can be called manually)
 // EnsureFTSIndex 确保 FTS 索引存在（公开方法，可手动调用）
 func (r *noteRepository) EnsureFTSIndex(ctx context.Context, uid int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	var vaults []model.Vault
 	vaultDb := r.dao.ResolveDB("user_vault_" + strconv.FormatInt(uid, 10))
 	if err := vaultDb.Table("vault").Where("is_deleted = 0").Find(&vaults).Error; err != nil {
@@ -1331,6 +1334,9 @@ func (r *noteRepository) searchFTSCount(uid, vaultID int64, keyword string, isRe
 // RebuildVaultIndex rebuilds index from database and file contents for a specific vault
 // RebuildVaultIndex 从数据库和物理文件内容重建指定仓库的索引
 func (r *noteRepository) RebuildVaultIndex(ctx context.Context, uid, vaultID int64) error {
+	if !r.dao.BleveMgr.IsEnabled() {
+		return nil // If FTS is disabled, do nothing // 若 FTS 未启用，则不进行任何操作
+	}
 	_ = r.dao.BleveMgr.DeleteIndex(uid, vaultID)
 
 	index, err := r.dao.BleveMgr.GetIndex(uid, vaultID)
