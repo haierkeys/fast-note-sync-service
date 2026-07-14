@@ -466,3 +466,22 @@ CREATE TABLE "auth_token_log" (
 
 CREATE INDEX "idx_auth_token_log_token_id" ON "auth_token_log" ("token_id");
 CREATE INDEX "idx_auth_token_log_uid" ON "auth_token_log" ("uid");
+
+-- ----------------------------
+-- Table structure for user_oidc_identity
+-- ----------------------------
+DROP TABLE IF EXISTS "user_oidc_identity";
+
+CREATE TABLE "user_oidc_identity" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "uid" integer NOT NULL,
+    "issuer" text NOT NULL,
+    "subject" text NOT NULL,
+    "email" text DEFAULT '',
+    "username" text DEFAULT '',
+    "created_at" datetime DEFAULT NULL,
+    "updated_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_user_oidc_identity_uid" ON "user_oidc_identity" ("uid");
+CREATE UNIQUE INDEX "idx_user_oidc_identity_issuer_subject" ON "user_oidc_identity" ("issuer", "subject");
