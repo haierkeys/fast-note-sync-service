@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -31,9 +32,37 @@ func (m *BackupRetentionDefaultMigrate) Description() string {
 // Up runs the migration
 // Up 执行升级操作
 func (m *BackupRetentionDefaultMigrate) Up(db *gorm.DB, ctx context.Context, mc *MigrationContext) error {
-	err := db.WithContext(ctx).Table("backup_config").Where("retention_days = 0").Update("retention_days", 10).Error
-	if err != nil {
-		return fmt.Errorf("failed to backfill backup_config retention_days: %w", err)
+	if mc.Dao == nil {
+		return fmt.Errorf("dao is nil in migration context")
 	}
+
+	uids, err := mc.Dao.GetAllUserUIDs()
+	if err != nil {
+		return fmt.Errorf("failed to get all user UIDs: %w", err)
+	}
+
+	for _, uid := range uids {
+		key := "user_backup_" + fmt.Sprintf("%d", uid)
+		userDB := mc.Dao.ResolveDB(key)
+		if userDB == nil {
+			mc.Logger.Warn("user db connection is nil, skipping", zap.Int64("uid", uid))
+			continue
+		}
+
+		err = userDB.Transaction(func(tx *gorm.DB) error {
+			if !tx.Migrator().HasTable("backup_config") {
+				return nil
+			}
+			err := tx.WithContext(ctx).Table("backup_config").Where("retention_days = 0").Update("retention_days", 10).Error
+			if err != nil {
+				return fmt.Errorf("failed to backfill backup_config retention_days for uid %d: %w", uid, err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

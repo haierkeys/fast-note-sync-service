@@ -39,8 +39,9 @@ type Migration interface {
 // MigrationContext 迁移上下文，包含迁移脚本需要的依赖
 type MigrationContext struct {
 	Logger       *zap.Logger
-	DatabasePath string // 数据库文件路径（用于 SQLite）
-	DatabaseType string // 数据库类型
+	DatabasePath string   // 数据库文件路径（用于 SQLite）
+	DatabaseType string   // 数据库类型
+	Dao          *dao.Dao // Dao 实例，用于处理租户/用户库
 }
 
 // MigrationManager 升级管理器
@@ -77,6 +78,13 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version string, cfg, u
 // Run 执行升级
 func (m *MigrationManager) Run(ctx context.Context) error {
 	m.logger.Info("Migration started")
+
+	// 初始化 Dao
+	d := dao.New(m.db, ctx,
+		dao.WithConfig(m.config),
+		dao.WithUserDatabaseConfig(m.userConfig),
+		dao.WithLogger(m.logger),
+	)
 
 	// 使用提供的主配置和用户配置初始化 DBUtils
 	dbUtils := service.NewDBUtils(m.db, ctx,
@@ -166,6 +174,7 @@ func (m *MigrationManager) Run(ctx context.Context) error {
 				Logger:       m.logger,
 				DatabasePath: m.config.Path,
 				DatabaseType: m.config.Type,
+				Dao:          d,
 			}
 			// 执行升级脚本
 			if err := migration.Up(tx, context.Background(), mc); err != nil {
