@@ -78,8 +78,8 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 	// 2. Get Vault
 	toolGetVault := mcp.NewTool("vault_get",
 		mcp.WithDescription("Get details of a specific vault by ID"),
-		mcp.WithOutputSchema[mcpVaultOutput](),
 		mcp.WithNumber("id", mcp.Required(), mcp.Description("Vault ID")),
+		mcp.WithOutputSchema[mcpVaultOutput](),
 	)
 	srv.AddTool(readOnlyMCPTool(toolGetVault, cfg, "vaults:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_r"); err != nil {
@@ -109,9 +109,9 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 	// 3. Create or Update Vault
 	toolCreateUpdateVault := mcp.NewTool("vault_create_or_update",
 		mcp.WithDescription("Create a new vault or update an existing vault (by passing 'id')"),
-		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 		mcp.WithString("vault", mcp.Required(), mcp.Description("Vault name")),
 		mcp.WithNumber("id", mcp.Description("Vault ID for update. Omit or 0 to create new vault.")),
+		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolCreateUpdateVault, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
@@ -165,8 +165,8 @@ func registerVaultTools(srv *mcpsrv.MCPServer, appContainer *app.App) {
 	// 4. Delete Vault
 	toolDeleteVault := mcp.NewTool("vault_delete",
 		mcp.WithDescription("Delete a vault by ID"),
-		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 		mcp.WithNumber("id", mcp.Required(), mcp.Description("Vault ID")),
+		mcp.WithOutputSchema[mcpVaultMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolDeleteVault, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
