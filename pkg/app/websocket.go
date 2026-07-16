@@ -664,7 +664,7 @@ func (c *WebsocketClient) ToResponse(code *code.Code, action ...string) {
 	}
 
 	if c.app.IsReturnSuccess() || actionType != "" || code.Code() > 200 || code.HaveData() || code.HaveDetails() {
-		if c.UseProtobuf() && c.Server.ProtobufEncoder != nil && actionType != "" && code.Status() {
+		if c.UseProtobuf() && c.Server.ProtobufEncoder != nil && actionType != "" {
 			pbBytes, err := c.Server.ProtobufEncoder(actionType, &content)
 			if err == nil {
 				c.writeMessage(gws.OpcodeBinary, pbBytes)

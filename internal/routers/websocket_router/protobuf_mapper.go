@@ -111,6 +111,7 @@ func DeReceiveProtobufToDTO(action WebSocketReceiveAction, data []byte, obj any)
 			dest.Mtime = pbMsg.Mtime
 			dest.CreateOnly = pbMsg.CreateOnly
 			dest.Context = pbMsg.Context
+			dest.IsConflictResolved = pbMsg.IsConflictResolved
 			return true, nil
 		}
 	// "NoteCheck"
@@ -731,11 +732,35 @@ func enSendDataPayload(action WebSocketSendAction, data any) ([]byte, error) {
 		}
 	// "NoteSyncNeedPush"
 	case NoteSyncNeedPush:
-		if src, ok := data.(dto.NoteSyncNeedPushMessage); ok {
-			pbMsg := &v1.NoteSyncNeedPushMessage{
-				Path:     src.Path,
-				PathHash: src.PathHash,
+		pbMsg := &v1.NoteSyncNeedPushMessage{}
+		var ok bool
+		if src, isOk := data.(dto.NoteSyncNeedPushMessage); isOk {
+			pbMsg.Path = src.Path
+			pbMsg.PathHash = src.PathHash
+			ok = true
+		} else if srcPtr, isOk := data.(*dto.NoteSyncNeedPushMessage); isOk && srcPtr != nil {
+			pbMsg.Path = srcPtr.Path
+			pbMsg.PathHash = srcPtr.PathHash
+			ok = true
+		} else if srcMap, isOk := data.(map[string]interface{}); isOk {
+			if path, isOk := srcMap["path"].(string); isOk {
+				pbMsg.Path = path
 			}
+			if pathHash, isOk := srcMap["pathHash"].(string); isOk {
+				pbMsg.PathHash = pathHash
+			}
+			if serverContent, isOk := srcMap["serverContent"].(string); isOk {
+				pbMsg.ServerContent = serverContent
+			}
+			if baseContent, isOk := srcMap["baseContent"].(string); isOk {
+				pbMsg.BaseContent = baseContent
+			}
+			if serverHash, isOk := srcMap["serverHash"].(string); isOk {
+				pbMsg.ServerHash = serverHash
+			}
+			ok = true
+		}
+		if ok {
 			return proto.Marshal(pbMsg)
 		}
 	// "NoteModifyAck"

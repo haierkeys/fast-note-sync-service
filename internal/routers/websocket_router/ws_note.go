@@ -128,6 +128,41 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				return
 			}
 
+			// =========================================================================
+			// Hard Conflict Protection: 
+			// If strategy is manualMerge, the request has no resolution mark, and serverHash 
+			// differs from baseHash, block the override immediately and return 530.
+			// 
+			// 硬冲突保护：
+			// 如果合并策略为手动合并，请求中未携带解决标记，且云端哈希与客户端基准哈希不匹配，
+			// 直接拦截该覆写并返回 530 错误及冲突明细。
+			// =========================================================================
+			if c.OfflineSyncStrategy() == "manualMerge" && !params.IsConflictResolved && (serverHash != baseHash || params.BaseHashMissing || baseHash == "") {
+				var baseContent string
+				if !params.BaseHashMissing && baseHash != "" {
+					noteHistory, err := h.App.NoteHistoryService.GetByNoteIDAndHash(ctx, c.User.UID, nodeCheck.ID, baseHash)
+					if err == nil && noteHistory != nil {
+						baseContent = noteHistory.Content
+					}
+				}
+				if baseContent == "" {
+					baseContent = nodeCheck.Content
+				}
+
+				c.ToResponse(code.ErrorSyncConflict.WithData(map[string]interface{}{
+					"path":          params.Path,
+					"pathHash":      params.PathHash,
+					"serverContent": nodeCheck.Content,
+					"baseContent":   baseContent,
+					"serverHash":    serverHash,
+				}).WithVault(params.Vault).WithContext(params.Context), string(NoteSyncNeedPush))
+
+				h.App.Logger().Info("manual merge conflict intercepted on direct NoteModify, blocked and sent 530",
+					zap.String(logger.FieldTraceID, c.TraceID),
+					zap.String(logger.FieldPath, params.Path))
+				return
+			}
+
 			c.DiffMergePathsMu.RLock()
 			_, mergeIsNeed := c.DiffMergePaths[params.Path]
 			c.DiffMergePathsMu.RUnlock()
@@ -137,9 +172,14 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				delete(c.DiffMergePaths, params.Path)
 				c.DiffMergePathsMu.Unlock()
 
-				// Skip merge and use client to override server directly if no offline sync strategy is set
-				// 没有设置离线同步策略时，跳过合并，直接使用客户端覆盖服务端
-				if c.OfflineSyncStrategy() == "" {
+				// If client resolves conflict manually, write directly and broadcast to others
+				// 如果客户端手动解决了冲突，直接写入并广播给其他端
+				if params.IsConflictResolved {
+					h.App.Logger().Info("conflict resolved manually by client, writing directly",
+						zap.String(logger.FieldTraceID, c.TraceID),
+						zap.String(logger.FieldPath, params.Path))
+					isExcludeSelf = false
+				} else if c.OfflineSyncStrategy() == "" {
 					h.App.Logger().Debug("no offline sync strategy, skipping merge, using client to override server",
 						zap.String(logger.FieldTraceID, c.TraceID),
 						zap.Int64(logger.FieldUID, c.User.UID),
@@ -249,6 +289,23 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 					clientContent := params.Content
 					serverContent := nodeCheck.Content
+
+					// If strategy is manualMerge, block and return 530 error with three versions
+					// 如果策略是手动合并，则拦截并返回带三版本内容的 530 错误
+					if c.OfflineSyncStrategy() == "manualMerge" {
+						c.ToResponse(code.ErrorSyncConflict.WithData(map[string]interface{}{
+							"path":          params.Path,
+							"pathHash":      params.PathHash,
+							"serverContent": serverContent,
+							"baseContent":   baseContent,
+							"serverHash":    serverHash,
+						}).WithVault(params.Vault).WithContext(params.Context), string(NoteSyncNeedPush))
+
+						h.App.Logger().Info("manual merge strategy: merge blocked, sent conflict contents to client",
+							zap.String(logger.FieldTraceID, c.TraceID),
+							zap.String(logger.FieldPath, params.Path))
+						return
+					}
 
 					// Determine patch application order
 					// ignoreTimeMerge strategy: ignore timestamp, fixed use client priority
@@ -970,9 +1027,9 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 					if cNote.Mtime < note.Mtime {
 
 						switch c.OfflineSyncStrategy() {
-						// When ignore time and merge, register those needing merge, notify client to upload note
-						//当忽略时间并合并时,登记需要合并的, 通知客户端上传笔记
-						case "ignoreTimeMerge":
+						// When ignore time and merge or manual merge, register those needing merge, notify client to upload note
+						//当忽略时间并合并或手动合并时,登记需要合并的, 通知客户端上传笔记
+						case "ignoreTimeMerge", "manualMerge":
 
 							c.DiffMergePathsMu.Lock()
 							c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
@@ -1018,7 +1075,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 						// Client note is newer than server, notify client to upload note
 						// 客户端笔记 比服务端笔记新, 通知客户端上传笔记
 
-						if c.OfflineSyncStrategy() == "ignoreTimeMerge" || c.OfflineSyncStrategy() == "newTimeMerge" {
+						if c.OfflineSyncStrategy() == "ignoreTimeMerge" || c.OfflineSyncStrategy() == "newTimeMerge" || c.OfflineSyncStrategy() == "manualMerge" {
 							c.DiffMergePathsMu.Lock()
 							c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
 							c.DiffMergePathsMu.Unlock()
@@ -1082,6 +1139,12 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 	if len(cNotesKeys) > 0 {
 		for pathHash := range cNotesKeys {
 			note := cNotes[pathHash]
+
+			if c.OfflineSyncStrategy() == "ignoreTimeMerge" || c.OfflineSyncStrategy() == "newTimeMerge" || c.OfflineSyncStrategy() == "manualMerge" {
+				c.DiffMergePathsMu.Lock()
+				c.DiffMergePaths[note.Path] = pkgapp.DiffMergeEntry{CreatedAt: time.Now()}
+				c.DiffMergePathsMu.Unlock()
+			}
 
 			// Add message to queue instead of sending immediately
 			// 将消息添加到队列而非立即发送

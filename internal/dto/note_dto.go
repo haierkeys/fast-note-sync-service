@@ -31,7 +31,8 @@ type NoteModifyOrCreateRequest struct {
 	Ctime           int64  `json:"ctime" form:"ctime" example:"1700000000"`                      // Creation timestamp // 创建时间戳
 	Mtime           int64  `json:"mtime" form:"mtime" example:"1700000000"`                      // Modification timestamp // 修改时间戳
 	CreateOnly      bool   `json:"createOnly" form:"createOnly" example:"false"`                 // If true, fail if note already exists // 如果为 true，笔记已存在则失败
-	Context         string `json:"context" form:"context" example:"ctx123"`                      // Context // 同步上下文
+	Context            string `json:"context" form:"context" example:"ctx123"`                      // Context // 同步上下文
+	IsConflictResolved bool   `json:"isConflictResolved" form:"isConflictResolved" example:"false"` // Marks if conflict is resolved manually // 标记是否为手动解决冲突
 }
 
 // ContentModifyRequest Request parameters for modifying content only
