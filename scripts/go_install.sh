@@ -2,11 +2,14 @@
 set -e
 
 # Globals
-TEMP="$(mktemp -d)"
+TEMP=""
 
 function cleanup() {
-    rm -rf "$TEMP"
-    # Only print new line if we are not returning a value (e.g. for simple commands)
+    # Check if TEMP is set and exists before removing
+    # 检查 TEMP 是否已设置且存在，然后再删除
+    if [ -n "$TEMP" ] && [ -d "$TEMP" ]; then
+        rm -rf "$TEMP"
+    fi
 }
 trap cleanup EXIT
 
@@ -114,6 +117,10 @@ function do_install() {
         fi
     fi
     
+    # Create temp directory on demand
+    # 按需创建临时目录
+    TEMP="$(mktemp -d)"
+
     # Download and Install logic here
     local download_url="https://go.dev/dl/${selected_version}.${OS}-${ARCH}.tar.gz"
     
@@ -124,6 +131,11 @@ function do_install() {
         
         echo "Extracting..."
         tar -C /usr/local -xzf "$TEMP/go-linux.tar.gz"
+        
+        # Clean up temp directory immediately after extraction
+        # 解压后立即清理临时目录
+        cleanup
+        TEMP=""
         
         setup_env
         
