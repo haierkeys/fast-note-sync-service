@@ -122,7 +122,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v3
         env:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT }}
         with:
           tag_name: ${{ needs.check-version.outputs.release_tag }}
           name: ${{ needs.check-version.outputs.release_tag }}

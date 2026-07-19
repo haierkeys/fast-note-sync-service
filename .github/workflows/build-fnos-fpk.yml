@@ -62,7 +62,7 @@ jobs:
           VER="${{ steps.ver.outputs.version }}"
           sed -i "s|^version=.*|version=\"${VER}\"|" scripts/fnos/manifest
           sed -i "s|^platform=.*|platform=\"${{ matrix.platform }}\"|" scripts/fnos/manifest
-          cat packaging/fnos/manifest
+          cat scripts/fnos/manifest
 
       - name: Download fnpack (pinned SHA256)
         run: |
