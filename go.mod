@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.3.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.1
 	github.com/blevesearch/bleve/v2 v2.6.0
-	github.com/bytedance/sonic v1.15.2
+	github.com/bytedance/sonic v1.15.1
 	github.com/creasty/defaults v1.8.0
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gin-gonic/gin v1.12.0
