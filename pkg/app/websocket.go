@@ -299,6 +299,7 @@ type WebsocketClient struct {
 	ProtoVersion        int                       // Client-declared handshake protocol version, from URL query "pv"; >=2 means the client supports v2 negotiation (negotiation block in auth response, window pipelining, early pb upgrade) // 客户端声明的握手协议版本，来自 URL query "pv"；>=2 表示客户端支持 v2 协商（auth 响应携带协商块、窗口流水线、pb 提前升级）
 	PbEnabled           bool                      // Client's local protobufEnabled setting, from URL query "pb" (1/0); only meaningful when ProtoVersion>=2 // 客户端本地 protobufEnabled 设置，来自 URL query "pb"（1/0）；仅在 ProtoVersion>=2 时有意义
 	currentAction       string                    // Current action type being processed // Current action type being processed // 当前正在处理的动作类型
+	remoteAddr          string                    // Client real IP address, extracted from HTTP headers / 客户端真实 IP 地址，从 HTTP 头部提取
 }
 
 // ClientName returns the client-reported name (e.g. "Mac", "Windows", "iPhone").
@@ -957,7 +958,7 @@ func (w *WebsocketServer) GetClients() []WSClientInfo {
 			ClientType:    c.ClientType(),
 			ClientVersion: c.ClientVersion(),
 			PlatformInfo:  c.ClientPlatform(),
-			RemoteAddr:    c.conn.RemoteAddr().String(),
+			RemoteAddr:    c.remoteAddr,
 			StartTime:     c.StartTime,
 			TraceID:       c.TraceID,
 			TokenID:       c.TokenID,
@@ -1066,13 +1067,14 @@ func (w *WebsocketServer) Run() gin.HandlerFunc {
 		traceID := extractOrGenerateTraceID(c)
 
 		client := &WebsocketClient{
-			conn:      socket,
-			done:      make(chan struct{}),
-			app:       w.app,
-			Server:    w,
-			Ctx:       c,
-			SF:        new(singleflight.Group),
-			StartTime: timex.Now(),
+			conn:       socket,
+			done:       make(chan struct{}),
+			app:        w.app,
+			Server:     w,
+			Ctx:        c,
+			SF:         new(singleflight.Group),
+			StartTime:  timex.Now(),
+			remoteAddr: c.ClientIP(),
 		}
 
 		// Extract client info from query parameters
