@@ -712,7 +712,6 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 			Auth:          auth,
 			ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 			SingleBranch:  true,
-			Depth:         1,
 			Tags:          git.NoTags,
 		})
 		if err != nil {
@@ -754,7 +753,6 @@ func (s *gitSyncService) doSync(ctx context.Context, conf *domain.GitSyncConfig)
 		ReferenceName: plumbing.NewBranchReferenceName(conf.Branch),
 		SingleBranch:  true,
 		Force:         true,
-		Depth:         1,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		if errors.Is(err, transport.ErrEmptyRemoteRepository) || errors.Is(err, git.ErrRemoteNotFound) || errors.Is(err, plumbing.ErrReferenceNotFound) {

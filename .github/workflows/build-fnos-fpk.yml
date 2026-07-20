@@ -30,7 +30,7 @@ jobs:
           - { goarch: amd64, platform: x86, suffix: x86 }
           - { goarch: arm64, platform: arm, suffix: arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         with:
@@ -62,7 +62,7 @@ jobs:
           VER="${{ steps.ver.outputs.version }}"
           sed -i "s|^version=.*|version=\"${VER}\"|" scripts/fnos/manifest
           sed -i "s|^platform=.*|platform=\"${{ matrix.platform }}\"|" scripts/fnos/manifest
-          cat packaging/fnos/manifest
+          cat scripts/fnos/manifest
 
       - name: Download fnpack (pinned SHA256)
         run: |
@@ -95,9 +95,13 @@ jobs:
           if-no-files-found: error
 
       - name: Attach to release
-        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd scripts/fnos
-          gh release upload "${{ github.event.release.tag_name }}" *.fpk *.fpk.sha256 --clobber
+          if [ "${{ github.event_name }}" = "release" ]; then
+            cd scripts/fnos
+            gh release upload "${{ github.event.release.tag_name }}" *.fpk *.fpk.sha256 --clobber
+          else
+            # 打印跳过的原因 / Print the skip reason
+            echo "Skipping upload: This run was triggered by '${{ github.event_name }}' instead of a 'release' event."
+          fi
