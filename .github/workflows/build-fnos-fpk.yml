@@ -89,9 +89,9 @@ jobs:
           set -eu
           VER="${{ steps.ver.outputs.version }}"
           cd scripts/fnos
-          mv fastnotesync.fpk "fastnotesync-${VER}-${{ matrix.suffix }}.fpk"
-          sha256sum "fastnotesync-${VER}-${{ matrix.suffix }}.fpk" \
-            > "fastnotesync-${VER}-${{ matrix.suffix }}.fpk.sha256"
+          FPK_NAME="${FNS_BIN_NAME}-${VER}-fnOS-${{ matrix.suffix }}.fpk"
+          mv fastnotesync.fpk "${FPK_NAME}"
+          sha256sum "${FPK_NAME}" > "${FPK_NAME}.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
