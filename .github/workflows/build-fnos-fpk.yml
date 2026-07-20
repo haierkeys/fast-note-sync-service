@@ -10,6 +10,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Target Release Tag (e.g. 0.0.1 or 0.0.1-alpha)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -30,9 +35,9 @@ jobs:
           - { goarch: amd64, platform: x86, suffix: x86 }
           - { goarch: arm64, platform: arm, suffix: arm }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -40,14 +45,16 @@ jobs:
         id: ver
         run: |
           set -eu
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            VER="${{ github.event.release.tag_name }}"
+          TAG_NAME="${{ inputs.tag_name || github.event.release.tag_name }}"
+          if [ -n "$TAG_NAME" ]; then
+            VER="$TAG_NAME"
           else
             VER=$(grep -E 'Version\s+string' internal/app/version.go | awk -F '"' '{print $2}')
           fi
           VER="${VER#v}"
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
           echo "version=${VER}"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Build binary from source
         run: |
@@ -98,10 +105,107 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            cd scripts/fnos
-            gh release upload "${{ github.event.release.tag_name }}" *.fpk *.fpk.sha256 --clobber
-          else
-            # 打印跳过的原因 / Print the skip reason
-            echo "Skipping upload: This run was triggered by '${{ github.event_name }}' instead of a 'release' event."
+          set -eu
+          TARGET_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
+          if [ -z "$TARGET_TAG" ]; then
+            VER_VAL="${{ steps.ver.outputs.version }}"
+            if gh release view "$VER_VAL" >/dev/null 2>&1; then
+              TARGET_TAG="$VER_VAL"
+            elif gh release view "v${VER_VAL}" >/dev/null 2>&1; then
+              TARGET_TAG="v${VER_VAL}"
+            fi
           fi
+
+          if [ -n "$TARGET_TAG" ] && gh release view "$TARGET_TAG" >/dev/null 2>&1; then
+            echo "Uploading artifacts to release: ${TARGET_TAG}"
+            cd scripts/fnos
+            gh release upload "${TARGET_TAG}" *.fpk *.fpk.sha256 --clobber
+          else
+            echo "Skipping upload: Target release '${TARGET_TAG}' not found."
+          fi
+
+      - name: Attach to CNB release
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          CNB_REPO: haierkeys/fast-note-sync-service
+        run: |
+          set -e
+          if [ -z "${CNB_TOKEN}" ]; then
+            echo "CNB_TOKEN not set, skipping CNB upload."
+            exit 0
+          fi
+
+          TARGET_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
+          if [ -z "$TARGET_TAG" ]; then
+            TARGET_TAG="${{ steps.ver.outputs.version }}"
+          fi
+
+          echo "Fetching CNB Release for tag: ${TARGET_TAG}"
+          LIST_RESPONSE=$(curl -s \
+            -H "Accept: application/vnd.cnb.api+json" \
+            -H "Authorization: Bearer ${CNB_TOKEN}" \
+            "https://api.cnb.cool/${CNB_REPO}/-/releases")
+          
+          RELEASE_ID=$(echo "$LIST_RESPONSE" | jq -r ".[] | select(.tag_name==\"${TARGET_TAG}\") | .id")
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            ALT_TAG="v${TARGET_TAG#v}"
+            if [ "$ALT_TAG" = "$TARGET_TAG" ]; then
+              ALT_TAG="${TARGET_TAG#v}"
+            fi
+            RELEASE_ID=$(echo "$LIST_RESPONSE" | jq -r ".[] | select(.tag_name==\"${ALT_TAG}\") | .id")
+          fi
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "::warning::CNB Release for tag ${TARGET_TAG} not found, skipping CNB asset upload."
+            exit 0
+          fi
+
+          echo "Found CNB Release ID: ${RELEASE_ID}"
+
+          for FILE_PATH in scripts/fnos/*.fpk scripts/fnos/*.fpk.sha256; do
+            [ -f "$FILE_PATH" ] || continue
+            FILE_NAME=$(basename "$FILE_PATH")
+            FILE_SIZE=$(stat -c%s "$FILE_PATH")
+
+            echo "Uploading ${FILE_NAME} to CNB Release..."
+
+            UPLOAD_RESPONSE=$(curl -s -X POST \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -H "Authorization: Bearer ${CNB_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n \
+                --arg name "${FILE_NAME}" \
+                --argjson size ${FILE_SIZE} \
+                '{asset_name: $name, size: $size, overwrite: true}')" \
+              "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}/asset-upload-url")
+
+            UPLOAD_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.upload_url')
+            VERIFY_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.verify_url')
+
+            if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" = "null" ]; then
+              echo "::warning::Failed to get upload URL for ${FILE_NAME} from CNB"
+              continue
+            fi
+
+            CONTENT_TYPE="application/octet-stream"
+            if [[ "${FILE_NAME}" == *.txt ]] || [[ "${FILE_NAME}" == *.sha256 ]]; then
+              CONTENT_TYPE="text/plain"
+            fi
+
+            UPLOAD_RESULT=$(curl -s -w "\n%{http_code}" -X PUT \
+              -H "Content-Type: ${CONTENT_TYPE}" \
+              --data-binary @"$FILE_PATH" \
+              "$UPLOAD_URL")
+            UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESULT" | tail -1)
+
+            if [ "$UPLOAD_HTTP_CODE" -eq 200 ] || [ "$UPLOAD_HTTP_CODE" -eq 201 ]; then
+              CONFIRM_RESULT=$(curl -s -w "\n%{http_code}" -X POST \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -H "Authorization: Bearer ${CNB_TOKEN}" \
+                "${VERIFY_URL}")
+              echo "✅ ${FILE_NAME} uploaded to CNB successfully"
+            else
+              echo "::warning::Failed to upload ${FILE_NAME} to CNB (HTTP ${UPLOAD_HTTP_CODE})"
+            fi
+          done

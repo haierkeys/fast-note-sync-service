@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   packages: write
+  actions: write
 
 env:
   NAME: ${{ github.event.repository.name }}
@@ -457,3 +458,14 @@ jobs:
           wait
 
           echo "🎉 All assets uploaded to CNB Release!"
+
+  trigger-fnos-build:
+    needs: [check-version, push-release-files, push-cnb-release]
+    if: needs.check-version.outputs.should_release == 'true' && github.actor == 'haierkeys' && always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger fnOS fpk build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run build-fnos-fpk.yml -f tag_name="${{ needs.check-version.outputs.release_tag }}"
