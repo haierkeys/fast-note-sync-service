@@ -48,6 +48,9 @@ type TokenService interface {
 	// GetRecentClients gets unique client names for all tokens of a user in the last duration
 	// GetRecentClients 获取用户所有令牌在最近一段时间内的唯一客户端名称
 	GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error)
+	// CleanExpired revokes expired tokens for a user
+	// CleanExpired 注销已过期的令牌
+	CleanExpired(ctx context.Context, uid int64, issueType int) error
 }
 
 type tokenService struct {
@@ -505,4 +508,12 @@ func (s *tokenService) SetSyncHandler(handler func(uid int64, tokenID int64, sco
 
 func (s *tokenService) GetRecentClients(ctx context.Context, uid int64, duration time.Duration) (map[int64][]string, error) {
 	return s.logRepo.ListRecentClientsByUID(ctx, uid, duration)
+}
+
+func (s *tokenService) CleanExpired(ctx context.Context, uid int64, issueType int) error {
+	err := s.tokenRepo.RevokeExpiredByUID(ctx, uid, issueType)
+	if err != nil {
+		return code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	return nil
 }

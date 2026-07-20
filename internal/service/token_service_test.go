@@ -55,6 +55,10 @@ func (r *stubAuthTokenRepository) RevokeAllByUID(ctx context.Context, uid int64)
 	return errors.New("not implemented")
 }
 
+func (r *stubAuthTokenRepository) RevokeExpiredByUID(ctx context.Context, uid int64, issueType int) error {
+	return errors.New("not implemented")
+}
+
 func (r *stubAuthTokenRepository) UpdateTokenString(ctx context.Context, id int64, tokenString string) error {
 	return errors.New("not implemented")
 }

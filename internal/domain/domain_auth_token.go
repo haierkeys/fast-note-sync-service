@@ -79,6 +79,10 @@ type AuthTokenRepository interface {
 	// RevokeAllByUID 注销用户的所有活跃令牌
 	RevokeAllByUID(ctx context.Context, uid int64) error
 
+	// RevokeExpiredByUID revokes expired tokens for a user
+	// RevokeExpiredByUID 注销用户已过期的令牌
+	RevokeExpiredByUID(ctx context.Context, uid int64, issueType int) error
+
 	// UpdateTokenString updates the token string (nonce) of a token
 	// UpdateTokenString 更新令牌字符串（标识符）
 	UpdateTokenString(ctx context.Context, id int64, tokenString string) error

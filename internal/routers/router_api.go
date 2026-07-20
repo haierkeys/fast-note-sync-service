@@ -238,6 +238,7 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 				// Token management routes
 				// 令牌管理路由
 				webguiGroup.GET("/tokens", tokenHandler.List)
+				webguiGroup.DELETE("/tokens/clean-expired", tokenHandler.CleanExpired)
 				webguiGroup.POST("/token", tokenHandler.Create)
 				webguiGroup.PUT("/token/:id", tokenHandler.Update)
 				webguiGroup.DELETE("/token/:id", tokenHandler.Revoke)

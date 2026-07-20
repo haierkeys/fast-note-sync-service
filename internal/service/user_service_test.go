@@ -95,6 +95,10 @@ func (m *mockUserTokenService) GetRecentClients(ctx context.Context, uid int64, 
 	return nil, nil
 }
 
+func (m *mockUserTokenService) CleanExpired(ctx context.Context, uid int64, issueType int) error {
+	return nil
+}
+
 // newUserSvc creates a userService with mocked dependencies for testing.
 // newUserSvc 创建带 mock 依赖的 userService 用于测试。
 func newUserSvc(repo domain.UserRepository, registerEnabled bool) UserService {

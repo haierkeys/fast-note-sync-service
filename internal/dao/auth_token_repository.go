@@ -169,6 +169,19 @@ func (r *authTokenRepository) RevokeAllByUID(ctx context.Context, uid int64) err
 	return err
 }
 
+func (r *authTokenRepository) RevokeExpiredByUID(ctx context.Context, uid int64, issueType int) error {
+	u := r.authToken().AuthToken
+	q := u.WithContext(ctx).Where(u.UID.Eq(uid), u.Status.Eq(1), u.ExpiredAt.Lt(time.Now()))
+	if issueType > 0 {
+		q = q.Where(u.IssueType.Eq(int64(issueType)))
+	}
+	_, err := q.UpdateSimple(
+		u.Status.Value(0),
+		u.UpdatedAt.Value(timex.Now()),
+	)
+	return err
+}
+
 func (r *authTokenRepository) UpdateTokenString(ctx context.Context, id int64, tokenString string) error {
 	u := r.authToken().AuthToken
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(id)).UpdateSimple(

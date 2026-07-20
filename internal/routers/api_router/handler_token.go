@@ -223,6 +223,30 @@ func (h *TokenHandler) ListLogs(c *gin.Context) {
 	response.ToResponseList(code.Success, logs, int(totalRows))
 }
 
+// CleanExpired revokes expired tokens
+// CleanExpired 清理过期的令牌
+func (h *TokenHandler) CleanExpired(c *gin.Context) {
+	response := pkgapp.NewResponse(c)
+	uid := pkgapp.GetUID(c)
+	ctx := c.Request.Context()
+
+	issueTypeStr := c.DefaultQuery("issueType", "1")
+	issueType, err := strconv.Atoi(issueTypeStr)
+	if err != nil {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("invalid issueType"))
+		return
+	}
+
+	err = h.App.TokenService.CleanExpired(ctx, uid, issueType)
+	if err != nil {
+		h.logError(ctx, "TokenHandler.CleanExpired", err)
+		apperrors.ErrorResponse(c, err)
+		return
+	}
+
+	response.ToResponse(code.Success)
+}
+
 func (h *TokenHandler) logError(ctx context.Context, method string, err error) {
 	h.App.Logger().Error(method, zap.Error(err))
 }
