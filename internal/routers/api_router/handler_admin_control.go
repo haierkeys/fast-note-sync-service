@@ -224,8 +224,8 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 		return
 	}
 
-	// Validate historySaveDelay cannot be less than 10 seconds
-	// 验证 historySaveDelay 不能小于 10 秒
+	// Validate historySaveDelay cannot be less than 1 second
+	// 验证 historySaveDelay 不能小于 1 秒
 	if params.HistorySaveDelay != nil && *params.HistorySaveDelay != "" {
 		delay, err := util.ParseDuration(*params.HistorySaveDelay)
 		if err != nil {
@@ -234,10 +234,10 @@ func (h *AdminControlHandler) UpdateConfig(c *gin.Context) {
 			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay format invalid, e.g. 10s, 1m"))
 			return
 		}
-		if delay < 10*time.Second {
+		if delay < 1*time.Second {
 			logger.Warn("apiRouter.WebGUI.UpdateConfig historySaveDelay too small",
 				zap.String("value", *params.HistorySaveDelay))
-			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay must be at least 10s"))
+			response.ToResponse(code.ErrorInvalidParams.WithDetails("historySaveDelay must be at least 1s"))
 			return
 		}
 	}
