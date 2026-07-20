@@ -32,8 +32,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { goarch: amd64, platform: x86, suffix: x86 }
-          - { goarch: arm64, platform: arm, suffix: arm }
+          - { goarch: amd64, target: build-linux-amd64, build_dir: linux_amd64, platform: x86, suffix: x86 }
+          - { goarch: arm64, target: build-linux-arm64, build_dir: linux_arm64, platform: arm, suffix: arm }
     steps:
       - uses: actions/checkout@v4
 
@@ -56,12 +56,12 @@ jobs:
           echo "version=${VER}"
           echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
 
-      - name: Build binary from source
+      - name: Build binary via Makefile
         run: |
           set -eu
           mkdir -p scripts/fnos/app
-          CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.goarch }} go build -trimpath \
-            -o "scripts/fnos/app/${FNS_BIN_NAME}" .
+          make ${{ matrix.target }}
+          cp "build/${{ matrix.build_dir }}/${FNS_BIN_NAME}" "scripts/fnos/app/${FNS_BIN_NAME}"
 
       - name: Stamp manifest
         run: |
