@@ -163,10 +163,24 @@ jobs:
 
           echo "Found CNB Release ID: ${RELEASE_ID}"
 
+          RELEASE_DETAIL=$(curl -s \
+            -H "Accept: application/vnd.cnb.api+json" \
+            -H "Authorization: Bearer ${CNB_TOKEN}" \
+            "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}")
+
           for FILE_PATH in scripts/fnos/*.fpk scripts/fnos/*.fpk.sha256; do
             [ -f "$FILE_PATH" ] || continue
             FILE_NAME=$(basename "$FILE_PATH")
             FILE_SIZE=$(stat -c%s "$FILE_PATH")
+
+            EXISTING_ASSET_ID=$(echo "$RELEASE_DETAIL" | jq -r ".assets[]? | select(.name==\"${FILE_NAME}\") | .id")
+            if [ -n "$EXISTING_ASSET_ID" ] && [ "$EXISTING_ASSET_ID" != "null" ]; then
+              echo "Deleting existing CNB asset '${FILE_NAME}' (ID: ${EXISTING_ASSET_ID})..."
+              curl -s -X DELETE \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -H "Authorization: Bearer ${CNB_TOKEN}" \
+                "https://api.cnb.cool/${CNB_REPO}/-/releases/${RELEASE_ID}/assets/${EXISTING_ASSET_ID}" || true
+            fi
 
             echo "Uploading ${FILE_NAME} to CNB Release..."
 
