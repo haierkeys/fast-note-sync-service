@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/config"
+	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 )
 
 func TestOAuthMetadataRoutes_Output(t *testing.T) {
@@ -104,6 +105,7 @@ func TestOAuthMetadataRoutes_Disabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
+	r.NoRoute(middleware.NoFound())
 	registerOAuthMetadataRoutesWithConfig(r, config.OAuthConfig{})
 
 	w := httptest.NewRecorder()

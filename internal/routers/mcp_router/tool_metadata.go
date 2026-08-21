@@ -32,11 +32,16 @@ func withMCPToolMetadata(tool mcp.Tool, cfg *app.AppConfig, metadata mcpToolMeta
 	if tool.Meta.AdditionalFields == nil {
 		tool.Meta.AdditionalFields = make(map[string]any)
 	}
-	tool.Meta.AdditionalFields["securitySchemes"] = []map[string]any{
-		{
-			"type":   "oauth2",
-			"scopes": oauthScopesForTool(cfg, metadata.Scopes),
-		},
+
+	if cfg != nil && cfg.OAuth.Enabled {
+		tool.Meta.AdditionalFields["securitySchemes"] = []map[string]any{
+			{
+				"type":   "oauth2",
+				"scopes": oauthScopesForTool(cfg, metadata.Scopes),
+			},
+		}
+	} else {
+		delete(tool.Meta.AdditionalFields, "securitySchemes")
 	}
 
 	return tool

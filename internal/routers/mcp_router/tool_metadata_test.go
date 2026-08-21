@@ -189,3 +189,34 @@ func TestToolMetadataDefaultFNSScopeOmitsOAuthScopes(t *testing.T) {
 		t.Fatalf("scopes = %#v, want empty", got)
 	}
 }
+
+func TestToolMetadataOmitsSecuritySchemesWhenOAuthDisabled(t *testing.T) {
+	cfg := &appconfig.AppConfig{
+		OAuth: config.OAuthConfig{Enabled: false},
+	}
+
+	tool := withMCPToolMetadata(mcp.NewTool("note_get"), cfg, mcpToolMetadata{
+		ReadOnly: true,
+		Scopes:   []string{"notes:read"},
+	})
+
+	payload, err := json.Marshal(mcp.NewListToolsResult([]mcp.Tool{tool}, ""))
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	var body struct {
+		Tools []struct {
+			Meta map[string]any `json:"_meta"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if len(body.Tools) != 1 {
+		t.Fatalf("tools length = %d, want 1", len(body.Tools))
+	}
+	if _, ok := body.Tools[0].Meta["securitySchemes"]; ok {
+		t.Fatalf("securitySchemes should be omitted when OAuth is disabled: %#v", body.Tools[0].Meta)
+	}
+}
