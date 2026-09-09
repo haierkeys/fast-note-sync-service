@@ -409,7 +409,11 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 			// Check if content is consistent, excluding notes marked as deleted
 			if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
-				return &result{isNew: isNew, dto: nil}, nil
+				// 幂等短路：内容与 mtime 均一致，无需写库。必须返回有效 DTO——
+				// 调用方无条件访问 note 的字段，返回 nil 会导致空指针 panic。
+				// Must return a valid DTO: the caller unconditionally dereferences
+				// note fields; returning nil panics.
+				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
 			}
 			// If content is consistent but modification time is different, only update modification time
 			// 检查内容是否一致但修改时间不同，则只更新修改时间
