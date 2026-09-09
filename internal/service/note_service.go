@@ -409,7 +409,11 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 
 			// Check if content is consistent, excluding notes marked as deleted
 			if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime == params.Mtime && note.ContentHash == params.ContentHash {
-				return &result{isNew: isNew, dto: nil}, nil
+				// 幂等短路：内容与 mtime 均一致，无需写库。必须返回有效 DTO——
+				// 调用方无条件访问 note 的字段，返回 nil 会导致空指针 panic。
+				// Must return a valid DTO: the caller unconditionally dereferences
+				// note fields; returning nil panics.
+				return &result{isNew: isNew, dto: s.domainToDTO(note)}, nil
 			}
 			// If content is consistent but modification time is different, only update modification time
 			// 检查内容是否一致但修改时间不同，则只更新修改时间
@@ -535,12 +539,26 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
+	// 删除必须幂等：客户端在快速创建-删除竞争下会重复发送删除请求，
+	// 且仅在上传确认后才清理本地哈希——对已删除/不存在的记录返回错误
+	// 会导致客户端无限重试。因此改用 GetAllByPathHash（不过滤 action）
+	// 并对缺失记录返回成功。
+	// Delete must be idempotent: clients retry deletes on rapid create-delete
+	// races and only clear their local hash upon NoteDeleteAck; returning an
+	// error for already-deleted or missing records causes an infinite retry loop.
+	note, err := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, code.ErrorNoteNotFound
+			// 幂等：记录不存在（上传未完成或已物理清理）→ 用请求参数构造成功 DTO，
+			// path 必须来自请求，客户端按 path 匹配 pending 集合并清理 hash
+			return &dto.NoteDTO{Path: params.Path, PathHash: params.PathHash}, nil
 		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	if note.Action == domain.NoteActionDelete {
+		// 幂等：已是删除状态 → 不重复写库，直接返回
+		return s.domainToDTO(note), nil
 	}
 
 	// Update to deleted status // 更新为删除状态
@@ -1382,7 +1400,11 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 // CleanDuplicateNotes 清理重复的笔记记录
 func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
 	// 获取所有笔记（包含已删除，以便全局去重）
-	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	// 用 Meta 版本：去重只需 path/action/timestamp 等元数据，无需读取正文/快照文件。
+	// 非 Meta 版本会逐条读 content.txt，而 Create 是"先插库后写文件"，并发窗口下
+	// 会命中 "note content file not found" 导致任务中断。
+	// Use the Meta variant: dedup only needs metadata, not content/snapshot files.
+	notes, err := s.noteRepo.ListByUpdatedTimestampMeta(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
