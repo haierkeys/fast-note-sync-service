@@ -1400,7 +1400,11 @@ func (s *noteService) RecycleClear(ctx context.Context, uid int64, params *dto.N
 // CleanDuplicateNotes 清理重复的笔记记录
 func (s *noteService) CleanDuplicateNotes(ctx context.Context, uid int64, vaultID int64) error {
 	// 获取所有笔记（包含已删除，以便全局去重）
-	notes, err := s.noteRepo.ListByUpdatedTimestamp(ctx, 0, vaultID, uid)
+	// 用 Meta 版本：去重只需 path/action/timestamp 等元数据，无需读取正文/快照文件。
+	// 非 Meta 版本会逐条读 content.txt，而 Create 是"先插库后写文件"，并发窗口下
+	// 会命中 "note content file not found" 导致任务中断。
+	// Use the Meta variant: dedup only needs metadata, not content/snapshot files.
+	notes, err := s.noteRepo.ListByUpdatedTimestampMeta(ctx, 0, vaultID, uid)
 	if err != nil {
 		return err
 	}
