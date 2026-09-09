@@ -535,12 +535,26 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
+	// 删除必须幂等：客户端在快速创建-删除竞争下会重复发送删除请求，
+	// 且仅在上传确认后才清理本地哈希——对已删除/不存在的记录返回错误
+	// 会导致客户端无限重试。因此改用 GetAllByPathHash（不过滤 action）
+	// 并对缺失记录返回成功。
+	// Delete must be idempotent: clients retry deletes on rapid create-delete
+	// races and only clear their local hash upon NoteDeleteAck; returning an
+	// error for already-deleted or missing records causes an infinite retry loop.
+	note, err := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, code.ErrorNoteNotFound
+			// 幂等：记录不存在（上传未完成或已物理清理）→ 用请求参数构造成功 DTO，
+			// path 必须来自请求，客户端按 path 匹配 pending 集合并清理 hash
+			return &dto.NoteDTO{Path: params.Path, PathHash: params.PathHash}, nil
 		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+
+	if note.Action == domain.NoteActionDelete {
+		// 幂等：已是删除状态 → 不重复写库，直接返回
+		return s.domainToDTO(note), nil
 	}
 
 	// Update to deleted status // 更新为删除状态
