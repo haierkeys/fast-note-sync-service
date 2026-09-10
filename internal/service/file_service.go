@@ -296,10 +296,21 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			}
 
 			// Set action
-			// Set action
 			// 设置 action
 			var action domain.FileAction
 			if file.Action == domain.FileActionDelete {
+				// 墓碑闸门（与笔记侧同一策略）：陈旧重报不得复活已删文件。
+				if isStaleRevive(params.Mtime, params.Ctime, file.UpdatedTimestamp) {
+					zap.L().Info("stale revive rejected",
+						zap.Int64(logger.FieldUID, uid),
+						zap.String(logger.FieldPath, file.Path),
+						zap.Int64("mtime", params.Mtime),
+						zap.Int64("ctime", params.Ctime),
+						zap.Int64("deletedAt", file.UpdatedTimestamp),
+						zap.String("clientName", s.clientName),
+					)
+					return nil, code.ErrorStaleReviveRejected
+				}
 				action = domain.FileActionCreate
 			} else {
 				action = domain.FileActionModify

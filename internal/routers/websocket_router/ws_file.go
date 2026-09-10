@@ -373,6 +373,24 @@ func (h *FileWSHandler) FileUploadChunkBinary(c *pkgapp.WebsocketClient, data []
 		_, fileSvc, err := fileService.UploadComplete(ctx, c.User.UID, svcParams)
 
 		if err != nil {
+			// 陈旧重报被墓碑闸门拒绝：回 ACK 清理客户端待传状态、补发删除指令清理
+			// 本地残留；不落库、不广播，并立即回收上传会话与临时文件。
+			if errors.Is(err, code.ErrorStaleReviveRejected) {
+				c.ToResponse(code.Success.WithData(dto.FileUploadAckMessage{
+					Path:     session.Path,
+					PathHash: session.PathHash,
+				}).WithVault(session.Vault).WithContext(session.Context), string(FileUploadAck))
+				c.ToResponse(code.Success.WithData(dto.FileSyncDeleteMessage{
+					Path:     session.Path,
+					PathHash: session.PathHash,
+					Ctime:    session.Ctime,
+					Mtime:    session.Mtime,
+					Size:     session.Size,
+				}).WithVault(session.Vault).WithContext(session.Context), string(FileSyncDelete))
+				c.Server.RemoveSession(c.User.ID, session.ID)
+				session.Cleanup()
+				return
+			}
 			// 在 UploadComplete 失败时，返回携带 sessionID 和 path 的错误响应，以便客户端清理活跃状态并释放并发槽位
 			// When UploadComplete fails, return an error response containing sessionID and path, so the client can clean up and release slot
 			h.respondErrorWithData(c, code.ErrorFileModifyOrCreateFailed, err, map[string]string{

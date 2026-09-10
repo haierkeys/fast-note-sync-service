@@ -2,6 +2,7 @@ package websocket_router
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
@@ -409,6 +410,25 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 		_, note, err := noteSvc.ModifyOrCreate(ctx, c.User.UID, params, true, checkedNote)
 		if err != nil {
+			// 陈旧重报被墓碑闸门拒绝：仅静默确认以清理客户端 pending 状态
+			// （不广播、不推进同步水位），并补发删除指令让该客户端清理本地残留。
+			if errors.Is(err, code.ErrorStaleReviveRejected) {
+				c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
+					Path:     params.Path,
+					PathHash: params.PathHash,
+				}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
+				if checkedNote != nil {
+					c.ToResponse(code.Success.WithData(dto.NoteSyncDeleteMessage{
+						Path:             checkedNote.Path,
+						PathHash:         checkedNote.PathHash,
+						Ctime:            checkedNote.Ctime,
+						Mtime:            checkedNote.Mtime,
+						Size:             checkedNote.Size,
+						UpdatedTimestamp: checkedNote.UpdatedTimestamp,
+					}).WithVault(params.Vault).WithContext(params.Context), string(NoteSyncDelete))
+				}
+				return
+			}
 			h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.ModifyOrCreate")
 			return
 		}

@@ -139,4 +139,5 @@ var zh_cn_messages = map[int]string{
 	520: "Cloudflared 下载失败",
 	521: "Cloudflared 隧道程序未找到，请先下载隧道程序",
 	530: "检测到同步冲突，已生成冲突副本",
+	531: "资源已在服务端删除，本次上传被判定为陈旧重报，已忽略",
 }
