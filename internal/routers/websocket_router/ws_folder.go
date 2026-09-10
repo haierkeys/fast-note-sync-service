@@ -289,6 +289,15 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 		for pathHash := range cFoldersKeys {
 			folder := cFolders[pathHash]
 
+			// 墓碑闸门：服务端已删除的目录不得被客户端上报复活
+			// （客户端快照失效后的全量重报会把删除顶回来，是复活拉锯的主要目录通道）。
+			if deleted, err := folderSvc.IsDeleted(ctx, uid, params.Vault, folder.PathHash); err == nil && deleted {
+				h.App.Logger().Debug("websocket_router.folder.FolderSync.skipDeletedFolder",
+					zap.String(logpkg.FieldTraceID, c.TraceID),
+					zap.String(logpkg.FieldPath, folder.Path))
+				continue
+			}
+
 			newFolder, err := folderSvc.UpdateOrCreate(ctx, uid, &dto.FolderCreateRequest{
 				Vault:    params.Vault,
 				Path:     folder.Path,

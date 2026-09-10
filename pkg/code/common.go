@@ -136,4 +136,7 @@ var (
 
 	// --- Sync Conflict Related (530-539) ---
 	ErrorSyncConflict = NewError(530)
+
+	// --- Stale Revive Related (531) ---
+	ErrorStaleReviveRejected = NewError(531)
 )

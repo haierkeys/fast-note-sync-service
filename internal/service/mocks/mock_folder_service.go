@@ -112,6 +112,11 @@ func (m *MockFolderService) SyncResourceFID(ctx context.Context, uid int64, vaul
 	return args.Error(0)
 }
 
+func (m *MockFolderService) IsDeleted(ctx context.Context, uid int64, vault string, pathHash string) (bool, error) {
+	args := m.Called(ctx, uid, vault, pathHash)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockFolderService) GetTree(ctx context.Context, uid int64, params *dto.FolderTreeRequest) (*dto.FolderTreeResponse, error) {
 	args := m.Called(ctx, uid, params)
 	if v := args.Get(0); v != nil {

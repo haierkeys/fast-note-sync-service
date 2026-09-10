@@ -296,10 +296,21 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 			}
 
 			// Set action
-			// Set action
 			// 设置 action
 			var action domain.FileAction
 			if file.Action == domain.FileActionDelete {
+				// 墓碑闸门（与笔记侧同一策略）：陈旧重报不得复活已删文件。
+				if isStaleRevive(params.Mtime, params.Ctime, file.UpdatedTimestamp) {
+					zap.L().Info("stale revive rejected",
+						zap.Int64(logger.FieldUID, uid),
+						zap.String(logger.FieldPath, file.Path),
+						zap.Int64("mtime", params.Mtime),
+						zap.Int64("ctime", params.Ctime),
+						zap.Int64("deletedAt", file.UpdatedTimestamp),
+						zap.String("clientName", s.clientName),
+					)
+					return nil, code.ErrorStaleReviveRejected
+				}
 				action = domain.FileActionCreate
 			} else {
 				action = domain.FileActionModify
@@ -397,9 +408,22 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 		return nil, err
 	}
 
+	// 删除必须幂等（同 noteService.Delete）：对不存在/已删除的文件返回成功，
+	// 否则客户端收到 "record not found" 后无限重试。
+	// Delete must be idempotent: return success for missing/already-deleted files,
+	// otherwise clients retry forever on "record not found".
 	file, err := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 幂等：记录不存在 → 用请求参数构造成功 DTO（客户端按 path 匹配 pending）
+			return &dto.FileDTO{Path: params.Path, PathHash: params.PathHash}, nil
+		}
 		return nil, err
+	}
+
+	if file.Action == domain.FileActionDelete {
+		// 幂等：已是删除状态 → 不重复写库，直接返回
+		return s.domainToDTO(file), nil
 	}
 
 	// Update to deleted status // 更新为删除状态
