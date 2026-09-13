@@ -1712,6 +1712,13 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
+	// Any inbound frame proves the peer is alive. On a slow uplink the browser's pong
+	// queues behind buffered upload chunks and can arrive later than WSPingWait, which made
+	// PingLoop kill clients that were actively streaming attachments. Treat data as liveness.
+	// 收到任何数据帧都说明对端活着。慢上行时浏览器的 pong 会排在待发送的附件分片后面，
+	// 晚于 WSPingWait 才到，导致 PingLoop 误杀正在上传附件的客户端。数据帧同样刷新存活时间。
+	c.lastPongAt.Store(time.Now().Unix())
+
 	// Set deadline
 	// 设置延时
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
