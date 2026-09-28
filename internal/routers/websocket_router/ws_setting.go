@@ -604,6 +604,7 @@ func (h *SettingWSHandler) doSettingSync(c *pkgapp.WebsocketClient, params *dto.
 			PageSize:     pageSize,
 			Window:       window,
 		}
+		entry.ConnDone = connDone(c)
 		syncDownloadStore(params.Context, "setting", entry)
 		// 默认不自动发送，等待客户端拉取
 	}

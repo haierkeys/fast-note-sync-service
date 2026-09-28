@@ -1099,6 +1099,7 @@ func (h *FileWSHandler) doFileSync(c *pkgapp.WebsocketClient, params *dto.FileSy
 			PageSize:     pageSize,
 			Window:       window,
 		}
+		entry.ConnDone = connDone(c)
 		syncDownloadStore(params.Context, "file", entry)
 		// 默认不自动发送，等待客户端拉取
 	}

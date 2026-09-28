@@ -341,6 +341,7 @@ func (h *FolderWSHandler) doFolderSync(c *pkgapp.WebsocketClient, params *dto.Fo
 			PageSize:     pageSize,
 			Window:       window,
 		}
+		entry.ConnDone = connDone(c)
 		syncDownloadStore(params.Context, "folder", entry)
 		// 默认不自动发送，等待客户端拉取
 	}
