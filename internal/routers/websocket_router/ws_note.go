@@ -1204,6 +1204,7 @@ func (h *NoteWSHandler) doNoteSync(c *pkgapp.WebsocketClient, params *dto.NoteSy
 				return n.Content, nil
 			},
 		}
+		entry.ConnDone = connDone(c)
 		syncDownloadStore(params.Context, "note", entry)
 		// 默认不自动发送，等待客户端拉取
 	}
