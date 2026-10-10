@@ -1,4 +1,7 @@
-//go:build amd64 || arm64
+// PATCH(#448): 默认不再使用 Sonic —— 它会原样保留非法 UTF-8 字节，
+// 导致 gws: invalid text encoding 与 WebSocket 循环重连（见 issue #448）。
+// 如确需 Sonic 的性能，请改为 json_std.go 的 build tag 方案并自行验证 UTF-8 合法性。
+//go:build sonic
 
 package json
 

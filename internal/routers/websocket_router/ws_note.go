@@ -443,7 +443,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), NoteSyncMtime)
+		).WithVault(params.Vault).WithContext(params.Context), NoteSyncMtime)
 		return
 	default:
 		// SuccessNoUpdate 场景也需发 NoteModifyAck，避免客户端 pendingNoteModifies 条目泄漏导致无限重传
@@ -529,7 +529,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		), NoteSyncMtime)
+		).WithVault(params.Vault), NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
@@ -1224,6 +1224,10 @@ func (h *NoteWSHandler) NoteSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		h.App.Logger().Warn("NoteSyncPageAck: sync download entry not found",
 			zap.String(logger.FieldTraceID, c.TraceID),
 			zap.String("context", params.Context))
+		// PATCH(#448-deriv): 内存态 context 失效（服务重启/TTL 回收）时，
+		// 原本静默 return 会让客户端陷入每 15 秒重发的死循环。
+		// 主动回一条 NoteSyncEnd 携带全 0 counts，客户端据此重置分页状态并重新协商。
+		c.ToResponse(code.Success.WithData(dto.NoteSyncEndMessage{LastTime: 0}).WithVault(params.Vault), NoteSyncEnd)
 		return
 	}
 

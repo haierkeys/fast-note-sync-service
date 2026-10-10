@@ -1119,6 +1119,10 @@ func (h *FileWSHandler) FileSyncPageAck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 		h.App.Logger().Warn("FileSyncPageAck: sync download entry not found",
 			zap.String(logger.FieldTraceID, c.TraceID),
 			zap.String("context", params.Context))
+		// PATCH(#448-deriv): 内存态 context 失效（服务重启/TTL 回收）时，
+		// 原本静默 return 会让客户端陷入每 15 秒重发的死循环。
+		// 主动回一条 FileSyncEnd 携带全 0 counts，客户端据此重置分页状态并重新协商。
+		c.ToResponse(code.Success.WithData(dto.FileSyncEndMessage{LastTime: 0}).WithVault(params.Vault), FileSyncEnd)
 		return
 	}
 

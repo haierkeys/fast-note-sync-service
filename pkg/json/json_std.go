@@ -1,5 +1,6 @@
-//go:build !amd64 && !arm64
-
+// PATCH(#448): 标准库 encoding/json 保证非法 UTF-8 被替换为 U+FFFD，
+// 从而 WebSocket text frame 始终为合法 UTF-8。原先本文件仅在非 amd64/arm64 平台生效，
+// Apple Silicon 走 json_sonic.go（Sonic）会保留非法字节导致 gws 拒绝 text frame 并断连。
 package json
 
 import (
