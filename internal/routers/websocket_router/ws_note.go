@@ -443,7 +443,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		).WithVault(params.Vault), NoteSyncMtime)
+		).WithVault(params.Vault).WithContext(params.Context), NoteSyncMtime)
 		return
 	default:
 		// SuccessNoUpdate 场景也需发 NoteModifyAck，避免客户端 pendingNoteModifies 条目泄漏导致无限重传
@@ -529,7 +529,7 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 				Mtime:            nodeCheck.Mtime,
 				UpdatedTimestamp: nodeCheck.UpdatedTimestamp,
 			},
-		), NoteSyncMtime)
+		).WithVault(params.Vault), NoteSyncMtime)
 		return
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
