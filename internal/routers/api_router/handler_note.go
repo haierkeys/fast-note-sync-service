@@ -186,6 +186,13 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 		return
 	}
 
+	// A missing body is not an intentional empty note. Reject it before update checks
+	// can reactivate a tombstone or overwrite existing content.
+	_, formContentPresent := c.GetPostForm("content")
+	if !params.ContentPresent && !formContentPresent {
+		response.ToResponse(code.ErrorInvalidParams.WithDetails("content must be provided (an explicit empty string is allowed)"))
+		return
+	}
 	// Get UID
 	// 获取用户 ID
 	uid := pkgapp.GetUID(c)

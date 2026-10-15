@@ -43,10 +43,12 @@ type FileUpdateRequest struct {
 // FileDeleteRequest Parameters required for deleting a file
 // 删除文件所需参数
 type FileDeleteRequest struct {
-	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"`        // Vault name // 保险库名称
-	Path     string `json:"path" form:"path" binding:"required" example:"Image.png"`        // File path // 文件路径
-	PathHash string `json:"pathHash" form:"pathHash" binding:"required" example:"fhash123"` // Path hash // 路径哈希
-	Context  string `json:"context" form:"context" example:"ctx123"`                        // Context // 同步上下文
+	ExpectedUpdatedTimestamp int64  `json:"expectedUpdatedTimestamp,omitempty" form:"expectedUpdatedTimestamp" binding:"omitempty,min=1"` // Optional generation CAS.
+	ExpectedSHA256           string `json:"expectedSHA256,omitempty" form:"expectedSHA256" binding:"omitempty,len=64,hexadecimal"`        // Optional server-byte CAS for approved retirement.
+	Vault                    string `json:"vault" form:"vault" binding:"required" example:"MyVault"`                                      // Vault name // 保险库名称
+	Path                     string `json:"path" form:"path" binding:"required" example:"Image.png"`                                      // File path // 文件路径
+	PathHash                 string `json:"pathHash" form:"pathHash" binding:"required" example:"fhash123"`                               // Path hash // 路径哈希
+	Context                  string `json:"context" form:"context" example:"ctx123"`                                                      // Context // 同步上下文
 }
 
 // FileRestoreRequest parameters for restoring a file
@@ -138,7 +140,7 @@ type FileRenameRequest struct {
 // FileDTO File Data Transfer Object
 // FileDTO 文件数据传输对象
 type FileDTO struct {
-	ID               int64      `json:"id" form:"id"`                                // File ID // 文件 ID
+	ID               int64      `json:"id" form:"id"`                     // File ID // 文件 ID
 	Action           string     `json:"-"`                                // Action // 动作
 	Path             string     `json:"path" form:"path"`                 // File path // 文件路径
 	PathHash         string     `json:"pathHash" form:"pathHash"`         // Path hash // 路径哈希

@@ -149,3 +149,35 @@ func TestNoteHandler_Delete_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assertResponseCode(t, w, code.Success.Code())
 }
+
+func TestNoteHandler_CreateOrUpdate_RequiresExplicitContent(t *testing.T) {
+	for _, body := range []string{
+		`{"vault":"main","path":"note.md"}`,
+		`{"vault":"main","path":"note.md","content":null}`,
+		`{"vault":"main","path":"note.md","contentHash":"0"}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			svc := new(svcmocks.MockNoteService)
+			handler := newTestNoteHandler(svc, nil)
+			c, w := newNoteTestContext("POST", "/api/note", body, 1)
+			handler.CreateOrUpdate(c)
+			assertResponseCode(t, w, code.ErrorInvalidParams.Code())
+			svc.AssertNotCalled(t, "UpdateCheckWithNote", mock.Anything, mock.Anything, mock.Anything)
+			svc.AssertNotCalled(t, "ModifyOrCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
+}
+
+func TestNoteHandler_CreateOrUpdate_ExplicitEmptyContent(t *testing.T) {
+	svc := new(svcmocks.MockNoteService)
+	svc.On("UpdateCheckWithNote", mock.Anything, int64(1), mock.AnythingOfType("*dto.NoteUpdateCheckRequest")).
+		Return("", (*domain.Note)(nil), (*dto.NoteDTO)(nil), nil)
+	svc.On("ModifyOrCreate", mock.Anything, int64(1), mock.MatchedBy(func(r *dto.NoteModifyOrCreateRequest) bool {
+		return r.ContentPresent && r.Content == "" && r.ContentHash == "0"
+	}), false, mock.Anything).Return(true, &dto.NoteDTO{Path: "note.md"}, nil)
+	handler := newTestNoteHandler(svc, nil)
+	c, w := newNoteTestContext("POST", "/api/note", `{"vault":"main","path":"note.md","content":""}`, 1)
+	handler.CreateOrUpdate(c)
+	assertResponseCode(t, w, code.Success.Code())
+	svc.AssertExpectations(t)
+}

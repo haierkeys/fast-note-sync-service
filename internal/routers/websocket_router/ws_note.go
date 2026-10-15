@@ -2,10 +2,12 @@ package websocket_router
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
+	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/convert"
@@ -88,6 +90,16 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	// Check and create vault, internally uses SF to merge concurrent requests, avoiding duplicate creation issues
 	// 检查并创建仓库，内部使用SF合并并发请求, 避免重复创建问题
 	h.App.VaultService.GetOrCreate(ctx, c.User.UID, params.Vault)
+	protected, guardErr := service.CheckNoteRetirement(ctx, noteSvc, c.User.UID, params)
+	if guardErr != nil {
+		var retired *service.RetiredNoteBytesError
+		if errors.As(guardErr, &retired) {
+			h.respondRetiredNote(c, noteSvc, params, retired.Current)
+			return
+		}
+		h.respondError(c, code.ErrorNoteModifyOrCreateFailed, guardErr, "websocket_router.note.NoteModify.Retirement")
+		return
+	}
 
 	checkParams := convert.StructAssign(params, &dto.NoteUpdateCheckRequest{}).(*dto.NoteUpdateCheckRequest)
 	updateMode, checkedNote, nodeCheck, err := noteSvc.UpdateCheckWithNote(ctx, c.User.UID, checkParams)
@@ -111,7 +123,7 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 			// Skip update and return success (no update) to client when content hasn't changed
 			// 当内容未变化时，跳过更新，给客户端返回成功(无更新)
-			if serverHash == contentHash {
+			if serverHash == contentHash && (!protected || nodeCheck.Content == params.Content) {
 
 				h.App.Logger().Debug("server content equals client content, skipping update",
 					zap.String(logger.FieldTraceID, c.TraceID),
@@ -129,10 +141,10 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			}
 
 			// =========================================================================
-			// Hard Conflict Protection: 
-			// If strategy is manualMerge, the request has no resolution mark, and serverHash 
+			// Hard Conflict Protection:
+			// If strategy is manualMerge, the request has no resolution mark, and serverHash
 			// differs from baseHash, block the override immediately and return 530.
-			// 
+			//
 			// 硬冲突保护：
 			// 如果合并策略为手动合并，请求中未携带解决标记，且云端哈希与客户端基准哈希不匹配，
 			// 直接拦截该覆写并返回 530 错误及冲突明细。
@@ -409,10 +421,23 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 		_, note, err := noteSvc.ModifyOrCreate(ctx, c.User.UID, params, true, checkedNote)
 		if err != nil {
+			var retired *service.RetiredNoteBytesError
+			if errors.As(err, &retired) {
+				h.respondRetiredNote(c, noteSvc, params, retired.Current)
+				return
+			}
 			h.respondError(c, code.ErrorNoteModifyOrCreateFailed, err, "websocket_router.note.NoteModify.ModifyOrCreate")
 			return
 		}
 
+		if note == nil {
+			finishRetiredNote(params, nil, c.ToResponse)
+			return
+		}
+		if note.Action == "delete" {
+			h.respondRetiredNote(c, noteSvc, params, note)
+			return
+		}
 		// 通知发送方上传已确认，携带 lastTime 和 path 供客户端更新 hashManager
 		// Notify sender of successful write with lastTime and path for client hashManager update
 		c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
@@ -512,10 +537,14 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	// 通知客户端上传笔记
 	switch updateMode {
 	case "UpdateContent", "Create":
+		path, pathHash := params.Path, params.PathHash
+		if nodeCheck != nil {
+			path, pathHash = nodeCheck.Path, nodeCheck.PathHash
+		}
 		c.ToResponse(code.Success.WithData(
 			dto.NoteSyncNeedPushMessage{
-				Path:     nodeCheck.Path,
-				PathHash: nodeCheck.PathHash,
+				Path:     path,
+				PathHash: pathHash,
 			},
 		), NoteSyncNeedPush)
 		return
@@ -534,6 +563,42 @@ func (h *NoteWSHandler) NoteModifyCheck(c *pkgapp.WebsocketClient, msg *pkgapp.W
 	default:
 		c.ToResponse(code.SuccessNoUpdate.WithVault(params.Vault))
 		return
+	}
+}
+
+// Terminal upload ACK clears the sender's pending note first. Only the sender
+// receives the current state; this path never broadcasts rejected old bytes.
+func finishRetiredNote(params *dto.NoteModifyOrCreateRequest, current *dto.NoteDTO, send func(*code.Code, ...string)) {
+	var timestamp int64
+	if current != nil {
+		timestamp = current.UpdatedTimestamp
+	}
+	send(code.Success.WithData(dto.NoteModifyAckMessage{LastTime: timestamp, Path: params.Path, PathHash: params.PathHash}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
+	if current == nil {
+		return
+	}
+	if current.Action == "delete" {
+		send(code.Success.WithData(dto.NoteSyncDeleteMessage{Path: current.Path, PathHash: current.PathHash, Ctime: current.Ctime, Mtime: current.Mtime, Size: current.Size, UpdatedTimestamp: current.UpdatedTimestamp}).WithVault(params.Vault), string(NoteSyncDelete))
+		return
+	}
+	send(code.Success.WithData(dto.NoteSyncModifyMessage{Path: current.Path, PathHash: current.PathHash, Content: current.Content, ContentHash: current.ContentHash, Ctime: current.Ctime, Mtime: current.Mtime, UpdatedTimestamp: current.UpdatedTimestamp}).WithVault(params.Vault), string(NoteSyncModify))
+}
+
+func reconcileRetiredNote(ctx context.Context, svc service.NoteService, uid int64, params *dto.NoteModifyOrCreateRequest, fallback *dto.NoteDTO, send func(*code.Code, ...string)) error {
+	err := service.WithNoteRetirementState(ctx, svc, uid, params.Vault, params.Path, fallback, func(current *dto.NoteDTO) {
+		finishRetiredNote(params, current, send)
+	})
+	if err != nil {
+		// A failed current-state read must not send an old snapshot deletion.
+		// Still acknowledge known retired bytes so old devices stop retransmitting.
+		finishRetiredNote(params, nil, send)
+	}
+	return err
+}
+
+func (h *NoteWSHandler) respondRetiredNote(c *pkgapp.WebsocketClient, svc service.NoteService, params *dto.NoteModifyOrCreateRequest, fallback *dto.NoteDTO) {
+	if err := reconcileRetiredNote(c.Context(), svc, c.User.UID, params, fallback, c.ToResponse); err != nil {
+		h.App.Logger().Warn("retired note reconciliation read failed", zap.Error(err))
 	}
 }
 

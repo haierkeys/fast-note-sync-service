@@ -4,6 +4,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -17,6 +19,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/retirement"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
@@ -148,29 +151,35 @@ type NoteService interface {
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
-	userRepo       domain.UserRepository      // User repository // 用户仓库
-	noteRepo       domain.NoteRepository      // Note repository // 笔记仓库
-	noteLinkRepo   domain.NoteLinkRepository  // Note link repository // 笔记链接仓库
-	fileRepo       domain.FileRepository      // File repository // 文件仓库
-	shareRepo      domain.UserShareRepository // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
+	userRepo       domain.UserRepository        // User repository // 用户仓库
+	noteRepo       domain.NoteRepository        // Note repository // 笔记仓库
+	noteLinkRepo   domain.NoteLinkRepository    // Note link repository // 笔记链接仓库
+	fileRepo       domain.FileRepository        // File repository // 文件仓库
+	shareRepo      domain.UserShareRepository   // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
 	historyRepo    domain.NoteHistoryRepository // Note history repository // 笔记历史仓库（rename 时迁移历史归属）
-	vaultService   VaultService               // Vault service // 仓库服务
-	folderService  FolderService              // Folder service // 文件夹服务
-	syncLogService SyncLogService             // Sync log service // 同步日志服务
-	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
-	kmu            *keyedmutex.KeyedMutex     // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
-	clientType     string                     // Client type // 客户端类型
-	clientName     string                     // Client name // 客户端名称
-	clientVer      string                     // Client version // 客户端版本
-	config         *ServiceConfig             // Service configuration // 服务配置
-	backupService  BackupService              // Backup service // 备份服务
-	gitSyncService GitSyncService             // Git sync service // Git 同步服务
-	countTimers    *sync.Map                  // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	vaultService   VaultService                 // Vault service // 仓库服务
+	folderService  FolderService                // Folder service // 文件夹服务
+	syncLogService SyncLogService               // Sync log service // 同步日志服务
+	sf             *singleflight.Group          // Singleflight group // 并发请求合并组
+	kmu            *keyedmutex.KeyedMutex       // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
+	clientType     string                       // Client type // 客户端类型
+	clientName     string                       // Client name // 客户端名称
+	clientVer      string                       // Client version // 客户端版本
+	config         *ServiceConfig               // Service configuration // 服务配置
+	backupService  BackupService                // Backup service // 备份服务
+	gitSyncService GitSyncService               // Git sync service // Git 同步服务
+	countTimers    *sync.Map                    // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	retirement     *retirement.Policy
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
 func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, historyRepo domain.NoteHistoryRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
+	policy, err := retirement.LoadFromEnv()
+	if err != nil {
+		zap.L().Error("note retirement policy initialization failed", zap.Error(err))
+		panic(err)
+	}
 	return &noteService{
 		userRepo:       userRepo,
 		noteRepo:       noteRepo,
@@ -187,6 +196,7 @@ func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteReposito
 		kmu:            keyedmutex.New(),
 		config:         config,
 		countTimers:    &sync.Map{},
+		retirement:     policy,
 	}
 }
 
@@ -211,7 +221,118 @@ func (s *noteService) WithClient(clientType, name, version string) NoteService {
 		backupService:  s.backupService,
 		gitSyncService: s.gitSyncService,
 		countTimers:    s.countTimers, // Share the same timer map // 共享同一个计时器 map
+		retirement:     s.retirement,
 	}
+}
+
+// RetiredNoteBytesError acknowledges a retired upload without writing it.
+// Current can be a tombstone or legitimate active content after Restore.
+type RetiredNoteBytesError struct{ Current *dto.NoteDTO }
+
+func (e *RetiredNoteBytesError) Error() string {
+	return "upload contains explicitly retired note bytes"
+}
+
+func noteWriteKey(uid, vault int64, path string) string {
+	return fmt.Sprintf("note_write_%d_%d_%s", uid, vault, path)
+}
+
+func (s *noteService) noteForWrite(ctx context.Context, uid, vault int64, path, pathHash string) (*domain.Note, error) {
+	if s.retirement.Covers(uid, vault, path) {
+		return s.noteRepo.GetByPath(ctx, path, vault, uid)
+	}
+	return s.noteRepo.GetAllByPathHash(ctx, pathHash, vault, uid)
+}
+
+func (s *noteService) guardNoteWrite(uid, vault int64, params *dto.NoteModifyOrCreateRequest, note *domain.Note) error {
+	if !s.retirement.Covers(uid, vault, params.Path) {
+		return nil
+	}
+	if params.PathHash != util.EncodeHash32(params.Path) {
+		return errors.New("retirement path/hash mismatch")
+	}
+	digest := sha256.Sum256([]byte(params.Content))
+	metadataOnly := params.Content == "" && params.ContentHash != util.EncodeHash32("")
+	if !metadataOnly && !s.retirement.RejectsSHA256(uid, vault, params.Path, hex.EncodeToString(digest[:])) {
+		return nil
+	}
+	current := s.domainToDTO(note)
+	if current == nil {
+		current = &dto.NoteDTO{Action: string(domain.NoteActionDelete), Path: params.Path, PathHash: params.PathHash}
+	}
+	return &RetiredNoteBytesError{Current: current}
+}
+
+func (s *noteService) noteRetirementReadFailure(uid, vault int64, params *dto.NoteModifyOrCreateRequest, readErr error) error {
+	guardErr := s.guardNoteWrite(uid, vault, params, nil)
+	var retired *RetiredNoteBytesError
+	if errors.As(guardErr, &retired) {
+		// The byte rejection is known, but the current state is unavailable.
+		// Acknowledge without using a synthetic deletion as the state response.
+		retired.Current = nil
+		return retired
+	}
+	if guardErr != nil {
+		return guardErr
+	}
+	return readErr
+}
+
+// CheckNoteRetirement rejects before the WS conflict merger can transform old
+// bytes. ModifyOrCreate checks again under the same write lock before commit.
+func CheckNoteRetirement(ctx context.Context, svc NoteService, uid int64, params *dto.NoteModifyOrCreateRequest) (bool, error) {
+	s, ok := svc.(*noteService)
+	if !ok {
+		return false, nil
+	}
+	vault, err := s.vaultService.MustGetID(ctx, uid, params.Vault)
+	if err != nil {
+		return false, err
+	}
+	if !s.retirement.Covers(uid, vault, params.Path) {
+		return false, nil
+	}
+	unlock := s.kmu.Lock(noteWriteKey(uid, vault, params.Path))
+	defer unlock()
+	note, err := s.noteRepo.GetByPath(ctx, params.Path, vault, uid)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return true, s.noteRetirementReadFailure(uid, vault, params, err)
+	}
+	return true, s.guardNoteWrite(uid, vault, params, note)
+}
+
+// Enqueue the authoritative sender-only response while serializing with writes,
+// Delete and Restore. Never send a stale tombstone after newer content commits.
+func WithNoteRetirementState(ctx context.Context, svc NoteService, uid int64, vaultName, path string, fallback *dto.NoteDTO, deliver func(*dto.NoteDTO)) error {
+	s, ok := svc.(*noteService)
+	if !ok {
+		deliver(fallback)
+		return nil
+	}
+	vault, err := s.vaultService.MustGetID(ctx, uid, vaultName)
+	if err != nil {
+		return err
+	}
+	unlock := s.kmu.Lock(noteWriteKey(uid, vault, path))
+	defer unlock()
+	note, err := s.noteRepo.GetByPath(ctx, path, vault, uid)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	current := s.domainToDTO(note)
+	if current == nil {
+		current = &dto.NoteDTO{Action: string(domain.NoteActionDelete), Path: path, PathHash: util.EncodeHash32(path)}
+	}
+	deliver(current)
+	return nil
+}
+
+func (s *noteService) auditNoteRestore(uid, vault int64, note *domain.Note, event string) error {
+	if !s.retirement.Covers(uid, vault, note.Path) {
+		return nil
+	}
+	digest := sha256.Sum256([]byte(note.Content))
+	return s.retirement.Audit(uid, vault, note.ID, note.Path, hex.EncodeToString(digest[:]), event, s.clientType, s.clientName, s.clientVer)
 }
 
 // domainToDTO converts domain model to DTO
@@ -295,8 +416,13 @@ func (s *noteService) UpdateCheck(ctx context.Context, uid int64, params *dto.No
 		return "", nil, err
 	}
 
-	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
-	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	unlock := s.kmu.Lock(noteWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	note, readErr := s.noteForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+	if s.retirement.Covers(uid, vaultID, params.Path) && readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+		return "", nil, readErr
+	}
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, vaultID, note, params)
 	return mode, noteDTO, err
 }
 
@@ -311,15 +437,30 @@ func (s *noteService) UpdateCheckWithNote(ctx context.Context, uid int64, params
 		return "", nil, nil, err
 	}
 
-	note, _ := s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
-	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, note, params)
+	unlock := s.kmu.Lock(noteWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	note, readErr := s.noteForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+	if s.retirement.Covers(uid, vaultID, params.Path) && readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+		return "", nil, nil, readErr
+	}
+	mode, noteDTO, err := s.evalUpdateCheck(ctx, uid, vaultID, note, params)
 	return mode, note, noteDTO, err
 }
 
 // evalUpdateCheck 是 UpdateCheck / UpdateCheckWithNote 共用的判定逻辑，接受已查到的 note（可能为 nil）
 // evalUpdateCheck is the decision logic shared by UpdateCheck / UpdateCheckWithNote, taking an
 // already-fetched note (may be nil)
-func (s *noteService) evalUpdateCheck(ctx context.Context, uid int64, note *domain.Note, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error) {
+func (s *noteService) evalUpdateCheck(ctx context.Context, uid, vaultID int64, note *domain.Note, params *dto.NoteUpdateCheckRequest) (string, *dto.NoteDTO, error) {
+	if s.retirement.Covers(uid, vaultID, params.Path) {
+		if params.PathHash != util.EncodeHash32(params.Path) {
+			return "", nil, errors.New("retirement path/hash mismatch")
+		}
+		// The metadata hash is only 32 bits. Require full content for this path.
+		if note != nil && note.Action != domain.NoteActionDelete && note.Rename == 0 {
+			return "UpdateContent", s.domainToDTO(note), nil
+		}
+		return "Create", nil, nil
+	}
 	if note != nil {
 		noteDTO := s.domainToDTO(note)
 		// Check if content is consistent
@@ -369,7 +510,13 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		preFetchedNote = existingNote[0]
 	}
 
-	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
+	key := noteWriteKey(uid, vaultID, params.Path)
+	protected := s.retirement.Covers(uid, vaultID, params.Path)
+	if protected {
+		// A Delete may have finished before an uncontended lock acquisition.
+		preFetchedNote = nil
+		mtimeCheck = false
+	}
 	type result struct {
 		isNew bool
 		dto   *dto.NoteDTO
@@ -396,11 +543,26 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		var isNew bool
 		note := preFetchedNote
 		if note == nil {
-			note, _ = s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+			var readErr error
+			note, readErr = s.noteForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+			if protected && readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+				return nil, s.noteRetirementReadFailure(uid, vaultID, params, readErr)
+			}
+		}
+		if err := s.guardNoteWrite(uid, vaultID, params, note); err != nil {
+			return nil, err
+		}
+		if protected {
+			params.ContentHash = util.EncodeHash32(params.Content)
 		}
 
 		if note != nil {
 			isNew = false
+			// Metadata without content cannot restore a deleted note. An explicit
+			// empty document uses the hash of the actual empty string ("0").
+			if note.Action == domain.NoteActionDelete && params.Content == "" && params.ContentHash != util.EncodeHash32("") {
+				return &result{isNew: false, dto: s.domainToDTO(note)}, nil
+			}
 
 			// If createOnly is set and note exists (not deleted), return error
 			if note.Action != domain.NoteActionDelete && params.CreateOnly {
@@ -413,7 +575,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			}
 			// If content is consistent but modification time is different, only update modification time
 			// 检查内容是否一致但修改时间不同，则只更新修改时间
-			if mtimeCheck && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
+			if mtimeCheck && note.Action != domain.NoteActionDelete && note.Mtime < params.Mtime && note.ContentHash == params.ContentHash {
 				err := s.noteRepo.UpdateActionMtime(ctx, domain.NoteActionModify, params.Mtime, note.ID, uid)
 				if err != nil {
 					return nil, code.ErrorDBQuery.WithDetails(err.Error())
@@ -535,12 +697,38 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 		return nil, err // VaultService 已返回 code.Error
 	}
 
-	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
+	unlock := s.kmu.Lock(noteWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	var note *domain.Note
+	hasCAS := params.ExpectedSHA256 != "" || params.ExpectedUpdatedTimestamp != 0
+	if s.retirement.Covers(uid, vaultID, params.Path) || hasCAS {
+		if params.PathHash != "" && params.PathHash != util.EncodeHash32(params.Path) {
+			return nil, errors.New("retirement path/hash mismatch")
+		}
+		note, err = s.noteRepo.GetByPath(ctx, params.Path, vaultID, uid)
+		if err == nil && note.Action == domain.NoteActionDelete && !hasCAS {
+			return nil, code.ErrorNoteNotFound
+		}
+	} else {
+		note, err = s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, false)
+	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorNoteNotFound
 		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	if params.ExpectedUpdatedTimestamp != 0 && note.UpdatedTimestamp != params.ExpectedUpdatedTimestamp {
+		return nil, code.ErrorSyncConflict.WithDetails("expectedUpdatedTimestamp does not match current note generation").WithData(s.domainToDTO(note))
+	}
+	if params.ExpectedSHA256 != "" {
+		digest := sha256.Sum256([]byte(note.Content))
+		if hex.EncodeToString(digest[:]) != strings.ToLower(params.ExpectedSHA256) {
+			return nil, code.ErrorSyncConflict.WithDetails("expectedSHA256 does not match current note bytes").WithData(s.domainToDTO(note))
+		}
+	}
+	if note.Action == domain.NoteActionDelete {
+		return nil, code.ErrorNoteNotFound
 	}
 
 	// Update to deleted status // 更新为删除状态
@@ -594,8 +782,18 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 		return nil, err // VaultService 已返回 code.Error
 	}
 
+	unlock := s.kmu.Lock(noteWriteKey(uid, vaultID, params.Path))
+	defer unlock()
 	// Get note from recycle bin // 从回收站获取笔记
-	note, err := s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, true)
+	var note *domain.Note
+	if s.retirement.Covers(uid, vaultID, params.Path) {
+		if params.PathHash != util.EncodeHash32(params.Path) {
+			return nil, errors.New("retirement path/hash mismatch")
+		}
+		note, err = s.noteRepo.GetByPath(ctx, params.Path, vaultID, uid)
+	} else {
+		note, err = s.noteRepo.GetByPathHashIncludeRecycle(ctx, params.PathHash, vaultID, uid, true)
+	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, code.ErrorNoteNotFound
@@ -606,6 +804,9 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	// Check if note is deleted // 检查笔记是否已删除
 	if note.Action != domain.NoteActionDelete {
 		return nil, code.ErrorNoteNotFound
+	}
+	if err := s.auditNoteRestore(uid, vaultID, note, "note_restore_authorized"); err != nil {
+		return nil, err
 	}
 
 	// Update to modified status and update modification time // 更新为修改状态 并更新修改时间
@@ -618,7 +819,11 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 
 	err = s.noteRepo.UpdateDelete(ctx, note, uid)
 	if err != nil {
+		_ = s.auditNoteRestore(uid, vaultID, note, "note_restore_failed")
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	if err := s.auditNoteRestore(uid, vaultID, note, "note_restore_committed"); err != nil {
+		zap.L().Error("note retirement restore result audit failed", zap.Int64("noteId", note.ID), zap.Error(err))
 	}
 
 	// Log restore // 记录恢复日志
@@ -669,14 +874,28 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 	}
 
 	val, err, _ := s.sf.Do(key, func() (any, error) {
+		oldPath := strings.Trim(params.OldPath, "/")
+		// Order both endpoints consistently to serialize with writes and Restore.
+		first, second := oldPath, newPath
+		if first > second {
+			first, second = second, first
+		}
+		unlock := s.kmu.Lock(noteWriteKey(uid, vaultID, first))
+		defer unlock()
+		if first != second {
+			unlockSecond := s.kmu.Lock(noteWriteKey(uid, vaultID, second))
+			defer unlockSecond()
+		}
 		// 1. Check if target path has valid note
 		// 1. 判断目标路径是否存在有效笔记
-		existNote, _ := s.noteRepo.GetAllByPathHash(ctx, newPathHash, vaultID, uid)
+		existNote, readErr := s.noteForWrite(ctx, uid, vaultID, newPath, newPathHash)
+		if s.retirement.Covers(uid, vaultID, newPath) && readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+			return nil, readErr
+		}
 		if existNote != nil && existNote.Action != domain.NoteActionDelete {
 			return nil, code.ErrorNoteExist
 		}
 
-		oldPath := strings.Trim(params.OldPath, "/")
 		oldPathHash := params.OldPathHash
 		if oldPathHash == "" {
 			oldPathHash = util.EncodeHash32(oldPath)
@@ -685,11 +904,23 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		// 2. Get old note
 		// 2. 获取旧笔记
 		n, err := s.noteRepo.GetByPathHash(ctx, oldPathHash, vaultID, uid)
+		if s.retirement.Covers(uid, vaultID, oldPath) {
+			if oldPathHash != util.EncodeHash32(oldPath) {
+				return nil, errors.New("retirement path/hash mismatch")
+			}
+			n, err = s.noteRepo.GetByPath(ctx, oldPath, vaultID, uid)
+			if err == nil && n.Action == domain.NoteActionDelete {
+				return nil, code.ErrorNoteNotFound
+			}
+		}
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, code.ErrorNoteNotFound
 			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+		if err := s.guardNoteWrite(uid, vaultID, &dto.NoteModifyOrCreateRequest{Path: newPath, PathHash: newPathHash, Content: n.Content, ContentHash: n.ContentHash}, existNote); err != nil {
+			return nil, err
 		}
 
 		// 3. Mark old note as deleted with rename flag
