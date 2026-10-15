@@ -57,10 +57,39 @@ func MCPOAuthWithConfig(oauthCfg config.OAuthConfig, secretKey string, tokenServ
 	})
 }
 
+// mcpPlainTokenAuth 在 OAuth 未启用时承担 /api/mcp 的认证。
+//
+// 与 UserAuthTokenWithConfig 的唯一差别在失败路径：本函数返回 MCP 规范形态
+// （401 + WWW-Authenticate + {"error":...}，复用 writeOAuthChallenge），
+// 而不是 response.ToResponse(appErr) —— 后者因 pkg/code 的 Code.StatusCode()
+// 恒返回 http.StatusOK，会产出 HTTP 200 + {"code":307,"尚未登录"}，
+// MCP 客户端据此把响应读成「零 tool」并拦停整个 job（kvpac-ymehx）。
+func mcpPlainTokenAuth(secretKey string, tokenService service.TokenService, resource string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, scope, vaults, dbToken, appErr := AuthenticateUserToken(c, secretKey, tokenService)
+		if appErr != nil {
+			writeOAuthChallenge(c, http.StatusUnauthorized, resource, "invalid_token")
+			return
+		}
+		c.Set("user_token", user)
+		c.Set("scope", scope)
+		c.Set("vaults", vaults)
+		// 与 UserAuthTokenWithConfig 保持一致：注入服务端 Token 属性供下游中间件联合校验
+		c.Set("token_issue_type", dbToken.IssueType)
+		c.Set("token_client_type", dbToken.ClientType)
+		c.Next()
+	}
+}
+
 func MCPMixedAuthWithConfig(secretKey string, tokenService service.TokenService, cfg MCPMixedAuthConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !cfg.OAuthEnabled {
-			UserAuthTokenWithConfig(secretKey, tokenService)(c)
+			// MCP 规范形态：认证失败应返回 401 + WWW-Authenticate。
+			// 原实现走 UserAuthTokenWithConfig → response.ToResponse(appErr)，而 pkg/code 的
+			// Code.StatusCode() 恒返回 http.StatusOK，故产出 HTTP 200 + {"code":307,"尚未登录"}。
+			// MCP 客户端会把 200 当作成功去解析 JSON-RPC，失败后判「零 tool」，
+			// 冷启动首连即拦停整个 job（见 kvpac-ymehx）。
+			mcpPlainTokenAuth(secretKey, tokenService, cfg.Resource)(c)
 			return
 		}
 
