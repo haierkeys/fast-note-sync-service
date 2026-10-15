@@ -2,6 +2,7 @@ package api_router
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
+	"github.com/haierkeys/fast-note-sync-service/internal/service"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
@@ -211,11 +213,12 @@ func (h *FileHandler) Delete(c *gin.Context) {
 
 	h.WSS.BroadcastToUser(uid, code.Success.WithData(
 		dto.FileSyncDeleteMessage{
-			Path:     file.Path,
-			PathHash: file.PathHash,
-			Ctime:    file.Ctime,
-			Mtime:    file.Mtime,
-			Size:     file.Size,
+			Path:             file.Path,
+			PathHash:         file.PathHash,
+			Ctime:            file.Ctime,
+			Mtime:            file.Mtime,
+			Size:             file.Size,
+			UpdatedTimestamp: file.UpdatedTimestamp,
 		},
 	).WithVault(params.Vault), "FileSyncDelete")
 }
@@ -555,6 +558,11 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	fileSvc := h.App.GetFileService(h.getClientInfo(c))
 	_, fileDTO, err := fileSvc.UpdateOrCreate(ctx, uid, params, false)
 	if err != nil {
+		var rejected *service.RetiredBytesError
+		if errors.As(err, &rejected) {
+			response.ToResponse(code.ErrorFileModifyOrCreateFailed.WithDetails(rejected.Error()).WithData(rejected.Current).WithVault(input.Vault))
+			return
+		}
 		h.logError(ctx, "FileHandler.Upload.UpdateOrCreate", err)
 		apperrors.ErrorResponse(c, err)
 		return

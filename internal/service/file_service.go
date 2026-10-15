@@ -20,6 +20,7 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
 	"github.com/haierkeys/fast-note-sync-service/pkg/keyedmutex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/logger"
+	"github.com/haierkeys/fast-note-sync-service/pkg/retirement"
 	"github.com/haierkeys/fast-note-sync-service/pkg/safego"
 	"github.com/haierkeys/fast-note-sync-service/pkg/timex"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
@@ -128,11 +129,21 @@ type fileService struct {
 	backupService  BackupService          // Backup service // 备份服务
 	gitSyncService GitSyncService         // Git sync service // Git 同步服务
 	countTimers    *sync.Map              // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	retirement     *retirement.Policy
 }
 
 // NewFileService creates FileService instance
 // NewFileService 创建 FileService 实例
 func NewFileService(userRepo domain.UserRepository, fileRepo domain.FileRepository, noteRepo domain.NoteRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) FileService {
+	policy, err := retirement.LoadFromEnv()
+	if err != nil {
+		// A configured guard must never silently start disabled.
+		zap.L().Error("retirement policy initialization failed", zap.Error(err))
+		panic(err)
+	}
+	if policy != nil {
+		zap.L().Info("retirement byte guard enabled", zap.Int("entries", policy.Count()))
+	}
 	return &fileService{
 		userRepo:       userRepo,
 		fileRepo:       fileRepo,
@@ -146,6 +157,7 @@ func NewFileService(userRepo domain.UserRepository, fileRepo domain.FileReposito
 		kmu:            keyedmutex.New(),
 		config:         config,
 		countTimers:    &sync.Map{},
+		retirement:     policy,
 	}
 }
 
@@ -198,7 +210,20 @@ func (s *fileService) UpdateCheck(ctx context.Context, uid int64, params *dto.Fi
 		return "", nil, err
 	}
 
-	file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	unlock := s.kmu.Lock(fileWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	file, readErr := s.fileForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+	if s.retirement.Covers(uid, vaultID, params.Path) {
+		if readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+			return "", nil, readErr
+		}
+		// A 32-bit client hash cannot prove SHA-256 equality. Always request
+		// actual bytes for a protected path, even if metadata says no upload.
+		if file != nil && file.Action != domain.FileActionDelete {
+			return "UpdateContent", s.domainToDTO(file), nil
+		}
+		return "Create", nil, nil
+	}
 	if file != nil {
 		fileDTO := s.domainToDTO(file)
 
@@ -246,7 +271,7 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 		return false, nil, err
 	}
 
-	key := fmt.Sprintf("update_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
+	key := fileWriteKey(uid, vaultID, params.Path)
 	type result struct {
 		isNew bool
 		dto   *dto.FileDTO
@@ -264,10 +289,26 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 	updateOrCreate := func() (any, error) {
 		var isNew bool
-		file, _ := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+		file, readErr := s.fileForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+		if s.retirement.Covers(uid, vaultID, params.Path) {
+			if readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
+				return nil, readErr
+			}
+			if err := s.guardFileWrite(uid, vaultID, params, file); err != nil {
+				return nil, err
+			}
+			// New bytes at a retired path are allowed, including a colliding
+			// 32-bit hash. Do not discard their bytes via a metadata shortcut.
+			mtimeCheck = false
+		}
 
 		if file != nil {
 			isNew = false
+			// A metadata-only request has no bytes to authorize recreation.
+			// Preserve its tombstone instead of reviving it through mtime.
+			if mtimeCheck && file.Action == domain.FileActionDelete && params.SavePath == "" {
+				return &result{isNew: false, dto: s.domainToDTO(file)}, nil
+			}
 			// Check if content is consistent, excluding files marked as deleted
 			// 检查内容是否一致,排除掉已被标记删除的文件
 			if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime == params.Mtime && file.ContentHash == params.ContentHash {
@@ -276,12 +317,13 @@ func (s *fileService) UpdateOrCreate(ctx context.Context, uid int64, params *dto
 
 			// If content is consistent but modification time is different, only update modification time
 			// 检查内容是否一致但修改时间不同，则只更新修改时间
-			if mtimeCheck && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
+			if mtimeCheck && file.Action != domain.FileActionDelete && file.Mtime < params.Mtime && file.ContentHash == params.ContentHash {
 				err := s.fileRepo.UpdateActionMtime(ctx, domain.FileActionModify, params.Mtime, file.ID, uid)
 				if err != nil {
 					return nil, code.ErrorDBQuery.WithDetails(err.Error())
 				}
 				file.Mtime = params.Mtime
+				file.Action = domain.FileActionModify
 				// Log mtime-only update // 记录仅 mtime 变更日志
 				if s.syncLogService != nil {
 					s.syncLogService.Log(uid, vaultID, domain.SyncLogTypeFile, domain.SyncLogActionModify, "mtime", file.Path, file.PathHash, s.clientType, s.clientName, s.clientVer, file.Size)
@@ -397,9 +439,29 @@ func (s *fileService) Delete(ctx context.Context, uid int64, params *dto.FileDel
 		return nil, err
 	}
 
-	file, err := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	unlock := s.kmu.Lock(fileWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	var file *domain.File
+	if params.ExpectedSHA256 != "" || params.ExpectedUpdatedTimestamp != 0 {
+		// Exact-path CAS shares the write lock with uploads and Restore.
+		file, err = s.fileRepo.GetByPath(ctx, params.Path, vaultID, uid)
+	} else {
+		file, err = s.fileForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if params.ExpectedUpdatedTimestamp != 0 && file.UpdatedTimestamp != params.ExpectedUpdatedTimestamp {
+		return nil, code.ErrorSyncConflict.WithDetails("expectedUpdatedTimestamp does not match current file generation").WithData(s.domainToDTO(file))
+	}
+	if params.ExpectedSHA256 != "" {
+		digest, err := retirement.SHA256File(file.SavePath)
+		if err != nil {
+			return nil, code.ErrorFileReadFailed.WithDetails("cannot verify expectedSHA256")
+		}
+		if digest != strings.ToLower(params.ExpectedSHA256) {
+			return nil, code.ErrorSyncConflict.WithDetails("expectedSHA256 does not match current file bytes").WithData(s.domainToDTO(file))
+		}
 	}
 
 	// Update to deleted status // 更新为删除状态
@@ -441,7 +503,9 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 	}
 
 	// Get file from recycle bin
-	file, err := s.fileRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
+	unlock := s.kmu.Lock(fileWriteKey(uid, vaultID, params.Path))
+	defer unlock()
+	file, err := s.fileForWrite(ctx, uid, vaultID, params.Path, params.PathHash)
 	if err != nil {
 		return nil, code.ErrorNoteNotFound
 	}
@@ -449,6 +513,10 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 	// Check if file is deleted // 检查文件是否已删除
 	if file.Action != domain.FileActionDelete {
 		return nil, code.ErrorNoteNotFound
+	}
+	// Explicit Restore is authorized once. No future upload exemption is stored.
+	if err := s.auditRestore(uid, vaultID, file, "restore_authorized"); err != nil {
+		return nil, err
 	}
 
 	// Update to modified status and update modification time
@@ -458,7 +526,12 @@ func (s *fileService) Restore(ctx context.Context, uid int64, params *dto.FileRe
 
 	updated, err := s.fileRepo.Update(ctx, file, uid)
 	if err != nil {
+		_ = s.auditRestore(uid, vaultID, file, "restore_failed")
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
+	}
+	if err := s.auditRestore(uid, vaultID, updated, "restore_committed"); err != nil {
+		// Authorization was already fsynced; report a post-commit audit failure.
+		zap.L().Error("retirement restore result audit failed", zap.Int64("fileId", updated.ID), zap.Error(err))
 	}
 
 	// Log restore // 记录恢复日志
@@ -822,6 +895,17 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 	}
 
 	val, err, _ := s.sf.Do(key, func() (any, error) {
+		// Serialize both rename endpoints with writes, deletion and Restore.
+		first, second := oldPath, newPath
+		if first > second {
+			first, second = second, first
+		}
+		unlockFirst := s.kmu.Lock(fileWriteKey(uid, vaultID, first))
+		defer unlockFirst()
+		if first != second {
+			unlockSecond := s.kmu.Lock(fileWriteKey(uid, vaultID, second))
+			defer unlockSecond()
+		}
 		// 1. Check if target path has valid file
 		// 1. 判断目标路径是否存在有效文件
 		existFile, _ := s.fileRepo.GetByPathHash(ctx, newPathHash, vaultID, uid)
@@ -838,6 +922,10 @@ func (s *fileService) Rename(ctx context.Context, uid int64, params *dto.FileRen
 				return nil, code.ErrorFileNotFound
 			}
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
+		}
+		// Renaming old bytes back to a retired destination cannot bypass upload policy.
+		if err := s.guardFileWrite(uid, vaultID, &dto.FileUpdateRequest{Path: newPath, PathHash: newPathHash, SavePath: f.SavePath}, existFile); err != nil {
+			return nil, err
 		}
 
 		// 3. Mark old file as deleted
@@ -953,6 +1041,7 @@ func (s *fileService) WithClient(clientType, name, version string) FileService {
 		backupService:  s.backupService,
 		gitSyncService: s.gitSyncService,
 		countTimers:    s.countTimers, // Share the same timer map // 共享同一个计时器 map
+		retirement:     s.retirement,
 	}
 }
 
