@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"github.com/haierkeys/fast-note-sync-service/pkg/json"
@@ -69,10 +70,51 @@ func (v ValidErrors) MapsToString() string {
 	return string(re)
 }
 
+// bindableBodyContentType reports whether the request carries a body whose declared
+// Content-Type the current binder will actually parse.
+//
+// 为什么需要它：当请求带了 body 但 Content-Type 不是可解析类型时（text/plain、
+// text/html、或未声明），gin 的 form binder 会**静默忽略 body**、只从 URL query
+// 绑定字段。对 /api/note 这类"字段在 body 里"的写接口，这会让 vault/path 从 query
+// 拿到、content 落空，请求仍返回 code=1 Success 并把既有内容写没（静默数据丢失）。
+// 这类请求一律拒绝（Invalid Params），而不是继续静默绑定。
+func bindableBodyContentType(c *gin.Context) bool {
+	if c == nil || c.Request == nil {
+		return true
+	}
+	// 无 body：query-only 绑定行为不变，保持向后兼容。
+	if c.Request.ContentLength == 0 {
+		return true
+	}
+	switch c.ContentType() {
+	case binding.MIMEJSON,
+		binding.MIMEXML, binding.MIMEXML2,
+		binding.MIMEPROTOBUF,
+		binding.MIMEMSGPACK, binding.MIMEMSGPACK2,
+		binding.MIMEYAML,
+		binding.MIMETOML,
+		binding.MIMEPOSTForm,
+		binding.MIMEMultipartPOSTForm:
+		return true
+	}
+	return false
+}
+
 // BindAndValid bind request parameters and perform validation, supporting multiple languages
 // BindAndValid 绑定请求参数并进行验证，支持多语言
 func BindAndValid(c *gin.Context, obj interface{}) (bool, ValidErrors) {
 	var errs ValidErrors
+
+	// Reject bodies the binder would silently drop, instead of binding from the
+	// query string alone and persisting empty content.
+	// 拒绝会被 binder 静默丢弃的 body，避免只从查询串绑定而把内容写成空值。
+	if !bindableBodyContentType(c) {
+		errs = append(errs, &ValidError{
+			Key:     "Content-Type",
+			Message: "unsupported Content-Type for request body, use application/json (#kvpac-suxu2)",
+		})
+		return false, errs
+	}
 
 	// Use global validator for validation
 	// 使用全局验证器进行验证
