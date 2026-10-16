@@ -67,3 +67,81 @@ func TestRequestParam(t *testing.T) {
 		assert.Equal(t, "", RequestParam(c, "vault"))
 	})
 }
+
+// TestBindAndValidRejectsUnparseableBody guards kvpac-suxu2: a request that carries a
+// body whose Content-Type the binder cannot parse (text/plain, text/html, or none) used
+// to pass validation by binding from the URL query alone, letting handlers persist empty
+// content while returning Success (silent data loss). Such requests must be rejected.
+// TestBindAndValidRejectsUnparseableBody 守护 kvpac-suxu2：带 body 但 Content-Type
+// 不可解析（text/plain、text/html 或未声明）的请求，过去会仅凭 URL query 通过校验，
+// 使处理函数把内容写成空值却返回 Success（静默数据丢失）。此类请求必须被拒绝。
+func TestBindAndValidRejectsUnparseableBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	type noteReq struct {
+		Vault   string `json:"vault" form:"vault" binding:"required"`
+		Path    string `json:"path" form:"path" binding:"required"`
+		Content string `json:"content" form:"content"`
+	}
+
+	newCtx := func(method, target, body, contentType string) *gin.Context {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		r := httptest.NewRequest(method, target, nil)
+		if body != "" {
+			r = httptest.NewRequest(method, target, strings.NewReader(body))
+		}
+		if contentType != "" {
+			r.Header.Set("Content-Type", contentType)
+		}
+		c.Request = r
+		return c
+	}
+
+	t.Run("JSON body still binds and validates", func(t *testing.T) {
+		c := newCtx("POST", "/api/note", `{"vault":"v","path":"p","content":"hello"}`, "application/json")
+		req := &noteReq{}
+		ok, errs := BindAndValid(c, req)
+		assert.True(t, ok)
+		assert.Empty(t, errs)
+		assert.Equal(t, "hello", req.Content)
+	})
+
+	t.Run("form-urlencoded body still binds", func(t *testing.T) {
+		c := newCtx("POST", "/api/note", "vault=v&path=p&content=hello", "application/x-www-form-urlencoded")
+		req := &noteReq{}
+		ok, _ := BindAndValid(c, req)
+		assert.True(t, ok)
+		assert.Equal(t, "hello", req.Content)
+	})
+
+	t.Run("text/plain raw body is rejected", func(t *testing.T) {
+		c := newCtx("POST", "/api/note?vault=v&path=p", "RAW CONTENT", "text/plain; charset=utf-8")
+		req := &noteReq{}
+		ok, errs := BindAndValid(c, req)
+		assert.False(t, ok, "text/plain body must not pass validation")
+		assert.NotEmpty(t, errs)
+		assert.Equal(t, "Content-Type", errs[0].Field())
+	})
+
+	t.Run("text/html body is rejected", func(t *testing.T) {
+		c := newCtx("POST", "/api/note?vault=v&path=p", "<p>x</p>", "text/html")
+		req := &noteReq{}
+		ok, _ := BindAndValid(c, req)
+		assert.False(t, ok)
+	})
+
+	t.Run("undeclared Content-Type with body is rejected", func(t *testing.T) {
+		c := newCtx("POST", "/api/note?vault=v&path=p", "RAW CONTENT", "")
+		req := &noteReq{}
+		ok, _ := BindAndValid(c, req)
+		assert.False(t, ok, "body without Content-Type must not pass validation")
+	})
+
+	t.Run("bodyless request keeps previous behaviour", func(t *testing.T) {
+		c := newCtx("POST", "/api/vault?vault=v", "", "")
+		req := &noteReq{Vault: "v", Path: "p"}
+		ok, _ := BindAndValid(c, req)
+		assert.True(t, ok, "query-only requests must keep working")
+	})
+}
