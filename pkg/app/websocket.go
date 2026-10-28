@@ -28,13 +28,13 @@ import (
 type LogType string
 
 const (
-	WSPingInterval         = 25
-	WSPingWait             = 60
-	WSPingWriteTimeout     = 10      // WritePing write timeout (seconds), must < PingInterval // WritePing 写超时（秒），需小于 PingInterval
-	LogInfo        LogType = "info"
-	LogError       LogType = "error"
-	LogWarn        LogType = "warn"
-	LogDebug       LogType = "debug"
+	WSPingInterval             = 25
+	WSPingWait                 = 60
+	WSPingWriteTimeout         = 10 // WritePing write timeout (seconds), must < PingInterval // WritePing 写超时（秒），需小于 PingInterval
+	LogInfo            LogType = "info"
+	LogError           LogType = "error"
+	LogWarn            LogType = "warn"
+	LogDebug           LogType = "debug"
 )
 
 // traceIDKeyType used to store Trace ID in context
@@ -290,7 +290,7 @@ type WebsocketClient struct {
 	DiffMergePaths      map[string]DiffMergeEntry // File paths needing merging // 需要合并的文件路径，包含创建时间用于超时清理
 	DiffMergePathsMu    sync.RWMutex              // Mutex lock to prevent concurrency conflicts // 互斥锁，防止并发冲突
 	failCount           atomic.Int32              // Consecutive broadcast failure counter; connection closed when exceeding threshold // 连续广播失败计数器，超过阈值时主动关闭连接
-	lastPongAt          atomic.Int64                    // Unix timestamp of last received pong; used to detect zombie connections // 最后一次收到 pong 的 Unix 时间戳，用于检测僵尸连接
+	lastPongAt          atomic.Int64              // Unix timestamp of last received pong; used to detect zombie connections // 最后一次收到 pong 的 Unix 时间戳，用于检测僵尸连接
 	TokenID             int64                     // Bound Token ID // 绑定的令牌 ID
 	Scope               string                    // Token Scope // 令牌权限范围
 	Vaults              string                    // Restrict Vaults // 限制笔记库
@@ -909,19 +909,19 @@ type ValidatorInterface interface {
 }
 
 type WebsocketServer struct {
-	app               AppContainer // App Container (Required) // App Container（必须）
+	app                AppContainer // App Container (Required) // App Container（必须）
 	handlers           map[string]func(*WebsocketClient, *WebSocketMessage)
 	noAuthHandlers     map[string]func(*WebsocketClient, *WebSocketMessage) // Handlers that do not require user authentication // 免登录鉴权消息处理器集合
 	interceptors       []func(*WebsocketClient, *WebSocketMessage) bool     // Pre-handler interceptor chain // 消息前置拦截器链
 	userVerifyHandler  func(*WebsocketClient, int64) (*UserSelectEntity, error)
 	tokenVerifyHandler func(ctx context.Context, uid int64, tokenID int64, nonce string, reqClientType, reqClientName, reqClientVersion, reqUserAgent, reqIP string) (string, string, error)
-	binaryHandlers    map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
-	clients           ConnStorage
-	userClients       map[string]ConnStorage
-	connWg            sync.WaitGroup
-	mu                sync.RWMutex
-	up                *gws.Upgrader
-	config            *WSConfig
+	binaryHandlers     map[string]func(*WebsocketClient, []byte) // Binary message handler map: prefix -> handler // 二进制消息处理器映射 prefix -> handler
+	clients            ConnStorage
+	userClients        map[string]ConnStorage
+	connWg             sync.WaitGroup
+	mu                 sync.RWMutex
+	up                 *gws.Upgrader
+	config             *WSConfig
 	// Global session management (UID -> SessionID -> Session)
 	// 全局会话管理 (UID -> SessionID -> Session)
 	binaryChunkSessions map[string]map[string]any
@@ -1538,6 +1538,7 @@ func (w *WebsocketServer) GetSession(uid string, sessionID string) any {
 
 // GetSessionByPathHash gets global binary upload session by path hash
 // GetSessionByPathHash 通过路径哈希获取全局二进制上传会话
+//
 //go:noinline
 func (w *WebsocketServer) GetSessionByPathHash(uid string, pathHash string) any {
 	w.sessionsMu.RLock()
@@ -1712,6 +1713,11 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
+	uid := "Guest"
+	if c.User != nil {
+		uid = c.User.ID
+	}
+
 	// Set deadline
 	// 设置延时
 	_ = conn.SetDeadline(time.Now().Add(w.config.PingWait * time.Second))
@@ -1719,7 +1725,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 	if message.Opcode == gws.OpcodeBinary {
 		data := message.Data.Bytes()
 		if len(data) < 2 {
-			log(LogError, "WS OnMessage Binary too short", zap.String("uid", c.User.ID))
+			log(LogError, "WS OnMessage Binary too short", zap.String("uid", uid))
 			return
 		}
 		prefix := string(data[:2])
@@ -1731,6 +1737,11 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		copy(payloadCopy, payload)
 
 		if handler, ok := w.binaryHandlers[prefix]; ok {
+			// Binary upload handlers bypass the text/protobuf authentication interceptor.
+			if c.User == nil {
+				c.ToResponse(code.ErrorNotUserAuthToken)
+				return
+			}
 			// Submit task through Worker Pool
 			// 通过 Worker Pool 提交任务
 			err := w.app.SubmitTaskAsync(c.Context(), func(ctx context.Context) error {
@@ -1743,7 +1754,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 				}
 				// Verify binary message permission (currently only "00" for file chunk upload)
 				if !VerifyPermissions(c.Scope, "ws", c.ClientType(), "file_w") {
-					log(LogWarn, "WS OnMessage Binary Permission Denied", zap.String("prefix", prefix), zap.String("uid", c.User.ID))
+					log(LogWarn, "WS OnMessage Binary Permission Denied", zap.String("prefix", prefix), zap.String("uid", uid))
 					c.ToResponse(code.ErrorAuthTokenScopeRestricted.WithDetails("Permission denied: binary " + prefix))
 					return nil
 				}
@@ -1755,24 +1766,24 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 				// Worker Pool 满载或已关闭，记录错误并返回错误响应
 				log(LogError, "WS OnMessage Worker Pool error",
 					zap.String("prefix", prefix),
-					zap.String("uid", c.User.ID),
+					zap.String("uid", uid),
 					zap.Error(err))
 				c.ToResponse(code.ErrorServerBusy)
 				return
 			}
 		} else if prefix == "pb" {
 			if !c.UseProtobuf() {
-				log(LogWarn, "WS OnMessage received Protobuf but UseProtobuf is false", zap.String("uid", c.User.ID))
+				log(LogWarn, "WS OnMessage received Protobuf but UseProtobuf is false", zap.String("uid", uid))
 				return
 			}
 			if w.EnvelopeDecoder == nil {
-				log(LogError, "WS OnMessage EnvelopeDecoder is nil", zap.String("uid", c.User.ID))
+				log(LogError, "WS OnMessage EnvelopeDecoder is nil", zap.String("uid", uid))
 				return
 			}
 
 			action, innerPayload, err := w.EnvelopeDecoder(payloadCopy)
 			if err != nil {
-				log(LogError, "WS OnMessage Protobuf Envelope decode failed", zap.Error(err), zap.String("uid", c.User.ID))
+				log(LogError, "WS OnMessage Protobuf Envelope decode failed", zap.Error(err), zap.String("uid", uid))
 				return
 			}
 
@@ -1821,7 +1832,7 @@ func (w *WebsocketServer) OnMessage(conn *gws.Conn, message *gws.Message) {
 		msg.Type = messageStr[:index]           // Extract the part before the separator // 提取分隔符之前的部分
 		msg.Data = []byte(messageStr[index+1:]) // Extract the part after the separator // 提取分隔符之后的部分
 	} else {
-		log(LogError, "WS OnMessage", zap.String("type", "Illegal message type"), zap.String("uid", c.User.ID))
+		log(LogError, "WS OnMessage", zap.String("type", "Illegal message type"), zap.String("uid", uid))
 		return
 	}
 
@@ -1943,4 +1954,3 @@ func (w *WebsocketServer) cleanupStaleSessions(uid string, maxAge time.Duration)
 		delete(w.binaryChunkSessions, uid)
 	}
 }
-

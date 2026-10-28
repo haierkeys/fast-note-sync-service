@@ -40,18 +40,20 @@ server:
   # CORS allowed origins. Leave empty to auto-infer from ext-api-url.
   cors-allowed-origins: []
   # 可信代理服务器的 IP 或 CIDR 网段白名单（例如 ["192.168.1.100", "10.0.0.0/8"]）。
-  # 只有来自该白名单内代理服务器转发的请求，系统才会信任并解析其携带的 X-Forwarded-Host 和 X-Forwarded-Proto 头部，以防止攻击者伪造 Host/IP 进行漏洞攻击。
+  # 只有来自该白名单内代理服务器转发的请求，系统才会信任其 X-Forwarded-Host、X-Forwarded-Proto 和客户端 IP 转发头（X-Forwarded-For / X-Real-IP）。代理必须清洗外部传入的转发头。
   # 
   # 部署说明：
   # 1. 留空（默认值 []）：仅信任本地回环地址（127.0.0.1 和 ::1）。如果 Nginx 或 Cloudflare Tunnel 部署在同一台机器上，请保持留空。
   # 2. 跨机器部署：如果反向代理（如独立 Nginx 服务器、负载均衡器等）部署在独立的主机上，必须将这些代理服务器的内网 IP / 网段填入该数组中，否则系统将忽略其代理头。
+  # 3. 容器部署：使用应用实际看到的代理/网关地址；不要因与代理处于同一台主机便假设来源为回环地址，也不要信任所有地址。
   # 
   # Trusted proxies IP/CIDR list (e.g., ["192.168.1.100", "10.0.0.0/8"]).
-  # Only trusts X-Forwarded-Host and X-Forwarded-Proto headers if the request is forwarded by proxies in this whitelist, protecting against HTTP Header injection.
+  # Only trust X-Forwarded-Host, X-Forwarded-Proto and client IP headers (X-Forwarded-For / X-Real-IP) from these proxies. Proxies must sanitize incoming forwarded headers.
   # 
   # Deployment Advice:
   # 1. Leave empty ([]): Only loopback addresses (127.0.0.1 and ::1) are trusted. Keep it empty if Nginx/Cloudflare Tunnel is on the same machine.
   # 2. Remote Deployment: If your reverse proxy is on a separate server, you must add its IP or CIDR block to this list.
+  # 3. Containers: use the proxy/gateway address actually seen by the application. A proxy on the same host is not necessarily a loopback peer; do not trust all addresses.
   trusted-proxies: []
 
 

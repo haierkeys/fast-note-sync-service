@@ -300,6 +300,9 @@ func (s *userService) Update(ctx context.Context, params *dto.UserUpdateRequest)
 
 // Login user login
 // Login 用户登录
+// Public, non-credential dummy hash with the same bcrypt cost as real passwords.
+const loginDummyHash = "$2a$10$XajjQvNhvvRt5GSeFk1xFeyqRrsxkhBkUiQeg0dt.wU1qD4aFDcga"
+
 func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
 	var user *domain.User
 	var err error
@@ -309,14 +312,13 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 	if util.IsValidEmail(params.Credentials) {
 		email := strings.ToLower(strings.TrimSpace(params.Credentials))
 		user, err = s.userRepo.GetByEmail(ctx, email)
-		if err != nil {
-			return nil, code.ErrorUserLoginPasswordFailed
-		}
 	} else {
 		user, err = s.userRepo.GetByUsername(ctx, params.Credentials)
-		if err != nil {
-			return nil, code.ErrorUserLoginPasswordFailed
-		}
+	}
+	if err != nil || user == nil {
+		// Do comparable work for unknown users to avoid username timing disclosure.
+		_ = util.CheckPasswordHash(loginDummyHash, params.Password)
+		return nil, code.ErrorUserLoginPasswordFailed
 	}
 
 	// Validate password

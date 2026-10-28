@@ -25,6 +25,7 @@ var methodLimiters = limiter.NewMethodLimiter().AddBuckets(
 	},
 	limiter.BucketRule{
 		Key:          "/api/user/login",
+		PerClient:    true,
 		FillInterval: time.Second,
 		Capacity:     5,
 		Quantum:      1,
@@ -89,7 +90,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 	// 初始化 WebSocket 路由
 	initWebSocketRoutes(wss, appContainer)
 
-	r := gin.New()
+	r := newRouterEngine(cfg.Server.TrustedProxies)
 	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
 	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
@@ -127,7 +128,7 @@ func NewRouter(frontendFiles embed.FS, appContainer *app.App, uni *ut.UniversalT
 
 func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	cfg := appContainer.Config()
-	r := gin.New()
+	r := newRouterEngine(cfg.Server.TrustedProxies)
 	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
 	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
@@ -144,7 +145,7 @@ func NewWebGuiRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine 
 
 func NewShareRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	cfg := appContainer.Config()
-	r := gin.New()
+	r := newRouterEngine(cfg.Server.TrustedProxies)
 	r.Use(middleware.Proxy(cfg.Server.TrustedProxies))
 	r.Use(middleware.Cors(cfg.Server.CORSAllowedOrigins, cfg.Server.ExtApiUrl))
 	if len(cfg.Server.CustomResponseHeaders) > 0 {
@@ -155,5 +156,17 @@ func NewShareRouter(frontendFiles embed.FS, appContainer *app.App) *gin.Engine {
 	registerShareRoutes(r, frontendFiles, appContainer)
 
 	r.NoRoute(middleware.NoFound())
+	return r
+}
+
+// newRouterEngine trusts forwarding headers only from the configured reverse proxies.
+func newRouterEngine(trustedProxies []string) *gin.Engine {
+	if len(trustedProxies) == 0 {
+		trustedProxies = []string{"127.0.0.1", "::1"}
+	}
+	r := gin.New()
+	if err := r.SetTrustedProxies(trustedProxies); err != nil {
+		panic(err)
+	}
 	return r
 }

@@ -19,6 +19,7 @@ type Limiter struct {
 
 type BucketRule struct {
 	Key          string
+	PerClient    bool
 	FillInterval time.Duration
 	Capacity     int64
 	Quantum      int64
