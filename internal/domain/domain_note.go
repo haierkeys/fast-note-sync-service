@@ -40,6 +40,18 @@ type Note struct {
 	UpdatedAt               time.Time
 }
 
+// SearchHit is one full-text/path search result carrying the note row plus
+// the raw matched text so the caller can build a context snippet.
+// SearchHit 是一条全文/路径搜索结果，带笔记原始行与匹配文本，便于上层构造上下文片段。
+type SearchHit struct {
+	Note      *Note
+	MatchText string
+	// Snippet is a short window of the note body around the first match, so a
+	// caller can show context without shipping the whole note.
+	// Snippet 是正文中第一处命中附近的短窗口，便于调用方展示上下文而无需返回整篇正文。
+	Snippet string
+}
+
 // CountSizeResult 统计结果
 type CountSizeResult struct {
 	Count int64
@@ -165,6 +177,19 @@ type NoteRepository interface {
 
 	// ListByIDs 根据ID列表获取笔记列表
 	ListByIDs(ctx context.Context, ids []int64, uid int64) ([]*Note, error)
+
+	// SearchHits runs a full-text (Bleve) or path (LIKE) search and returns hits
+	// in rank order, each carrying the note row and the raw matched text.
+	// searchMode: "content" -> Bleve full text, anything else -> path LIKE.
+	// SearchHits 执行全文(Bleve)或路径(LIKE)搜索，按相关度顺序返回命中项，
+	// 每项带笔记行与匹配到的原文。searchMode: "content" 走全文，其余走路径模糊匹配。
+	SearchHits(ctx context.Context, vaultID int64, uid int64, keyword string, searchMode string, isRecycle bool, sortBy string, sortOrder string, limit, offset int) ([]*SearchHit, int, error)
+
+	// ListMetaByVault returns every live note in a vault WITHOUT loading its body.
+	// Used by vault-wide analyses (broken links, orphans) that only need paths/hashes.
+	// ListMetaByVault 返回库内全部存活笔记，但不加载正文。
+	// 供只依赖路径/哈希的全库分析（失效链接、孤儿笔记）使用。
+	ListMetaByVault(ctx context.Context, vaultID, uid int64) ([]*Note, error)
 
 	// ListByPathPrefix 根据路径前缀获取笔记列表
 	ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*Note, error)

@@ -71,6 +71,7 @@ func NewMigrationManager(db *gorm.DB, logger *zap.Logger, version string, cfg, u
 			&NoteHistoryRenameMigrate{},
 			&UserEmailLowercaseMigrate{},
 			&BackupRetentionDefaultMigrate{},
+			&NoteTagIndexRebuildMigrate{},
 		},
 	}
 }

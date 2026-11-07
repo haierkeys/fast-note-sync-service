@@ -231,6 +231,22 @@ func (m *MockNoteRepository) ListByIDs(ctx context.Context, ids []int64, uid int
 	return args.Get(0).([]*domain.Note), args.Error(1)
 }
 
+func (m *MockNoteRepository) SearchHits(ctx context.Context, vaultID int64, uid int64, keyword string, searchMode string, isRecycle bool, sortBy string, sortOrder string, limit, offset int) ([]*domain.SearchHit, int, error) {
+	args := m.Called(ctx, vaultID, uid, keyword, searchMode, isRecycle, sortBy, sortOrder, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*domain.SearchHit), args.Int(1), args.Error(2)
+}
+
+func (m *MockNoteRepository) ListMetaByVault(ctx context.Context, vaultID, uid int64) ([]*domain.Note, error) {
+	args := m.Called(ctx, vaultID, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Note), args.Error(1)
+}
+
 func (m *MockNoteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Note, error) {
 	args := m.Called(ctx, pathPrefix, vaultID, uid)
 	if args.Get(0) == nil {
@@ -253,7 +269,6 @@ func (m *MockNoteRepository) RebuildVaultIndex(ctx context.Context, uid, vaultID
 	args := m.Called(ctx, uid, vaultID)
 	return args.Error(0)
 }
-
 
 // Compile-time check: MockNoteRepository must implement domain.NoteRepository.
 // 编译时检查：MockNoteRepository 必须实现 domain.NoteRepository 接口。

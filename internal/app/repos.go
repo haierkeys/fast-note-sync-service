@@ -14,6 +14,7 @@ type Repositories struct {
 	SettingRepo      domain.SettingRepository
 	NoteHistoryRepo  domain.NoteHistoryRepository
 	NoteLinkRepo     domain.NoteLinkRepository
+	NoteTagRepo      domain.NoteTagRepository
 	ShareRepo        domain.UserShareRepository
 	FolderRepo       domain.FolderRepository
 	StorageRepo      domain.StorageRepository
@@ -36,6 +37,7 @@ func initRepositories(d *dao.Dao) *Repositories {
 		SettingRepo:      dao.NewSettingRepository(d),
 		NoteHistoryRepo:  dao.NewNoteHistoryRepository(d),
 		NoteLinkRepo:     dao.NewNoteLinkRepository(d),
+		NoteTagRepo:      dao.NewNoteTagRepository(d),
 		ShareRepo:        dao.NewUserShareRepository(d),
 		FolderRepo:       dao.NewFolderRepository(d),
 		StorageRepo:      dao.NewStorageRepository(d),

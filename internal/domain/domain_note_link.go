@@ -38,4 +38,10 @@ type NoteLinkRepository interface {
 
 	// DeleteByVaultID deletes all links for a vault
 	DeleteByVaultID(ctx context.Context, vaultID, uid int64) error
+
+	// ListByVault returns every link edge recorded in a vault. Used for vault-wide
+	// analyses (broken links, orphans) where per-note lookups would be N+1.
+	// ListByVault 返回一个库中的全部链接边，用于全库分析（失效链接、孤儿笔记），
+	// 避免逐笔记查询造成 N+1。
+	ListByVault(ctx context.Context, vaultID, uid int64, limit int) ([]*NoteLink, error)
 }

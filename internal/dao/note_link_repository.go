@@ -162,6 +162,31 @@ func (r *noteLinkRepository) GetOutlinks(ctx context.Context, sourceNoteID, uid 
 	return results, nil
 }
 
+// ListByVault returns every link edge in a vault, up to limit rows.
+// Used for vault-wide analyses (broken links, orphans) that would otherwise be
+// one query per note.
+// ListByVault 返回库内全部链接边（最多 limit 行），供全库分析（失效链接、孤儿笔记）使用，
+// 避免逐笔记查询。
+func (r *noteLinkRepository) ListByVault(ctx context.Context, vaultID, uid int64, limit int) ([]*domain.NoteLink, error) {
+	if limit <= 0 {
+		limit = 50000
+	}
+	nl := r.noteLink(uid).NoteLink
+	modelList, err := nl.WithContext(ctx).
+		Where(nl.VaultID.Eq(vaultID)).
+		Limit(limit).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]*domain.NoteLink, 0, len(modelList))
+	for _, m := range modelList {
+		results = append(results, r.toDomain(m))
+	}
+	return results, nil
+}
+
 // DeleteByVaultID deletes all links for a vault
 func (r *noteLinkRepository) DeleteByVaultID(ctx context.Context, vaultID, uid int64) error {
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {

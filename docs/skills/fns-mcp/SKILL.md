@@ -67,7 +67,26 @@ Before using this skill, the agent needs to connect to the MCP SSE interface.
 | `file_delete` | Delete file / 删除文件 | `vault`, `path` |
 | `file_rename` | Rename file / 重命名文件 | `vault`, `oldPath`, `newPath` |
 
-### 3. Vault Tools / 库工具
+### 3. Query Tools / 查询工具
+
+These answer structural questions the note CRUD surface cannot express. They
+return metadata plus a short snippet instead of note bodies — call `note_get`
+with the returned path when you need the full text.
+
+这些工具回答笔记 CRUD 接口无法表达的结构性问题。它们只返回元数据与短片段而非正文 ——
+确认路径后再用 `note_get` 读全文。
+
+| Tool Name / 工具 | Description / 描述 | Arguments / 参数 |
+| :--- | :--- | :--- |
+| `note_search` | Full-text search with snippets / 全文搜索并返回片段 | `vault`, `keyword`, `mode` (`fulltext`\|`path`), `page`, `pageSize` |
+| `note_list_broken_links` | Wikilinks whose target is missing / 目标不存在的双链 | `vault`, `limit` |
+| `note_list_orphans` | Notes nothing links to / 没有任何入链的笔记 | `vault`, `limit` |
+| `note_list_tags` | Tag list with counts / 标签清单及次数 | `vault`, `prefix`, `scope` (`all`\|`frontmatter`\|`inline`), `limit` |
+| `note_list_recent` | Newest notes first, metadata only / 最近修改的笔记 | `vault`, `limit` |
+| `note_list_by_prefix` | Notes under a folder prefix / 某目录下的笔记 | `vault`, `prefix` |
+| `vault_stats` | Note/file/link/tag counts and sizes / 库的统计信息 | `vault` |
+
+### 4. Vault Tools / 库工具
 
 | Tool Name / 工具 | Description / 描述 | Arguments / 参数 |
 | :--- | :--- | :--- |
@@ -84,3 +103,4 @@ Before using this skill, the agent needs to connect to the MCP SSE interface.
 2. **Path Handling**: Paths are relative to vault root. (路径相对于库根目录)
 3. **Encoding**: `file_read` returns Base64. (文件读取返回 Base64 编码)
 4. **Consistency**: Be aware of path changes after rename/move. (重命名后注意路径变更)
+5. **Search first, then read**: `note_search` returns snippets, not bodies — narrow the candidates first and call `note_get` only for the notes you actually need. (先用 `note_search` 拿片段缩小范围，再用 `note_get` 读全文)
