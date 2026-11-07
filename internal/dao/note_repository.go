@@ -6,7 +6,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
@@ -720,6 +722,26 @@ func (r *noteRepository) List(ctx context.Context, vaultID int64, page, pageSize
 	return list, nil
 }
 
+// ListMetaByVault returns every live note in a vault without loading bodies.
+// ListMetaByVault 返回库内全部存活笔记，不加载正文。
+func (r *noteRepository) ListMetaByVault(ctx context.Context, vaultID, uid int64) ([]*domain.Note, error) {
+	u := r.note(uid).Note
+	ms, err := u.WithContext(ctx).Where(
+		u.VaultID.Eq(vaultID),
+		u.Action.Neq("delete"),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.Note, 0, len(ms))
+	for _, m := range ms {
+		if n := r.toDomainMeta(m); n != nil {
+			res = append(res, n)
+		}
+	}
+	return res, nil
+}
+
 func (r *noteRepository) ListByPathPrefix(ctx context.Context, pathPrefix string, vaultID, uid int64) ([]*domain.Note, error) {
 	u := r.note(uid).Note
 	// Use LIKE 'prefix/%'
@@ -1166,6 +1188,96 @@ func (r *noteRepository) upsertFTS(m *model.Note, content string, uid int64) {
 // vault before deleting it), avoiding a redundant SELECT just to look it up here.
 func (r *noteRepository) deleteFTS(noteID, vaultID, uid int64) {
 	r.dao.BleveMgr.EnqueueDelete(uid, vaultID, strconv.FormatInt(noteID, 10))
+}
+
+// SearchHits runs a content (Bleve) or path (LIKE) search and returns hits in
+// rank order, each carrying the note row and the raw matched text so callers can
+// build a short context snippet instead of shipping whole note bodies.
+// SearchHits 执行内容(Bleve)或路径(LIKE)搜索，按相关度顺序返回命中项，每项带笔记行与匹配到的原文，
+// 便于上层构造短上下文片段，而不是把整篇正文塞回去。
+func (r *noteRepository) SearchHits(ctx context.Context, vaultID int64, uid int64, keyword string, searchMode string, isRecycle bool, sortBy string, sortOrder string, limit, offset int) ([]*domain.SearchHit, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return []*domain.SearchHit{}, 0, nil
+	}
+
+	u := r.note(uid).Note
+	q := u.WithContext(ctx).Where(u.VaultID.Eq(vaultID))
+	if isRecycle {
+		q = q.Where(u.Action.Eq("delete"), u.Rename.Eq(0))
+	} else {
+		q = q.Where(u.Action.Neq("delete"))
+	}
+
+	useFTS := searchMode == "content" && r.dao.BleveMgr.IsEnabled()
+
+	var (
+		modelList []*model.Note
+		total     int64
+		err       error
+	)
+
+	if useFTS {
+		if err = r.EnsureFTSIndex(ctx, uid); err != nil {
+			return nil, 0, err
+		}
+		noteIDs, ftsErr := r.searchFTS(uid, vaultID, keyword, isRecycle, sortBy, sortOrder, limit, offset)
+		if ftsErr != nil {
+			return nil, 0, ftsErr
+		}
+		count, countErr := r.searchFTSCount(uid, vaultID, keyword, isRecycle)
+		if countErr != nil {
+			return nil, 0, countErr
+		}
+		total = count
+		if len(noteIDs) == 0 {
+			return []*domain.SearchHit{}, int(total), nil
+		}
+		if err = q.UnderlyingDB().Where("id IN ?", noteIDs).Limit(limit).Find(&modelList).Error; err != nil {
+			return nil, 0, err
+		}
+		// restore Bleve rank order, since WHERE id IN does not preserve it
+		// 恢复 Bleve 的相关度顺序：WHERE id IN 不保证顺序
+		order := make(map[int64]int, len(noteIDs))
+		for i, id := range noteIDs {
+			order[id] = i
+		}
+		sort.SliceStable(modelList, func(i, j int) bool {
+			return order[modelList[i].ID] < order[modelList[j].ID]
+		})
+	} else {
+		like := "%" + keyword + "%"
+		countQ := q.UnderlyingDB().Model(&model.Note{}).Where("path LIKE ?", like)
+		if err = countQ.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+		orderClause := buildOrderClause(sortBy, sortOrder)
+		if err = q.UnderlyingDB().Where("path LIKE ?", like).
+			Order(orderClause).Limit(limit).Offset(offset).
+			Find(&modelList).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	hits := make([]*domain.SearchHit, 0, len(modelList))
+	for _, m := range modelList {
+		note, convErr := r.toDomain(m, uid)
+		if convErr != nil || note == nil {
+			continue
+		}
+		hits = append(hits, &domain.SearchHit{
+			Note:      note,
+			MatchText: keyword,
+			Snippet:   BuildSnippet(note.Content, keyword),
+		})
+	}
+	return hits, int(total), nil
 }
 
 // searchFTS uses Bleve to search note IDs, returning matching ID slice

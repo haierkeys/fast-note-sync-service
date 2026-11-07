@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	"github.com/haierkeys/fast-note-sync-service/internal/domain"
 	"github.com/haierkeys/fast-note-sync-service/internal/dto"
 	"github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -148,33 +149,35 @@ type NoteService interface {
 // noteService implementation of NoteService interface
 // noteService 实现 NoteService 接口
 type noteService struct {
-	userRepo       domain.UserRepository      // User repository // 用户仓库
-	noteRepo       domain.NoteRepository      // Note repository // 笔记仓库
-	noteLinkRepo   domain.NoteLinkRepository  // Note link repository // 笔记链接仓库
-	fileRepo       domain.FileRepository      // File repository // 文件仓库
-	shareRepo      domain.UserShareRepository // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
+	userRepo       domain.UserRepository        // User repository // 用户仓库
+	noteRepo       domain.NoteRepository        // Note repository // 笔记仓库
+	noteLinkRepo   domain.NoteLinkRepository    // Note link repository // 笔记链接仓库
+	noteTagRepo    domain.NoteTagRepository     // Note tag repository (tag index) // 笔记标签仓库（标签索引）
+	fileRepo       domain.FileRepository        // File repository // 文件仓库
+	shareRepo      domain.UserShareRepository   // Share repository for auto-revoke on delete // 分享仓库（删除时自动撤销）
 	historyRepo    domain.NoteHistoryRepository // Note history repository // 笔记历史仓库（rename 时迁移历史归属）
-	vaultService   VaultService               // Vault service // 仓库服务
-	folderService  FolderService              // Folder service // 文件夹服务
-	syncLogService SyncLogService             // Sync log service // 同步日志服务
-	sf             *singleflight.Group        // Singleflight group // 并发请求合并组
-	kmu            *keyedmutex.KeyedMutex     // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
-	clientType     string                     // Client type // 客户端类型
-	clientName     string                     // Client name // 客户端名称
-	clientVer      string                     // Client version // 客户端版本
-	config         *ServiceConfig             // Service configuration // 服务配置
-	backupService  BackupService              // Backup service // 备份服务
-	gitSyncService GitSyncService             // Git sync service // Git 同步服务
-	countTimers    *sync.Map                  // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
+	vaultService   VaultService                 // Vault service // 仓库服务
+	folderService  FolderService                // Folder service // 文件夹服务
+	syncLogService SyncLogService               // Sync log service // 同步日志服务
+	sf             *singleflight.Group          // Singleflight group // 并发请求合并组
+	kmu            *keyedmutex.KeyedMutex       // Per-key mutex for write paths that must not share results across callers // 用于写路径的按 key 互斥锁，避免调用方之间共享结果
+	clientType     string                       // Client type // 客户端类型
+	clientName     string                       // Client name // 客户端名称
+	clientVer      string                       // Client version // 客户端版本
+	config         *ServiceConfig               // Service configuration // 服务配置
+	backupService  BackupService                // Backup service // 备份服务
+	gitSyncService GitSyncService               // Git sync service // Git 同步服务
+	countTimers    *sync.Map                    // Timers for CountSizeSum debounce // CountSizeSum 防抖计时器
 }
 
 // NewNoteService creates NoteService instance
 // NewNoteService 创建 NoteService 实例
-func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, historyRepo domain.NoteHistoryRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
+func NewNoteService(userRepo domain.UserRepository, noteRepo domain.NoteRepository, noteLinkRepo domain.NoteLinkRepository, noteTagRepo domain.NoteTagRepository, fileRepo domain.FileRepository, shareRepo domain.UserShareRepository, historyRepo domain.NoteHistoryRepository, vaultSvc VaultService, folderSvc FolderService, backupSvc BackupService, gitSyncSvc GitSyncService, syncLogSvc SyncLogService, config *ServiceConfig) NoteService {
 	return &noteService{
 		userRepo:       userRepo,
 		noteRepo:       noteRepo,
 		noteLinkRepo:   noteLinkRepo,
+		noteTagRepo:    noteTagRepo,
 		fileRepo:       fileRepo,
 		shareRepo:      shareRepo,
 		historyRepo:    historyRepo,
@@ -196,6 +199,7 @@ func (s *noteService) WithClient(clientType, name, version string) NoteService {
 	return &noteService{
 		noteRepo:       s.noteRepo,
 		noteLinkRepo:   s.noteLinkRepo,
+		noteTagRepo:    s.noteTagRepo,
 		fileRepo:       s.fileRepo,
 		shareRepo:      s.shareRepo,
 		historyRepo:    s.historyRepo,
@@ -463,6 +467,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
 			go s.CountSizeSum(context.Background(), vaultID, uid)
 			go s.UpdateNoteLinks(context.Background(), updated.ID, params.Content, vaultID, uid)
+			go s.UpdateNoteTags(context.Background(), updated.ID, params.Content, vaultID, uid)
 			NoteHistoryDelayPush(updated.ID, uid)
 
 			if s.backupService != nil {
@@ -505,6 +510,7 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{created.ID}, nil)
 		go s.CountSizeSum(context.Background(), vaultID, uid)
 		go s.UpdateNoteLinks(context.Background(), created.ID, params.Content, vaultID, uid)
+		go s.UpdateNoteTags(context.Background(), created.ID, params.Content, vaultID, uid)
 		NoteHistoryDelayPush(created.ID, uid)
 		if s.backupService != nil {
 			go s.backupService.NotifyUpdated(uid)
@@ -636,6 +642,7 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	go s.folderService.SyncResourceFID(context.Background(), uid, vaultID, []int64{updated.ID}, nil)
 	go s.CountSizeSum(context.Background(), vaultID, uid)
 	go s.UpdateNoteLinks(context.Background(), updated.ID, updated.Content, vaultID, uid)
+	go s.UpdateNoteTags(context.Background(), updated.ID, updated.Content, vaultID, uid)
 
 	NoteHistoryDelayPush(updated.ID, uid)
 	if s.backupService != nil {
@@ -1295,6 +1302,43 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 		MatchCount: matchCount,
 		Note:       result,
 	}, nil
+}
+
+// UpdateNoteTags re-extracts the note's tags and replaces its rows in the tag
+// index. Mirrors UpdateNoteLinks: callers fire it in a goroutine so a tag-index
+// failure can never fail the note write itself.
+// UpdateNoteTags 重新提取笔记标签并替换其标签索引记录。与 UpdateNoteLinks 一致：
+// 调用方以 goroutine 触发，标签索引失败绝不影响笔记写入本身。
+func (s *noteService) UpdateNoteTags(ctx context.Context, noteID int64, content string, vaultID, uid int64) {
+	if s.noteTagRepo == nil {
+		return
+	}
+	tags, source := dao.ExtractTags(content)
+	if err := s.noteTagRepo.ReplaceForNote(ctx, noteID, tags, vaultID, uid, source); err != nil {
+		s.logTagIndexError("replace", noteID, uid, err)
+	}
+}
+
+// DeleteNoteTags drops the note's rows from the tag index.
+// DeleteNoteTags 从标签索引中删除该笔记的记录。
+func (s *noteService) DeleteNoteTags(ctx context.Context, noteID, uid int64) {
+	if s.noteTagRepo == nil {
+		return
+	}
+	if err := s.noteTagRepo.DeleteByNoteID(ctx, noteID, uid); err != nil {
+		s.logTagIndexError("delete", noteID, uid, err)
+	}
+}
+
+// logTagIndexError reports a tag-index failure without propagating it.
+// logTagIndexError 记录标签索引错误但不向上抛出。
+func (s *noteService) logTagIndexError(op string, noteID, uid int64, err error) {
+	zap.L().Warn("note tag index "+op+" failed",
+		zap.Int64(logger.FieldUID, uid),
+		zap.Int64("noteId", noteID),
+		zap.String(logger.FieldMethod, "NoteService.logTagIndexError"),
+		zap.Error(err),
+	)
 }
 
 // UpdateNoteLinks extracts wiki links from content and updates the link index

@@ -106,5 +106,10 @@ func NewMCPServer(appContainer *app.App, wss *pkgapp.WebsocketServer) *mcpsrv.MC
 	// Vault Tools
 	registerVaultTools(srv, appContainer)
 
+	// Knowledge-query tools: search, link-graph integrity, tags, recency,
+	// folder listing and vault statistics.
+	// 知识库查询工具：搜索、链接图完整性、标签、最近更新、目录清单与库统计。
+	registerSearchTools(srv, appContainer)
+
 	return srv
 }

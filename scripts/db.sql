@@ -212,6 +212,24 @@ CREATE INDEX "idx_source_note" ON "note_link" ("source_note_id");
 
 CREATE INDEX "idx_target_path_hash" ON "note_link" ("target_path_hash", "vault_id", "uid");
 
+DROP TABLE IF EXISTS "note_tag";
+
+CREATE TABLE "note_tag" (
+    "id" integer PRIMARY KEY AUTOINCREMENT,
+    "note_id" integer NOT NULL,
+    "tag" varchar(255) NOT NULL,
+    "vault_id" integer NOT NULL,
+    "uid" integer NOT NULL,
+    "source" varchar(16) NOT NULL DEFAULT '',
+    "created_at" datetime DEFAULT NULL
+);
+
+CREATE INDEX "idx_tag_note" ON "note_tag" ("note_id");
+
+CREATE INDEX "idx_tag_name" ON "note_tag" ("tag");
+
+CREATE INDEX "idx_tag_scope" ON "note_tag" ("vault_id", "uid");
+
 DROP TABLE IF EXISTS "folder";
 
 CREATE TABLE "folder" (

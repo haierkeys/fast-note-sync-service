@@ -57,3 +57,11 @@ func (m *MockNoteLinkRepository) DeleteByVaultID(ctx context.Context, vaultID, u
 // Compile-time check: MockNoteLinkRepository must implement domain.NoteLinkRepository.
 // 编译时检查：MockNoteLinkRepository 必须实现 domain.NoteLinkRepository 接口。
 var _ domain.NoteLinkRepository = (*MockNoteLinkRepository)(nil)
+
+func (m *MockNoteLinkRepository) ListByVault(ctx context.Context, vaultID, uid int64, limit int) ([]*domain.NoteLink, error) {
+	args := m.Called(ctx, vaultID, uid, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.NoteLink), args.Error(1)
+}

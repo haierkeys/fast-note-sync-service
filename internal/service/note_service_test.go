@@ -54,7 +54,7 @@ func oldNoteFixture() *domain.Note {
 // newNoteSvc 构造 NoteService（vaultSvc/folderSvc 可为 nil，Migrate 级测试不需要它们）
 func newNoteSvc(t *testing.T, noteRepo *domainmocks.MockNoteRepository, historyRepo *domainmocks.MockNoteHistoryRepository, vaultSvc service.VaultService, folderSvc service.FolderService) service.NoteService {
 	t.Helper()
-	return service.NewNoteService(nil, noteRepo, nil, nil, nil, historyRepo, vaultSvc, folderSvc, nil, nil, nil, nil)
+	return service.NewNoteService(nil, noteRepo, nil, nil, nil, nil, historyRepo, vaultSvc, folderSvc, nil, nil, nil, nil)
 }
 
 // TestNoteService_Migrate_MigratesNoteHistory 验证 Migrate 会把旧笔记 ID 的历史迁移到新笔记 ID。
@@ -86,7 +86,7 @@ func TestNoteService_Migrate_MigratesNoteHistory(t *testing.T) {
 }
 
 // TestNoteService_Migrate_HistoryErrorWarnNotFail 验证历史迁移失败只告警、不阻断整个迁移流程
-//（与 share 迁移失败的处理保持一致）。
+// （与 share 迁移失败的处理保持一致）。
 func TestNoteService_Migrate_HistoryErrorWarnNotFail(t *testing.T) {
 	noteRepo := new(domainmocks.MockNoteRepository)
 	historyRepo := new(domainmocks.MockNoteHistoryRepository)
