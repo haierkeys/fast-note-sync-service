@@ -26,6 +26,8 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
 		mcp.WithString("searchMode", mcp.Description("Where to match the keyword: 'path' (default) searches note paths and filenames; 'content' searches inside note bodies using full-text search.")),
+		mcpListPageOption(),
+		mcpListPageSizeOption(),
 		mcp.WithOutputSchema[mcpNoteListOutput](),
 	)
 	srv.AddTool(readOnlyMCPTool(toolListNotes, cfg, "notes:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -44,11 +46,8 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		keyword, _ := args["keyword"].(string)
 		searchMode, _ := args["searchMode"].(string)
 
-		pager := &pkgapp.Pager{
-			Page:     pkgapp.GetPage(1),
-			PageSize: pkgapp.GetPageSize(100),
-		}
-		notes, _, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.NoteListRequest{
+		pager := mcpListPager(args)
+		notes, total, err := noteSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.NoteListRequest{
 			Vault:      vault,
 			Keyword:    keyword,
 			SearchMode: searchMode,
@@ -58,7 +57,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		resStr := fmt.Sprintf("Found %d notes:\n", len(notes))
+		resStr := mcpListSummary("notes", pager, len(notes), total)
 		for _, n := range notes {
 			resStr += fmt.Sprintf("- %s (ID: %d, Size: %d, Mtime: %d)\n", n.Path, n.ID, n.Size, n.Mtime)
 		}
@@ -67,9 +66,13 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			mcpNotes[i] = n.ToMcpNoteNoContentDTO()
 		}
 		return mcp.NewToolResultStructured(mcpNoteListOutput{
-			Vault: vault,
-			Count: len(notes),
-			Notes: mcpNotes,
+			Vault:      vault,
+			Count:      len(notes),
+			Page:       pager.Page,
+			PageSize:   pager.PageSize,
+			TotalCount: total,
+			HasMore:    mcpListHasMore(pager, len(notes), total),
+			Notes:      mcpNotes,
 		}, resStr), nil
 	})
 
