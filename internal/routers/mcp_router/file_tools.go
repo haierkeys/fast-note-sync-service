@@ -29,6 +29,8 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithDescription("List files in a vault"),
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("keyword", mcp.Description("Search keyword")),
+		mcpListPageOption(),
+		mcpListPageSizeOption(),
 		mcp.WithOutputSchema[mcpFileListOutput](),
 	)
 	srv.AddTool(readOnlyMCPTool(toolListFiles, cfg, "files:read"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -46,11 +48,8 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		}
 		keyword, _ := args["keyword"].(string)
 
-		pager := &pkgapp.Pager{
-			Page:     pkgapp.GetPage(1),
-			PageSize: pkgapp.GetPageSize(100),
-		}
-		files, _, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.FileListRequest{
+		pager := mcpListPager(args)
+		files, total, err := fileSvc.WithClient(getClientInfoFromContext(ctx)).List(ctx, uid, &dto.FileListRequest{
 			Vault:   vault,
 			Keyword: keyword,
 		}, pager)
@@ -59,7 +58,7 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		resStr := fmt.Sprintf("Found %d files:\n", len(files))
+		resStr := mcpListSummary("files", pager, len(files), total)
 		for _, f := range files {
 			resStr += fmt.Sprintf("- %s (Size: %d)\n", f.Path, f.Size)
 		}
@@ -68,9 +67,13 @@ func registerFileTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			mcpFiles[i] = f.ToMcpFileDTO()
 		}
 		return mcp.NewToolResultStructured(mcpFileListOutput{
-			Vault: vault,
-			Count: len(files),
-			Files: mcpFiles,
+			Vault:      vault,
+			Count:      len(files),
+			Page:       pager.Page,
+			PageSize:   pager.PageSize,
+			TotalCount: total,
+			HasMore:    mcpListHasMore(pager, len(files), total),
+			Files:      mcpFiles,
 		}, resStr), nil
 	})
 
