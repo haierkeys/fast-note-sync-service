@@ -721,6 +721,8 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 			existNote.FID, _ = s.folderService.EnsurePathFID(ctx, uid, vaultID, newPathDir)
 			existNote.Content = n.Content
 			existNote.ContentHash = n.ContentHash
+			existNote.Size = n.Size   // Carry size over, otherwise the stale size of the deleted record remains // 带上大小，否则保留已删除记录的旧大小
+			existNote.Ctime = n.Ctime // Preserve original ctime, same as the create branch // 保留原始创建时间，与新建分支一致
 			existNote.Version = n.Version
 			existNote.Mtime = n.Mtime // Preserve original mtime // 保留原始修改时间
 			existNote.ClientName = s.clientName
@@ -744,6 +746,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 				UpdatedTimestamp: timex.Now().UnixMilli(),
 				Content:          n.Content,
 				ContentHash:      n.ContentHash,
+				Size:             n.Size, // Carry size over, otherwise the renamed note reports 0 bytes // 带上大小，否则重命名后的笔记显示 0 字节
 				Version:          n.Version,
 			}
 			newPathDir := ""
