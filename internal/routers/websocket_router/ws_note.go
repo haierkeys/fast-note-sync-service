@@ -413,6 +413,20 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 			return
 		}
 
+		if note == nil {
+			// Content already stored (same mtime and hash): ack so the client clears its pending queue
+			var lastTime int64
+			if nodeCheck != nil {
+				lastTime = nodeCheck.UpdatedTimestamp
+			}
+			c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
+				LastTime: lastTime,
+				Path:     params.Path,
+				PathHash: params.PathHash,
+			}).WithVault(params.Vault).WithContext(params.Context), string(NoteModifyAck))
+			return
+		}
+
 		// 通知发送方上传已确认，携带 lastTime 和 path 供客户端更新 hashManager
 		// Notify sender of successful write with lastTime and path for client hashManager update
 		c.ToResponse(code.Success.WithData(dto.NoteModifyAckMessage{
