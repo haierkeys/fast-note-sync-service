@@ -42,6 +42,10 @@ func NewUserHandler(a *app.App) *UserHandler {
 // @Router /api/user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
+	if !h.App.Config().User.PasswordLoginEnabled() {
+		response.ToResponse(code.ErrorUserPasswordLoginIsDisable)
+		return
+	}
 	params := &dto.UserCreateRequest{}
 
 	// Parameter binding and validation
@@ -85,6 +89,10 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Router /api/user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
+	if !h.App.Config().User.PasswordLoginEnabled() {
+		response.ToResponse(code.ErrorUserPasswordLoginIsDisable)
+		return
+	}
 	params := &dto.UserLoginRequest{}
 
 	// Parameter binding and validation
@@ -159,6 +167,10 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Router /api/user/change_password [post]
 func (h *UserHandler) UserChangePassword(c *gin.Context) {
 	response := pkgapp.NewResponse(c)
+	if !h.App.Config().User.PasswordLoginEnabled() {
+		response.ToResponse(code.ErrorUserPasswordLoginIsDisable)
+		return
+	}
 	params := &dto.UserChangePasswordRequest{}
 
 	// Parameter binding and validation

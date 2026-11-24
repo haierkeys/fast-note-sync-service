@@ -5918,6 +5918,10 @@ const docTemplate = `{
                     "description": "Whether Bleve FTS is enabled // 是否启用 Bleve 全文搜索",
                     "type": "boolean"
                 },
+                "passwordLoginIsEnable": {
+                    "description": "Local password login // 本地密码登录",
+                    "type": "boolean"
+                },
                 "registerIsEnable": {
                     "description": "Registration enablement // 是否开启注册",
                     "type": "boolean"

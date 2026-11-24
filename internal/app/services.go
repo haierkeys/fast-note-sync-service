@@ -30,8 +30,9 @@ type Services struct {
 func initServices(cfg *AppConfig, infra *Infra, repos *Repositories, logger *zap.Logger) *Services {
 	svcConfig := &service.ServiceConfig{
 		User: service.UserServiceConfig{
-			RegisterIsEnable: cfg.User.RegisterIsEnable,
-			AdminUID:         cfg.User.AdminUID,
+			PasswordLoginIsEnable: cfg.User.PasswordLoginIsEnable,
+			RegisterIsEnable:      cfg.User.RegisterIsEnable,
+			AdminUID:              cfg.User.AdminUID,
 		},
 		Token: service.TokenServiceConfig{
 			WebGUILoginTokenExpiry: cfg.Security.WebGUILoginTokenExpiry,

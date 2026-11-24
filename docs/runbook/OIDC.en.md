@@ -16,6 +16,37 @@ When enabled:
 
 ## Configuration
 
+### SSO-only deployments (disable local password login)
+
+`user.password-login-is-enable` defaults to `true`, including when omitted in existing configuration files. To require an external identity provider for new WebGUI logins:
+
+```yaml
+user:
+  password-login-is-enable: false
+  register-is-enable: false
+  admin-uid: 1 # Replace with the intended administrator's existing UID.
+oidc:
+  enabled: true
+  providers:
+    - id: corporate
+      display-name: Sign in with SSO
+      issuer: https://idp.example.invalid
+      client-id: fns-webgui
+      client-secret: replace-with-your-client-secret
+      redirect-url: https://notes.example.invalid/api/user/auth/oidc/callback/corporate
+      auto-register: true
+```
+
+Restart the service after changing this YAML option. Like other startup authentication settings, it is not a new live-reload setting or an admin UI toggle.
+
+**Avoid lockout:** configure and test an OIDC provider and the intended administrator before disabling passwords. With passwords disabled and no working provider, new interactive logins are unavailable. To recover, restore `password-login-is-enable: true` in the configuration file and restart. Existing accounts and password hashes are not deleted.
+
+When disabled, the server rejects `/api/user/login`, `/api/user/register`, and `/api/user/change_password` before credential processing, database access or token issuance. Local registration requires both `register-is-enable` and `password-login-is-enable` (plus the existing administrator/bootstrap registration rules). The error uses the normal HTTP 200 API envelope with `status: false` and code `415`; this is not an HTTP 415 response.
+
+OIDC callbacks and provider-level `auto-register: true` remain independent of local registration. Existing sessions, API keys, MCP authorization and manual plugin token issuance via `/api/token` are not revoked or blocked. Administrator user-management permissions are unchanged; setting a user's password does not bypass the disabled login endpoint.
+
+The public `/api/webgui/config` endpoint (with `X-Client: WebGUI`) returns a non-sensitive boolean `passwordLoginIsEnable`; `registerIsEnable` also becomes false when password login is disabled. Frontends should hide local login/registration forms when this value is false, retain all OIDC provider buttons, and treat a missing capability as true for compatibility with older servers. The frontend source is maintained separately at [fast-note-sync-webgui](https://github.com/haierkeys/fast-note-sync-webgui); existing embedded assets need the companion frontend update to hide the forms. Backend enforcement does not depend on the frontend update.
+
 For new WebGUI deployments, configure one or more providers under `oidc.providers`:
 
 ```yaml

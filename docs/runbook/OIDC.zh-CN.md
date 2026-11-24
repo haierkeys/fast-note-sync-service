@@ -16,6 +16,37 @@
 
 ## 配置
 
+### 仅 SSO 部署（关闭本地密码登录）
+
+`user.password-login-is-enable` 默认为 `true`，旧配置未填写时保持原有行为。要求新 WebGUI 登录使用身份提供商时，可配置：
+
+```yaml
+user:
+  password-login-is-enable: false
+  register-is-enable: false
+  admin-uid: 1 # 替换为预期管理员的现有 UID。
+oidc:
+  enabled: true
+  providers:
+    - id: corporate
+      display-name: 使用 SSO 登录
+      issuer: https://idp.example.invalid
+      client-id: fns-webgui
+      client-secret: replace-with-your-client-secret
+      redirect-url: https://notes.example.invalid/api/user/auth/oidc/callback/corporate
+      auto-register: true
+```
+
+修改此 YAML 选项后须重启服务；本功能不新增热加载机制或管理员 UI 开关。
+
+**防止锁定：** 关闭密码前，先配置并验证 OIDC 和管理员身份。若没有可用身份提供商，将无法进行新的交互式登录。恢复方法：将配置中的 `password-login-is-enable` 改回 `true` 并重启。现有账号和密码哈希不会被删除。
+
+关闭时，`/api/user/login`、`/api/user/register` 和 `/api/user/change_password` 在校验凭证、访问数据库或签发令牌前拒绝请求。本地注册必须同时满足两个开关及原有管理员/初始化注册规则。错误沿用 HTTP 200 API 信封，返回 `status: false`、业务码 `415`，不是 HTTP 415。
+
+OIDC 回调及 provider 内的 `auto-register: true` 独立于本地注册。现有会话、API 密钥、MCP 授权和 `/api/token` 手动签发插件令牌不受影响，也不会被撤销。管理员用户管理权限不变；设置用户密码不能绕过关闭的登录接口。
+
+公开接口 `/api/webgui/config`（请求头 `X-Client: WebGUI`）返回非敏感布尔字段 `passwordLoginIsEnable`；关闭时 `registerIsEnable` 也为 false。前端应隐藏本地登录/注册表单，保留全部 OIDC 按钮；字段缺失时视为 true，兼容旧服务端。前端源代码位于独立的 [fast-note-sync-webgui](https://github.com/haierkeys/fast-note-sync-webgui) 仓库；现有内嵌静态资源须配套更新才能隐藏表单，后端强制校验不依赖该更新。
+
 新的 WebGUI 部署建议在 `oidc.providers` 下配置一个或多个 provider：
 
 ```yaml
