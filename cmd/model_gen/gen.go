@@ -2,6 +2,7 @@ package main
 
 // gorm gen configure
 import (
+	"go/format"
 	"os"
 	"reflect"
 	"strings"
@@ -24,6 +25,16 @@ func main() {
 		WithUnitTest:     false,
 		FieldWithTypeTag: false,
 	})
+	source, err := format.Source([]byte(autoMigrateSource()))
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(g.OutPath[0:len(g.OutPath)-6]+"/model/model.go", source, os.ModePerm); err != nil {
+		panic(err)
+	}
+}
+
+func autoMigrateSource() string {
 	v := reflect.ValueOf(query.Query{})
 	goContent := `
 package model
@@ -58,8 +69,9 @@ func AutoMigrate(db *gorm.DB, key string) error {
 			//goContentHeader += fmt.Sprintf("type %s = %s\n", field.Name, field.Type.Name())
 		}
 		//goContent += "\tcase \"\":\n\t\treturn db.AutoMigrate(" + strings.Join(fields, ", ") + ")"
+		// UserOIDCIdentity is maintained manually and has no generated query field.
+		goContent += strings.ReplaceAll(goContentFunc, "{NAME}", "UserOIDCIdentity")
 		goContent += "\t}\n\treturn nil\n}"
-
-		_ = os.WriteFile(g.OutPath[0:len(g.OutPath)-6]+"/model/model.go", []byte(goContent), os.ModePerm)
 	}
+	return goContent
 }
