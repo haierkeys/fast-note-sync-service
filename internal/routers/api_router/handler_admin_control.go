@@ -65,9 +65,10 @@ func (h *AdminControlHandler) Config(c *gin.Context) {
 		ftsBleveEnabled = *cfg.App.FtsBleveEnabled
 	}
 	data := dto.AdminWebGUIConfig{
-		FontSet:          cfg.WebGUI.FontSet,
-		RegisterIsEnable: h.App.UserService.IsRegisterEnabled(c),
-		FtsBleveEnabled:  ftsBleveEnabled,
+		PasswordLoginIsEnable: cfg.User.PasswordLoginEnabled(),
+		FontSet:               cfg.WebGUI.FontSet,
+		RegisterIsEnable:      h.App.UserService.IsRegisterEnabled(c),
+		FtsBleveEnabled:       ftsBleveEnabled,
 	}
 	response.ToResponse(code.Success.WithData(data))
 }

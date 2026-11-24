@@ -37,6 +37,7 @@ var en_messages = map[int]string{
 	408: "Current password verification error",
 	409: "The two passwords entered are inconsistent",
 	410: "User registration is closed, please contact the administrator to configure the config.user.register-is-enable option",
+	415: "Username/password login is disabled; please use an enabled identity provider",
 	411: "This operation requires administrator privileges",
 	412: "User local file system is disabled",
 	413: "User update failed",

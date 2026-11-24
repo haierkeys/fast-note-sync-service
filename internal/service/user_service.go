@@ -97,6 +97,9 @@ func (s *userService) domainToDTO(user *domain.User) *dto.UserDTO {
 // Register user registration
 // Register 用户注册
 func (s *userService) Register(ctx context.Context, params *dto.UserCreateRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	if !s.passwordLoginEnabled() {
+		return nil, code.ErrorUserPasswordLoginIsDisable
+	}
 	// Check if registration is enabled
 	// 检查注册是否启用
 	if !s.IsRegisterEnabled(ctx) {
@@ -301,6 +304,9 @@ func (s *userService) Update(ctx context.Context, params *dto.UserUpdateRequest)
 // Login user login
 // Login 用户登录
 func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, clientIP string, clientType string, userAgent string) (*dto.UserDTO, error) {
+	if !s.passwordLoginEnabled() {
+		return nil, code.ErrorUserPasswordLoginIsDisable
+	}
 	var user *domain.User
 	var err error
 
@@ -360,6 +366,9 @@ func (s *userService) Login(ctx context.Context, params *dto.UserLoginRequest, c
 // ChangePassword change password
 // ChangePassword 修改密码
 func (s *userService) ChangePassword(ctx context.Context, uid int64, params *dto.UserChangePasswordRequest) error {
+	if !s.passwordLoginEnabled() {
+		return code.ErrorUserPasswordLoginIsDisable
+	}
 	// Validate password consistency
 	// 验证密码一致性
 	if params.Password != params.ConfirmPassword {
@@ -447,6 +456,9 @@ func (s *userService) GetList(ctx context.Context, pager *app.Pager) ([]*dto.Use
 // IsRegisterEnabled checks if registration is allowed
 // IsRegisterEnabled 检查是否允许注册
 func (s *userService) IsRegisterEnabled(ctx context.Context) bool {
+	if !s.passwordLoginEnabled() {
+		return false
+	}
 	// Check if registration is enabled in config
 	// 检查配置中是否启用了注册
 	if s.config == nil || !s.config.User.RegisterIsEnable {
@@ -463,6 +475,12 @@ func (s *userService) IsRegisterEnabled(ctx context.Context) bool {
 	}
 
 	return true
+}
+
+// passwordLoginEnabled keeps OIDC login and manual token issuance independent of local passwords.
+// passwordLoginEnabled 不影响 OIDC 登录或手动签发 Token。
+func (s *userService) passwordLoginEnabled() bool {
+	return s.config == nil || s.config.User.PasswordLoginIsEnable == nil || *s.config.User.PasswordLoginIsEnable
 }
 
 // Verify userService implements UserService interface

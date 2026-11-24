@@ -325,8 +325,13 @@ log:
   production: true
 
 user:
-  # 是否开启用户注册功能
-  # Whether to enable user registration
+  # Enable local username/email + password login (default: true). Restart after changing.
+  # 是否启用本地用户名/邮箱与密码登录（默认 true），修改后重启生效。
+  # false also disables local registration and password changes, but not OIDC or API tokens.
+  # false 同时关闭本地注册和修改密码，不影响 OIDC 或 API Token。
+  password-login-is-enable: true
+  # 是否开启用户注册功能（同时需要启用密码登录）
+  # Whether to enable user registration (also requires password login)
   register-is-enable: true
   # 管理员 UID。0 表示任何用户都不能作为超级管理员或是未指定。
   # Administrator UID. 0 means no user is designated or restricted.
