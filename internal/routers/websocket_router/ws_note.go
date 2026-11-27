@@ -81,6 +81,15 @@ func (h *NoteWSHandler) NoteModify(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteModify", params.Path, params.Vault)
 
+	// The WebSocket protocol carries its own conflict engine (baseHash three-way merge +
+	// offlineSyncStrategy) and has always allowed recreating a path whose server record is a
+	// tombstone. Keep that behaviour verbatim: the REST/MCP revision contract and the
+	// tombstone guard do not apply on this transport.
+	// WebSocket 协议有自己的冲突机制（baseHash 三方合并 + offlineSyncStrategy），且一直允许
+	// 重建“服务端为墓碑”的同名路径。此处保持原有行为：REST/MCP 的版本号契约与墓碑保护不适用于本通道。
+	params.Revision = nil
+	params.AllowTombstoneRevive = true
+
 	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())

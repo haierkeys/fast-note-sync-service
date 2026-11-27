@@ -228,6 +228,7 @@ func (s *noteService) domainToDTO(note *domain.Note) *dto.NoteDTO {
 		Content:          note.Content,
 		ContentHash:      note.ContentHash,
 		Version:          note.Version,
+		Revision:         note.Rev,
 		Size:             note.Size,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
@@ -252,6 +253,7 @@ func (s *noteService) domainToNoContentDTO(note *domain.Note) *dto.NoteNoContent
 		Path:             note.Path,
 		PathHash:         note.PathHash,
 		Version:          note.Version,
+		Revision:         note.Rev,
 		Size:             note.Size,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
@@ -369,12 +371,6 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 		preFetchedNote = existingNote[0]
 	}
 
-	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, params.PathHash)
-	type result struct {
-		isNew bool
-		dto   *dto.NoteDTO
-	}
-
 	// Per-key mutex instead of singleflight.Do: singleflight would let a losing
 	// concurrent caller silently skip its own write and reuse another caller's
 	// result, dropping data. A keyed mutex serializes same-key calls while still
@@ -382,21 +378,66 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	// 用按 key 的互斥锁替代 singleflight.Do：singleflight 会让并发中落败的调用方
 	// 静默跳过自己的写入、直接复用另一个调用方的结果，导致数据丢失。按 key 的互斥锁
 	// 让同一 key 的调用互相串行，但每个调用方的闭包都会真正执行一次。
-	unlock, uncontended := s.kmu.TryLock(key)
-	if !uncontended {
+	unlock, contended := s.lockNotePath(uid, vaultID, params.PathHash)
+	if contended {
 		// Key is currently held/awaited by another caller, so any note snapshot
 		// pre-fetched before this call may already be stale; force a fresh lookup.
 		// key 当前正被其他调用方持有或等待，调用前预取的 note 快照可能已过期，强制重新查询。
 		preFetchedNote = nil
-		unlock = s.kmu.Lock(key)
 	}
 	defer unlock()
+
+	return s.modifyOrCreateLocked(ctx, uid, vaultID, params, mtimeCheck, preFetchedNote)
+}
+
+// lockNotePath serialises all writes to one note path (per uid+vault+pathHash).
+// The second return value reports whether another caller already held the lock, which is
+// the caller's signal that any snapshot it fetched earlier may be stale.
+// lockNotePath 对同一笔记路径的写入串行化（uid+vault+pathHash）；第二个返回值表示该 key
+// 已被其他调用方持有，调用方据此丢弃此前预取的快照。
+func (s *noteService) lockNotePath(uid, vaultID int64, pathHash string) (unlock func(), contended bool) {
+	key := fmt.Sprintf("modify_or_create_%d_%d_%s", uid, vaultID, pathHash)
+	unlock, uncontended := s.kmu.TryLock(key)
+	if !uncontended {
+		return s.kmu.Lock(key), true
+	}
+	return unlock, false
+}
+
+// modifyOrCreateLocked performs the write. The caller must already hold the per-path lock
+// (lockNotePath), so the content snapshot read here cannot be invalidated by another
+// in-process writer before the write below.
+// modifyOrCreateLocked 执行写入。调用方必须已持有按路径的互斥锁（lockNotePath），确保此处读取的
+// 内容快照在写入前不会被进程内的其他写入者改变。
+func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int64, params *dto.NoteModifyOrCreateRequest, mtimeCheck bool, preFetchedNote *domain.Note) (bool, *dto.NoteDTO, error) {
+	type result struct {
+		isNew bool
+		dto   *dto.NoteDTO
+	}
 
 	modifyOrCreate := func() (any, error) {
 		var isNew bool
 		note := preFetchedNote
 		if note == nil {
 			note, _ = s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
+		}
+
+		// Optimistic concurrency: a conditional write requires the note to exist; if there is
+		// no row at all the caller's revision can never be satisfied, so it is a conflict
+		// rather than a silent create. (Creates carry no revision.)
+		// 乐观并发：条件写入要求笔记已存在；若连记录都没有，调用方的版本号永远无法满足，
+		// 因此按冲突处理，而不是静默新建（新建请求不带版本号）。
+		if note == nil && params.Revision != nil {
+			return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, nil)
+		}
+
+		// Tombstone guard: an ordinary content write must never resurrect a deleted note.
+		// Revival is an explicit, separately authorised operation (Restore). The WebSocket
+		// path opts out because its protocol has always allowed recreating a path.
+		// 墓碑保护：普通内容写入绝不允许复活已删除笔记；复活必须走显式的 Restore 操作。
+		// WebSocket 路径显式豁免，因为其协议一直允许重建同名路径。
+		if note != nil && note.Action == domain.NoteActionDelete && !params.AllowTombstoneRevive {
+			return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, note)
 		}
 
 		if note != nil {
@@ -450,8 +491,24 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 			note.Rename = 0
 			note.Version++ // Increment version on content change // 内容变更时递增版本号
 
-			updated, err := s.noteRepo.Update(ctx, note, uid)
-			if err != nil {
+			// Conditional or legacy write. In conditional mode the repository performs the
+			// whole comparison inside the UPDATE statement, so a stale revision cannot be
+			// written even if another process (or another service instance) raced us.
+			// 条件写入或旧式写入。条件模式下仓储层把版本比较放进 UPDATE 语句本身，
+			// 因此即使有其他进程（或其他服务实例）并发写入，过期版本也不会被写入。
+			var updated *domain.Note
+			var updateErr error
+			if params.Revision != nil {
+				updated, updateErr = s.noteRepo.Update(ctx, note, uid, *params.Revision)
+			} else {
+				updated, updateErr = s.noteRepo.Update(ctx, note, uid)
+			}
+			if updateErr != nil {
+				err := updateErr
+				if errors.Is(err, domain.ErrNoteRevisionConflict) {
+					// note already carries this attempt's content/action; re-read instead.
+					return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, nil)
+				}
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
 
@@ -526,6 +583,50 @@ func (s *noteService) ModifyOrCreate(ctx context.Context, uid int64, params *dto
 	return res.isNew, res.dto, nil
 }
 
+// noteConflictCode builds the typed conflict response for a rejected conditional write.
+// It re-reads the current state so the caller receives exactly what is stored now (nothing
+// was written by the failed attempt). A soft-deleted note is reported with deleted=true.
+// noteConflictCode 构造条件写入被拒绝时的冲突响应。它会重新读取当前状态，返回库中真实内容
+// （失败的写入没有改动任何数据）；软删除笔记以 deleted=true 表示。
+func (s *noteService) noteConflictCode(ctx context.Context, uid, vaultID int64, pathHash string, known *domain.Note) *code.Code {
+	data := s.noteConflictData(ctx, uid, vaultID, pathHash, known)
+	if data.Deleted {
+		// A content write aimed at a tombstone: the caller must restore explicitly.
+		return code.ErrorNoteDeleted.WithData(data)
+	}
+	return code.ErrorNoteRevisionConflict.WithData(data)
+}
+
+// noteRevisionConflictCode always reports a plain revision conflict (452), even when the
+// current row is a tombstone. Used by delete/restore/rename, where the caller already knows
+// the lifecycle state and the only thing that went wrong is the revision it supplied.
+// noteRevisionConflictCode 始终返回普通版本冲突（452）。删除/恢复/重命名使用它：调用方已知
+// 笔记的生命周期状态，问题只是它提交的版本号已过期。
+func (s *noteService) noteRevisionConflictCode(ctx context.Context, uid, vaultID int64, pathHash string) *code.Code {
+	return code.ErrorNoteRevisionConflict.WithData(s.noteConflictData(ctx, uid, vaultID, pathHash, nil))
+}
+
+func (s *noteService) noteConflictData(ctx context.Context, uid, vaultID int64, pathHash string, known *domain.Note) *dto.NoteConflictData {
+	current := known
+	if current == nil {
+		current, _ = s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
+	}
+	if current == nil {
+		// The row is gone entirely (recycle bin cleared): nothing can satisfy the caller's
+		// revision, and the write must not silently create a note.
+		// 记录已不存在（回收站被清空）：调用方的版本号无法被满足，且不得静默新建笔记。
+		return &dto.NoteConflictData{Revision: 0}
+	}
+	return &dto.NoteConflictData{
+		Path:        current.Path,
+		Revision:    current.Rev,
+		ContentHash: current.ContentHash,
+		Mtime:       current.Mtime,
+		Deleted:     current.Action == domain.NoteActionDelete,
+		Content:     current.Content,
+	}
+}
+
 // Delete deletes a note
 // Delete 删除笔记
 func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDeleteRequest) (*dto.NoteDTO, error) {
@@ -550,8 +651,18 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	note.ClientVersion = s.clientVer
 	note.Rename = 0
 
-	err = s.noteRepo.UpdateDelete(ctx, note, uid)
+	// Conditional when the caller supplied the revision it read; the comparison happens
+	// inside the UPDATE, so a concurrent write is never silently dropped.
+	// 调用方提交版本号时为条件删除；比较在 UPDATE 内部完成，不会静默丢弃并发写入。
+	if params.Revision != nil {
+		err = s.noteRepo.UpdateDelete(ctx, note, uid, *params.Revision)
+	} else {
+		err = s.noteRepo.UpdateDelete(ctx, note, uid)
+	}
 	if err != nil {
+		if errors.Is(err, domain.ErrNoteRevisionConflict) {
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
@@ -616,8 +727,18 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	note.Mtime = time.Now().UnixMilli()
 	note.Rename = 0
 
-	err = s.noteRepo.UpdateDelete(ctx, note, uid)
+	// Restore is the authorised revival operation; when a revision is supplied the caller
+	// must restore exactly the tombstone state it inspected.
+	// 恢复是唯一被授权的复活操作；提交版本号时，调用方恢复的必须是它检查过的那一版墓碑状态。
+	if params.Revision != nil {
+		err = s.noteRepo.UpdateDelete(ctx, note, uid, *params.Revision)
+	} else {
+		err = s.noteRepo.UpdateDelete(ctx, note, uid)
+	}
 	if err != nil {
+		if errors.Is(err, domain.ErrNoteRevisionConflict) {
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
 
@@ -700,7 +821,20 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		n.ClientType = s.clientType
 		n.ClientVersion = s.clientVer
 		n.UpdatedTimestamp = timex.Now().UnixMilli()
-		oldNote, err := s.noteRepo.Update(ctx, n, uid)
+		// The revision the caller read belongs to the *source* note, so the rename is made
+		// conditional on it: two clients renaming the same note to different targets can no
+		// longer both succeed and leave duplicate content behind.
+		// 调用方读取的版本号属于源笔记，重命名以此作为条件：两个客户端把同一笔记改名到不同路径时，
+		// 不再可能都成功并留下重复内容。
+		var oldNote *domain.Note
+		if params.Revision != nil {
+			oldNote, err = s.noteRepo.Update(ctx, n, uid, *params.Revision)
+			if errors.Is(err, domain.ErrNoteRevisionConflict) {
+				return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, oldPathHash)
+			}
+		} else {
+			oldNote, err = s.noteRepo.Update(ctx, n, uid)
+		}
 		if err != nil {
 			return nil, code.ErrorDBQuery.WithDetails(err.Error())
 		}
@@ -1067,6 +1201,12 @@ func (s *noteService) PatchFrontmatter(ctx context.Context, uid int64, params *d
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
 
+	// Hold the per-path lock across the read-modify-write so the composed content is
+	// derived from the same state the CAS below compares against.
+	// 在整个“读-改-写”期间持有按路径的互斥锁，使合成内容与随后 CAS 比较的状态一致。
+	unlock, _ := s.lockNotePath(uid, vaultID, params.PathHash)
+	defer unlock()
+
 	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1096,9 +1236,10 @@ func (s *noteService) PatchFrontmatter(ctx context.Context, uid int64, params *d
 		ContentHash: util.EncodeHash32(newContent),
 		Mtime:       time.Now().UnixMilli(),
 		Ctime:       note.Ctime,
+		Revision:    params.Revision,
 	}
 
-	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	_, result, err := s.modifyOrCreateLocked(ctx, uid, vaultID, modifyParams, false, note)
 	return result, err
 }
 
@@ -1113,6 +1254,11 @@ func (s *noteService) AppendContent(ctx context.Context, uid int64, params *dto.
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
+
+	// See PatchFrontmatter: the read and the conditional write share one per-path lock.
+	// 见 PatchFrontmatter：读取与条件写入共用同一把按路径互斥锁。
+	unlock, _ := s.lockNotePath(uid, vaultID, params.PathHash)
+	defer unlock()
 
 	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
@@ -1136,9 +1282,10 @@ func (s *noteService) AppendContent(ctx context.Context, uid int64, params *dto.
 		ContentHash: util.EncodeHash32(newContent),
 		Mtime:       time.Now().UnixMilli(),
 		Ctime:       note.Ctime,
+		Revision:    params.Revision,
 	}
 
-	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	_, result, err := s.modifyOrCreateLocked(ctx, uid, vaultID, modifyParams, false, note)
 	return result, err
 }
 
@@ -1153,6 +1300,11 @@ func (s *noteService) PrependContent(ctx context.Context, uid int64, params *dto
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
+
+	// See PatchFrontmatter: the read and the conditional write share one per-path lock.
+	// 见 PatchFrontmatter：读取与条件写入共用同一把按路径互斥锁。
+	unlock, _ := s.lockNotePath(uid, vaultID, params.PathHash)
+	defer unlock()
 
 	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
@@ -1189,9 +1341,10 @@ func (s *noteService) PrependContent(ctx context.Context, uid int64, params *dto
 		ContentHash: util.EncodeHash32(newContent),
 		Mtime:       time.Now().UnixMilli(),
 		Ctime:       note.Ctime,
+		Revision:    params.Revision,
 	}
 
-	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	_, result, err := s.modifyOrCreateLocked(ctx, uid, vaultID, modifyParams, false, note)
 	return result, err
 }
 
@@ -1206,6 +1359,11 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 	if params.PathHash == "" {
 		params.PathHash = util.EncodeHash32(params.Path)
 	}
+
+	// See PatchFrontmatter: the read and the conditional write share one per-path lock.
+	// 见 PatchFrontmatter：读取与条件写入共用同一把按路径互斥锁。
+	unlock, _ := s.lockNotePath(uid, vaultID, params.PathHash)
+	defer unlock()
 
 	note, err := s.noteRepo.GetByPathHash(ctx, params.PathHash, vaultID, uid)
 	if err != nil {
@@ -1265,10 +1423,14 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 		return nil, code.ErrorNoMatchFound
 	}
 
-	// If no changes, return early
-	// If no changes, return early
-	// 如果没有变化，提前返回
+	// If no changes, return early — but a conditional caller still gets its revision checked,
+	// otherwise it would be told "success" while holding a revision that is already stale.
+	// 如果没有变化则提前返回；但条件写入的调用方仍需校验版本号，否则它会在版本号已过期的情况下
+	// 得到“成功”的回复。
 	if newContent == note.Content {
+		if params.Revision != nil && *params.Revision != note.Rev {
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+		}
 		return &dto.NoteReplaceResponse{
 			MatchCount: matchCount,
 			Note:       s.domainToDTO(note),
@@ -1284,9 +1446,10 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 		ContentHash: util.EncodeHash32(newContent),
 		Mtime:       time.Now().UnixMilli(),
 		Ctime:       note.Ctime,
+		Revision:    params.Revision,
 	}
 
-	_, result, err := s.ModifyOrCreate(ctx, uid, modifyParams, false)
+	_, result, err := s.modifyOrCreateLocked(ctx, uid, vaultID, modifyParams, false, note)
 	if err != nil {
 		return nil, err
 	}

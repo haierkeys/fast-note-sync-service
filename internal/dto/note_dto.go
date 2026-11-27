@@ -33,6 +33,8 @@ type NoteModifyOrCreateRequest struct {
 	CreateOnly      bool   `json:"createOnly" form:"createOnly" example:"false"`                 // If true, fail if note already exists // 如果为 true，笔记已存在则失败
 	Context            string `json:"context" form:"context" example:"ctx123"`                      // Context // 同步上下文
 	IsConflictResolved bool   `json:"isConflictResolved" form:"isConflictResolved" example:"false"` // Marks if conflict is resolved manually // 标记是否为手动解决冲突
+	Revision        *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
+	AllowTombstoneRevive bool `json:"-" form:"-"` // Internal: allow reviving a soft-deleted note (WebSocket path only) // 内部字段：允许复活软删除笔记（仅 WebSocket 路径）
 }
 
 // ContentModifyRequest Request parameters for modifying content only
@@ -54,6 +56,7 @@ type NoteDeleteRequest struct {
 	Path     string `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
 	Context  string `json:"context" form:"context" example:"ctx123"`                 // Context // 同步上下文
+	Revision *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteRestoreRequest parameters for restoring a note
@@ -62,6 +65,7 @@ type NoteRestoreRequest struct {
 	Vault    string `json:"vault" form:"vault" binding:"required" example:"MyVault"` // Vault name // 保险库名称
 	Path     string `json:"path" form:"path" binding:"required" example:"ReadMe.md"` // Note path // 笔记路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`              // Path hash // 路径哈希
+	Revision *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteRecycleClearRequest clean recycle bin request
@@ -80,6 +84,7 @@ type NotePatchFrontmatterRequest struct {
 	PathHash string                 `json:"pathHash" form:"pathHash" example:"hash123"`                                                            // Path hash // 路径哈希
 	Updates  map[string]interface{} `json:"updates" form:"updates" swaggertype:"object,array,string" `                                             // Fields to update // 待更新字段
 	Remove   []string               `json:"remove" form:"remove" swaggertype:"array,string" swagexample:"[\"item1\",\"item2\"]" example:"old_tag"` // Fields to remove // 待移除字段
+	Revision *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteAppendRequest parameters for appending content to a note
@@ -89,6 +94,7 @@ type NoteAppendRequest struct {
 	Path     string `json:"path" form:"path" binding:"required" example:"ReadMe.md"`              // Note path // 笔记路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`                           // Path hash // 路径哈希
 	Content  string `json:"content" form:"content" binding:"required" example:"Appended content"` // Content to append // 追加内容
+	Revision *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NotePrependRequest parameters for prepending content to a note
@@ -98,6 +104,7 @@ type NotePrependRequest struct {
 	Path     string `json:"path" form:"path" binding:"required" example:"ReadMe.md"`                 // Note path // 笔记路径
 	PathHash string `json:"pathHash" form:"pathHash" example:"hash123"`                              // Path hash // 路径哈希
 	Content  string `json:"content" form:"content" binding:"required" example:"Prepended content\n"` // Content to prepend // 头部添加内容
+	Revision *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteReplaceRequest parameters for find/replace in a note
@@ -111,6 +118,7 @@ type NoteReplaceRequest struct {
 	Regex         bool   `json:"regex" form:"regex" example:"false"`                      // Use regex // 使用正则
 	All           bool   `json:"all" form:"all" example:"true"`                           // Replace all matches // 替换所有
 	FailIfNoMatch bool   `json:"failIfNoMatch" form:"failIfNoMatch" example:"true"`       // Fail if no match found // 若无匹配则失败
+	Revision      *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteMoveRequest parameters for moving a note
@@ -186,6 +194,7 @@ type NoteRenameRequest struct {
 	OldPath     string `json:"oldPath" form:"oldPath" binding:"required" example:"OldName.md"` // Old path // 旧路径
 	OldPathHash string `json:"oldPathHash" form:"oldPathHash" example:"ohash456"`              // Old path hash // 旧路径哈希
 	Context     string `json:"context" form:"context" example:"ctx123"`                        // Context // 同步上下文
+	Revision    *int64 `json:"revision" form:"revision" example:"7"` // Expected revision for conditional writes (optional); omit for a legacy unconditional write // 条件写入所需的期望版本号（可选），省略即为旧式无条件写入
 }
 
 // NoteListRequest Pagination parameters for retrieving the note list
@@ -238,6 +247,7 @@ type NoteDTO struct {
 	UpdatedTimestamp int64      `json:"lastTime"`                       // Record update timestamp // 记录更新时间戳
 	UpdatedAt        timex.Time `json:"updatedAt"`                      // Updated at time // 更新时间
 	CreatedAt        timex.Time `json:"createdAt"`                      // Created at time // 创建时间
+	Revision         int64 `json:"revision" form:"revision"` // Concurrency revision for conditional writes // 条件写入使用的版本号
 }
 
 // NoteNoContentDTO Note DTO without content
@@ -257,6 +267,21 @@ type NoteNoContentDTO struct {
 	UpdatedTimestamp int64      `json:"lastTime" form:"updatedTimestamp"` // Record update timestamp // 记录更新时间戳
 	UpdatedAt        timex.Time `json:"updatedAt"`                        // Updated at time // 更新时间
 	CreatedAt        timex.Time `json:"createdAt"`                        // Created at time // 创建时间
+	Revision         int64 `json:"revision" form:"revision"` // Concurrency revision for conditional writes // 条件写入使用的版本号
+}
+
+// NoteConflictData is the payload returned with a rejected conditional write (codes 452/453).
+// It describes the note exactly as it is stored now, so a client can reconcile without an
+// extra round trip. No field of the rejected request was applied.
+// NoteConflictData 是条件写入被拒绝时（452/453）返回的数据，描述笔记当前的真实状态，便于
+// 客户端直接比对；被拒绝的请求没有写入任何字段。
+type NoteConflictData struct {
+	Path        string `json:"path"`        // Note path // 笔记路径
+	Revision    int64  `json:"revision"`    // Current revision to retry with // 当前版本号（重试时使用）
+	ContentHash string `json:"contentHash"` // Current content hash // 当前内容哈希
+	Mtime       int64  `json:"mtime"`       // Current modification timestamp // 当前修改时间戳
+	Deleted     bool   `json:"deleted"`     // True when the note is in the recycle bin // 笔记是否在回收站
+	Content     string `json:"content"`     // Current content (empty when deleted) // 当前内容（删除时为空）
 }
 
 // NoteReplaceResponse response for replace operation
@@ -285,6 +310,7 @@ type NoteWithFileLinksResponse struct {
 	ContentHash      string            `json:"contentHash"` // Content hash // 内容哈希
 	FileLinks        map[string]string `json:"fileLinks"`   // Map of file link to actual path // 文件链接到实际路径的映射
 	Version          int64             `json:"version"`     // Version number // 版本号
+	Revision         int64             `json:"revision"`    // Concurrency revision for conditional writes // 条件写入使用的版本号
 	Ctime            int64             `json:"ctime"`       // Creation timestamp // 创建时间戳
 	Mtime            int64             `json:"mtime"`       // Modification timestamp // 修改时间戳
 	UpdatedTimestamp int64             `json:"lastTime"`    // Record update timestamp // 记录更新时间戳
