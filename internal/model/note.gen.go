@@ -22,6 +22,7 @@ type Note struct {
 	ContentLastSnapshot     string     `gorm:"column:content_last_snapshot;not null;default:''" json:"contentLastSnapshot" form:"contentLastSnapshot"`
 	ContentLastSnapshotHash string     `gorm:"column:content_last_snapshot_hash;not null;default:''" json:"contentLastSnapshotHash" form:"contentLastSnapshotHash"`
 	Version                 int64      `gorm:"column:version;default:0" json:"version" form:"version"`
+	Rev                     int64      `gorm:"column:rev;not null;default:0" json:"rev" form:"rev"`
 	ClientName              string     `gorm:"column:client_name;not null;default:''" json:"clientName" form:"clientName"`
 	ClientType              string     `gorm:"column:client_type;not null;default:''" json:"clientType" form:"clientType"`
 	ClientVersion           string     `gorm:"column:client_version;not null;default:''" json:"clientVersion" form:"clientVersion"`
