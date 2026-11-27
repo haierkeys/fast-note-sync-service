@@ -593,6 +593,13 @@ Schema: `app.Res`
 
 ## Note APIs
 
+> **Conditional writes (optimistic concurrency):** every note exposes a `revision`. Send it with a
+> mutation (`POST /api/note`, append/prepend/replace, frontmatter, rename, `DELETE`, restore) to make
+> the write conditional: the server applies it only if the revision is still current, otherwise it
+> answers `HTTP 409` with code `452` (revision conflict) or `453` (note in the recycle bin) plus the
+> current content, and changes nothing. Requests without `revision` keep the legacy unconditional
+> behaviour. See [optimistic-concurrency.md](optimistic-concurrency.md).
+
 ### Get note details
 **Endpoint**: `GET /api/note`
 
