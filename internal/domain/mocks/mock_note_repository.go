@@ -80,7 +80,10 @@ func (m *MockNoteRepository) Create(ctx context.Context, note *domain.Note, uid 
 	return args.Get(0).(*domain.Note), args.Error(1)
 }
 
-func (m *MockNoteRepository) Update(ctx context.Context, note *domain.Note, uid int64) (*domain.Note, error) {
+func (m *MockNoteRepository) Update(ctx context.Context, note *domain.Note, uid int64, expectedRev ...int64) (*domain.Note, error) {
+	// expectedRev is accepted for interface compatibility and intentionally not forwarded
+	// to m.Called so existing expectations keep matching. Tests that need to assert the
+	// conditional path set expectations on the arguments they pass.
 	args := m.Called(ctx, note, uid)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -88,7 +91,7 @@ func (m *MockNoteRepository) Update(ctx context.Context, note *domain.Note, uid 
 	return args.Get(0).(*domain.Note), args.Error(1)
 }
 
-func (m *MockNoteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64) error {
+func (m *MockNoteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64, expectedRev ...int64) error {
 	args := m.Called(ctx, note, uid)
 	return args.Error(0)
 }

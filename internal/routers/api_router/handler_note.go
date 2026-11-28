@@ -10,7 +10,6 @@ import (
 	"github.com/haierkeys/fast-note-sync-service/internal/middleware"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
 	"github.com/haierkeys/fast-note-sync-service/pkg/code"
-	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
 	"github.com/haierkeys/fast-note-sync-service/pkg/util"
 	"go.uber.org/zap"
 )
@@ -76,7 +75,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	note, err := noteSvc.Get(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Get", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -95,6 +94,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		ContentHash:      note.ContentHash,
 		FileLinks:        fileLinks,
 		Version:          note.Version,
+		Revision:         note.Revision,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
 		UpdatedTimestamp: note.UpdatedTimestamp,
@@ -156,7 +156,7 @@ func (h *NoteHandler) List(c *gin.Context) {
 	notes, count, err := noteSvc.List(ctx, uid, params, pager)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.List", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h *NoteHandler) CreateOrUpdate(c *gin.Context) {
 	_, noteNew, err = noteSvc.ModifyOrCreate(ctx, uid, params, false, checkedNote)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.CreateOrUpdate.NoteModifyOrCreate", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	})
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Delete.NoteGet", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 	if noteSrc == nil || noteSrc.Action == "delete" {
@@ -328,7 +328,7 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 	note, err := noteSvc.Delete(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Delete.NoteDelete", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -389,7 +389,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	})
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Restore.NoteGet", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 	if noteSrc == nil || noteSrc.Action != "delete" {
@@ -402,7 +402,7 @@ func (h *NoteHandler) Restore(c *gin.Context) {
 	note, err := noteSvc.Restore(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Restore.NoteRestore", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -461,7 +461,7 @@ func (h *NoteHandler) PatchFrontmatter(c *gin.Context) {
 	note, err := noteSvc.PatchFrontmatter(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.PatchFrontmatter", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -520,7 +520,7 @@ func (h *NoteHandler) Append(c *gin.Context) {
 	note, err := noteSvc.AppendContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Append", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -579,7 +579,7 @@ func (h *NoteHandler) Prepend(c *gin.Context) {
 	note, err := noteSvc.PrependContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Prepend", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -638,7 +638,7 @@ func (h *NoteHandler) Replace(c *gin.Context) {
 	result, err := noteSvc.ReplaceContent(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Replace", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -703,7 +703,7 @@ func (h *NoteHandler) Rename(c *gin.Context) {
 	oldNote, newNote, err := noteSvc.Rename(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.Rename", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -773,7 +773,7 @@ func (h *NoteHandler) GetBacklinks(c *gin.Context) {
 	links, err := h.App.NoteLinkService.GetBacklinks(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.GetBacklinks", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -829,7 +829,7 @@ func (h *NoteHandler) GetOutlinks(c *gin.Context) {
 	links, err := h.App.NoteLinkService.GetOutlinks(ctx, uid, params)
 	if err != nil {
 		h.logError(ctx, "NoteHandler.GetOutlinks", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 
@@ -877,7 +877,7 @@ func (h *NoteHandler) RecycleClear(c *gin.Context) {
 	noteSvc := h.App.GetNoteService(h.getClientInfo(c))
 	if err := noteSvc.RecycleClear(ctx, uid, params); err != nil {
 		h.logError(ctx, "NoteHandler.RecycleClear", err)
-		apperrors.ErrorResponse(c, err)
+		h.respondNoteError(c, err)
 		return
 	}
 

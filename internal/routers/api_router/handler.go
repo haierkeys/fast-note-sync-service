@@ -3,11 +3,15 @@
 package api_router
 
 import (
+	"errors"
+	"net/http"
 	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/haierkeys/fast-note-sync-service/internal/app"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
+	"github.com/haierkeys/fast-note-sync-service/pkg/code"
+	apperrors "github.com/haierkeys/fast-note-sync-service/pkg/errors"
 )
 
 // Handler basic Handler struct, encapsulates App Container
@@ -23,6 +27,24 @@ type Handler struct {
 // NewHandler 创建新的基础 Handler 实例
 func NewHandler(a *app.App) *Handler {
 	return &Handler{App: a}
+}
+
+// respondNoteError renders a note-service error.
+//
+// Application code errors that carry a payload (notably the conditional-write conflicts 452/453,
+// which return the note's current revision and content so the caller can reconcile) go through
+// the standard response envelope, which preserves `data` and the HTTP status attached to the
+// code. Everything else keeps using the generic error renderer.
+// respondNoteError 渲染笔记服务返回的错误。携带数据的应用错误码（尤其是条件写入冲突 452/453，
+// 会返回笔记当前的版本号与内容以便调用方比对）走标准响应封装，保留 data 与错误码对应的 HTTP
+// 状态；其他错误仍使用通用错误渲染。
+func (h *Handler) respondNoteError(c *gin.Context, err error) {
+	var codeErr *code.Code
+	if errors.As(err, &codeErr) && (codeErr.HaveData() || codeErr.StatusCode() != http.StatusOK) {
+		pkgapp.NewResponse(c).ToResponse(codeErr)
+		return
+	}
+	apperrors.ErrorResponse(c, err)
 }
 
 // NewHandlerWithWSS creates Handler instance with WebSocket service

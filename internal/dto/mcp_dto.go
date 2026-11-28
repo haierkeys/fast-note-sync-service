@@ -19,6 +19,7 @@ type McpNoteDTO struct {
 	UpdatedTimestamp int64  `json:"lastTime"`         // Record update timestamp // 记录更新时间戳
 	UpdatedAt        string `json:"updatedAt"`        // Updated at time // 更新时间
 	CreatedAt        string `json:"createdAt"`        // Created at time // 创建时间
+	Revision         int64 `json:"revision"` // Concurrency revision for conditional writes // 条件写入使用的版本号
 }
 
 // McpNoteNoContentDTO is a MCP-specific note DTO without content
@@ -36,6 +37,7 @@ type McpNoteNoContentDTO struct {
 	UpdatedTimestamp int64  `json:"lastTime"`         // Record update timestamp // 记录更新时间戳
 	UpdatedAt        string `json:"updatedAt"`        // Updated at time // 更新时间
 	CreatedAt        string `json:"createdAt"`        // Created at time // 创建时间
+	Revision         int64 `json:"revision"` // Concurrency revision for conditional writes // 条件写入使用的版本号
 }
 
 // McpFileDTO is a MCP-specific file DTO with time fields as string
@@ -74,6 +76,7 @@ func (note *NoteDTO) ToMcpNoteDTO() *McpNoteDTO {
 		Content:          note.Content,
 		ContentHash:      note.ContentHash,
 		Version:          note.Version,
+		Revision:         note.Revision,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
 		Size:             note.Size,
@@ -96,6 +99,7 @@ func (note *NoteNoContentDTO) ToMcpNoteNoContentDTO() *McpNoteNoContentDTO {
 		Path:             note.Path,
 		PathHash:         note.PathHash,
 		Version:          note.Version,
+		Revision:         note.Revision,
 		Ctime:            note.Ctime,
 		Mtime:            note.Mtime,
 		Size:             note.Size,

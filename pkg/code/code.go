@@ -320,7 +320,23 @@ func (e *Code) WithPageIndex(pageIndex int) *Code {
 	}
 }
 
+// StatusCode returns the HTTP status to send with this code.
+//
+// The service answers with HTTP 200 for every application-level error, and clients read the
+// `code` field instead. Conditional-write rejections (452 revision conflict, 453 note in
+// recycle bin) are the deliberate exception: they are reported as HTTP 409 so generic HTTP
+// clients, proxies and agents that only look at the status line still see the failure. Only
+// clients that opt in to conditional writes (by sending `revision`) can receive 452; 453 can
+// also reach a legacy client writing to a soft-deleted note.
+// StatusCode 返回该错误码对应的 HTTP 状态码。服务默认用 200 承载所有应用级错误，由客户端读取
+// code 字段；条件写入被拒绝（452 版本冲突、453 笔记在回收站）是刻意的例外，返回 HTTP 409，
+// 使只看状态行的通用 HTTP 客户端/代理/agent 也能识别失败。只有显式提供 revision 的客户端才会
+// 收到 452；旧式客户端写入软删除笔记时也可能收到 453。
 func (e *Code) StatusCode() int {
+	switch e.code {
+	case ErrorNoteRevisionConflict.code, ErrorNoteDeleted.code:
+		return http.StatusConflict
+	}
 	return http.StatusOK
 }
 

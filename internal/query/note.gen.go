@@ -40,6 +40,7 @@ func newNote(db *gorm.DB, opts ...gen.DOOption) note {
 	_note.ContentLastSnapshot = field.NewString(tableName, "content_last_snapshot")
 	_note.ContentLastSnapshotHash = field.NewString(tableName, "content_last_snapshot_hash")
 	_note.Version = field.NewInt64(tableName, "version")
+	_note.Rev = field.NewInt64(tableName, "rev")
 	_note.ClientName = field.NewString(tableName, "client_name")
 	_note.ClientType = field.NewString(tableName, "client_type")
 	_note.ClientVersion = field.NewString(tableName, "client_version")
@@ -71,6 +72,7 @@ type note struct {
 	ContentLastSnapshot     field.String
 	ContentLastSnapshotHash field.String
 	Version                 field.Int64
+	Rev                     field.Int64
 	ClientName              field.String
 	ClientType              field.String
 	ClientVersion           field.String
@@ -108,6 +110,7 @@ func (n *note) updateTableName(table string) *note {
 	n.ContentLastSnapshot = field.NewString(table, "content_last_snapshot")
 	n.ContentLastSnapshotHash = field.NewString(table, "content_last_snapshot_hash")
 	n.Version = field.NewInt64(table, "version")
+	n.Rev = field.NewInt64(table, "rev")
 	n.ClientName = field.NewString(table, "client_name")
 	n.ClientType = field.NewString(table, "client_type")
 	n.ClientVersion = field.NewString(table, "client_version")
@@ -154,6 +157,7 @@ func (n *note) fillFieldMap() {
 	n.fieldMap["content_last_snapshot"] = n.ContentLastSnapshot
 	n.fieldMap["content_last_snapshot_hash"] = n.ContentLastSnapshotHash
 	n.fieldMap["version"] = n.Version
+	n.fieldMap["rev"] = n.Rev
 	n.fieldMap["client_name"] = n.ClientName
 	n.fieldMap["client_type"] = n.ClientType
 	n.fieldMap["client_version"] = n.ClientVersion

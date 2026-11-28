@@ -74,6 +74,10 @@ var en_messages = map[int]string{
 	450: "Folder list get failed",
 	451: "Folder rename failed",
 
+	// --- Optimistic Concurrency Control (452-454) ---
+	452: "Note revision conflict, the note was modified by another client",
+	453: "Note is in the recycle bin, restore it before writing",
+
 	// --- File/Attachment Related (455-469) ---
 	455: "File does not exist",
 	456: "Get file failed",

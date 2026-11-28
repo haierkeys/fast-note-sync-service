@@ -75,6 +75,14 @@ var (
 	ErrorFolderListFailed           = NewError(450)
 	ErrorFolderRenameFailed         = NewError(451)
 
+	// --- Optimistic Concurrency Control (452-454) ---
+	// Conditional writes: the caller supplied the revision it read and it is no longer
+	// current. The note is left untouched. // 条件写入：调用方提交的版本号已不是最新，笔记保持不变。
+	ErrorNoteRevisionConflict = NewError(452)
+	// The note is soft-deleted. Content mutations on a tombstone are rejected;
+	// revival must go through the explicit restore endpoint. // 笔记处于回收站：内容写入被拒绝，必须显式恢复。
+	ErrorNoteDeleted = NewError(453)
+
 	// --- File/Attachment Related (455-469) ---
 	ErrorFileNotFound              = NewError(455)
 	ErrorFileGetFailed             = NewError(456)

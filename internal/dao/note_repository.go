@@ -120,6 +120,7 @@ func (r *noteRepository) toDomain(m *model.Note, uid int64) (*domain.Note, error
 		ContentLastSnapshot:     m.ContentLastSnapshot,
 		ContentLastSnapshotHash: m.ContentLastSnapshotHash,
 		Version:                 m.Version,
+		Rev:                     m.Rev,
 		ClientName:              m.ClientName,
 		ClientType:              m.ClientType,
 		ClientVersion:           m.ClientVersion,
@@ -155,6 +156,7 @@ func (r *noteRepository) toModel(note *domain.Note) *model.Note {
 		ContentLastSnapshot:     note.ContentLastSnapshot,
 		ContentLastSnapshotHash: note.ContentLastSnapshotHash,
 		Version:                 note.Version,
+		Rev:                     note.Rev,
 		ClientName:              note.ClientName,
 		ClientType:              note.ClientType,
 		ClientVersion:           note.ClientVersion,
@@ -241,6 +243,7 @@ func (r *noteRepository) toDomainMeta(m *model.Note) *domain.Note {
 		ContentHash:             m.ContentHash,
 		ContentLastSnapshotHash: m.ContentLastSnapshotHash,
 		Version:                 m.Version,
+		Rev:                     m.Rev,
 		ClientName:              m.ClientName,
 		ClientType:              m.ClientType,
 		ClientVersion:           m.ClientVersion,
@@ -368,6 +371,9 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 		content := m.Content
 		m.Content = ""             // Do not store content in database // 不在数据库存储内容
 		m.ContentLastSnapshot = "" // Do not store snapshot in database // 不在数据库存储快照
+		if m.Rev <= 0 {
+			m.Rev = 1 // first revision of a brand new note // 新笔记的初始版本号
+		}
 
 		createErr = u.WithContext(ctx).Create(m)
 		if createErr != nil {
@@ -402,12 +408,13 @@ func (r *noteRepository) Create(ctx context.Context, note *domain.Note, uid int6
 
 // Update updates a note
 // Update 更新笔记
-func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int64) (*domain.Note, error) {
+func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int64, expectedRev ...int64) (*domain.Note, error) {
 	var result *domain.Note
 	var updateErr error
 
+	conditional := len(expectedRev) > 0
+
 	err := r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		u := r.note(uid).Note
 		m := r.toModel(note)
 
 		m.UpdatedTimestamp = timex.Now().UnixMilli()
@@ -416,32 +423,56 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 		content := m.Content
 		m.Content = "" // Do not update content in database // 不在数据库更新内容
 
-		updateErr = u.WithContext(ctx).Where(
-			u.ID.Eq(m.ID),
-		).Select(
-			u.ID,
-			u.VaultID,
-			u.Action,
-			u.Rename,
-			u.Path,
-			u.PathHash,
-			u.Content,
-			u.ContentHash,
-			u.ClientName,
-			u.ClientType,
-			u.ClientVersion,
-			u.Size,
-			u.Ctime,
-			u.Mtime,
-			u.Version,
-			u.UpdatedAt,
-			u.UpdatedTimestamp,
-			u.FID,
-		).Save(m)
-
-		if updateErr != nil {
-			return updateErr
+		// Optimistic concurrency: the revision bump and (in conditional mode) the
+		// revision comparison are part of the same UPDATE statement, so the check and
+		// the write cannot be interleaved by another writer — no read-then-write window.
+		// rev is always advanced with the SQL expression rev + 1 (never a computed
+		// literal), so concurrent writers cannot produce the same revision value.
+		// 乐观并发：版本自增与（条件模式下的）版本比较都在同一条 UPDATE 语句内完成，
+		// 不存在“先读后写”的窗口；rev 始终用 SQL 表达式 rev + 1 递增，避免并发写入产生相同版本号。
+		q := db.Model(&model.Note{}).Where("id = ?", m.ID)
+		if conditional {
+			q = q.Where("rev = ?", expectedRev[0])
 		}
+		res := q.Updates(map[string]interface{}{
+			"vault_id":          m.VaultID,
+			"action":            m.Action,
+			"rename":            m.Rename,
+			"fid":               m.FID,
+			"path":              m.Path,
+			"path_hash":         m.PathHash,
+			"content":           m.Content,
+			"content_hash":      m.ContentHash,
+			"client_name":       m.ClientName,
+			"client_type":       m.ClientType,
+			"client_version":    m.ClientVersion,
+			"size":              m.Size,
+			"ctime":             m.Ctime,
+			"mtime":             m.Mtime,
+			"version":           m.Version,
+			"rev":               gorm.Expr("rev + 1"),
+			"updated_at":        m.UpdatedAt,
+			"updated_timestamp": m.UpdatedTimestamp,
+		})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			// Nothing was written: no content file, no FTS document, no history entry.
+			// 未写入任何数据：内容文件、FTS 索引与历史记录均保持不变。
+			if conditional {
+				return domain.ErrNoteRevisionConflict
+			}
+			return gorm.ErrRecordNotFound
+		}
+
+		// Read back the authoritative revision (rev + 1 as computed by the database).
+		// 回读数据库实际写入的版本号。
+		var rev int64
+		if err := db.Model(&model.Note{}).Where("id = ?", m.ID).Pluck("rev", &rev).Error; err != nil {
+			return err
+		}
+		m.Rev = rev
 
 		// Save content to file
 		// 保存内容到文件
@@ -471,9 +502,10 @@ func (r *noteRepository) Update(ctx context.Context, note *domain.Note, uid int6
 
 // UpdateDelete updates note to deleted status
 // UpdateDelete 更新笔记为删除状态
-func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64) error {
+func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, uid int64, expectedRev ...int64) error {
+	conditional := len(expectedRev) > 0
+
 	return r.dao.ExecuteWrite(ctx, uid, r, func(db *gorm.DB) error {
-		u := r.note(uid).Note
 		m := &model.Note{
 			ID:               note.ID,
 			Action:           string(note.Action),
@@ -485,26 +517,45 @@ func (r *noteRepository) UpdateDelete(ctx context.Context, note *domain.Note, ui
 			UpdatedTimestamp: timex.Now().UnixMilli(),
 		}
 
-		err := u.WithContext(ctx).Where(
-			u.ID.Eq(m.ID),
-		).Select(
-			u.ID,
-			u.Action,
-			u.Rename,
-			u.ClientName,
-			u.ClientType,
-			u.ClientVersion,
-			u.Mtime,
-			u.UpdatedTimestamp,
-		).Save(m)
-		if err == nil {
-			// 把实际写入的 UpdatedTimestamp 回写到调用方的 note 上，
-			// 使调用方无需重新查库即可拿到写入后的准确值
-			// Write the actually-persisted UpdatedTimestamp back onto the caller's note,
-			// so the caller doesn't need a re-query to get the post-write value
-			note.UpdatedTimestamp = m.UpdatedTimestamp
+		// Same compare-and-swap shape as Update: soft delete and restore are lifecycle
+		// mutations, so they advance rev and can be made conditional.
+		// 与 Update 相同的 CAS 形式：软删除/恢复属于生命周期变更，同样推进 rev 并支持条件写入。
+		q := db.Model(&model.Note{}).Where("id = ?", m.ID)
+		if conditional {
+			q = q.Where("rev = ?", expectedRev[0])
 		}
-		return err
+		res := q.Updates(map[string]interface{}{
+			"action":            m.Action,
+			"rename":            m.Rename,
+			"client_name":       m.ClientName,
+			"client_type":       m.ClientType,
+			"client_version":    m.ClientVersion,
+			"mtime":             m.Mtime,
+			"rev":               gorm.Expr("rev + 1"),
+			"updated_timestamp": m.UpdatedTimestamp,
+		})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			if conditional {
+				return domain.ErrNoteRevisionConflict
+			}
+			return gorm.ErrRecordNotFound
+		}
+
+		var rev int64
+		if err := db.Model(&model.Note{}).Where("id = ?", m.ID).Pluck("rev", &rev).Error; err != nil {
+			return err
+		}
+		note.Rev = rev
+
+		// 把实际写入的 UpdatedTimestamp 回写到调用方的 note 上，
+		// 使调用方无需重新查库即可拿到写入后的准确值
+		// Write the actually-persisted UpdatedTimestamp back onto the caller's note,
+		// so the caller doesn't need a re-query to get the post-write value
+		note.UpdatedTimestamp = m.UpdatedTimestamp
+		return nil
 	})
 }
 

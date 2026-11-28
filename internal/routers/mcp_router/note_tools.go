@@ -3,6 +3,7 @@ package mcp_router
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,58 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpsrv "github.com/mark3labs/mcp-go/server"
 )
+
+// noteMCPError renders a service error for MCP clients. Application codes (notably the
+// conditional-write conflicts 452/453) are returned as a machine-readable JSON payload so an
+// agent can read the current revision/content and retry, instead of parsing a prose message.
+// noteMCPError 把服务层错误返回给 MCP 客户端；条件写入冲突（452/453）以 JSON 形式返回，
+// 便于 agent 读取当前版本号/内容后重试。
+func noteMCPError(err error) *mcp.CallToolResult {
+	var appErr *code.Code
+	if errors.As(err, &appErr) {
+		payload := map[string]interface{}{
+			"code":    appErr.Code(),
+			"status":  false,
+			"message": appErr.Msg(),
+		}
+		if appErr.HaveData() {
+			payload["data"] = appErr.Data()
+		}
+		if appErr.HaveDetails() {
+			payload["details"] = strings.Join(appErr.Details(), ",")
+		}
+		if b, mErr := json.Marshal(payload); mErr == nil {
+			return mcp.NewToolResultError(string(b))
+		}
+	}
+	return mcp.NewToolResultError(err.Error())
+}
+
+// mcpRevisionArg extracts the optional `revision` argument. A missing or non-numeric value
+// means "no revision supplied" and therefore a legacy unconditional write.
+// mcpRevisionArg 读取可选的 revision 参数；缺省或非数字表示不提供版本号（旧式无条件写入）。
+func mcpRevisionArg(args map[string]interface{}) *int64 {
+	v, ok := args["revision"]
+	if !ok || v == nil {
+		return nil
+	}
+	switch n := v.(type) {
+	case float64:
+		rev := int64(n)
+		return &rev
+	case int64:
+		rev := n
+		return &rev
+	case int:
+		rev := int64(n)
+		return &rev
+	case json.Number:
+		if rev, err := n.Int64(); err == nil {
+			return &rev
+		}
+	}
+	return nil
+}
 
 func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp.WebsocketServer) {
 	noteSvc := appContainer.NoteService
@@ -118,6 +171,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Note content")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolCreateUpdateNote, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -147,10 +201,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			ContentHash: contentHash,
 			Mtime:       now,
 			Ctime:       now,
+			Revision:    mcpRevisionArg(args),
 		}, false)
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
@@ -168,6 +223,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 	)
 	srv.AddTool(writeMCPTool(toolDeleteNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
@@ -189,10 +245,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Vault:    vault,
 			Path:     path,
 			PathHash: pathHash,
+			Revision: mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncDelete")
@@ -210,6 +267,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("oldPath", mcp.Required(), mcp.Description("Old note path")),
 		mcp.WithString("newPath", mcp.Required(), mcp.Description("New note path")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolRenameNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -234,10 +292,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			OldPathHash: util.EncodeHash32(oldPath),
 			Path:        newPath,
 			PathHash:    util.EncodeHash32(newPath),
+			Revision:    mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(dto.NoteSyncRenameMessage{
@@ -266,6 +325,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 	)
 	srv.AddTool(writeMCPTool(toolRestoreNote, cfg, true, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		if err := checkPermission(ctx, "note_w"); err != nil {
@@ -286,10 +346,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Vault:    vault,
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
+			Revision: mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
@@ -346,6 +407,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("updates", mcp.Description("JSON string for fields to update (e.g. {\"tags\":[\"t1\"]})")),
 		mcp.WithString("remove", mcp.Description("JSON string array for fields to remove (e.g. [\"old_tag\"])")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolPatchFrontmatter, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -385,10 +447,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			PathHash: util.EncodeHash32(path),
 			Updates:  updates,
 			Remove:   remove,
+			Revision: mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
@@ -406,6 +469,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to append")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolAppend, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -429,10 +493,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
 			Content:  content,
+			Revision: mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
@@ -450,6 +515,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("vault", mcp.Description("Vault name. Omitting this or providing 'default' will use the client-configured default vault.")),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to prepend")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithOutputSchema[mcpNoteMutationOutput](),
 	)
 	srv.AddTool(writeMCPTool(toolPrepend, cfg, false, "notes:write"), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -473,10 +539,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Path:     path,
 			PathHash: util.EncodeHash32(path),
 			Content:  content,
+			Revision: mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(note).WithVault(vault), "NoteSyncModify")
@@ -495,6 +562,7 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 		mcp.WithString("path", mcp.Required(), mcp.Description("Note path")),
 		mcp.WithString("find", mcp.Required(), mcp.Description("Content to find")),
 		mcp.WithString("replace", mcp.Required(), mcp.Description("Content to replace with")),
+		mcp.WithNumber("revision", mcp.Description("Optional concurrency guard: the `revision` you read from note_get/note_list. The write is applied only if the note is still at that revision; otherwise it fails with a conflict (code 452) and nothing is changed. Omit for a legacy unconditional write.")),
 		mcp.WithBoolean("regex", mcp.Description("Use regex matching (default false)")),
 		mcp.WithBoolean("all", mcp.Description("Replace all matches (default true)")),
 		mcp.WithBoolean("failIfNoMatch", mcp.Description("Fail if no match (default true)")),
@@ -538,10 +606,11 @@ func registerNoteTools(srv *mcpsrv.MCPServer, appContainer *app.App, wss *pkgapp
 			Regex:         regex,
 			All:           all,
 			FailIfNoMatch: failIfNoMatch,
+			Revision:      mcpRevisionArg(args),
 		})
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return noteMCPError(err), nil
 		}
 
 		wss.BroadcastToUser(uid, code.Success.WithData(res.Note).WithVault(vault), "NoteSyncModify")

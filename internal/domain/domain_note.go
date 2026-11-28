@@ -3,8 +3,16 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNoteRevisionConflict is returned by the repository when a conditional write lost the
+// compare-and-swap: the stored revision no longer matches the one the caller read. Nothing
+// was written for that call.
+// ErrNoteRevisionConflict 由仓储层在条件写入的 CAS 失败时返回：库中版本号已不是调用方读取时
+// 的版本号，该次调用没有写入任何数据。
+var ErrNoteRevisionConflict = errors.New("note revision conflict")
 
 // NoteAction 定义笔记操作类型
 type NoteAction string
@@ -29,15 +37,22 @@ type Note struct {
 	ContentLastSnapshot     string
 	ContentLastSnapshotHash string
 	Version                 int64
-	ClientName              string
-	ClientType              string
-	ClientVersion           string
-	Size                    int64
-	Ctime                   int64
-	Mtime                   int64
-	UpdatedTimestamp        int64
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	// Rev is the optimistic-concurrency revision of this note row. It is a pure
+	// mutation counter: it advances by exactly one on every mutation (content write,
+	// rename, soft delete, restore) and is never reused. It is intentionally separate
+	// from Version, which the note-history subsystem overwrites with its own counter.
+	// Rev 是乐观并发控制的版本号，每次变更（写内容、重命名、软删除、恢复）原子加一，
+	// 与 Version 无关（Version 会被历史记录子系统改写）。
+	Rev              int64
+	ClientName       string
+	ClientType       string
+	ClientVersion    string
+	Size             int64
+	Ctime            int64
+	Mtime            int64
+	UpdatedTimestamp int64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // CountSizeResult 统计结果
@@ -89,10 +104,22 @@ type NoteRepository interface {
 	Create(ctx context.Context, note *Note, uid int64) (*Note, error)
 
 	// Update 更新笔记
-	Update(ctx context.Context, note *Note, uid int64) (*Note, error)
+	//
+	// expectedRev, when supplied, makes the write conditional: the update only applies if
+	// the stored rev still equals expectedRev, in which case rev advances by one. A stale
+	// expectedRev returns ErrNoteRevisionConflict and writes nothing.
+	// expectedRev 可选：传入时该写入变为条件写入，仅当库中 rev 仍等于 expectedRev 时才应用，
+	// 并把 rev 加一；版本已过期时返回 ErrNoteRevisionConflict 且不写入任何内容。
+	Update(ctx context.Context, note *Note, uid int64, expectedRev ...int64) (*Note, error)
 
 	// UpdateDelete 更新笔记为删除状态
-	UpdateDelete(ctx context.Context, note *Note, uid int64) error
+	//
+	// expectedRev, when supplied, makes the soft delete / restore conditional on the stored
+	// rev (see Update). Used by delete and restore so a stale client cannot remove or revive
+	// a note that moved on.
+	// expectedRev 可选：使软删除/恢复成为条件写入（同 Update）。删除与恢复用它防止过期客户端
+	// 删除或复活已被他人修改的笔记。
+	UpdateDelete(ctx context.Context, note *Note, uid int64, expectedRev ...int64) error
 
 	// UpdateMtime 更新笔记修改时间
 	UpdateMtime(ctx context.Context, mtime int64, id, uid int64) error
