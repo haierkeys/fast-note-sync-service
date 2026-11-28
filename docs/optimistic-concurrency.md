@@ -212,7 +212,7 @@ not be worked around by clients.
 ## Migration
 
 `note.rev` is added by the existing per-database auto-migration
-(`INTEGER NOT NULL DEFAULT 0`, populated as `1` for new notes). Pre-existing rows start at `0`,
-which is a valid baseline: read the note, send `revision: 0`, and the first write is accepted and
-moves it to `1`. No backfill, no downtime, no data rewrite. Rolling back the service binary leaves
-an unused column that older builds ignore.
+(`INTEGER NOT NULL DEFAULT 0`, populated as `1` for new notes). Existing note rows begin at
+revision `0` when the column is introduced through that mechanism: it is a valid baseline — read the
+note, send `revision: 0`, and the first write is accepted and moves it to `1`. No backfill and no
+data rewrite are required. Rollback compatibility has not been independently tested.
