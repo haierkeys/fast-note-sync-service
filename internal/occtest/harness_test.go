@@ -84,7 +84,14 @@ func newInstance(t *testing.T) *instance {
 	if mkErr != nil {
 		t.Fatalf("create temp dir: %v", mkErr)
 	}
-	t.Cleanup(func() { removeWithRetry(t, dir) })
+	t.Cleanup(func() {
+		if err := removeWithRetry(dir); err != nil {
+			// A leftover directory means a background writer survived shutdown and kept
+			// writing after the app was closed. That is a real lifecycle signal, not noise:
+			// fail the test instead of logging a warning so it cannot be silently ignored.
+			t.Errorf("temp dir %s could not be removed (background writer after shutdown?): %v", dir, err)
+		}
+	})
 
 	// The note store resolves paths relative to the working directory
 	// ("storage/vault/u_<uid>/note/n_<id>/content.txt"), so run inside the temp dir to keep
@@ -343,20 +350,68 @@ func int64p(v int64) *int64 { return &v }
 
 func newNopLogger() *zap.Logger { return zap.NewNop() }
 
+// removeAttempts / removeInterval bound the cleanup retries: a background goroutine may still be
+// finishing a write for a few hundred milliseconds after the application container is closed, but
+// nothing legitimate needs longer than that.
+var (
+	removeAttempts = 60
+	removeInterval = 50 * time.Millisecond
+)
+
 // removeWithRetry deletes a test directory, tolerating writes that a background goroutine may
-// perform just after the application container has been closed.
-func removeWithRetry(t *testing.T, dir string) {
-	t.Helper()
+// perform just after the application container has been closed. It returns the last error when the
+// bounded retries are exhausted, so the caller can fail the test rather than hide a resource leak.
+func removeWithRetry(dir string) error {
 	var err error
-	for i := 0; i < 60; i++ {
+	for i := 0; i < removeAttempts; i++ {
 		if err = os.RemoveAll(dir); err == nil {
-			return
+			return nil
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(removeInterval)
 	}
-	t.Logf("warning: could not remove temp dir %s: %v", dir, err)
+	return err
 }
 
 func urlQueryEscape(s string) string { return url.QueryEscape(s) }
 
 func nowMillis() int64 { return time.Now().UnixMilli() }
+
+// TestRemoveWithRetryReportsFailure covers finding N2: the bounded cleanup retries must surface an
+// unresolvable removal as an error (so the owning test fails) instead of logging a warning.
+func TestRemoveWithRetryReportsFailure(t *testing.T) {
+	savedAttempts, savedInterval := removeAttempts, removeInterval
+	removeAttempts, removeInterval = 2, time.Millisecond
+	defer func() { removeAttempts, removeInterval = savedAttempts, savedInterval }()
+
+	// a directory inside a read-only parent cannot be removed by a non-root user
+	parent := t.TempDir()
+	victim := filepath.Join(parent, "child")
+	if err := os.MkdirAll(filepath.Join(victim, "storage"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(victim, "storage", "f"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := os.Chmod(parent, 0o555); err != nil {
+		t.Fatalf("chmod parent: %v", err)
+	}
+	err := removeWithRetry(victim)
+	if err := os.Chmod(parent, 0o755); err != nil { // restore for t.TempDir cleanup
+		t.Fatalf("restore parent perms: %v", err)
+	}
+	if err == nil {
+		t.Fatalf("an unresolvable cleanup must return an error so the owning test can fail")
+	}
+
+	// positive control: a writable directory is removed without error
+	ok := filepath.Join(parent, "ok")
+	if err := os.MkdirAll(ok, 0o755); err != nil {
+		t.Fatalf("mkdir ok: %v", err)
+	}
+	if err := removeWithRetry(ok); err != nil {
+		t.Fatalf("removable directory must not error: %v", err)
+	}
+	if _, statErr := os.Stat(ok); !os.IsNotExist(statErr) {
+		t.Fatalf("directory must actually be gone")
+	}
+}
