@@ -379,6 +379,13 @@ func nowMillis() int64 { return time.Now().UnixMilli() }
 // TestRemoveWithRetryReportsFailure covers finding N2: the bounded cleanup retries must surface an
 // unresolvable removal as an error (so the owning test fails) instead of logging a warning.
 func TestRemoveWithRetryReportsFailure(t *testing.T) {
+	// The negative control relies on unix permission checks (os.Chmod 0o555 on the parent), which
+	// root bypasses: as uid 0 os.RemoveAll succeeds and the assertion below would fail spuriously.
+	// CI images frequently run tests as root, so skip instead of reporting a false failure.
+	if os.Geteuid() == 0 {
+		t.Skip("permission-based negative control is ineffective for root (CI)")
+	}
+
 	savedAttempts, savedInterval := removeAttempts, removeInterval
 	removeAttempts, removeInterval = 2, time.Millisecond
 	defer func() { removeAttempts, removeInterval = savedAttempts, savedInterval }()
