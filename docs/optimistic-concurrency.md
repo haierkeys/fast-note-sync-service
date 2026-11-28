@@ -18,12 +18,17 @@ one on every mutation of that note:
 | create | yes (`1`) |
 | content write (`POST /api/note`) | yes |
 | append / prepend / find-replace / frontmatter patch | yes |
-| rename / move (both the retired and the new record) | yes |
+| rename / move (the retired **and** the new record; reusing a tombstone target also rewrites it) | yes |
 | delete (soft) | yes |
 | restore from the recycle bin | yes |
 | restore a historical version (`PUT /api/note/history/restore`) | yes |
+| recursive folder delete (MCP `folder_delete`, which soft-deletes every contained note) | yes, per contained note |
+| a legacy write without `revision` | yes |
 | mtime-only sync bookkeeping (`UpdateMtime`, `UpdateActionMtime`) | no |
 | delayed history snapshot (`UpdateSnapshot`) | no |
+
+Any of the above therefore invalidates a revision read before it — including the indirect ones
+(history restore, folder cascade), which are easy to miss when a client caches revisions.
 
 `revision` is not the same value as `version` (the latter is maintained by the note-history
 subsystem and is not monotonic with respect to note mutations), and it is not the content hash.
@@ -90,8 +95,9 @@ HTTP/1.1 409 Conflict
 ```
 
 `data` describes the note exactly as it is stored now, so the client can reconcile and retry in a
-single round trip without a second read. Nothing from the rejected request was applied: the
-content file, the full-text index and the history snapshots are unchanged.
+single round trip without a second read. `data.content` is **empty when `data.deleted` is true** —
+a tombstone's body is never echoed; restore it first if you need it. Nothing from the rejected
+request was applied: the content file, the full-text index and the history snapshots are unchanged.
 
 Two application codes exist:
 
@@ -168,6 +174,19 @@ always derived from the revision they then verify.
 
 A rejected write performs no filesystem write, no full-text upsert and no history entry.
 
+### Known limitation: a storage failure after a successful compare-and-swap
+
+The guarantee above covers *rejections*. It does not cover an I/O failure that happens **after** the
+CAS statement has committed: `ExecuteWrite` serialises writes but does not open a database
+transaction, so the order is `UPDATE note … → SaveContentToFile(content.txt) → upsertFTS`. If the
+file write fails (read-only directory, full disk, crash), the row keeps the new `revision` and
+`content_hash` while `content.txt` still holds the previous bytes, the API reports that mismatched
+pair, and a client whose retry is refused sees a conflict payload whose `contentHash` does not match
+its `content`. This is a pre-existing storage-ordering defect of the service (it predates this
+contract and affects legacy writes identically); reversing the order would only move the window.
+It is reported separately from this contract (see the accompanying upstream bug report) and should
+not be worked around by clients.
+
 ## Compatibility
 
 * **Reads** gained one field (`revision`). Additive.
@@ -178,7 +197,9 @@ A rejected write performs no filesystem write, no full-text upsert and no histor
 * **Writes without `revision` to a deleted note** are now refused with `453` instead of silently
   resurrecting the note. Use `PUT /api/note/restore`.
 * **WebSocket / Obsidian plugin**: untouched. The protocol has no new fields; `baseHash` +
-  `offlineSyncStrategy` conflict handling works as before, and `rev` simply advances.
+  `offlineSyncStrategy` conflict handling works as before, and `rev` simply advances. The WS
+  transport ignores the `revision` field entirely — for `NoteModify`, `NoteDelete` and `NoteRename`
+  alike — so a frame that carries one cannot accidentally acquire REST/MCP semantics.
 * **Attachments** (`/api/file*`): not covered by this contract; file uploads remain
   last-write-wins. Tracked as a follow-up.
 
