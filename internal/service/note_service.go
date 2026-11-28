@@ -623,17 +623,27 @@ func (s *noteService) noteConflictData(ctx context.Context, uid, vaultID, noteID
 	// 所用的不同记录会把无法使用的数据交给客户端。
 	current := known
 	if current == nil && noteID > 0 {
-		if byID, err := s.noteRepo.GetByID(ctx, noteID, uid); err == nil {
-			current = byID
+		byID, err := s.noteRepo.GetByID(ctx, noteID, uid)
+		if err != nil {
+			// The row this write addressed no longer exists: it was hard-deleted (recycle bin
+			// cleared, duplicate cleanup) between the failed compare-and-swap and this re-read.
+			// A path lookup could then describe a *different* row — a rename tombstone or a
+			// historical duplicate — and hand the caller another note's revision or content.
+			// "Row gone" (revision 0, no metadata, no content) is the only truthful answer.
+			// 本次写入针对的记录已不存在（在 CAS 失败与本处重读之间被回收站清空/去重清理硬删除）。
+			// 此时按路径查询可能命中另一条记录（重命名墓碑或历史重复记录），把别的笔记的版本号
+			// 或内容交给调用方；唯一真实的回答是“记录已消失”（revision 0，无元数据、无内容）。
+			return &dto.NoteConflictData{Revision: 0}
 		}
+		current = byID
 	}
-	if current == nil && pathHash != "" {
+	// Path-based lookup is only for operations that genuinely have no identified target row
+	// (noteID == 0), e.g. a conditional write for a path that never existed here.
+	// 只有在确实没有目标主键（noteID == 0）时才按路径查询，例如针对从未存在过的路径的条件写入。
+	if current == nil && noteID == 0 && pathHash != "" {
 		current, _ = s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
 	}
 	if current == nil {
-		// The row is gone entirely (recycle bin cleared): nothing can satisfy the caller's
-		// revision, and the write must not silently create a note.
-		// 记录已不存在（回收站被清空）：调用方的版本号无法被满足，且不得静默新建笔记。
 		return &dto.NoteConflictData{Revision: 0}
 	}
 

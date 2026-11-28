@@ -106,6 +106,12 @@ Two application codes exist:
 | `452` | `409` | the supplied revision is no longer current (or the note no longer exists) |
 | `453` | `409` | the note is in the recycle bin; content writes cannot revive it, restore it first |
 
+If the note row the write addressed no longer exists at all (hard-deleted after the recycle-bin
+retention period, or removed by duplicate cleanup) the conflict is still `452`, but the payload is a
+**row-gone** payload: `revision: 0` with empty `path`, `contentHash`, `mtime` and `content`. The
+service never substitutes a different row that happens to share the path, so a client can never
+receive another note's revision or body in a conflict response.
+
 > Note: the service otherwise answers `HTTP 200` for application-level errors and clients read the
 > `code` field. Conditional-write rejections are the deliberate exception so that any HTTP client,
 > proxy or agent sees the failure in the status line. `453` can also reach a client that did *not*

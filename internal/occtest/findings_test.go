@@ -312,3 +312,72 @@ func TestFolderDeleteCascadeAdvancesRevision(t *testing.T) {
 		t.Fatalf("restore must return the preserved body, got %q", got.Content)
 	}
 }
+
+// TestRowGoneConflictPayload covers the non-racy end of finding N1: the row is gone entirely (the
+// tombstone was purged from the recycle bin), so the conflict must report revision 0 and disclose
+// nothing — over REST and over MCP, with the same code and shape.
+func TestRowGoneConflictPayload(t *testing.T) {
+	i := newInstance(t)
+	path := "Projects/Gone.md"
+	base := i.seedNote(path, "purge me\n")
+
+	if env := i.do("DELETE", "/api/note?vault="+testVault+"&path="+urlQueryEscape(path)+
+		"&revision="+fmt.Sprint(base), nil, i.apiToken, "occapi"); env.Code != 1 {
+		t.Fatalf("delete: code=%d %s", env.Code, env.Message)
+	}
+	// Hard-delete the row, exactly as the retention task (DeletePhysicalByTime) or the duplicate
+	// cleanup does after the retention window. `DELETE /api/note/recycle-clear` is not a hard
+	// delete (it only flags rename=2), so the fixture is applied directly to the note shard.
+	var noteID int64
+	if err := i.userDB().QueryRow(`SELECT id FROM note WHERE path = ?`, path).Scan(&noteID); err != nil {
+		t.Fatalf("note id: %v", err)
+	}
+	if _, err := i.userDB().Exec(`DELETE FROM note WHERE id = ?`, noteID); err != nil {
+		t.Fatalf("hard delete row: %v", err)
+	}
+	if _, exists := i.noteExists(path); exists {
+		t.Fatal("note must be gone after the row was hard-deleted")
+	}
+
+	env := i.write(path, "resurrect?\n", int64p(base))
+	if env.Code != 452 {
+		t.Fatalf("write to a purged row must be 452, got code=%d %s", env.Code, env.Message)
+	}
+	if !strings.Contains(env.Message, "http=409") {
+		t.Fatalf("row-gone conflict must use HTTP 409, got %s", env.Message)
+	}
+	var payload struct {
+		Path        string `json:"path"`
+		Revision    int64  `json:"revision"`
+		ContentHash string `json:"contentHash"`
+		Mtime       int64  `json:"mtime"`
+		Deleted     bool   `json:"deleted"`
+		Content     string `json:"content"`
+	}
+	if err := json.Unmarshal(env.Data, &payload); err != nil {
+		t.Fatalf("decode row-gone payload: %v", err)
+	}
+	if payload.Revision != 0 || payload.Path != "" || payload.Content != "" ||
+		payload.ContentHash != "" || payload.Mtime != 0 || payload.Deleted {
+		t.Fatalf("row-gone payload must be empty apart from revision 0, got %+v", payload)
+	}
+
+	// MCP reports the same thing through its own envelope
+	res := i.mcpCall(t, "note_create_or_update", map[string]any{
+		"vault": testVault, "path": path, "content": "resurrect?\n", "revision": base,
+	})
+	if !res.IsError || !strings.Contains(res.Text, `"code":452`) {
+		t.Fatalf("MCP write to a purged row must fail with 452, got %+v", res)
+	}
+	if !strings.Contains(res.Text, `"revision":0`) {
+		t.Fatalf("MCP row-gone payload must carry revision 0, got %q", res.Text)
+	}
+	if strings.Contains(res.Text, "purge me") {
+		t.Fatalf("MCP row-gone payload must not disclose the old body, got %q", res.Text)
+	}
+
+	// and the note was not recreated by either attempt
+	if _, exists := i.noteExists(path); exists {
+		t.Fatal("a refused conditional write must not recreate a purged note")
+	}
+}
