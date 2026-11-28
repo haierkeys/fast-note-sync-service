@@ -10,7 +10,9 @@ package occtest
 
 import (
 	"bytes"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -98,6 +100,10 @@ func newInstance(t *testing.T) *instance {
 	// the repository clean and every test self-contained.
 	t.Chdir(dir)
 	cfgPath := filepath.Join(dir, "config.yaml")
+	// The instance signs its own JWTs, so it needs a signing key. Generate a fresh one per
+	// instance instead of committing a literal: nothing credential-shaped lives in the source and
+	// the value is useless outside this throwaway process.
+	signingKey := randomHexFixture(t, 32)
 	cfgYAML := fmt.Sprintf(`server:
   run-mode: release
   http-port: "127.0.0.1:0"
@@ -113,7 +119,7 @@ log:
   file: %q
   production: false
 security:
-  auth-token-key: "occ-test-token-key"
+  auth-token-key: %q
   token-expiry: "30d"
 user:
   register-is-enable: true
@@ -122,6 +128,7 @@ user:
 		filepath.Join(dir, "temp"),
 		filepath.Join(dir, "db", "db.sqlite3"),
 		filepath.Join(dir, "logs", "log.log"),
+		signingKey,
 	)
 	if err := os.WriteFile(cfgPath, []byte(cfgYAML), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -174,9 +181,12 @@ user:
 func (i *instance) bootstrap() {
 	i.t.Helper()
 
+	// Throwaway account: the password is generated per instance so no fixture literal exists and
+	// nothing is reusable. The same value is sent for confirmation, as the API requires.
+	password := randomHexFixture(i.t, 16)
 	reg := i.doRaw("POST", "/api/user/register", map[string]any{
-		"username": "occadmin", "password": "Test-Pass-123!",
-		"confirmPassword": "Test-Pass-123!", "email": "occ@example.invalid",
+		"username": "occadmin", "password": password,
+		"confirmPassword": password, "email": "occ@example.invalid",
 	}, "", "webgui")
 	if reg.Code != 1 {
 		i.t.Fatalf("register: code=%d msg=%s", reg.Code, reg.Message)
@@ -357,6 +367,19 @@ var (
 	removeAttempts = 60
 	removeInterval = 50 * time.Millisecond
 )
+
+// randomHexFixture returns n cryptographically random bytes as a hex string. It is used for the
+// disposable instance's JWT signing key and throwaway account password: generating them per
+// instance keeps credential-shaped literals out of the source and guarantees the values cannot be
+// reused anywhere. Randomness failure fails the test explicitly — there is no constant fallback.
+func randomHexFixture(t *testing.T, n int) string {
+	t.Helper()
+	buf := make([]byte, n)
+	if _, err := rand.Read(buf); err != nil {
+		t.Fatalf("crypto/rand: %v", err)
+	}
+	return hex.EncodeToString(buf)
+}
 
 // removeWithRetry deletes a test directory, tolerating writes that a background goroutine may
 // perform just after the application container has been closed. It returns the last error when the
