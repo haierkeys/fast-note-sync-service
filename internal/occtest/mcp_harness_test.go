@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
@@ -160,6 +161,7 @@ func (i *instance) restart() {
 		if sqlDB, e := db.DB(); e == nil {
 			_ = sqlDB.Close()
 		}
+		time.Sleep(100 * time.Millisecond)
 	})
 	_ = gin.ReleaseMode
 	_ = fmt.Sprint

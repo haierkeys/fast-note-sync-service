@@ -281,7 +281,7 @@ type NoteConflictData struct {
 	ContentHash string `json:"contentHash"` // Current content hash // 当前内容哈希
 	Mtime       int64  `json:"mtime"`       // Current modification timestamp // 当前修改时间戳
 	Deleted     bool   `json:"deleted"`     // True when the note is in the recycle bin // 笔记是否在回收站
-	Content     string `json:"content"`     // Current content (empty when deleted) // 当前内容（删除时为空）
+	Content     string `json:"content"`     // Current content; omitted (empty) when Deleted is true // 当前内容；Deleted 为 true 时为空
 }
 
 // NoteReplaceResponse response for replace operation

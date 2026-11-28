@@ -75,7 +75,17 @@ func newInstance(t *testing.T) *instance {
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 
-	dir := t.TempDir()
+	// Not t.TempDir(): the service starts background goroutines (vault size counters, link
+	// index, FTS, delayed history) that may still write for a few milliseconds after Close(),
+	// and t.TempDir's single RemoveAll would then fail with ENOTEMPTY and fail an otherwise
+	// passing test. Use a manual directory removed with retries (registered first so it runs
+	// last, after the app has been closed).
+	dir, mkErr := os.MkdirTemp("", "occtest-")
+	if mkErr != nil {
+		t.Fatalf("create temp dir: %v", mkErr)
+	}
+	t.Cleanup(func() { removeWithRetry(t, dir) })
+
 	// The note store resolves paths relative to the working directory
 	// ("storage/vault/u_<uid>/note/n_<id>/content.txt"), so run inside the temp dir to keep
 	// the repository clean and every test self-contained.
@@ -144,6 +154,8 @@ user:
 		if sqlDB, e := db.DB(); e == nil {
 			_ = sqlDB.Close()
 		}
+		// give fire-and-forget goroutines a moment to finish their last write
+		time.Sleep(100 * time.Millisecond)
 	})
 
 	inst.bootstrap()
@@ -300,6 +312,19 @@ func (i *instance) userDB() *sql.DB {
 	return db
 }
 
+// openDB opens one of the per-domain SQLite shards the service creates for a user
+// (e.g. db_user_note_history_1.sqlite3) so tests can assert on or seed internal state.
+func (i *instance) openDB(name string) *sql.DB {
+	i.t.Helper()
+	path := filepath.Join(i.dir, "storage", "database", name)
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		i.t.Fatalf("open %s: %v", name, err)
+	}
+	i.t.Cleanup(func() { _ = db.Close() })
+	return db
+}
+
 func (i *instance) contentFile(path string) string {
 	i.t.Helper()
 	var id int64
@@ -317,6 +342,20 @@ func (i *instance) contentFile(path string) string {
 func int64p(v int64) *int64 { return &v }
 
 func newNopLogger() *zap.Logger { return zap.NewNop() }
+
+// removeWithRetry deletes a test directory, tolerating writes that a background goroutine may
+// perform just after the application container has been closed.
+func removeWithRetry(t *testing.T, dir string) {
+	t.Helper()
+	var err error
+	for i := 0; i < 60; i++ {
+		if err = os.RemoveAll(dir); err == nil {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Logf("warning: could not remove temp dir %s: %v", dir, err)
+}
 
 func urlQueryEscape(s string) string { return url.QueryEscape(s) }
 

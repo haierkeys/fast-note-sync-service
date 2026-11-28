@@ -577,6 +577,15 @@ func (h *NoteWSHandler) NoteDelete(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteDelete", params.Path, params.Vault)
 
+	// Delete over WebSocket is unconditional, exactly as before this contract existed: the
+	// transport's own conflict engine handles divergence, and a `revision` field in the frame
+	// must not silently make it conditional (that would also emit a conflict frame the plugin
+	// cannot route, because this handler replies through the untyped error path).
+	// WebSocket 删除保持无条件语义（与该契约引入前一致）：本通道的冲突由自身机制处理，
+	// 帧里的 `revision` 字段不得悄悄把删除变成条件写入（且该错误路径返回无 action 前缀的帧，
+	// 插件无法路由）。
+	params.Revision = nil
+
 	ctx := c.Context()
 
 	noteSvc := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion())
@@ -638,6 +647,12 @@ func (h *NoteWSHandler) NoteRename(c *pkgapp.WebsocketClient, msg *pkgapp.WebSoc
 	}
 
 	pkgapp.NoteModifyLog(c.TraceID, c.User.UID, "NoteRename", params.Path, params.Vault)
+
+	// Same rule as NoteDelete: renames over WebSocket stay unconditional so a stray
+	// `revision` field cannot activate REST/MCP semantics or produce an unroutable frame.
+	// 与 NoteDelete 相同：WebSocket 重命名保持无条件语义，帧里的 `revision` 不会启用
+	// REST/MCP 语义，也不会产生无法路由的帧。
+	params.Revision = nil
 
 	uid := c.User.UID
 	oldNote, newNote, err := h.App.GetNoteService(c.ClientType(), c.ClientName(), c.ClientVersion()).Rename(c.Context(), uid, params)

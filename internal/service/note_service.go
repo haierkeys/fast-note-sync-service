@@ -421,6 +421,13 @@ func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int
 		if note == nil {
 			note, _ = s.noteRepo.GetAllByPathHash(ctx, params.PathHash, vaultID, uid)
 		}
+		// Remember which row this write targets: conflict reporting must describe that row,
+		// not "whichever row happens to match the path first" after the fact.
+		// 记录本次写入的目标主键：冲突信息必须描述该记录，而不是事后按路径匹配到的任意一条。
+		var noteID int64
+		if note != nil {
+			noteID = note.ID
+		}
 
 		// Optimistic concurrency: a conditional write requires the note to exist; if there is
 		// no row at all the caller's revision can never be satisfied, so it is a conflict
@@ -428,7 +435,7 @@ func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int
 		// 乐观并发：条件写入要求笔记已存在；若连记录都没有，调用方的版本号永远无法满足，
 		// 因此按冲突处理，而不是静默新建（新建请求不带版本号）。
 		if note == nil && params.Revision != nil {
-			return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, nil)
+			return nil, s.noteConflictCode(ctx, uid, vaultID, noteID, params.PathHash, nil)
 		}
 
 		// Tombstone guard: an ordinary content write must never resurrect a deleted note.
@@ -437,7 +444,7 @@ func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int
 		// 墓碑保护：普通内容写入绝不允许复活已删除笔记；复活必须走显式的 Restore 操作。
 		// WebSocket 路径显式豁免，因为其协议一直允许重建同名路径。
 		if note != nil && note.Action == domain.NoteActionDelete && !params.AllowTombstoneRevive {
-			return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, note)
+			return nil, s.noteConflictCode(ctx, uid, vaultID, noteID, params.PathHash, note)
 		}
 
 		if note != nil {
@@ -507,7 +514,7 @@ func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int
 				err := updateErr
 				if errors.Is(err, domain.ErrNoteRevisionConflict) {
 					// note already carries this attempt's content/action; re-read instead.
-					return nil, s.noteConflictCode(ctx, uid, vaultID, params.PathHash, nil)
+					return nil, s.noteConflictCode(ctx, uid, vaultID, noteID, params.PathHash, nil)
 				}
 				return nil, code.ErrorDBQuery.WithDetails(err.Error())
 			}
@@ -588,8 +595,8 @@ func (s *noteService) modifyOrCreateLocked(ctx context.Context, uid, vaultID int
 // was written by the failed attempt). A soft-deleted note is reported with deleted=true.
 // noteConflictCode 构造条件写入被拒绝时的冲突响应。它会重新读取当前状态，返回库中真实内容
 // （失败的写入没有改动任何数据）；软删除笔记以 deleted=true 表示。
-func (s *noteService) noteConflictCode(ctx context.Context, uid, vaultID int64, pathHash string, known *domain.Note) *code.Code {
-	data := s.noteConflictData(ctx, uid, vaultID, pathHash, known)
+func (s *noteService) noteConflictCode(ctx context.Context, uid, vaultID, noteID int64, pathHash string, known *domain.Note) *code.Code {
+	data := s.noteConflictData(ctx, uid, vaultID, noteID, pathHash, known)
 	if data.Deleted {
 		// A content write aimed at a tombstone: the caller must restore explicitly.
 		return code.ErrorNoteDeleted.WithData(data)
@@ -602,13 +609,25 @@ func (s *noteService) noteConflictCode(ctx context.Context, uid, vaultID int64, 
 // the lifecycle state and the only thing that went wrong is the revision it supplied.
 // noteRevisionConflictCode 始终返回普通版本冲突（452）。删除/恢复/重命名使用它：调用方已知
 // 笔记的生命周期状态，问题只是它提交的版本号已过期。
-func (s *noteService) noteRevisionConflictCode(ctx context.Context, uid, vaultID int64, pathHash string) *code.Code {
-	return code.ErrorNoteRevisionConflict.WithData(s.noteConflictData(ctx, uid, vaultID, pathHash, nil))
+func (s *noteService) noteRevisionConflictCode(ctx context.Context, uid, vaultID, noteID int64, pathHash string) *code.Code {
+	return code.ErrorNoteRevisionConflict.WithData(s.noteConflictData(ctx, uid, vaultID, noteID, pathHash, nil))
 }
 
-func (s *noteService) noteConflictData(ctx context.Context, uid, vaultID int64, pathHash string, known *domain.Note) *dto.NoteConflictData {
+func (s *noteService) noteConflictData(ctx context.Context, uid, vaultID, noteID int64, pathHash string, known *domain.Note) *dto.NoteConflictData {
+	// Prefer the exact row the caller addressed. A pathHash lookup is not deterministic when
+	// duplicate rows exist for one path (they can: renamed tombstones and historical
+	// duplicates both occur, see CleanDuplicateNotes), and reporting a different row than the
+	// one the CAS rejected would hand the client unusable reconciliation data.
+	// 优先按主键定位调用方实际操作的记录。同一路径存在重复记录时（重命名遗留墓碑与历史重复
+	// 记录都可能造成，见 CleanDuplicateNotes），按 pathHash 查询并不确定，返回与 CAS 失败
+	// 所用的不同记录会把无法使用的数据交给客户端。
 	current := known
-	if current == nil {
+	if current == nil && noteID > 0 {
+		if byID, err := s.noteRepo.GetByID(ctx, noteID, uid); err == nil {
+			current = byID
+		}
+	}
+	if current == nil && pathHash != "" {
 		current, _ = s.noteRepo.GetAllByPathHash(ctx, pathHash, vaultID, uid)
 	}
 	if current == nil {
@@ -617,14 +636,22 @@ func (s *noteService) noteConflictData(ctx context.Context, uid, vaultID int64, 
 		// 记录已不存在（回收站被清空）：调用方的版本号无法被满足，且不得静默新建笔记。
 		return &dto.NoteConflictData{Revision: 0}
 	}
-	return &dto.NoteConflictData{
+
+	deleted := current.Action == domain.NoteActionDelete
+	data := &dto.NoteConflictData{
 		Path:        current.Path,
 		Revision:    current.Rev,
 		ContentHash: current.ContentHash,
 		Mtime:       current.Mtime,
-		Deleted:     current.Action == domain.NoteActionDelete,
-		Content:     current.Content,
+		Deleted:     deleted,
 	}
+	if !deleted {
+		// A tombstone's body is deliberately not echoed: revival is a separate operation and
+		// the conflict contract promises no content for deleted notes.
+		// 墓碑正文不回显：复活是独立操作，冲突契约承诺删除状态下不返回内容。
+		data.Content = current.Content
+	}
+	return data
 }
 
 // Delete deletes a note
@@ -661,7 +688,7 @@ func (s *noteService) Delete(ctx context.Context, uid int64, params *dto.NoteDel
 	}
 	if err != nil {
 		if errors.Is(err, domain.ErrNoteRevisionConflict) {
-			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, note.ID, params.PathHash)
 		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -737,7 +764,7 @@ func (s *noteService) Restore(ctx context.Context, uid int64, params *dto.NoteRe
 	}
 	if err != nil {
 		if errors.Is(err, domain.ErrNoteRevisionConflict) {
-			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, note.ID, params.PathHash)
 		}
 		return nil, code.ErrorDBQuery.WithDetails(err.Error())
 	}
@@ -830,7 +857,7 @@ func (s *noteService) Rename(ctx context.Context, uid int64, params *dto.NoteRen
 		if params.Revision != nil {
 			oldNote, err = s.noteRepo.Update(ctx, n, uid, *params.Revision)
 			if errors.Is(err, domain.ErrNoteRevisionConflict) {
-				return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, oldPathHash)
+				return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, n.ID, oldPathHash)
 			}
 		} else {
 			oldNote, err = s.noteRepo.Update(ctx, n, uid)
@@ -1429,7 +1456,7 @@ func (s *noteService) ReplaceContent(ctx context.Context, uid int64, params *dto
 	// 得到“成功”的回复。
 	if newContent == note.Content {
 		if params.Revision != nil && *params.Revision != note.Rev {
-			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, params.PathHash)
+			return nil, s.noteRevisionConflictCode(ctx, uid, vaultID, note.ID, params.PathHash)
 		}
 		return &dto.NoteReplaceResponse{
 			MatchCount: matchCount,
